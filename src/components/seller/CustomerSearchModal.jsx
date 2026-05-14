@@ -1,0 +1,1018 @@
+import { useState, useEffect, useRef } from 'react';
+import {
+  Search, X, UserCheck, Plus, MapPin, Phone, User,
+  Building2, ArrowLeft, CheckCircle2, XCircle, Loader2,
+  Trash2, Star, Copy, Check, AlertCircle,
+} from 'lucide-react';
+import { customerApi } from '../../api/services';
+import { useToast } from '../common/Toast';
+
+// ── Sanitize customer code ────────────────────────────────────────
+function sanitizeCode(raw) {
+  return raw.toUpperCase().replace(/[^A-Z0-9\-_]/g, '').slice(0, 30);
+}
+
+// ── Shared Field ─────────────────────────────────────────────────
+function Field({ label, required, error, ...props }) {
+  return (
+    <div>
+      <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      <input
+        className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none bg-white transition-colors
+          ${error
+            ? 'border-red-400 bg-red-50/40 focus:border-red-400'
+            : 'border-[#E8DDD0] focus:border-[#C9A84C]'
+          }`}
+        {...props}
+      />
+      {error && <p className="text-[10px] text-red-400 mt-0.5">{error}</p>}
+    </div>
+  );
+}
+
+function SectionLabel({ children }) {
+  return <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">{children}</p>;
+}
+
+// ── CustomerCode Input ────────────────────────────────────────────
+function CustomerCodeInput({ value, onChange, error }) {
+  const [checking, setChecking] = useState(false);
+  const [available, setAvailable] = useState(null);
+  const debounceRef = useRef(null);
+
+  const handleChange = (e) => {
+    const val = sanitizeCode(e.target.value);
+    onChange(val);
+    setAvailable(null);
+    if (!val || val.length < 2) return;
+    setChecking(true);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await customerApi.checkCode(val);
+        setAvailable(!res.data?.data?.exists);
+      } catch { setAvailable(null); }
+      finally { setChecking(false); }
+    }, 500);
+  };
+
+  return (
+    <div>
+      <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">
+        Mã khách hàng<span className="text-red-400 ml-0.5">*</span>
+      </label>
+      <div className="relative">
+        <input
+          type="text" value={value} onChange={handleChange}
+          placeholder="VD: NOK-01, KLE, ABC123"
+          maxLength={30}
+          className={`w-full px-3 py-2 pr-8 rounded-lg border text-xs focus:outline-none font-mono tracking-wider transition-colors
+            ${error
+              ? 'border-red-400 bg-red-50/40'
+              : available === true
+                ? 'border-emerald-400 focus:border-emerald-400'
+                : 'border-[#E8DDD0] focus:border-[#C9A84C]'
+            }`}
+        />
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+          {checking && <Loader2 size={12} className="text-[#8E8878] animate-spin" />}
+          {!checking && available === true && <CheckCircle2 size={12} className="text-emerald-500" />}
+          {!checking && available === false && <XCircle size={12} className="text-red-400" />}
+        </div>
+      </div>
+      {error
+        ? <p className="text-[10px] text-red-400 mt-0.5">{error}</p>
+        : available === true
+          ? <p className="text-[10px] text-emerald-600 mt-0.5">Mã có thể sử dụng</p>
+          : available === false
+            ? <p className="text-[10px] text-red-400 mt-0.5">Mã đã được sử dụng</p>
+            : <p className="text-[10px] text-[#C4B9A8] mt-0.5">Chữ hoa, số, dấu - hoặc _. Tối đa 30 ký tự.</p>
+      }
+    </div>
+  );
+}
+
+// ── Receiver Card (trong form tạo mới) ───────────────────────────
+function ReceiverCard({ receiver, index, isOnly, errors, onCopyFromAbove, onChange, onRemove, onSetDefault }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    onCopyFromAbove();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className={`rounded-xl border p-3 space-y-2 transition-all
+      ${receiver.isDefault
+        ? 'border-[#C9A84C]/60 bg-[#FDF8ED]'
+        : 'border-[#E8DDD0] bg-white'
+      }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-[#1C1C1E]">Người nhận #{index + 1}</span>
+          {receiver.isDefault && (
+            <span className="text-[9px] bg-[#C9A84C]/20 text-[#C9A84C] rounded-full px-1.5 py-0.5 font-semibold">
+              Mặc định
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={handleCopy}
+            className="flex items-center gap-1 px-1.5 py-1 rounded-md text-[#8E8878] hover:text-[#C9A84C] hover:bg-[#F0EBE3] transition-colors text-[10px] font-medium">
+            {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+            {copied ? 'Đã copy' : 'Copy'}
+          </button>
+          {!receiver.isDefault && (
+            <button type="button" onClick={onSetDefault}
+              className="p-1 rounded-md text-[#C4B9A8] hover:text-[#C9A84C] hover:bg-[#F0EBE3] transition-colors">
+              <Star size={12} />
+            </button>
+          )}
+          {!isOnly && (
+            <button type="button" onClick={onRemove}
+              className="p-1 rounded-md text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 transition-colors">
+              <Trash2 size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+      <div>
+        <input type="text" placeholder="Tên người nhận *" value={receiver.receiverName}
+          onChange={e => onChange('receiverName', e.target.value)}
+          className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
+            ${errors?.receiverName ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
+        {errors?.receiverName && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverName}</p>}
+      </div>
+      <div>
+        <input type="text" placeholder="Số điện thoại *" value={receiver.receiverPhone}
+          onChange={e => onChange('receiverPhone', e.target.value)}
+          className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
+            ${errors?.receiverPhone ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
+        {errors?.receiverPhone && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverPhone}</p>}
+      </div>
+      <div>
+        <input type="text" placeholder="Địa chỉ nhận hàng *" value={receiver.receiverAddress}
+          onChange={e => onChange('receiverAddress', e.target.value)}
+          className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
+            ${errors?.receiverAddress ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
+        {errors?.receiverAddress && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverAddress}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── Extract server error ──────────────────────────────────────────
+function extractServerError(err) {
+  if (err?.response?.data) {
+    const body = err.response.data;
+    if (body?.message && typeof body.message === 'string') return body.message;
+    if (body?.errors && Array.isArray(body.errors))
+      return body.errors.map(e => e.defaultMessage || e.message).join(', ');
+  }
+  return err?.message || 'Đã xảy ra lỗi, vui lòng thử lại';
+}
+
+// ── Validate receivers ────────────────────────────────────────────
+function validateReceiverDuplicates(receivers, mainPhone) {
+  const errors = receivers.map(() => ({}));
+  let ok = true;
+  const normalizePhone = (p) => (p || '').trim().replace(/\s+/g, '');
+  const normalizeAddress = (a) => (a || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  for (let i = 0; i < receivers.length; i++) {
+    for (let j = i + 1; j < receivers.length; j++) {
+      const phoneI = normalizePhone(receivers[i].receiverPhone);
+      const phoneJ = normalizePhone(receivers[j].receiverPhone);
+      const addrI = normalizeAddress(receivers[i].receiverAddress);
+      const addrJ = normalizeAddress(receivers[j].receiverAddress);
+
+      if (phoneI && phoneJ && phoneI === phoneJ) {
+        const isMainPhone = normalizePhone(mainPhone) === phoneI;
+        errors[i].receiverPhone = errors[i].receiverPhone ||
+          (isMainPhone ? 'Chỉ 1 người nhận được dùng SĐT chính' : `Trùng SĐT với người nhận #${j + 1}`);
+        errors[j].receiverPhone = errors[j].receiverPhone ||
+          (isMainPhone ? 'Chỉ 1 người nhận được dùng SĐT chính' : `Trùng SĐT với người nhận #${i + 1}`);
+        ok = false;
+      }
+      if (addrI && addrJ && addrI === addrJ) {
+        errors[i].receiverAddress = errors[i].receiverAddress || `Trùng địa chỉ với người nhận #${j + 1}`;
+        errors[j].receiverAddress = errors[j].receiverAddress || `Trùng địa chỉ với người nhận #${i + 1}`;
+        ok = false;
+      }
+    }
+  }
+  return { ok, errors };
+}
+
+// ── PhoneCheckInput — input SĐT có real-time check trùng toàn hệ thống ───────
+// Đặt ngoài InlineForm để không bị re-mount
+function PhoneCheckInput({ value, onChange, placeholder, className }) {
+  const [checking, setChecking] = useState(false);
+  const [duplicate, setDuplicate] = useState(null); // null | false | string (tên KH trùng)
+  const debounceRef = useRef(null);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    onChange(val);
+    setDuplicate(null);
+    clearTimeout(debounceRef.current);
+
+    if (!val.trim() || val.trim().length < 6) return;
+
+    setChecking(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await customerApi.checkReceiverPhone(val.trim());
+        const exists = res.data?.data?.exists;
+        setDuplicate(exists ? true : false);
+      } catch {
+        setDuplicate(null);
+      } finally {
+        setChecking(false);
+      }
+    }, 500);
+  };
+
+  return (
+    <div>
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={handleChange}
+          className={`${className} pr-8`}
+        />
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+          {checking && <Loader2 size={11} className="text-[#8E8878] animate-spin" />}
+          {!checking && duplicate === false && <CheckCircle2 size={11} className="text-emerald-500" />}
+          {!checking && duplicate === true && <XCircle size={11} className="text-red-400" />}
+        </div>
+      </div>
+      {!checking && duplicate === true && (
+        <p className="text-[10px] text-red-400 mt-0.5 flex items-center gap-1">
+          <AlertCircle size={9} /> SĐT này đã được đăng ký cho người nhận khác
+        </p>
+      )}
+      {!checking && duplicate === false && value.trim().length >= 6 && (
+        <p className="text-[10px] text-emerald-600 mt-0.5">SĐT có thể sử dụng</p>
+      )}
+    </div>
+  );
+}
+
+// ── InlineForm — NGOÀI ReceiverStep để tránh re-mount mất focus ──
+function InlineForm({ form, onChange, onSave, onCancel, saving, phoneError }) {
+  return (
+    <div className="border border-[#C9A84C]/40 rounded-xl p-3 space-y-2 bg-[#FDF8ED]">
+      {/* Tên */}
+      <input
+        type="text"
+        placeholder="Tên người nhận *"
+        value={form.receiverName}
+        onChange={e => onChange('receiverName', e.target.value)}
+        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]"
+      />
+
+      {/* SĐT — có real-time check */}
+      <PhoneCheckInput
+        value={form.receiverPhone}
+        onChange={val => onChange('receiverPhone', val)}
+        placeholder="Số điện thoại *"
+        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]"
+      />
+      {phoneError && (
+        <p className="text-[10px] text-red-400 -mt-1">{phoneError}</p>
+      )}
+
+      {/* Địa chỉ */}
+      <input
+        type="text"
+        placeholder="Địa chỉ nhận hàng *"
+        value={form.receiverAddress}
+        onChange={e => onChange('receiverAddress', e.target.value)}
+        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]"
+      />
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={onCancel}
+          className="flex-1 py-1.5 rounded-lg border border-[#E8DDD0] text-[#8E8878] text-xs font-medium">
+          Huỷ
+        </button>
+        <button onClick={onSave} disabled={saving}
+          className="flex-1 py-1.5 rounded-lg bg-[#C9A84C] text-white text-xs font-bold disabled:opacity-60">
+          {saving ? 'Đang lưu...' : 'Lưu'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Create Customer Step ──────────────────────────────────────────
+function CreateCustomerStep({ onBack, onCreated, toast }) {
+  const [customerType, setCustomerType] = useState('RETAIL');
+  const [form, setForm] = useState({
+    customerCode: '',
+    name: '', phone: '', email: '',
+    contactName: '',
+    companyName: '', taxCode: '', companyPhone: '', companyAddress: '',
+  });
+  const [receivers, setReceivers] = useState([
+    { receiverName: '', receiverPhone: '', receiverAddress: '', isDefault: true }
+  ]);
+  const [errors, setErrors] = useState({});
+  const [receiverErrors, setReceiverErrors] = useState([{}]);
+  const [saving, setSaving] = useState(false);
+  const isCompany = customerType === 'COMPANY';
+
+  const setField = (key, val) => {
+    setForm(p => ({ ...p, [key]: val }));
+    if (errors[key]) setErrors(p => ({ ...p, [key]: '' }));
+  };
+
+  const addReceiver = () => {
+    setReceivers(prev => [...prev, { receiverName: '', receiverPhone: '', receiverAddress: '', isDefault: false }]);
+    setReceiverErrors(prev => [...prev, {}]);
+  };
+
+  const removeReceiver = (idx) => {
+    if (receivers.length === 1) return;
+    setReceivers(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      if (prev[idx].isDefault && next.length > 0) next[0] = { ...next[0], isDefault: true };
+      return next;
+    });
+    setReceiverErrors(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateReceiver = (idx, key, val) => {
+    setReceivers(prev => prev.map((r, i) => i === idx ? { ...r, [key]: val } : r));
+    if (receiverErrors[idx]?.[key])
+      setReceiverErrors(prev => prev.map((e, i) => i === idx ? { ...e, [key]: '' } : e));
+    if (key === 'receiverPhone' || key === 'receiverAddress')
+      setReceiverErrors(prev => prev.map((e, i) => i !== idx ? { ...e, [key]: '' } : e));
+  };
+
+  const setDefault = (idx) =>
+    setReceivers(prev => prev.map((r, i) => ({ ...r, isDefault: i === idx })));
+
+  const copyFromAbove = (idx) => {
+    const name = isCompany ? form.contactName : form.name;
+    const phone = isCompany ? form.companyPhone : form.phone;
+    setReceivers(prev => prev.map((r, i) =>
+      i === idx ? { ...r, receiverName: name || r.receiverName, receiverPhone: phone || r.receiverPhone } : r
+    ));
+  };
+
+  const validate = () => {
+    const errs = {};
+    let ok = true;
+
+    if (!form.customerCode.trim()) { errs.customerCode = 'Bắt buộc'; ok = false; }
+    if (!form.phone.trim()) { errs.phone = 'Bắt buộc'; ok = false; }
+    if (!form.email.trim()) { errs.email = 'Bắt buộc'; ok = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
+
+    if (isCompany) {
+      if (!form.companyName.trim()) { errs.companyName = 'Bắt buộc'; ok = false; }
+      if (!form.taxCode.trim()) { errs.taxCode = 'Bắt buộc'; ok = false; }
+      if (!form.companyPhone.trim()) { errs.companyPhone = 'Bắt buộc'; ok = false; }
+      if (!form.companyAddress.trim()) { errs.companyAddress = 'Bắt buộc'; ok = false; }
+      if (!form.contactName.trim()) { errs.contactName = 'Bắt buộc'; ok = false; }
+    } else {
+      if (!form.name.trim()) { errs.name = 'Bắt buộc'; ok = false; }
+    }
+
+    setErrors(errs);
+
+    const rErrs = receivers.map(() => ({}));
+    receivers.forEach((r, i) => {
+      if (!r.receiverName.trim()) { rErrs[i].receiverName = 'Bắt buộc'; ok = false; }
+      if (!r.receiverPhone.trim()) { rErrs[i].receiverPhone = 'Bắt buộc'; ok = false; }
+      if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Bắt buộc'; ok = false; }
+    });
+
+    const mainPhone = isCompany ? form.companyPhone : form.phone;
+    const { ok: dupOk, errors: dupErrors } = validateReceiverDuplicates(receivers, mainPhone);
+    if (!dupOk) {
+      ok = false;
+      dupErrors.forEach((de, i) => { rErrs[i] = { ...rErrs[i], ...de }; });
+    }
+
+    setReceiverErrors(rErrs);
+    return ok;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) {
+      toast('Vui lòng kiểm tra lại thông tin bắt buộc và thông tin trùng lặp', 'warning');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        customerType,
+        customerCode: form.customerCode.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        name: isCompany ? (form.contactName.trim() || null) : form.name.trim(),
+        contactName: isCompany ? form.contactName.trim() : form.name.trim(),
+        companyName: form.companyName.trim() || null,
+        taxCode: form.taxCode.trim() || null,
+        companyPhone: form.companyPhone.trim() || null,
+        companyAddress: form.companyAddress.trim() || null,
+        discountRate: 0,
+        receiverInfos: receivers.map(r => ({
+          receiverName: r.receiverName.trim(),
+          receiverPhone: r.receiverPhone.trim(),
+          receiverAddress: r.receiverAddress.trim(),
+          isDefault: r.isDefault,
+        })),
+      };
+
+      const res = await customerApi.createB2b(payload);
+      if (res.data?.code !== 900) {
+        toast(res.data?.message || 'Lỗi khi tạo khách hàng', 'error');
+        return;
+      }
+      toast('Tạo khách hàng thành công', 'success');
+      onCreated(res.data?.data);
+    } catch (err) {
+      toast(extractServerError(err), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col min-h-0 flex-1">
+      {/* Type toggle */}
+      <div className="px-4 py-3 border-b border-[#F0EBE3] shrink-0">
+        <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+          {[
+            ['RETAIL', <User size={11} />, 'Khách lẻ'],
+            ['COMPANY', <Building2 size={11} />, 'Công ty'],
+          ].map(([type, icon, label], i) => (
+            <button key={type} type="button"
+              onClick={() => { setCustomerType(type); setErrors({}); }}
+              className={`flex-1 py-2 font-medium transition-colors flex items-center justify-center gap-1.5
+                ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
+                ${customerType === type ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+              {icon}{label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+        <CustomerCodeInput
+          value={form.customerCode}
+          onChange={val => setField('customerCode', val)}
+          error={errors.customerCode}
+        />
+
+        {isCompany ? (
+          <>
+            <SectionLabel>Thông tin công ty</SectionLabel>
+            <Field label="Tên công ty" required error={errors.companyName}
+              placeholder="Công ty TNHH ABC"
+              value={form.companyName} onChange={e => setField('companyName', e.target.value)} />
+            <Field label="Mã số thuế" required error={errors.taxCode}
+              placeholder="0123456789"
+              value={form.taxCode} onChange={e => setField('taxCode', e.target.value)} />
+            <Field label="SĐT công ty" required error={errors.companyPhone}
+              placeholder="02812345678"
+              value={form.companyPhone} onChange={e => setField('companyPhone', e.target.value)} />
+            <Field label="Địa chỉ công ty" required error={errors.companyAddress}
+              placeholder="123 Nguyễn Văn A, Q.1, TP.HCM"
+              value={form.companyAddress} onChange={e => setField('companyAddress', e.target.value)} />
+            <SectionLabel>Người liên hệ</SectionLabel>
+            <Field label="Tên người liên hệ" required error={errors.contactName}
+              placeholder="Nguyễn Văn A"
+              value={form.contactName} onChange={e => setField('contactName', e.target.value)} />
+            <Field label="SĐT liên hệ" required error={errors.phone}
+              placeholder="0912345678"
+              value={form.phone} onChange={e => setField('phone', e.target.value)} />
+            <Field label="Email" required error={errors.email}
+              placeholder="contact@company.com" type="email"
+              value={form.email} onChange={e => setField('email', e.target.value)} />
+          </>
+        ) : (
+          <>
+            <SectionLabel>Thông tin khách hàng</SectionLabel>
+            <Field label="Họ tên" required error={errors.name}
+              placeholder="Nguyễn Văn A"
+              value={form.name} onChange={e => setField('name', e.target.value)} />
+            <Field label="Số điện thoại" required error={errors.phone}
+              placeholder="0912345678"
+              value={form.phone} onChange={e => setField('phone', e.target.value)} />
+            <Field label="Email" required error={errors.email}
+              placeholder="email@example.com" type="email"
+              value={form.email} onChange={e => setField('email', e.target.value)} />
+          </>
+        )}
+
+        <div className="flex items-center justify-between pt-1">
+          <SectionLabel>Địa chỉ nhận hàng</SectionLabel>
+          <button type="button" onClick={addReceiver}
+            className="flex items-center gap-1 text-[#C9A84C] text-[11px] font-semibold hover:text-[#A07830] transition-colors">
+            <Plus size={12} /> Thêm
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {receivers.map((r, idx) => (
+            <ReceiverCard
+              key={idx}
+              receiver={r}
+              index={idx}
+              isOnly={receivers.length === 1}
+              errors={receiverErrors[idx]}
+              onCopyFromAbove={() => copyFromAbove(idx)}
+              onChange={(key, val) => updateReceiver(idx, key, val)}
+              onRemove={() => removeReceiver(idx)}
+              onSetDefault={() => setDefault(idx)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="px-4 pb-4 pt-3 border-t border-[#F0EBE3] flex gap-2 shrink-0">
+        <button type="button" onClick={onBack}
+          className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-medium hover:bg-[#F0EBE3] transition-colors">
+          Huỷ
+        </button>
+        <button type="button" onClick={handleSave} disabled={saving}
+          className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#A07830] disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
+          {saving ? <><Loader2 size={14} className="animate-spin" />Đang lưu...</> : 'Tạo khách hàng'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Receiver Step ─────────────────────────────────────────────────
+function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
+  const [receiverInfos, setReceiverInfos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+  const [saving, setSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+
+  useEffect(() => {
+    customerApi.getReceiverInfos(customer.id)
+      .then(res => {
+        const list = res.data?.data || [];
+        setReceiverInfos(list);
+        const def = list.find(r => r.isDefault) || list[0];
+        if (def) setSelectedId(def.id);
+      })
+      .catch(() => setReceiverInfos([]))
+      .finally(() => setLoading(false));
+  }, [customer.id]);
+
+  const resetForm = () => {
+    setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+    setShowAdd(false);
+    setEditingId(null);
+    setPhoneError('');
+  };
+
+  const handleFormChange = (key, val) => {
+    setForm(p => ({ ...p, [key]: val }));
+    if (key === 'receiverPhone') setPhoneError('');
+  };
+
+  // ── Check SĐT trùng trước khi thêm ──────────────────────────────
+  const checkPhoneDuplicate = async (phone) => {
+    try {
+      const res = await customerApi.checkReceiverPhone(phone.trim());
+      return res.data?.data?.exists === true;
+    } catch {
+      return false; // nếu lỗi API thì cho qua, backend sẽ reject
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!form.receiverName.trim() || !form.receiverPhone.trim() || !form.receiverAddress.trim()) {
+      toast('Vui lòng điền đầy đủ thông tin người nhận', 'warning');
+      return;
+    }
+
+    // Kiểm tra SĐT trùng với người nhận của KH khác
+    const isDuplicate = await checkPhoneDuplicate(form.receiverPhone);
+    if (isDuplicate) {
+      setPhoneError('SĐT này đã được đăng ký cho người nhận khác trong hệ thống');
+      toast('SĐT người nhận đã tồn tại trong hệ thống', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await customerApi.addReceiverInfo(customer.id, {
+        receiverName: form.receiverName.trim(),
+        receiverPhone: form.receiverPhone.trim(),
+        receiverAddress: form.receiverAddress.trim(),
+      });
+      const saved = res.data?.data;
+      setReceiverInfos(prev => [...prev, saved]);
+      toast('Đã thêm người nhận', 'success');
+      resetForm();
+    } catch (err) {
+      toast(extractServerError(err), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = async (id) => {
+    if (!form.receiverName.trim() || !form.receiverPhone.trim() || !form.receiverAddress.trim()) {
+      toast('Vui lòng điền đầy đủ thông tin', 'warning');
+      return;
+    }
+
+    // Khi edit: chỉ check trùng nếu SĐT thay đổi so với SĐT hiện tại
+    const currentInfo = receiverInfos.find(r => r.id === id);
+    const phoneChanged = currentInfo?.receiverPhone?.trim() !== form.receiverPhone.trim();
+    if (phoneChanged) {
+      const isDuplicate = await checkPhoneDuplicate(form.receiverPhone);
+      if (isDuplicate) {
+        setPhoneError('SĐT này đã được đăng ký cho người nhận khác trong hệ thống');
+        toast('SĐT người nhận đã tồn tại trong hệ thống', 'error');
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      const res = await customerApi.updateReceiverInfo(customer.id, id, {
+        receiverName: form.receiverName.trim(),
+        receiverPhone: form.receiverPhone.trim(),
+        receiverAddress: form.receiverAddress.trim(),
+      });
+      setReceiverInfos(prev => prev.map(r => r.id === id ? res.data?.data : r));
+      toast('Đã cập nhật', 'success');
+      resetForm();
+    } catch (err) {
+      toast(extractServerError(err), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (receiverInfos.length === 1) { toast('Phải có ít nhất 1 người nhận', 'warning'); return; }
+    try {
+      await customerApi.deleteReceiverInfo(customer.id, id);
+      setReceiverInfos(prev => {
+        const next = prev.filter(r => r.id !== id);
+        if (selectedId === id && next.length > 0) setSelectedId(next[0].id);
+        return next;
+      });
+      toast('Đã xóa', 'success');
+    } catch (err) {
+      toast(extractServerError(err), 'error');
+    }
+  };
+
+  const handleSetDefault = async (id) => {
+    try {
+      await customerApi.setDefaultReceiverInfo(customer.id, id);
+      setReceiverInfos(prev => prev.map(r => ({ ...r, isDefault: r.id === id })));
+      setSelectedId(id); // ← chọn luôn
+      toast('Đã đặt làm mặc định', 'success');
+    } catch (err) {
+      toast(extractServerError(err), 'error');
+    }
+  };
+
+  const startEdit = (r) => {
+    setEditingId(r.id);
+    setForm({ receiverName: r.receiverName, receiverPhone: r.receiverPhone || '', receiverAddress: r.receiverAddress || '' });
+    setShowAdd(false);
+    setPhoneError('');
+  };
+
+  const handleConfirm = () => {
+    const chosen = receiverInfos.find(r => r.id === selectedId);
+    if (chosen) onSelectReceiver(chosen);
+  };
+
+  return (
+    <div className="flex flex-col min-h-0 flex-1">
+      {/* Customer summary */}
+      <div className="px-4 py-3 bg-[#FAF8F3] border-b border-[#F0EBE3] shrink-0">
+        <p className="text-xs font-semibold text-[#1C1C1E]">{customer.contactName || customer.name}</p>
+        <p className="text-[11px] text-[#8E8878]">{customer.customerCode} · {customer.phone}</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-5 h-5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            {receiverInfos.length === 0 && !showAdd && (
+              <p className="text-xs text-center text-[#8E8878] py-4">Chưa có thông tin người nhận</p>
+            )}
+
+            {receiverInfos.map((r) => (
+              <div key={r.id}>
+                {editingId === r.id ? (
+                  <InlineForm
+                    form={form}
+                    onChange={handleFormChange}
+                    onSave={() => handleEdit(r.id)}
+                    onCancel={resetForm}
+                    saving={saving}
+                    phoneError={phoneError}
+                  />
+                ) : (
+                  <div
+                    onClick={() => setSelectedId(r.id)}
+                    className={`flex items-start gap-3 px-3 py-3 rounded-xl border transition-all cursor-pointer group
+                      ${selectedId === r.id
+                        ? 'border-[#C9A84C] bg-[#FDF8ED]'
+                        : 'border-[#E8DDD0] hover:border-[#C9A84C]/50 hover:bg-[#FAF8F3]'}`}>
+
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors
+                      ${selectedId === r.id ? 'border-[#C9A84C] bg-[#C9A84C]' : 'border-[#D4C9B8]'}`}>
+                      {selectedId === r.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold text-[#1C1C1E] truncate">{r.receiverName}</p>
+                        {r.isDefault && (
+                          <span className="text-[9px] bg-[#C9A84C]/20 text-[#C9A84C] rounded-full px-1.5 py-0.5 font-semibold shrink-0">
+                            Mặc định
+                          </span>
+                        )}
+                      </div>
+                      {r.receiverPhone && (
+                        <p className="text-[11px] text-[#8E8878] flex items-center gap-1 mt-0.5">
+                          <Phone size={9} className="shrink-0" />{r.receiverPhone}
+                        </p>
+                      )}
+                      {r.receiverAddress && (
+                        <p className="text-[11px] text-[#8E8878] flex items-center gap-1 mt-0.5">
+                          <MapPin size={9} className="shrink-0" />
+                          <span className="truncate">{r.receiverAddress}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={e => e.stopPropagation()}>
+
+                      {/* Edit */}
+                      <button onClick={() => startEdit(r)}
+                        className="p-1 rounded-md hover:bg-[#F0EBE3] text-[#C4B9A8] hover:text-[#8E8878] transition-colors"
+                        title="Chỉnh sửa">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+
+                      {/* Set default — chỉ hiện nếu chưa là default */}
+                      {!r.isDefault && (
+                        <button onClick={() => handleSetDefault(r.id)}
+                          className="p-1 rounded-md hover:bg-[#FDF8ED] text-[#C4B9A8] hover:text-[#C9A84C] transition-colors"
+                          title="Đặt làm mặc định">
+                          <Star size={11} />
+                        </button>
+                      )}
+
+                      {/* Delete */}
+                      <button onClick={() => handleDelete(r.id)}
+                        className="p-1 rounded-md hover:bg-red-50 text-[#C4B9A8] hover:text-red-400 transition-colors"
+                        title="Xóa">
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {showAdd && (
+              <InlineForm
+                form={form}
+                onChange={handleFormChange}
+                onSave={handleAdd}
+                onCancel={resetForm}
+                saving={saving}
+                phoneError={phoneError}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="px-4 pb-4 pt-3 border-t border-[#F0EBE3] space-y-2 shrink-0">
+        {!showAdd && !editingId && (
+          <button
+            onClick={() => {
+              setShowAdd(true);
+              setEditingId(null);
+              setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+              setPhoneError('');
+            }}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-[#E8DDD0] text-xs text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+            <Plus size={13} /> Thêm người nhận mới
+          </button>
+        )}
+        <div className="flex gap-2">
+          <button onClick={onSkip}
+            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-medium hover:bg-[#F0EBE3] transition-colors">
+            Bỏ qua
+          </button>
+          <button onClick={handleConfirm} disabled={!selectedId}
+            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#A07830] disabled:opacity-40 transition-colors">
+            Xác nhận
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Modal ────────────────────────────────────────────────────
+export default function CustomerSearchModal({ open, onClose, onSelect, selected }) {
+  const toast = useToast();
+  const [step, setStep] = useState('search');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const debounceRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open) {
+      setStep('search'); setQuery(''); setResults([]);
+      setSelectedCustomer(null); setSearching(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    if (!query.trim()) { setResults([]); setSearching(false); return; }
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await customerApi.searchB2b(query);
+        setResults(res.data?.data?.content || res.data?.data || []);
+      } catch { setResults([]); }
+      finally { setSearching(false); }
+    }, 400);
+  }, [query]);
+
+  const handleSelectCustomer = (c) => { setSelectedCustomer(c); setStep('receiver'); };
+  const handleSelectReceiver = (receiver) => { onSelect({ ...selectedCustomer, selectedReceiver: receiver }); onClose(); };
+  const handleSkipReceiver = () => { onSelect({ ...selectedCustomer, selectedReceiver: null }); onClose(); };
+  const handleCreated = (newCustomer) => { setSelectedCustomer(newCustomer); setStep('receiver'); };
+
+  const titles = { search: 'Chọn khách hàng', receiver: 'Người nhận hàng', create: 'Tạo khách hàng mới' };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative bg-white w-full sm:rounded-2xl sm:max-w-md flex flex-col shadow-2xl animate-fadeIn overflow-hidden"
+        style={{ maxHeight: '88vh', height: '88vh' }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F0EBE3] shrink-0">
+          <div className="flex items-center gap-2">
+            {(step === 'receiver' || step === 'create') && (
+              <button onClick={() => setStep('search')}
+                className="p-1 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+                <ArrowLeft size={15} />
+              </button>
+            )}
+            <h2 className="font-semibold text-[#1C1C1E] text-sm">{titles[step]}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
+            <X size={17} />
+          </button>
+        </div>
+
+        {/* Step: Search */}
+        {step === 'search' && (
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="px-4 py-3 border-b border-[#F0EBE3] shrink-0">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Tìm theo tên, mã KH, SĐT..."
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAF8F3]"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {searching ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : results.length === 0 && query.trim() ? (
+                <div className="flex flex-col items-center py-10 text-[#8E8878] gap-2">
+                  <span className="text-2xl">🔍</span>
+                  <p className="text-sm">Không tìm thấy khách hàng</p>
+                  <button onClick={() => setStep('create')}
+                    className="mt-1 text-xs text-[#C9A84C] font-semibold hover:underline">
+                    + Tạo khách hàng mới
+                  </button>
+                </div>
+              ) : results.length === 0 ? (
+                <div className="flex flex-col items-center py-10 text-[#C4B9A8] gap-2">
+                  <Search size={28} strokeWidth={1} />
+                  <p className="text-sm">Nhập để tìm kiếm</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#F0EBE3]">
+                  {results.map((c) => {
+                    const isLocked = c.isActive === false;
+                    return (
+                      <button key={c.id}
+                        onClick={() => {
+                          if (isLocked) { toast('Khách hàng tạm ngưng tạo đơn mới', 'error'); return; }
+                          handleSelectCustomer(c);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
+                          ${isLocked ? 'bg-red-50/30 hover:bg-red-50/50 border-l-2 border-red-400' : 'hover:bg-[#FAF8F3]'}`}>
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold
+                          ${isLocked ? 'bg-red-100 text-red-400' : c.customerType === 'COMPANY' ? 'bg-blue-100 text-blue-500' : 'bg-[#FDF8ED] text-[#C9A84C]'}`}>
+                          {c.customerType === 'COMPANY' ? <Building2 size={16} /> : (c.contactName || c.name || '?')[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-sm font-semibold truncate ${isLocked ? 'text-red-500' : 'text-[#1C1C1E]'}`}>
+                              {c.contactName || c.name || c.companyName}
+                            </p>
+                            {isLocked && (
+                              <span className="text-[9px] bg-red-100 text-red-500 border border-red-200 rounded-full px-1.5 py-0.5 font-semibold shrink-0 whitespace-nowrap">
+                                Tạm khóa
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs truncate ${isLocked ? 'text-red-400' : 'text-[#8E8878]'}`}>
+                            {c.customerCode} · {c.phone}
+                            {c.customerType === 'COMPANY' && c.companyName && ` · ${c.companyName}`}
+                          </p>
+                          {!isLocked && c.discountRate > 0 && (
+                            <span className="text-[10px] text-emerald-600 font-medium">Chiết khấu {c.discountRate}%</span>
+                          )}
+                        </div>
+                        {selected?.id === c.id && !isLocked && (
+                          <UserCheck size={15} className="text-[#C9A84C] shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="px-4 py-3 border-t border-[#F0EBE3] shrink-0">
+              <button onClick={() => setStep('create')}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-[#E8DDD0] text-xs text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+                <Plus size={13} /> Tạo khách hàng mới
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'create' && (
+          <CreateCustomerStep onBack={() => setStep('search')} onCreated={handleCreated} toast={toast} />
+        )}
+
+        {step === 'receiver' && selectedCustomer && (
+          <ReceiverStep
+            customer={selectedCustomer}
+            onSelectReceiver={handleSelectReceiver}
+            onSkip={handleSkipReceiver}
+            toast={toast}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+@import "tailwindcss";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none; /* 🔥 chặn bounce */
+}
+
+svg:focus,
+svg *:focus {
+  outline: none;
+}
+
+@layer components {
+  .input-elegant {
+    background-color: #fff;
+    border: 1.5px solid #E8DDD0;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-elegant:focus {
+    border-color: #C9A84C;
+    box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.15);
+  }
+
+  .btn-gold {
+    background-color: #C9A84C;
+    color: #fff;
+    transition: background-color 0.2s, box-shadow 0.2s;
+  }
+  .btn-gold:hover:not(:disabled) {
+    background-color: #B8973B;
+  }
+  .btn-gold:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.35);
+  }
+  .btn-gold:active:not(:disabled) {
+    background-color: #A07830;
+  }
+
+  .card-product {
+    background-color: #fff;
+    border: 1.5px solid #F0EBE3;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .card-product:hover:not(:disabled) {
+    border-color: #C9A84C;
+    box-shadow: 0 4px 12px rgba(201, 168, 76, 0.12);
+  }
+}
+
+.rdrDayStartPreview, .rdrDayInPreview, .rdrDayEndPreview {
+  border-color: #C9A84C !important;
+}
+.rdrDay:not(.rdrDayPassive) .rdrInRange ~ .rdrDayNumber span,
+.rdrDay:not(.rdrDayPassive) .rdrStartEdge ~ .rdrDayNumber span,
+.rdrDay:not(.rdrDayPassive) .rdrEndEdge ~ .rdrDayNumber span {
+  color: white !important;
+}
+.rdrDefinedRangesWrapper { display: none; }
+.rdrCalendarWrapper { font-size: 13px; }
+.rdrMonth { padding: 0 12px 12px; }
