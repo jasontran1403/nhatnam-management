@@ -52,6 +52,21 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
         </div>
       )}
 
+      {/* Giá vốn (import) — Change 6 */}
+      {mode === 'import' && (
+        <div>
+          <input
+            className="wh-input"
+            type="number"
+            min="0"
+            step="1000"
+            placeholder="Giá vốn/đơn vị"
+            value={value.costPrice || ''}
+            onChange={e => onChange({ ...value, costPrice: e.target.value })}
+          />
+        </div>
+      )}
+
       {/* Hạn sử dụng (import) */}
       {mode === 'import' && (
         <div>

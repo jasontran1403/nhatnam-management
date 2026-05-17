@@ -178,6 +178,11 @@ export default function AdminIngredients() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-semibold text-[#1C1C1E]">{formatNumber(r.stockQuantity)}</span>
+                        {r.totalCostValue > 0 && (
+                          <span className="text-xs text-[#C9A84C] font-medium ml-1">
+                            ({formatCurrency(r.totalCostValue)})
+                          </span>
+                        )}
                         <span className="text-xs text-[#8E8878] ml-1">{r.unit}</span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -224,6 +229,9 @@ export default function AdminIngredients() {
                       <p className="font-medium text-[#1C1C1E] truncate">{r.ingredientName}</p>
                       <p className="text-xs text-[#8E8878]">
                         Tồn: <span className="font-semibold text-[#1C1C1E]">{formatNumber(r.stockQuantity)}</span> {r.unit}
+                      {r.totalCostValue > 0 && (
+                        <span className="ml-1 text-[#C9A84C] font-semibold text-xs">({formatCurrency(r.totalCostValue)})</span>
+                      )}
                       </p>
                       {r.nearestExpiryDate && (
                         <p className="text-xs text-[#8E8878] mt-0.5">

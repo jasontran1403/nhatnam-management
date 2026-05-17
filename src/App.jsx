@@ -7,6 +7,8 @@ import SellerLayout from './components/seller/SellerLayout';
 import AdminLayout from './components/admin/AdminLayout';
 import WarehouseLayout from './components/warehouse/WarehouseLayout';
 import AccountantLayout from './components/accountant/AccountantLayout';
+import OwnerLayout from './components/owner/OwnerLayout';
+import SuperWarehouseLayout from './components/super_warehouse/SuperWarehouseLayout';
 import LoginPage from './pages/auth/LoginPage';
 import POSPage from './pages/seller/POSPage';
 import OrdersPage from './pages/seller/OrdersPage';
@@ -29,10 +31,14 @@ import OperatorCategoriesPage from './pages/operator/OperatorCategoriesPage';
 import OperatorIngredientsPage from './pages/operator/OperatorIngredientsPage';
 import OperatorProductBatchPage from './pages/operator/OperatorProductBatchPage';
 import OperatorMyBatchesPage from './pages/operator/OperatorMyBatchesPage';
+import OperatorLandingpagePage from './pages/operator/OperatorLandingpagePage';
 import AdminBatchApproval from './pages/admin/AdminBatchApproval';
+import ExpenseVoucherPage from './pages/admin/ExpenseVoucherPage';
+import ExpenseCreatePage from './pages/super_accountant/ExpenseCreatePage';
+import SuperAccountantLayout from './components/super_accountant/SuperAccountantLayout';
+import AdminWarehouseStock from './pages/admin/AdminWarehouseStock';
 
 // ── Lắng nghe event token hết hạn từ axios interceptor ───────────────────────
-// Phải đặt bên TRONG ToastProvider để useToast hoạt động
 function SessionExpiredListener() {
   const toast = useToast();
   useEffect(() => {
@@ -51,12 +57,15 @@ function RootRedirect() {
     try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
   })();
 
-  if (user?.role === 'ADMIN')             return <Navigate to="/admin/dashboard"      replace />;
-  if (user?.role === 'WAREHOUSE')         return <Navigate to="/warehouse/management" replace />;
-  if (user?.role === 'ACCOUNTANT')        return <Navigate to="/accountant/dashboard" replace />;
+  if (user?.role === 'ADMIN')             return <Navigate to="/admin/dashboard"           replace />;
+  if (user?.role === 'OWNER')             return <Navigate to="/owner/dashboard"            replace />;
+  if (user?.role === 'WAREHOUSE')         return <Navigate to="/warehouse/management"       replace />;
+  if (user?.role === 'SUPER_WAREHOUSE')   return <Navigate to="/super-warehouse/management" replace />;
+  if (user?.role === 'ACCOUNTANT')        return <Navigate to="/accountant/dashboard"       replace />;
   if (user?.role === 'SUPER_ACCOUNTANT')  return <Navigate to="/super-accountant/dashboard" replace />;
-  if (user?.role === 'SHIPPER')           return <Navigate to="/shipper/dashboard"    replace />;
-  if (user?.role === 'OPERATOR')          return <Navigate to="/operator/categories"  replace />;
+  if (user?.role === 'SHIPPER')           return <Navigate to="/shipper/dashboard"          replace />;
+  if (user?.role === 'OPERATOR')          return <Navigate to="/operator/categories"        replace />;
+  if (user?.role === 'SUPER_SELLER')      return <Navigate to="/seller/pos"                 replace />;
   return <Navigate to="/seller/pos" replace />;
 }
 
@@ -65,7 +74,6 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        {/* SessionExpiredListener phải nằm trong ToastProvider */}
         <SessionExpiredListener />
 
         <BrowserRouter>
@@ -77,7 +85,7 @@ export default function App() {
             <Route
               path="/seller"
               element={
-                <PrivateRoute allowedRoles={['ADMIN', 'SELLER']}>
+                <PrivateRoute allowedRoles={['ADMIN', 'OWNER', 'SELLER', 'SUPER_SELLER']}>
                   <SellerLayout />
                 </PrivateRoute>
               }
@@ -85,6 +93,41 @@ export default function App() {
               <Route index element={<Navigate to="/seller/pos" replace />} />
               <Route path="pos"    element={<POSPage />} />
               <Route path="orders" element={<OrdersPage />} />
+            </Route>
+
+            {/* ── SUPER ACCOUNTANT ───────────────────────────────────── */}
+            <Route
+              path="/super-accountant"
+              element={
+                <PrivateRoute allowedRoles={['SUPER_ACCOUNTANT']}>
+                  <SuperAccountantLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="/super-accountant/dashboard" replace />} />
+              <Route path="dashboard" element={<AccountantDashboardPage />} />
+              <Route path="history"   element={<AccountantOrdersPage />} />
+              <Route path="expenses"  element={<ExpenseCreatePage />} />
+            </Route>
+
+            {/* ── OWNER ───────────────────────────────────────────────── */}
+            <Route
+              path="/owner"
+              element={
+                <PrivateRoute allowedRoles={['OWNER']}>
+                  <OwnerLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="/owner/dashboard" replace />} />
+              <Route path="dashboard"   element={<DashboardPage />} />
+              <Route path="orders"      element={<AdminOrders />} />
+              <Route path="customers"   element={<AdminCustomers />} />
+              <Route path="users"       element={<AdminUsers />} />
+              <Route path="warehouses"  element={<AdminWarehouses />} />
+              <Route path="ingredients" element={<AdminIngredients />} />
+              <Route path="expenses"    element={<ExpenseVoucherPage />} />
+              <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
             </Route>
 
             {/* ── ADMIN ───────────────────────────────────────────────── */}
@@ -97,20 +140,22 @@ export default function App() {
               }
             >
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard"  element={<DashboardPage />} />
-              <Route path="orders"     element={<AdminOrders />} />
-              <Route path="customers"  element={<AdminCustomers />} />
-              <Route path="users"      element={<AdminUsers />} />
-              <Route path="warehouses" element={<AdminWarehouses />} />
-              <Route path="ingredients"element={<AdminIngredients />} />
-              <Route path="batches"    element={<AdminBatchApproval />} />
+              <Route path="dashboard"   element={<DashboardPage />} />
+              <Route path="orders"      element={<AdminOrders />} />
+              <Route path="customers"   element={<AdminCustomers />} />
+              <Route path="users"       element={<AdminUsers />} />
+              <Route path="warehouses"  element={<AdminWarehouses />} />
+              <Route path="ingredients" element={<AdminIngredients />} />
+              <Route path="batches"     element={<AdminBatchApproval />} />
+              <Route path="expenses"    element={<ExpenseVoucherPage />} />
+              <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
             </Route>
 
             {/* ── OPERATOR ────────────────────────────────────────────── */}
             <Route
               path="/operator"
               element={
-                <PrivateRoute allowedRoles={['OPERATOR', 'ADMIN']}>
+                <PrivateRoute allowedRoles={['OPERATOR', 'ADMIN', 'OWNER']}>
                   <OperatorLayout />
                 </PrivateRoute>
               }
@@ -120,9 +165,10 @@ export default function App() {
               <Route path="ingredients" element={<OperatorIngredientsPage />} />
               <Route path="products"    element={<OperatorProductBatchPage />} />
               <Route path="batches"     element={<OperatorMyBatchesPage />} />
+              <Route path="landingpage" element={<OperatorLandingpagePage />} />
             </Route>
 
-            {/* ── WAREHOUSE ───────────────────────────────────────────── */}
+            {/* ── WAREHOUSE (role: WAREHOUSE only) ────────────────────── */}
             <Route
               path="/warehouse"
               element={
@@ -136,13 +182,31 @@ export default function App() {
               <Route path="operations" element={<OperationsPage />} />
               <Route path="history"    element={<HistoryPage />} />
               <Route path="orders"     element={<WarehouseOrdersPage />} />
+              <Route path="expenses"   element={<ExpenseCreatePage />} />
+            </Route>
+
+            {/* ── SUPER WAREHOUSE (role: SUPER_WAREHOUSE) ─────────────── */}
+            <Route
+              path="/super-warehouse"
+              element={
+                <PrivateRoute allowedRoles={['SUPER_WAREHOUSE']}>
+                  <SuperWarehouseLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="/super-warehouse/management" replace />} />
+              <Route path="management" element={<ManagementPage />} />
+              <Route path="operations" element={<OperationsPage />} />
+              <Route path="history"    element={<HistoryPage />} />
+              <Route path="orders"     element={<WarehouseOrdersPage />} />
+              <Route path="expenses"   element={<ExpenseCreatePage />} />
             </Route>
 
             {/* ── ACCOUNTANT ──────────────────────────────────────────── */}
             <Route
               path="/accountant"
               element={
-                <PrivateRoute allowedRoles={['ADMIN', 'ACCOUNTANT']}>
+                <PrivateRoute allowedRoles={['ADMIN', 'OWNER', 'ACCOUNTANT', 'SUPER_ACCOUNTANT']}>
                   <AccountantLayout />
                 </PrivateRoute>
               }

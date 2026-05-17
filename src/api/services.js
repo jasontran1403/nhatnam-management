@@ -88,7 +88,7 @@ export const customerApi = {
 export const orderApi = {
   create: (data) => api.post('/api/seller/orders', data),
   getById: (id) => api.get(`/api/seller/orders/${id}`),
-  getMyOrders: () => api.get('/api/seller/orders'),
+  getMyOrders: (params) => api.get('/api/seller/orders', { params }),
   prepare: (id) => api.patch(`/api/seller/orders/${id}/prepare`),
   getInvoice: (id) => api.get(`/api/seller/orders/${id}/invoice`, { responseType: 'blob' }),
   completeOrder: (id) => api.patch(`/api/seller/orders/${id}/complete`),
@@ -112,12 +112,14 @@ export const inventoryApi = {
 // ─── Accountant ──────────────────────────────────────────────────────────────
 export const accountantApi = {
   // Orders
-  getOrders: (params) => api.get('/api/accountant/orders', { params }),
+  getOrders: (params) => api.get('/api/accountant/orders', { params }), // supports: status, fromDate, toDate, customerId, productId, page, size
   markPendingPayment: (id) => api.patch(`/api/accountant/orders/${id}/pending-payment`),
   markCompleted: (id) => api.patch(`/api/accountant/orders/${id}/complete`),
   updatePaymentMethod: (id, paymentMethod) => api.patch(`/api/accountant/orders/${id}/payment`, { paymentMethod }),
   exportOrders: (params) =>
     api.get('/api/accountant/orders/export', { params, responseType: 'blob' }),
+  getProducts: () => api.get('/api/accountant/products'),
+  getCustomersList: (q) => api.get('/api/accountant/customers', { params: { q, size: 100 } }),
 
   // Customers
   getCustomers: (params) => api.get('/api/accountant/customers', { params }),
@@ -144,6 +146,31 @@ export const accountantApi = {
 
 // ─── Dashboard (shared) ───────────────────────────────────────────────────────
 export const dashboardApi = accountantApi; // alias nếu cần dùng chung
+
+// ─── Expense Vouchers ────────────────────────────────────────────────────────
+export const expenseApi = {
+  create:  (data) => api.post('/api/expense-vouchers', data),
+  listMy:  (params) => api.get('/api/expense-vouchers/my', { params }),
+  listAll: (params) => api.get('/api/expense-vouchers', { params }),
+  getById: (id) => api.get(`/api/expense-vouchers/${id}`),
+  approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
+  reject:  (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
+  uploadImage: (file) => {
+    const fd = new FormData(); fd.append('image', file);
+    // Dùng endpoint riêng cho expense image → lưu vào folder expense-voucher
+    return api.post('/api/upload/expense-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// ─── KPI ─────────────────────────────────────────────────────────────────────
+export const kpiApi = {
+  getMyKpi: () => api.get('/api/seller/kpi'),
+};
+
+// ─── Admin Warehouse Stock ───────────────────────────────────────────────────
+export const adminWarehouseStockApi = {
+  getStock: (warehouseId) => api.get(`/api/admin/warehouses/${warehouseId}/stock`),
+};
 
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

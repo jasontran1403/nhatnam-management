@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Warehouse as WarehouseIcon, Plus, Edit2, Power, Truck, Store, Package } from 'lucide-react';
 import { adminWarehouseApi } from '../../api/adminApi';
 import { Badge } from '../../components/admin/Badge';
@@ -17,6 +18,7 @@ import {
 } from '../../components/admin/ui';
 
 export default function AdminWarehouses() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,7 +69,9 @@ export default function AdminWarehouses() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((w) => (
-            <div key={w.id} className={`bg-white rounded-2xl border border-black/5 shadow-sm p-5 hover:shadow-md transition-shadow ${!w.active ? 'opacity-60' : ''}`}>
+            <div key={w.id}
+              className={`bg-white rounded-2xl border border-black/5 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer ${!w.active ? 'opacity-60' : ''}`}
+              onClick={() => navigate(`/admin/warehouses/${w.id}/stock`)}>
               <div className="flex items-start justify-between gap-3">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ${w.type === 'TRANSIT' ? 'bg-blue-50 text-blue-600 ring-blue-200' : 'bg-[#C9A84C]/10 text-[#C9A84C] ring-[#C9A84C]/20'}`}>
                   {w.type === 'TRANSIT' ? <Truck size={22} /> : <Store size={22} />}
@@ -92,11 +96,11 @@ export default function AdminWarehouses() {
               </div>
 
               <div className="flex items-center gap-2 mt-4 pt-3 border-t border-black/5">
-                <button onClick={() => openEdit(w)} className="flex-1 py-2 rounded-xl text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#C9A84C]/10 hover:text-[#C9A84C] transition-colors flex items-center justify-center gap-1.5">
+                <button onClick={e => { e.stopPropagation(); openEdit(w); }} className="flex-1 py-2 rounded-xl text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#C9A84C]/10 hover:text-[#C9A84C] transition-colors flex items-center justify-center gap-1.5">
                   <Edit2 size={13} /> Sửa
                 </button>
                 <button
-                  onClick={() => setActiveConfirm(w)}
+                  onClick={e => { e.stopPropagation(); setActiveConfirm(w); }}
                   className={`flex-1 py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${w.active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
                 >
                   <Power size={13} /> {w.active ? 'Đóng kho' : 'Mở kho'}

@@ -200,7 +200,7 @@ export default function WarehouseLayout() {
 
         .wh-ing-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
         .wh-ing-row { display: grid; gap: 10px; align-items: center; background: var(--wh-surface2); padding: 12px; border-radius: 10px; border: 1px solid var(--wh-border); }
-        .wh-ing-row.import-grid { grid-template-columns: 2fr 1fr 1fr auto; }
+        .wh-ing-row.import-grid { grid-template-columns: 2fr 1fr 1fr 1fr auto; }
         .wh-ing-row.export-grid { grid-template-columns: 2fr 1fr auto; }
         .wh-ing-row.adjust-grid { grid-template-columns: 2fr 1fr 1fr 1fr auto; }
         @media (max-width: 768px) {

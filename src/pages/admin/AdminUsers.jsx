@@ -9,6 +9,7 @@ import {
   Edit2, X
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
+import { useAuth } from '../../context/AuthContext';
 import useDebounce from '../../utils/useDebounce';
 import { Badge } from '../../components/admin/Badge';
 import Modal from '../../components/admin/Modal';
@@ -26,9 +27,24 @@ import {
   formatDateTime,
 } from '../../components/admin/ui';
 
-const DEFAULT_ROLES = ['ADMIN', 'SELLER', 'ACCOUNTANT', 'WAREHOUSE', 'OPERATOR'];
+const ROLE_CONFIG = [
+  { value: 'OWNER',            label: 'Chủ tịch' },
+  { value: 'ADMIN',            label: 'Giám đốc' },
+  { value: 'SUPER_ACCOUNTANT', label: 'Kế toán trưởng' },
+  { value: 'ACCOUNTANT',       label: 'Kế toán' },
+  { value: 'SUPER_SELLER',     label: 'Trưởng phòng kinh doanh' },
+  { value: 'SELLER',           label: 'Nhân viên kinh doanh' },
+  { value: 'SUPER_WAREHOUSE',  label: 'Trưởng xưởng' },
+  { value: 'WAREHOUSE',        label: 'Nhân viên kho' },
+  { value: 'OPERATOR',         label: 'Nhân viên nhập liệu' },
+];
+// OWNER tạo tất cả; ADMIN không tạo được OWNER
+const OWNER_ROLES = ROLE_CONFIG;
+const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
+const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
 
 export default function AdminUsers() {
+  const { user: currentUser } = useAuth();
   const [filters, setFilters] = useState({ q: '', role: '', locked: '' });
   const debouncedQ = useDebounce(filters.q, 600);
 
@@ -139,7 +155,7 @@ export default function AdminUsers() {
         </div>
         <select value={filters.role} onChange={(e) => { setFilters({ ...filters, role: e.target.value }); setPage(0); }} className={`${inputCls} sm:w-40`}>
           <option value="">Tất cả quyền</option>
-          {DEFAULT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          {ROLE_CONFIG.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
         <select value={filters.locked} onChange={(e) => { setFilters({ ...filters, locked: e.target.value }); setPage(0); }} className={`${inputCls} sm:w-40`}>
           <option value="">Tất cả trạng thái</option>
@@ -188,7 +204,8 @@ export default function AdminUsers() {
                         <p className="text-xs text-[#8E8878]">{u.phoneNumber || '—'}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Badge className="bg-slate-50 text-slate-700 ring-slate-200">{u.role}</Badge>
+                        <Badge className="bg-slate-50 text-slate-700 ring-slate-200">{ROLE_LABEL[u.role] || u.role}</Badge>
+                        {u.warehouseName && <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">🏭 {u.warehouseName}</Badge>}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {u.isLockAccount
@@ -314,7 +331,7 @@ export default function AdminUsers() {
 }
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
-function UserFormModal({ open, editing, onClose, onSaved }) {
+function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
   const [form, setForm] = useState(() => ({
     username: editing?.username || '',
     password: '',
@@ -322,9 +339,21 @@ function UserFormModal({ open, editing, onClose, onSaved }) {
     email: editing?.email || '',
     phoneNumber: editing?.phoneNumber || '',
     role: editing?.role || 'SELLER',
+    warehouseId: editing?.warehouseId || '',
   }));
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [warehouses, setWarehouses] = useState([]);
+
+  useEffect(() => {
+    import('../../api/adminApi').then(({ adminWarehouseApi }) => {
+      adminWarehouseApi.list().then(whs => setWarehouses(whs || [])).catch(() => {});
+    });
+  }, []);
+
+  const needsWarehouse = form.role === 'WAREHOUSE' || form.role === 'SUPER_WAREHOUSE';
+  // OWNER được tạo tất cả; ADMIN chỉ tạo từ ADMIN trở xuống
+  const availableRoles = currentUserRole === 'OWNER' ? OWNER_ROLES : ADMIN_ROLES;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -340,9 +369,13 @@ function UserFormModal({ open, editing, onClose, onSaved }) {
           email: form.email,
           phoneNumber: form.phoneNumber,
           role: form.role,
+          warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
         });
       } else {
-        await adminUserApi.create(form);
+        await adminUserApi.create({
+          ...form,
+          warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
+        });
       }
       onSaved();
     } catch (e) {
@@ -392,9 +425,18 @@ function UserFormModal({ open, editing, onClose, onSaved }) {
 
         <Field label="Quyền" required>
           <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputCls}>
-            {DEFAULT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+            {ROLE_CONFIG.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </Field>
+
+        {needsWarehouse && (
+          <Field label="Gắn kho" required hint="Bắt buộc với role WAREHOUSE / SUPER_WAREHOUSE">
+            <select value={form.warehouseId} onChange={e => setForm({ ...form, warehouseId: e.target.value })} className={inputCls}>
+              <option value="">-- Chọn kho --</option>
+              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+          </Field>
+        )}
       </form>
     </Modal>
   );

@@ -16,7 +16,7 @@ const emptyItem = () => ({
   existingProductId: null,
   name: '', categoryName: '', unit: '',
   basePrice: '', maxDiscountRate: 0,
-  vatRate: 8, vatMode: 'INCLUSIVE',  // mặc định, không đổi
+  vatRate: 8, vatMode: 'INCLUSIVE',
   imageUrl: '',
   tiers: [{ _id: Date.now(), fromQty: 0, price: '' }],  // tier đầu mặc định
   ingredients: [],
@@ -158,7 +158,7 @@ export default function OperatorProductBatchPage() {
       console.log('payload:', JSON.stringify(payload, null, 2));
       await operatorApi.submitBatch(payload);
 
-      toast('Phiếu đã gửi, chờ Admin duyệt', 'success');
+      toast('Phiếu đã được áp dụng thành công!', 'success');
       setItems([emptyItem()]);
       setNote('');
     } catch (e) {
@@ -368,10 +368,21 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                 className="w-full px-3 py-2 text-sm rounded-xl input-elegant" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Thuế VAT</label>
-              <div className="px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#E8DDD0] text-sm text-[#8E8878]">
-                8% · đã tính vào giá
-              </div>
+              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Thuế VAT (%)</label>
+              <select value={item.vatRate}
+                onChange={e => setItem(item._id, { vatRate: Number(e.target.value) })}
+                className="w-full px-3 py-2 text-sm rounded-xl input-elegant">
+                {VAT_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Kiểu VAT</label>
+              <select value={item.vatMode}
+                onChange={e => setItem(item._id, { vatMode: e.target.value })}
+                className="w-full px-3 py-2 text-sm rounded-xl input-elegant">
+                <option value="INCLUSIVE">VAT trong giá</option>
+                <option value="EXCLUSIVE">VAT tính thêm</option>
+              </select>
             </div>
           </div>
 

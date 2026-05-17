@@ -5,25 +5,33 @@ import { useToast } from '../../components/common/Toast';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 
 function getRedirectPath(role) {
-  if (role === 'ADMIN')     return '/admin/dashboard';
-  if (role === 'WAREHOUSE') return '/warehouse/management';
-  if (role === 'ACCOUNTANT') return '/accountant/dashboard';
-  if (role === 'OPERATOR') return '/operator';
-  return '/seller/pos';
+  switch (role) {
+    case 'ADMIN':             return '/admin/dashboard';
+    case 'OWNER':             return '/owner/dashboard';
+    case 'WAREHOUSE':         return '/warehouse/management';
+    case 'SUPER_WAREHOUSE':   return '/super-warehouse/management';
+    case 'ACCOUNTANT':        return '/accountant/dashboard';
+    case 'SUPER_ACCOUNTANT':  return '/super-accountant/dashboard';
+    case 'OPERATOR':          return '/operator/categories';
+    case 'SHIPPER':           return '/shipper/dashboard';
+    default:                  return '/seller/pos';
+  }
 }
 
 export default function LoginPage() {
   const { login, isAuthenticated, role } = useAuth();
-  const toast = useToast();
+  const toast    = useToast();
   const navigate = useNavigate();
 
+  // ── Tất cả hooks phải gọi TRƯỚC mọi early return ─────────────────────────
+  const [form, setForm]     = useState({ username: '', password: '' });
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Early return SAU hooks
   if (isAuthenticated) {
     return <Navigate to={getRedirectPath(role)} replace />;
   }
-
-  const [form, setForm] = useState({ username: '', password: '' });
-  const [showPw, setShowPw] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +53,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left panel - decorative */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-[#1C1C1E] p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#C9A84C] blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -63,19 +70,16 @@ export default function LoginPage() {
             Nền tảng quản lý bán hàng chuyên nghiệp — thực đơn, đơn hàng, kho hàng trong tầm tay.
           </p>
         </div>
-
         <div className="relative z-10 grid grid-cols-3 gap-6 opacity-40">
           {['🍜', '🥩', '🦐', '🍚', '🥗', '🍵'].map((e, i) => (
             <div key={i} className="text-6xl text-center">{e}</div>
           ))}
         </div>
-
         <p className="relative z-10 text-[#8E8878] text-xs">
           © 2025 Nhất Nam Fine Foods. All rights reserved.
         </p>
       </div>
 
-      {/* Right panel - form */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-[#FAF7F2]">
         <div className="w-full max-w-sm animate-fadeIn">
           <div className="lg:hidden text-center mb-8">
@@ -98,9 +102,7 @@ export default function LoginPage() {
                 Tên đăng nhập
               </label>
               <input
-                type="text"
-                autoFocus
-                placeholder="username"
+                type="text" autoFocus placeholder="username"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 className="input-elegant w-full rounded-xl px-4 py-3 text-sm text-[#1C1C1E] placeholder:text-[#C4B9A8]"
@@ -119,27 +121,21 @@ export default function LoginPage() {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="input-elegant w-full rounded-xl px-4 py-3 pr-11 text-sm text-[#1C1C1E] placeholder:text-[#C4B9A8]"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E] transition-colors"
-                >
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
                   {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-gold w-full rounded-xl py-3 mt-2 flex items-center justify-center gap-2 text-sm font-semibold"
-            >
-              {loading ? (
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-              ) : <LogIn size={16} />}
+            <button type="submit" disabled={loading}
+              className="btn-gold w-full rounded-xl py-3 mt-2 flex items-center justify-center gap-2 text-sm font-semibold">
+              {loading
+                ? <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                : <LogIn size={16} />}
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </button>
           </form>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  Layers, Package, Leaf, ClipboardList,
+  Layers, Package, Leaf, ClipboardList, Globe,
   LogOut, Menu, X, ChevronRight,
 } from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/operator/ingredients', label: 'Nguyên liệu',   icon: Leaf },
   { to: '/operator/products',    label: 'Sản phẩm',      icon: Package },
   { to: '/operator/batches',     label: 'Phiếu của tôi', icon: ClipboardList },
+  { to: '/operator/landingpage',  label: 'Landing Page',  icon: Globe },
 ];
 
 export default function OperatorLayout() {

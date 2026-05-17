@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, History, LogOut, Menu, X, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, History, LogOut, Menu, X, ChevronRight, Receipt } from 'lucide-react';
 
 const navItems = [
   { to: '/super-accountant/dashboard', label: 'Dashboard',    icon: LayoutDashboard },
   { to: '/super-accountant/history',   label: 'Lịch Sử',     icon: History         },
+  { to: '/super-accountant/expenses',  label: 'Phiếu Chi',   icon: Receipt         },
 ];
 
 export default function SuperAccountantLayout() {

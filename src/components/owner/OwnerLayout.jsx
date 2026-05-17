@@ -1,22 +1,25 @@
+// src/components/owner/OwnerLayout.jsx
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, ShoppingCart, Users, UserCog,
-  Warehouse, Package, LogOut, Menu, X, FileText, Receipt,
+  Warehouse, Package, LogOut, Menu, X, Receipt,
+  Crown, FileText, BarChart2,
 } from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
 
 const navItems = [
-  { to: '/admin/dashboard',   label: 'Dashboard',    icon: LayoutDashboard },
-  { to: '/admin/orders',      label: 'Đơn hàng',     icon: ShoppingCart },
-  { to: '/admin/customers',   label: 'Khách hàng',   icon: Users },
-  { to: '/admin/users',       label: 'Nhân viên',    icon: UserCog },
-  { to: '/admin/warehouses',  label: 'Kho hàng',     icon: Warehouse },
-  { to: '/admin/expenses',    label: 'Phiếu chi phí', icon: Receipt },
+  { to: '/owner/dashboard',   label: 'Dashboard',      icon: LayoutDashboard },
+  { to: '/owner/orders',      label: 'Đơn hàng',       icon: ShoppingCart },
+  { to: '/owner/customers',   label: 'Khách hàng',     icon: Users },
+  { to: '/owner/users',       label: 'Nhân viên',      icon: UserCog },
+  { to: '/owner/warehouses',  label: 'Kho hàng',       icon: Warehouse },
+  { to: '/owner/ingredients', label: 'Nguyên liệu',    icon: Package },
+  { to: '/owner/expenses',    label: 'Phiếu chi phí',  icon: Receipt },
 ];
 
-export default function AdminLayout() {
+export default function OwnerLayout() {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,13 +29,18 @@ export default function AdminLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAF7F2]">
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
-      <aside className={`fixed lg:relative inset-y-0 left-0 z-50 w-60 bg-[#1C1C1E] flex flex-col
+      <aside className={`
+        fixed lg:relative inset-y-0 left-0 z-50
+        w-60 bg-[#1C1C1E] flex flex-col
         transform transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
+      `}>
         <div className="px-6 py-6 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div>
@@ -50,13 +58,13 @@ export default function AdminLayout() {
         <div className="px-4 py-4 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">
-                {user?.fullName?.[0] || user?.username?.[0] || 'A'}
-              </span>
+              <Crown size={14} className="text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user?.fullName || user?.username || 'Admin'}</p>
-              <p className="text-[#8E8878] text-xs truncate">Quản trị viên</p>
+              <p className="text-white text-xs font-semibold truncate">
+                {user?.fullName || user?.username || 'Chủ sở hữu'}
+              </p>
+              <p className="text-[#C9A84C] text-xs truncate">Chủ sở hữu</p>
             </div>
           </div>
         </div>
@@ -64,9 +72,17 @@ export default function AdminLayout() {
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="text-[#8E8878] text-xs uppercase tracking-wider px-3 mb-2">Menu</p>
           {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 transition-all duration-200
-                ${isActive ? 'bg-[#C9A84C]/20 text-[#C9A84C]' : 'text-[#8E8878] hover:text-white hover:bg-white/5'}`}>
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => `
+                flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 transition-all duration-200
+                ${isActive
+                  ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                  : 'text-[#8E8878] hover:text-white hover:bg-white/5'}
+              `}
+            >
               <Icon size={17} />
               <span className="text-sm font-medium">{label}</span>
             </NavLink>
@@ -74,8 +90,10 @@ export default function AdminLayout() {
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
-          <button onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-[#8E8878] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-[#8E8878] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+          >
             <LogOut size={17} />
             <span className="text-sm font-medium">Đăng xuất</span>
           </button>

@@ -219,7 +219,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Stats cards row 1 ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {[
           {
             label: 'Doanh thu kỳ này', icon: DollarSign, accent: 'gold',
@@ -239,16 +239,21 @@ export default function AdminDashboard() {
             label: 'Đơn đang xử lý', icon: Clock, accent: 'purple',
             value: loading ? null : stats?.totalActiveOrders,
           },
+          {
+            label: 'Chi phí đã duyệt', icon: TrendingDown, accent: 'red',
+            value: loading ? null : stats?.totalExpenses,
+            isCurrency: true,
+          },
         ].map((c, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">{c.label}</p>
               <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center
                 ${c.accent === 'gold' ? 'bg-[#C9A84C]/10' : c.accent === 'blue' ? 'bg-blue-50'
-                  : c.accent === 'green' ? 'bg-emerald-50' : 'bg-purple-50'}`}>
+                  : c.accent === 'green' ? 'bg-emerald-50' : c.accent === 'red' ? 'bg-red-50' : 'bg-purple-50'}`}>
                 <c.icon size={14} className={
                   c.accent === 'gold' ? 'text-[#C9A84C]' : c.accent === 'blue' ? 'text-blue-500'
-                    : c.accent === 'green' ? 'text-emerald-500' : 'text-purple-500'} />
+                    : c.accent === 'green' ? 'text-emerald-500' : c.accent === 'red' ? 'text-red-500' : 'text-purple-500'} />
               </div>
             </div>
             {loading ? (
@@ -278,10 +283,10 @@ export default function AdminDashboard() {
               <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">{c.label}</p>
               <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center
                 ${c.accent === 'gold' ? 'bg-[#C9A84C]/10' : c.accent === 'blue' ? 'bg-blue-50'
-                  : c.accent === 'green' ? 'bg-emerald-50' : 'bg-purple-50'}`}>
+                  : c.accent === 'green' ? 'bg-emerald-50' : c.accent === 'red' ? 'bg-red-50' : 'bg-purple-50'}`}>
                 <c.icon size={14} className={
                   c.accent === 'gold' ? 'text-[#C9A84C]' : c.accent === 'blue' ? 'text-blue-500'
-                    : c.accent === 'green' ? 'text-emerald-500' : 'text-purple-500'} />
+                    : c.accent === 'green' ? 'text-emerald-500' : c.accent === 'red' ? 'text-red-500' : 'text-purple-500'} />
               </div>
             </div>
             {loading

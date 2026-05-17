@@ -1,13 +1,14 @@
 // src/pages/warehouse/WarehouseOrdersPage.jsx
+// FIX #5: Chỉ load đơn hàng của kho mà user quản lý, không có chọn kho
 import { useState, useEffect, useCallback } from 'react';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useToast } from '../../components/common/Toast';
+import { useAuth } from '../../context/AuthContext';
 import {
   RefreshCw, Package, Truck, Clock, X,
   ChevronRight, Box, Search,
 } from 'lucide-react';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(ts) {
   if (!ts) return '—';
   return new Date(ts).toLocaleString('vi-VN', {
@@ -27,14 +28,11 @@ function OrderDetailModal({ order, onClose, onDeliver, delivering }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Panel */}
       <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl
         max-h-[90vh] flex flex-col overflow-hidden">
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3] flex-shrink-0">
           <div>
             <p className="font-mono text-sm font-bold text-[#C9A84C]">{order.orderCode}</p>
@@ -46,25 +44,20 @@ function OrderDetailModal({ order, onClose, onDeliver, delivering }) {
           </button>
         </div>
 
-        {/* Customer info */}
         <div className="px-5 py-3 bg-[#FAF7F2] border-b border-[#F0EBE3] flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-[#1C1C1E]">{order.customerName}</p>
+              <p className="text-xs font-semibold text-[#1C1C1E]">
+                {order.customerName || 'Khách lẻ/Khách vãng lai'}
+              </p>
               <p className="text-[10px] text-[#8E8878]">{order.customerPhone}</p>
             </div>
-            {order.warehouseName && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
-                🏭 {order.warehouseName}
-              </span>
-            )}
           </div>
           {order.notes && (
             <p className="text-[11px] text-[#8E8878] mt-1.5 italic">📝 {order.notes}</p>
           )}
         </div>
 
-        {/* Items */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">
             Danh sách sản phẩm cần chuẩn bị
@@ -72,7 +65,6 @@ function OrderDetailModal({ order, onClose, onDeliver, delivering }) {
 
           {order.items?.map((item, idx) => (
             <div key={idx} className="bg-[#FAF7F2] rounded-2xl p-3.5 space-y-3">
-              {/* Product header */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white overflow-hidden shrink-0 border border-[#F0EBE3]">
                   {item.productImageUrl
@@ -92,7 +84,6 @@ function OrderDetailModal({ order, onClose, onDeliver, delivering }) {
                 </div>
               </div>
 
-              {/* Ingredients */}
               {item.ingredients?.length > 0 && (
                 <div className="border-t border-[#E8DDD0] pt-2.5 space-y-1.5">
                   <p className="text-[10px] text-[#8E8878] uppercase font-bold tracking-wider mb-2">
@@ -121,7 +112,6 @@ function OrderDetailModal({ order, onClose, onDeliver, delivering }) {
           ))}
         </div>
 
-        {/* Footer action */}
         <div className="px-5 py-4 border-t border-[#F0EBE3] flex-shrink-0">
           <button
             onClick={() => onDeliver(order.id)}
@@ -156,7 +146,6 @@ function OrderCard({ order, onClick }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          {/* Code + badge */}
           <div className="flex items-center gap-2 mb-1">
             <p className="font-mono text-sm font-bold text-[#C9A84C]">{order.orderCode}</p>
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5
@@ -165,11 +154,12 @@ function OrderCard({ order, onClick }) {
             </span>
           </div>
 
-          {/* Customer */}
-          <p className="text-sm font-semibold text-[#1C1C1E] truncate">{order.customerName}</p>
+          {/* FIX #2: hiển thị "Khách lẻ/Khách vãng lai" khi không có tên */}
+          <p className="text-sm font-semibold text-[#1C1C1E] truncate">
+            {order.customerName || 'Khách lẻ/Khách vãng lai'}
+          </p>
           <p className="text-[11px] text-[#8E8878] mt-0.5">{order.customerPhone}</p>
 
-          {/* Meta */}
           <div className="flex items-center gap-3 mt-2">
             <span className="flex items-center gap-1 text-[10px] text-[#8E8878]">
               <Clock size={10} /> {formatDate(order.createdAt)}
@@ -196,15 +186,21 @@ function OrderCard({ order, onClick }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function WarehouseOrdersPage() {
   const toast = useToast();
+  const { user } = useAuth();
+
   const [orders,     setOrders]     = useState([]);
   const [loading,    setLoading]    = useState(false);
   const [selected,   setSelected]   = useState(null);
   const [delivering, setDelivering] = useState(false);
   const [search,     setSearch]     = useState('');
 
+  // FIX #5: warehouseId từ user
+  const assignedWarehouseId = user?.warehouseId || user?.warehouse?.id;
+
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
+      // API sẽ tự filter theo warehouseId của user (xem backend fix)
       const res = await warehouseApi.getPreparingOrders();
       setOrders(res.data?.data || []);
     } catch {
@@ -222,7 +218,6 @@ export default function WarehouseOrdersPage() {
         toast(res.data.message || 'Không thể cập nhật', 'error');
         return;
       }
-      // Xoá khỏi danh sách
       setOrders(prev => prev.filter(o => o.id !== orderId));
       setSelected(null);
       toast('Đã chuyển sang Đang giao hàng', 'success');
@@ -244,7 +239,6 @@ export default function WarehouseOrdersPage() {
   return (
     <div className="flex flex-col h-full bg-[#FAF7F2]">
 
-      {/* Header */}
       <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
         <div className="flex items-center gap-3">
           <div className="flex-1">
@@ -275,7 +269,6 @@ export default function WarehouseOrdersPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         {loading ? (
           <div className="flex justify-center py-16">
@@ -308,7 +301,6 @@ export default function WarehouseOrdersPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
       {selected && (
         <OrderDetailModal
           order={selected}

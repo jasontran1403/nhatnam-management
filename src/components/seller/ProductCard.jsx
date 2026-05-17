@@ -7,7 +7,7 @@ function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
 }
 
-export default function ProductCard({ product, onAdd, cartQty = 0 }) {
+export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap = {} }) {
   const defaultTier = product.priceTiers?.find((t) => t.sortOrder === 0) || product.priceTiers?.[0];
   const priceVal = defaultTier?.price ?? product.basePrice ?? 0;
 
@@ -17,13 +17,19 @@ export default function ProductCard({ product, onAdd, cartQty = 0 }) {
       : `${BASE_URL}/api/auth${product.imageUrl}`
     : null;
 
-  // effectiveStock đã tính sẵn "còn có thể thêm bao nhiêu" từ POSPage
-  // không cần trừ cartQty nữa
+  // stockQuantity đã được POSPage tính sẵn qua calcEffectiveStock
   const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
-
   const isOutOfStock = stock !== null && stock <= 0;
   const isDisabled = isOutOfStock;
-  const remaining = stock !== null ? Math.max(0, stock) : null; // không trừ cartQty
+  const remaining = stock !== null ? Math.max(0, stock) : null;
+
+  // Lấy stock nguyên liệu từ ingStockMap (đã trừ hold realtime)
+  // Fallback về ing.stockQuantity nếu chưa có trong map
+  const getIngStock = (ing) => {
+    const key = String(ing.ingredientId);
+    const fromMap = ingStockMap[key];
+    return fromMap != null ? fromMap : (ing.stockQuantity != null ? Number(ing.stockQuantity) : null);
+  };
 
   return (
     <button
@@ -47,7 +53,6 @@ export default function ProductCard({ product, onAdd, cartQty = 0 }) {
           />
         ) : null}
 
-        {/* Fallback emoji */}
         <div
           className="absolute inset-0 items-center justify-center text-[#C4B9A8] text-3xl"
           style={{ display: imageUrl ? 'none' : 'flex' }}
@@ -55,7 +60,6 @@ export default function ProductCard({ product, onAdd, cartQty = 0 }) {
           🍽️
         </div>
 
-        {/* Out of stock overlay */}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/65 flex items-center justify-center z-10">
             <div className="flex flex-col items-center text-white gap-1">
@@ -65,7 +69,6 @@ export default function ProductCard({ product, onAdd, cartQty = 0 }) {
           </div>
         )}
 
-        {/* Bottom info overlay */}
         <div className="absolute inset-x-0 bottom-0 z-20
           bg-gradient-to-t from-black/80 via-black/45 to-transparent
           px-2.5 pt-8 pb-2 flex flex-col gap-0.5">
@@ -79,22 +82,37 @@ export default function ProductCard({ product, onAdd, cartQty = 0 }) {
               {formatPrice(priceVal)}
             </span>
 
-            {stock !== null && (
-              <span className={`
-                text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold whitespace-nowrap
-                ${isOutOfStock
-                  ? 'text-red-200 bg-red-800/60'
-                  : remaining <= 5
-                    ? 'text-yellow-200 bg-yellow-800/50'
-                    : 'text-white/90 bg-black/35'
-                }
-              `}>
-                {isOutOfStock
-                  ? 'Hết hàng'
-                  : `Còn ${parseFloat(Number(remaining).toFixed(3)).toLocaleString('vi-VN')}`
-                }
-              </span>
-            )}
+            {product.ingredients && product.ingredients.length > 0
+              ? (
+                <div className="flex flex-col gap-0.5 max-h-10 overflow-hidden">
+                  {product.ingredients.slice(0, 2).map(ing => {
+                    // Dùng ingStockMap thay vì ing.stockQuantity — phản ánh hold realtime
+                    const qty  = getIngStock(ing);
+                    const low  = qty !== null && qty > 0 && qty <= 5;
+                    const none = qty !== null && qty <= 0;
+                    const qtyStr = qty != null
+                      ? parseFloat(qty.toFixed(2)).toLocaleString('vi-VN')
+                      : '?';
+                    return (
+                      <span key={ing.ingredientId} className={`
+                        text-[8px] rounded-md px-1.5 py-0.5 leading-none font-semibold whitespace-nowrap
+                        ${none ? 'text-red-200 bg-red-800/60' : low ? 'text-yellow-200 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
+                      `}>
+                        {qtyStr} {ing.unit || ''}
+                      </span>
+                    );
+                  })}
+                </div>
+              )
+              : stock !== null && (
+                <span className={`
+                  text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold whitespace-nowrap
+                  ${isOutOfStock ? 'text-red-200 bg-red-800/60' : remaining <= 5 ? 'text-yellow-200 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
+                `}>
+                  {isOutOfStock ? 'Hết hàng' : `Còn ${parseFloat(Number(remaining).toFixed(3)).toLocaleString('vi-VN')}`}
+                </span>
+              )
+            }
           </div>
         </div>
       </div>

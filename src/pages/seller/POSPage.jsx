@@ -1,15 +1,28 @@
+// src/pages/seller/POSPage.jsx
+// FIX #6: Real-time cart hold — giữ slot số lượng nguyên liệu khi thêm vào giỏ
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Search, UserPlus, UserCheck, ShoppingBag, Trash2,
   ChevronDown, X, Receipt, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle,
 } from 'lucide-react';
 import { productApi, categoryApi, orderApi, warehouseApi } from '../../api/services';
+import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
+import { useAuth } from '../../context/AuthContext';
 import ProductCard from '../../components/seller/ProductCard';
 import CartItem from '../../components/seller/CartItem';
 import CustomerSearchModal from '../../components/seller/CustomerSearchModal';
 
 const PRICE_CHANGED_CODE = 950;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const cartHoldApi = {
+  update: (warehouseId, items) =>
+    api.post('/api/seller/cart-hold/update', { warehouseId, items }),
+  release: () => api.post('/api/seller/cart-hold/release'),
+  getHeld: (warehouseId, ingredientIds) =>
+    api.post('/api/seller/cart-hold/held-quantities', { warehouseId, ingredientIds }),
+};
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Math.round(price || 0)) + ' đ';
@@ -18,20 +31,14 @@ function formatPrice(price) {
 let cartIdCounter = 0;
 const newCartId = () => ++cartIdCounter;
 
-/**
- * Tìm tier phù hợp nhất với qty.
- * Tìm tier có minQuantity lớn nhất mà vẫn <= qty — đây là tier sỉ nhất user đạt được.
- */
 function resolveTierForQty(tiers, qty, fallbackPrice) {
   if (!tiers || tiers.length === 0) return null;
   const active = tiers.filter(t => t.isActive !== false);
   if (active.length === 0) return null;
-
   const sorted = [...active].sort(
     (a, b) => (Number(a.minQuantity) || 0) - (Number(b.minQuantity) || 0)
   );
-
-  let matched = sorted[0]; // mặc định: tier đầu tiên (giá gốc/cao nhất)
+  let matched = sorted[0];
   for (const t of sorted) {
     if (Number(t.minQuantity ?? 0) <= qty) matched = t;
     else break;
@@ -44,55 +51,9 @@ function parseChangedProductName(message) {
   return m ? m[1] : null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// VAT helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Tính VAT breakdown từ cart items.
- * INCLUSIVE : vatAmt = lineAfterDiscount - lineAfterDiscount / (1 + rate/100)
- * EXCLUSIVE : vatAmt = lineAfterDiscount * rate / 100
- * Trả về mảng [{ rate, mode, vatAmt }] đã sort by rate.
- */
-function calcVatBreakdown(items, discountRate) {
-  const map = {}; // key = `${rate}|${mode}`
-  for (const item of items) {
-    const rate     = item.vatRate ?? 0;
-    const mode     = item.vatMode ?? 'INCLUSIVE';
-    if (rate === 0) continue;
-
-    const itemDisc  = item.itemDiscountRate ?? 0;
-    // Giá sau CK món, sau giảm bill — đây là gross thực tế
-    const lineTotal = Number(item.unitPrice) * (1 - itemDisc / 100) * Number(item.quantity);
-    const lineAfterDiscount = lineTotal * (1 - discountRate / 100);
-
-    const vatAmt = mode === 'EXCLUSIVE'
-      ? lineAfterDiscount * (rate / 100)
-      : lineAfterDiscount - lineAfterDiscount / (1 + rate / 100);
-
-    const key = `${rate}|${mode}`;
-    if (!map[key]) map[key] = { rate, mode, vatAmt: 0 };
-    map[key].vatAmt += vatAmt;
-  }
-  return Object.values(map).sort((a, b) => a.rate - b.rate);
-}
-
-/** Tổng VAT EXCLUSIVE cần cộng thêm vào finalAmount */
-function calcExclusiveVatTotal(breakdown) {
-  return breakdown
-    .filter(g => g.mode === 'EXCLUSIVE')
-    .reduce((s, g) => s + g.vatAmt, 0);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// VatBreakdownDisplay
-// ─────────────────────────────────────────────────────────────────────────────
-// INCLUSIVE (trong giá)  → cam bold
-// EXCLUSIVE (ngoài giá)  → xanh lá bold + dấu +
 function VatBreakdownDisplay({ breakdown, infoOnly }) {
   if (!breakdown || breakdown.length === 0) return null;
   const totalVat = breakdown.reduce((s, g) => s + g.vatAmt, 0);
-
   return (
     <div>
       <div className="flex justify-between text-xs text-[#C4B9A8]">
@@ -115,9 +76,6 @@ function VatBreakdownDisplay({ breakdown, infoOnly }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CartPanel
-// ─────────────────────────────────────────────────────────────────────────────
 function CartPanel({
   cartItems, customer, notes, paymentMethod, discount, surchargeDisplay,
   surcharge, subtotal, discountAmt, surchargeNum, vatBreakdown, exclusiveVatTotal,
@@ -128,10 +86,8 @@ function CartPanel({
   onPaymentChange, onDiscountChange, onSurchargeChange, onUpdateQty,
   onRemoveItem, onPriceOverride, onItemDiscountChange, onSubmit,
 }) {
-
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header */}
       <div className="px-4 py-3 border-b border-[#F0EBE3] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShoppingBag size={16} className="text-[#C9A84C]" />
@@ -149,7 +105,6 @@ function CartPanel({
         )}
       </div>
 
-      {/* Price changed banner */}
       {priceChangedIds.size > 0 && (
         <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
           <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
@@ -162,7 +117,6 @@ function CartPanel({
         </div>
       )}
 
-      {/* Customer */}
       <div className="px-4 py-3 border-b border-[#F0EBE3]">
         <button
           onClick={onOpenCustomerModal}
@@ -196,7 +150,6 @@ function CartPanel({
         </button>
       </div>
 
-      {/* Cart items */}
       <div className="flex-1 overflow-y-auto px-4">
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-[#C4B9A8] gap-2 py-8">
@@ -227,7 +180,6 @@ function CartPanel({
         )}
       </div>
 
-      {/* Options */}
       {cartItems.length > 0 && (
         <div className="border-t border-[#F0EBE3] px-4 py-3 space-y-2">
           <textarea
@@ -281,17 +233,12 @@ function CartPanel({
         </div>
       )}
 
-      {/* ── Summary ── */}
       <div className="px-4 pb-4 pt-2 border-t border-[#F0EBE3] bg-white">
         <div className="space-y-1 mb-3">
-
-          {/* Tạm tính = Σ(giá tier × qty) gross */}
           <div className="flex justify-between text-xs text-[#8E8878]">
             <span>Tạm tính</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
-
-          {/* Giảm */}
           {(itemDiscountTotal > 0 || discountAmt > 0) && (
             <div>
               <div className="flex justify-between text-xs text-emerald-600">
@@ -314,23 +261,17 @@ function CartPanel({
               </div>
             </div>
           )}
-
-          {/* Phụ phí */}
           {surchargeNum > 0 && (
             <div className="flex justify-between text-xs text-orange-500">
               <span>Phụ phí</span>
               <span>+{formatPrice(surchargeNum)}</span>
             </div>
           )}
-
-          {/* VAT — chỉ hiển thị thông tin */}
           {vatBreakdown.length > 0 && (
             <div className="pt-1 border-t border-dashed border-[#F0EBE3]">
               <VatBreakdownDisplay breakdown={vatBreakdown} infoOnly />
             </div>
           )}
-
-          {/* Tổng cộng */}
           <div className="flex justify-between font-bold text-sm text-[#1C1C1E] pt-1 border-t border-[#F0EBE3]">
             <span>Tổng cộng</span>
             <span className="text-[#C9A84C]">{formatPrice(total)}</span>
@@ -360,10 +301,137 @@ function CartPanel({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// useCartHold
+// heldByAll = tổng hold của TẤT CẢ sellers (kể cả chính mình) theo ingredientId
+// Frontend dùng: displayStock = actualStock - heldByAll[ingId]
+// calcEffectiveStock trừ thêm cartItems của chính mình từ displayStock đó
+// ─────────────────────────────────────────────────────────────────────────────
+function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
+  const [heldByAll, setHeldByAll] = useState({});
+  const wsRef = useRef(null);
+  const subscriptionsRef = useRef([]);
+  const debounceRef = useRef(null);
+  const lastCartRef = useRef([]);
+  const onCartExpiredRef = useRef(onCartExpired);
+  useEffect(() => { onCartExpiredRef.current = onCartExpired; }, [onCartExpired]);
+
+  // Kết nối WebSocket
+  useEffect(() => {
+    if (!warehouseId) return;
+
+    async function connect() {
+      if (!window.SockJS || !window.Stomp) return;
+      const token = localStorage.getItem('token');
+      const sock = new window.SockJS(`${BASE_URL}/ws`);
+      const client = window.Stomp.over(sock);
+      client.debug = null;
+
+      client.connect({ Authorization: `Bearer ${token}` }, () => {
+        wsRef.current = client;
+
+        // Subscribe stock update cho kho này
+        const stockSub = client.subscribe(`/topic/stock/${warehouseId}`, (frame) => {
+          try {
+            const { ingredientId, heldQty } = JSON.parse(frame.body);
+            setHeldByAll(prev => ({
+              ...prev,
+              [String(ingredientId)]: Number(heldQty) || 0,
+            }));
+          } catch (_) {}
+        });
+
+        // Subscribe /topic/cart-events — topic chung cho tất cả POS client
+        // Payload: { event: "CART_EXPIRED", sellerId: 7 }
+        // Client so sánh sellerId với userId của mình, nếu trùng thì clear giỏ
+        const storedUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+        const myUserId = storedUser?.userId;
+
+        const cartEventSub = client.subscribe('/topic/cart-events', (frame) => {
+          try {
+            const { event, sellerId } = JSON.parse(frame.body);
+            if (event === 'CART_EXPIRED' && sellerId === myUserId) {
+              onCartExpiredRef.current?.();
+            }
+          } catch (_) {}
+        });
+
+        subscriptionsRef.current = [stockSub, cartEventSub];
+      });
+    }
+
+    const loadAndConnect = async () => {
+      if (!window.SockJS) {
+        await new Promise((res) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js';
+          s.onload = res; document.head.appendChild(s);
+        });
+      }
+      if (!window.Stomp) {
+        await new Promise((res) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js';
+          s.onload = res; document.head.appendChild(s);
+        });
+      }
+      connect();
+    };
+
+    loadAndConnect();
+
+    return () => {
+      subscriptionsRef.current.forEach(s => { try { s.unsubscribe?.(); } catch (_) {} });
+      subscriptionsRef.current = [];
+      try { wsRef.current?.disconnect?.(); } catch (_) {}
+      wsRef.current = null;
+      setHeldByAll({});
+    };
+  }, [warehouseId]);
+
+  // Sync cart lên server (debounced 300ms)
+  useEffect(() => {
+    if (!warehouseId) return;
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const ingMap = {};
+      for (const item of cartItems) {
+        const prod = products.find(p => p.id === item.productId);
+        if (!prod?.ingredients?.length) continue;
+        for (const ing of prod.ingredients) {
+          const qtyPerUnit = Number(ing.quantity) || 1;
+          ingMap[ing.ingredientId] = (ingMap[ing.ingredientId] || 0) + item.quantity * qtyPerUnit;
+        }
+      }
+      const holdItems = Object.entries(ingMap).map(([ingredientId, qty]) => ({
+        ingredientId: Number(ingredientId),
+        qty,
+      }));
+      try {
+        if (holdItems.length > 0) {
+          await cartHoldApi.update(warehouseId, holdItems);
+        } else if (lastCartRef.current.length > 0) {
+          await cartHoldApi.release();
+        }
+      } catch (_) {}
+      lastCartRef.current = cartItems;
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [warehouseId, cartItems, products]);
+
+  // Release khi unmount
+  useEffect(() => {
+    return () => { cartHoldApi.release().catch(() => {}); };
+  }, []);
+
+  return { heldByAll };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POSPage
 // ─────────────────────────────────────────────────────────────────────────────
 export default function POSPage() {
   const toast = useToast();
+  const { user } = useAuth();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -389,27 +457,58 @@ export default function POSPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
 
   const [priceChangedIds, setPriceChangedIds] = useState(new Set());
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(inputSearch), 600);
     return () => clearTimeout(t);
   }, [inputSearch]);
 
+  // Khi giỏ hàng hết hạn 3 phút — server broadcast CART_EXPIRED → clear giỏ + thông báo
+  const handleCartExpired = useCallback(() => {
+    setCartItems([]);
+    setCustomer(null);
+    setNotes('');
+    setDiscount(0);
+    setSurcharge(0);
+    setSurchargeDisplay('');
+    setPriceChangedIds(new Set());
+    toast('Giỏ hàng đã hết hạn (3 phút không thanh toán). Vui lòng đặt lại.', 'warning');
+  }, [toast]);
+
+  // heldByAll: { [ingredientId]: totalHeldQty } — nhận realtime từ WS
+  // Bao gồm cả hold của chính mình (server trả về tổng)
+  // user.userId — theo LoginResponse DTO (không phải user.id)
+  const { heldByAll } = useCartHold(
+    selectedWarehouse?.id,
+    cartItems,
+    products,
+    user?.userId,
+    handleCartExpired,
+  );
+
+  // ingStockMap: actualStock - heldByAll
+  // Đây là "stock thực còn lại trên thị trường", chưa trừ cartItems của mình
   const ingStockMap = useMemo(() => {
     const map = {};
     for (const p of products) {
       if (!p.ingredients?.length) continue;
       for (const ing of p.ingredients) {
-        // ← Dùng stockQuantity thực tế từ backend thay vì ước tính
-        if (ing.stockQuantity != null && map[ing.ingredientId] == null) {
-          map[ing.ingredientId] = Number(ing.stockQuantity);
+        const key = String(ing.ingredientId);
+        if (map[key] == null) {
+          const actualStock = Number(ing.stockQuantity);
+          const held = Number(heldByAll[key] || 0);
+          map[key] = Math.max(0, actualStock - held);
         }
       }
     }
     return map;
-  }, [products]);
+  }, [products, heldByAll]);
 
-  // Tính effective stock cho 1 product dựa trên cart
+  // calcEffectiveStock: từ ingStockMap trừ thêm cartItems của chính mình
+  // → "còn có thể thêm bao nhiêu sản phẩm này"
   const calcEffectiveStock = useCallback((product) => {
     if (product.stockQuantity == null) return null;
     if (!product.ingredients?.length) return Number(product.stockQuantity);
@@ -417,30 +516,36 @@ export default function POSPage() {
     let minCanMake = Infinity;
     for (const ing of product.ingredients) {
       const qtyPerProduct = Number(ing.quantity) || 1;
-      const ingStockOriginal = ingStockMap[ing.ingredientId] ?? 0;
-
-      const usedInCart = cartItems.reduce((sum, cartItem) => {
+      const ingKey = String(ing.ingredientId);
+      // ingStockMap đã trừ hold của tất cả (kể cả mình)
+      // nhưng hold của mình = cartItems của mình → cần cộng lại để không trừ kép
+      const myHoldForThisIng = cartItems.reduce((sum, cartItem) => {
         const cp = products.find(p => p.id === cartItem.productId);
         if (!cp?.ingredients?.length) return sum;
-        const cpIng = cp.ingredients.find(i => i.ingredientId === ing.ingredientId);
+        const cpIng = cp.ingredients.find(i => String(i.ingredientId) === ingKey);
         if (!cpIng) return sum;
         return sum + cartItem.quantity * (Number(cpIng.quantity) || 1);
       }, 0);
 
-      const remaining = ingStockOriginal - usedInCart;
-      const canMake = Math.floor((Math.max(0, remaining) / qtyPerProduct) * 1000) / 1000;
-
+      // stock khả dụng = ingStockMap (actualStock - heldByAll) + myHold - myCartUsage
+      // = actualStock - heldByOthers - myCartUsage
+      const availableForMe = (ingStockMap[ingKey] ?? 0) + myHoldForThisIng - myHoldForThisIng;
+      // Đơn giản hơn: ingStockMap đã = actualStock - heldByAll (kể cả mình)
+      // mình đang dùng myHoldForThisIng trong cart
+      // → có thể thêm thêm: ingStockMap[key] (vì hold của mình đã được trừ)
+      // → canMake từ ingStock này
+      const ingAvailable = ingStockMap[ingKey] ?? 0;
+      const canMake = Math.floor((Math.max(0, ingAvailable) / qtyPerProduct) * 1000) / 1000;
       minCanMake = Math.min(minCanMake, canMake);
     }
 
     return minCanMake === Infinity ? Number(product.stockQuantity) : minCanMake;
   }, [products, cartItems, ingStockMap]);
 
-
   useEffect(() => {
     warehouseApi.getAll()
       .then(res => {
-        const list = res.data?.data || [];
+        const list = res.data?.data || res.data || [];
         setWarehouses(list);
         if (list.length > 0) setSelectedWarehouse(list[0]);
       })
@@ -457,10 +562,6 @@ export default function POSPage() {
       setSurchargeDisplay(num > 0 ? new Intl.NumberFormat('vi-VN').format(num) : '');
     }, 600);
   }, []);
-
-  const [customerModalOpen, setCustomerModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     if (!selectedWarehouse?.id) return null;
@@ -481,6 +582,11 @@ export default function POSPage() {
       .finally(() => setLoadingProducts(false));
   }, [selectedWarehouse]);
 
+  useEffect(() => {
+    categoryApi.getAll()
+      .then(res => setCategories(res.data?.data || res.data || []))
+      .catch(() => {});
+  }, []);
 
   const filteredProducts = useMemo(() => {
     let list = products;
@@ -513,26 +619,17 @@ export default function POSPage() {
     setCartItems((prev) => {
       const tier = product.priceTiers?.find((t) => t.sortOrder === 0) || product.priceTiers?.[0];
       const key = `${product.id}-nv-${tier?.id || 'np'}`;
-
-      // Stock hiệu dụng — đã được override thành effectiveStock ở ProductCard
       const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
-
-      // Nếu hết hàng → không thêm
       if (stock !== null && stock <= 0) return prev;
 
       const basePrice = tier?.price ?? product.basePrice ?? 0;
       const existing = prev.find((i) => i.key === key);
-
-      // ── Qty khi thêm mới: nếu stock < 1 thì chỉ thêm đúng stock, ngược lại thêm 1
       const addQty = (stock !== null && stock < 1)
-        ? Math.round(stock * 1000) / 1000   // làm tròn 3 chữ số thập phân
+        ? Math.round(stock * 1000) / 1000
         : 1;
 
       if (existing) {
-        // step = lượng thêm mỗi lần click
         const step = (stock !== null && stock < 1) ? addQty : 1;
-        // cap: không được vượt quá stock hiệu dụng còn lại
-        // stock hiện tại (đã trừ cart bao gồm existing) + existing.quantity = max có thể đặt
         const maxQty = stock !== null
           ? Math.round((stock + existing.quantity) * 1000) / 1000
           : Infinity;
@@ -540,9 +637,8 @@ export default function POSPage() {
           Math.round((existing.quantity + step) * 1000) / 1000,
           maxQty
         );
-        if (newQty <= existing.quantity) return prev; // đã đạt max, không tăng nữa
+        if (newQty <= existing.quantity) return prev;
 
-        // Tính lại tier cho qty mới
         if (!existing.isManualPrice) {
           const allTiers = product.priceTiers || existing.priceTiers || [];
           const r = resolveTierForQty(allTiers, newQty, existing.basePrice ?? existing.unitPrice);
@@ -575,7 +671,7 @@ export default function POSPage() {
         vatMode: product.vatMode ?? 'INCLUSIVE',
         maxDiscountRate: product.maxDiscountRate ?? 0,
         itemDiscountRate: 0,
-        priceTiers: product.priceTiers || [],   // lưu để tra tier khi đổi qty
+        priceTiers: product.priceTiers || [],
         basePrice: product.basePrice ?? basePrice,
       }];
     });
@@ -588,8 +684,6 @@ export default function POSPage() {
     setCartItems((prev) => prev.map((i) => {
       if (i.id !== cartId) return i;
       const prod = products.find((p) => p.id === i.productId);
-
-      // Cap theo tồn kho
       let cappedQty = qty;
       if (prod) {
         const effStock = calcEffectiveStock(prod);
@@ -597,15 +691,10 @@ export default function POSPage() {
           cappedQty = Math.min(qty, Math.round((effStock + i.quantity) * 1000) / 1000);
         }
       }
-
-      // Nếu đã override giá thủ công → chỉ đổi qty, giữ giá
       if (i.isManualPrice) return { ...i, quantity: cappedQty };
-
-      // Tính lại tier cho qty mới
       const allTiers = i.priceTiers || prod?.priceTiers || [];
       const r = resolveTierForQty(allTiers, cappedQty, i.basePrice ?? i.unitPrice);
       if (!r) return { ...i, quantity: cappedQty };
-
       const changed = r.tierId !== i.tierId || r.unitPrice !== i.unitPrice;
       return {
         ...i,
@@ -619,7 +708,6 @@ export default function POSPage() {
       };
     }));
   }, [products, calcEffectiveStock]);
-
 
   const overridePrice = useCallback((cartId, newPrice, isManual = false) => {
     setCartItems((prev) => prev.map((i) => {
@@ -653,36 +741,24 @@ export default function POSPage() {
     setSurcharge(0);
     setSurchargeDisplay('');
     setPriceChangedIds(new Set());
+    cartHoldApi.release().catch(() => {});
   }, []);
 
-  // ── Tính toán tổng ──────────────────────────────────────────────────────
-  // subtotal = Σ(giá tier × qty) — gross, chưa CK, chưa giảm
   const subtotal = cartItems.reduce((s, i) =>
     s + Number(i.unitPrice) * Number(i.quantity), 0);
 
-  // CK từng món
   const itemDiscountTotal = cartItems.reduce((s, i) => {
     const d = i.itemDiscountRate ?? 0;
     if (!d) return s;
     return s + Number(i.unitPrice) * (d / 100) * Number(i.quantity);
   }, 0);
 
-  // Subtotal sau CK món (base để tính giảm bill)
   const subtotalAfterItemDiscount = subtotal - itemDiscountTotal;
-
-  // Giảm bill %
   const discountAmt = Math.round(subtotalAfterItemDiscount * discount / 100);
-
-  // Tổng giảm
   const totalDiscount = itemDiscountTotal + discountAmt;
-
-  // Phụ phí
   const surchargeNum = Number(surcharge) || 0;
-
-  // Tổng cộng = subtotal - tổng giảm + phụ phí
   const total = subtotal - totalDiscount + surchargeNum;
 
-  // VAT breakdown — chỉ để hiển thị thông tin (đã trong giá)
   const vatBreakdown = useMemo(() => {
     const map = {};
     for (const i of cartItems) {
@@ -699,8 +775,8 @@ export default function POSPage() {
     return Object.values(map).sort((a, b) => a.rate - b.rate);
   }, [cartItems, discount]);
 
-  const exclusiveVatTotal = 0; // không dùng exclusive trong flow mới
-  // ── Price changed handler ───────────────────────────────────────────────
+  const exclusiveVatTotal = 0;
+
   const handlePriceChanged = useCallback(async (message) => {
     const changedName = parseChangedProductName(message);
     const fresh = await fetchProducts();
@@ -785,6 +861,8 @@ export default function POSPage() {
         return;
       }
 
+      await cartHoldApi.release().catch(() => {});
+
       const orderCode = body?.data?.orderCode;
       toast(`Tạo đơn hàng thành công${orderCode ? ': ' + orderCode : ''}`, 'success');
       clearCart();
@@ -802,14 +880,14 @@ export default function POSPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [customer, cartItems, notes, paymentMethod, discount, surchargeNum, clearCart, fetchProducts, handlePriceChanged, toast]);
+  }, [customer, cartItems, notes, paymentMethod, discount, surchargeNum, selectedWarehouse, clearCart, fetchProducts, handlePriceChanged, toast]);
 
   const cartPanelProps = {
     cartItems, customer, notes, paymentMethod, discount,
     surchargeDisplay, surcharge, subtotal, discountAmt, surchargeNum,
     vatBreakdown, exclusiveVatTotal, itemDiscountTotal, totalDiscount,
     total, submitting, priceChangedIds,
-    selectedWarehouse,   // ← THÊM
+    selectedWarehouse,
     onOpenCustomerModal: () => setCustomerModalOpen(true),
     onClearCustomer: () => setCustomer(null),
     onClearCart: clearCart,
@@ -834,7 +912,6 @@ export default function POSPage() {
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-[#FAF7F2]">
 
-      {/* Mobile cart toggle */}
       <div className="lg:hidden flex-shrink-0">
         <button
           onClick={() => setMobileCartOpen(!mobileCartOpen)}
@@ -864,11 +941,9 @@ export default function POSPage() {
         )}
       </div>
 
-      {/* Product area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-white border-b border-[#F0EBE3] space-y-2">
 
-          {/* ── Warehouse selector — đặt ĐẦU TIÊN ── */}
           {warehouses.length > 1 && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-[#8E8878] shrink-0">🏭 Kho:</span>
@@ -880,9 +955,10 @@ export default function POSPage() {
                       setSelectedWarehouse(w);
                       setCartItems([]);
                       setPriceChangedIds(new Set());
+                      cartHoldApi.release().catch(() => {});
                     }}
                     className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${selectedWarehouse?.id === w.id
+                      ${selectedWarehouse?.id === w.id
                         ? 'bg-[#C9A84C] text-white'
                         : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}
                   >
@@ -892,6 +968,7 @@ export default function POSPage() {
               </div>
             </div>
           )}
+
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
@@ -951,13 +1028,14 @@ export default function POSPage() {
                 const cartQty = cartItems
                   .filter((i) => i.productId === p.id)
                   .reduce((s, i) => s + i.quantity, 0);
-                const effectiveStock = calcEffectiveStock(p); // ← tính động
+                const effectiveStock = calcEffectiveStock(p);
                 return (
                   <ProductCard
                     key={p.id}
-                    product={{ ...p, stockQuantity: effectiveStock }} // ← override stockQuantity
+                    product={{ ...p, stockQuantity: effectiveStock }}
                     onAdd={handleAddProduct}
                     cartQty={cartQty}
+                    ingStockMap={ingStockMap}
                   />
                 );
               })}
@@ -966,7 +1044,6 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* Desktop cart */}
       <div className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-[#E8DDD0] h-full">
         <CartPanel {...cartPanelProps} />
       </div>

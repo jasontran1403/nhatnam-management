@@ -461,9 +461,9 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                     Thông tin khách hàng
                   </p>
                   <div className="space-y-2.5">
-                    <InfoRow label="Tên khách hàng" value={o.customerName || '—'} />
+                    <InfoRow label="Tên khách hàng" value={o.customerName || (o.customerType === 'RETAIL' ? 'Khách lẻ / Khách vãng lai' : '—')} />
                     <InfoRow label="Địa chỉ giao hàng" value={deliveryAddr} />
-                    <InfoRow label="SĐT" value={o.customerPhone || '—'} />
+                    <InfoRow label="SĐT" value={o.customerPhone && !o.customerPhone.startsWith('KL-') ? o.customerPhone : '—'} />
                     <InfoRow label="Thời hạn thanh toán" value={resolveDeadlineDisplay(o)} />
                   </div>
                 </div>

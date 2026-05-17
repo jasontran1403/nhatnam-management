@@ -11,6 +11,7 @@ import { downloadBlob } from '../../api/services';
 import { OrderStatusBadge } from '../../components/admin/Badge';
 import Modal from '../../components/admin/Modal';
 import Pagination from '../../components/admin/Pagination';
+import DateRangePicker from '../../components/common/DateRangePicker';
 import useDebounce from '../../utils/useDebounce';
 import {
   PageHeader, LoadingSpinner, EmptyState,
@@ -87,6 +88,8 @@ export default function AdminOrders() {
   const [cancelling, setCancelling] = useState(false);
 
   const [exporting, setExporting] = useState(false);
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
+
 
   const handleExport = async () => {
     setExporting(true);
@@ -94,6 +97,10 @@ export default function AdminOrders() {
       const params = {};
       if (filters.status) params.status = filters.status;
       if (debouncedQ) params.q = debouncedQ;
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
+      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23,59,59,999);
+      if (filters.productId) params.productId = filters.productId;
+      if (filters.customerId) params.customerId = filters.customerId;
       const res = await adminOrderApi.exportOrders(params);
       downloadBlob(res.data, `don-hang-admin-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
     } catch {
@@ -111,10 +118,14 @@ export default function AdminOrders() {
       const params = { page, size: 20, sort: 'createdAt,desc' };
       if (debouncedQ) params.q = debouncedQ;
       if (filters.status) params.status = filters.status;
+      if (dateRange.from) params.fromDate = dateRange.from.setHours(0,0,0,0) || dateRange.from.getTime();
+      if (dateRange.to) params.toDate = new Date(dateRange.to).setHours(23,59,59,999);
+      if (filters.productId) params.productId = filters.productId;
+      if (filters.customerId) params.customerId = filters.customerId;
       const res = await adminOrderApi.list(params);
       setData(res);
     } finally { setLoading(false); }
-  }, [page, debouncedQ, filters.status]);
+  }, [page, debouncedQ, filters.status, dateRange, filters.productId, filters.customerId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -163,6 +174,10 @@ export default function AdminOrders() {
           className={`${inputCls} sm:w-52`}>
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <DateRangePicker
+          from={dateRange.from} to={dateRange.to}
+          onChange={r => { setDateRange(r); setPage(0); }}
+          placeholder="Khoảng ngày" />
         <button onClick={handleExport} disabled={exporting}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200
     hover:bg-emerald-100 transition-colors disabled:opacity-60 text-sm font-medium whitespace-nowrap"

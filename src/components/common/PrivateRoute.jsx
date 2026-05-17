@@ -1,27 +1,30 @@
 // src/components/common/PrivateRoute.jsx
 import { Navigate } from 'react-router-dom';
 
-/**
- * Đọc user từ localStorage key 'user'.
- * allowedRoles: string[] — nếu không truyền thì chỉ cần đăng nhập.
- */
+function getDefaultPath(role) {
+  switch (role) {
+    case 'ADMIN':             return '/admin/dashboard';
+    case 'OWNER':             return '/owner/dashboard';
+    case 'WAREHOUSE':         return '/warehouse/management';
+    case 'SUPER_WAREHOUSE':   return '/super-warehouse/management';
+    case 'ACCOUNTANT':        return '/accountant/dashboard';
+    case 'SUPER_ACCOUNTANT':  return '/super-accountant/dashboard';
+    case 'OPERATOR':          return '/operator/categories';
+    case 'SHIPPER':           return '/shipper/dashboard';
+    default:                  return '/seller/pos';
+  }
+}
+
 export default function PrivateRoute({ children, allowedRoles }) {
   let user = null;
   try { user = JSON.parse(localStorage.getItem('user')); } catch {}
 
-  // Chưa đăng nhập
   if (!user) return <Navigate to="/login" replace />;
 
-  // Kiểm tra role nếu có yêu cầu
   if (allowedRoles) {
     const role = user.role ?? user.roles?.[0] ?? '';
     if (!allowedRoles.includes(role)) {
-      // Redirect về trang mặc định của role đó thay vì vòng lặp
-      if (role === 'WAREHOUSE') return <Navigate to="/warehouse/management" replace />;
-      if (role === 'ADMIN')     return <Navigate to="/admin/dashboard"      replace />;
-      if (role === 'ACCOUNTANT')     return <Navigate to="/accountant/dashboard"      replace />;
-      if (role === 'OPERATOR') return <Navigate to="/operator" replace />;
-      return <Navigate to="/seller/pos" replace />;
+      return <Navigate to={getDefaultPath(role)} replace />;
     }
   }
 

@@ -18,11 +18,12 @@ api.interceptors.request.use((config) => {
 // ── Response: xử lý token hết hạn / không hợp lệ ────────────────────────────
 // Code 923 = token hết hạn, 901 = thiếu/sai token
 const SESSION_EXPIRED_CODES = new Set([923, 901]);
-let _sessionExpiredShown = false; // tránh hiện toast nhiều lần nếu nhiều request cùng lúc
+let _sessionExpiredAt = 0;
 
 function handleSessionExpired(message) {
-  if (_sessionExpiredShown) return;
-  _sessionExpiredShown = true;
+  if (!localStorage.getItem('token')) return;  // đã logout rồi → bỏ qua
+  if (Date.now() - _sessionExpiredAt < 5000) return;  // cooldown 5 giây
+  _sessionExpiredAt = Date.now();
 
   // Hiện toast — dùng event để Toast provider bên React bắt
   window.dispatchEvent(new CustomEvent('app:session-expired', {
@@ -33,7 +34,6 @@ function handleSessionExpired(message) {
   setTimeout(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    _sessionExpiredShown = false;
     window.location.href = '/login';
   }, 3000);
 }

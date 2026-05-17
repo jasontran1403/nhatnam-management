@@ -1,6 +1,7 @@
 // src/pages/seller/OrdersPage.jsx
 import { useState, useEffect } from 'react';
 import { orderApi, downloadBlob } from '../../api/services';
+import DateRangePicker from '../../components/common/DateRangePicker';
 import { useToast } from '../../components/common/Toast';
 import {
   Search, FileText, Clock, CheckCircle, RefreshCw,
@@ -366,6 +367,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [exporting, setExporting] = useState(false);
 
@@ -382,7 +384,10 @@ export default function OrdersPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const res = await orderApi.exportMyOrders();
+      const params = {};
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
+      if (dateRange.to)   params.to   = new Date(dateRange.to).setHours(23,59,59,999);
+      const res = await orderApi.exportMyOrders(params);
       downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
     } catch {
       toast('Không thể xuất file Excel', 'error');
@@ -393,13 +398,16 @@ export default function OrdersPage() {
 
   const fetchOrders = () => {
     setLoading(true);
-    orderApi.getMyOrders()
+    const params = {};
+    if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
+    if (dateRange.to)   params.to   = new Date(dateRange.to).setHours(23,59,59,999);
+    orderApi.getMyOrders(params)
       .then(r => setOrders(r.data?.data || []))
       .catch(() => toast('Không thể tải đơn hàng', 'error'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => { fetchOrders(); }, [dateRange]);
 
   const handleInvoice = async (orderId, e) => {
     e.stopPropagation();
@@ -559,13 +567,17 @@ export default function OrdersPage() {
             </h1>
             <p className="text-xs text-[#8E8878]">{orders.length} đơn hàng của bạn</p>
           </div>
-          <div className="sm:ml-auto flex items-center gap-2">
+          <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
               <input type="text" placeholder="Tìm đơn hàng..." value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="input-elegant rounded-xl pl-9 pr-4 py-2 text-sm w-44 sm:w-52" />
             </div>
+            <DateRangePicker
+              from={dateRange.from} to={dateRange.to}
+              onChange={r => { setDateRange(r); }}
+              placeholder="Khoảng ngày" />
             <button onClick={fetchOrders}
               className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
               <RefreshCw size={15} />

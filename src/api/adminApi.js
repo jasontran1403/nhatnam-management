@@ -32,13 +32,14 @@ export const adminDashboardApi = {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 export const adminOrderApi = {
-  list: (params) => api.get('/api/admin/orders', { params }).then(unwrap),
+  list: (params) => api.get('/api/admin/orders', { params }).then(unwrap), // params: q, status, fromDate, toDate, customerId, productId
   getById: (id) => api.get(`/api/admin/orders/${id}`).then(unwrap),
   cancel: (id, reason) => api.post(`/api/admin/orders/${id}/cancel`, { reason }).then(unwrap),
   extendDeadline: (orderId, days) =>
     api.put(`/api/admin/orders/${orderId}/extend-deadline`, null, { params: { days } }).then(unwrap),
   exportOrders: (params) =>
     api.get('/api/admin/orders/export', { params, responseType: 'blob' }),
+  getProducts: () => api.get('/api/admin/products').then(unwrap),
 };
 
 // ─── Customers ───────────────────────────────────────────────────────────────
@@ -51,6 +52,8 @@ export const adminCustomerApi = {
   bulkSetActive: (customerIds, isActive) => api.put('/api/admin/customers/bulk-active', { customerIds, isActive }).then(unwrap),
   updateDebtDays: (id, days) => api.put(`/api/admin/customers/${id}/debt-days`, null, { params: { days } }).then(unwrap),
   getOrderHistory: (customerId) => api.get(`/api/admin/customers/${customerId}/orders`).then(unwrap),
+  assignSeller: (id, sellerId) => api.put(`/api/admin/customers/${id}/assign-seller`, null, { params: sellerId != null ? { sellerId } : {} }).then(unwrap),
+  searchSellers: (q) => api.get('/api/admin/customers/sellers/search', { params: { q } }).then(unwrap),
 };
 
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -76,4 +79,22 @@ export const adminWarehouseApi = {
 export const adminIngredientApi = {
   listByWarehouse: (warehouseId, q) => api.get('/api/admin/ingredients', { params: { warehouseId, q } }).then(unwrap),
   getDefaultWarehouse: () => api.get('/api/admin/ingredients/default-warehouse').then(unwrap),
+};
+
+// ─── Expense Vouchers (ADMIN/OWNER side) ─────────────────────────────────────
+export const adminExpenseApi = {
+  listAll:  (params) => api.get('/api/expense-vouchers', { params }).then(unwrap),
+  getById:  (id) => api.get(`/api/expense-vouchers/${id}`).then(unwrap),
+  approve:  (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }).then(unwrap),
+  reject:   (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }).then(unwrap),
+};
+
+// ─── KPI Admin ───────────────────────────────────────────────────────────────
+export const adminKpiApi = {
+  getPeriod: (periodKey) => api.get('/api/admin/kpi', { params: { periodKey } }).then(unwrap),
+};
+
+// ─── Warehouse Stock Detail ──────────────────────────────────────────────────
+export const adminWarehouseStockApi = {
+  getStock: (id) => api.get(`/api/admin/warehouses/${id}/stock`).then(unwrap),
 };

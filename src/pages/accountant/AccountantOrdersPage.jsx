@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { accountantApi, getImageUrl, downloadBlob } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
+import DateRangePicker from '../../components/common/DateRangePicker';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight, Filter,
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
@@ -572,8 +573,11 @@ export default function AccountantOrdersPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [dateFrom, setDateFrom]       = useState('');
-  const [dateTo, setDateTo]           = useState('');
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [productFilter, setProductFilter] = useState('');  // productId
+  const [customerFilter, setCustomerFilter] = useState(''); // customerId
+  const [products, setProducts]       = useState([]);
+  const [customers, setCustomers]     = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
   const [showFilter, setShowFilter]   = useState(false);
   const [exporting, setExporting]     = useState(false);
@@ -593,8 +597,10 @@ export default function AccountantOrdersPage() {
     try {
       const params = { page: p, size: PAGE_SIZE };
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (dateFrom) params.from = new Date(dateFrom).getTime();
-      if (dateTo)   params.to   = new Date(dateTo).getTime() + 86399999;
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
+      if (dateRange.to)   params.to   = new Date(dateRange.to).setHours(23,59,59,999);
+      if (productFilter)  params.productId  = productFilter;
+      if (customerFilter) params.customerId = customerFilter;
 
       const res = await accountantApi.getOrders(params);
       let content = res.data?.data?.content || [];
@@ -613,9 +619,18 @@ export default function AccountantOrdersPage() {
     } catch {
       toast('Không thể tải danh sách đơn hàng', 'error');
     } finally { setLoading(false); }
-  }, [statusFilter, dateFrom, dateTo, search]);
+  }, [statusFilter, dateRange, search, productFilter, customerFilter]);
 
   useEffect(() => { fetchOrders(0); }, [fetchOrders]);
+
+  // Load products for filter
+  useEffect(() => {
+    import('../../api/services').then(({ accountantApi: api }) => {
+      api.getProducts && api.getProducts()
+        .then(r => setProducts(r.data?.data || []))
+        .catch(() => {});
+    });
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 500);
@@ -628,8 +643,10 @@ export default function AccountantOrdersPage() {
     try {
       const params = {};
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (dateFrom) params.from = new Date(dateFrom).getTime();
-      if (dateTo)   params.to   = new Date(dateTo).getTime() + 86399999;
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
+      if (dateRange.to)   params.to   = new Date(dateRange.to).setHours(23,59,59,999);
+      if (productFilter)  params.productId  = productFilter;
+      if (customerFilter) params.customerId = customerFilter;
       const res = await accountantApi.exportOrders(params);
       downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
     } catch {
@@ -734,12 +751,23 @@ export default function AccountantOrdersPage() {
                 focus:outline-none focus:border-[#C9A84C] w-48 lg:w-56" />
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="border border-[#E8DDD0] rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:border-[#C9A84C]" />
-            <span className="text-[#8E8878] text-xs">→</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="border border-[#E8DDD0] rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:border-[#C9A84C]" />
+          <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
+            <DateRangePicker
+              from={dateRange.from} to={dateRange.to}
+              onChange={r => { setDateRange(r); setPage(0); }}
+              placeholder="Khoảng ngày" />
+            {productFilter && (
+              <button onClick={() => setProductFilter('')}
+                className="flex items-center gap-1 px-2 py-1 bg-[#C9A84C]/10 text-[#C9A84C] rounded-lg text-xs font-medium">
+                Bỏ lọc món <X size={10} />
+              </button>
+            )}
+            {customerFilter && (
+              <button onClick={() => setCustomerFilter('')}
+                className="flex items-center gap-1 px-2 py-1 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium">
+                Bỏ lọc KH <X size={10} />
+              </button>
+            )}
           </div>
 
           <div className="flex sm:hidden items-center gap-1.5">
