@@ -1,15 +1,19 @@
 // src/components/warehouse/IngredientSelector.jsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 /**
  * Props:
- *   stocks       : StockResponse[]  (tồn kho kho hiện tại)
+ *   stocks       : StockResponse[]
  *   value        : { ingredientId, quantity, expiryDate?, physicalQty? }
  *   onChange     : (val) => void
  *   onRemove     : () => void
  *   mode         : 'import' | 'export' | 'adjust' | 'transfer'
+ *   canRemove    : boolean
+ *
+ * NOTE (Feature 2): Khi mode='import', KHÔNG hiển thị trường giá vốn.
+ * Giá vốn sẽ do SUPER_ACCOUNTANT nhập sau khi xem phiếu nhập kho.
  */
-export default function IngredientSelector({ stocks = [], value, onChange, onRemove, mode }) {
+export default function IngredientSelector({ stocks = [], value, onChange, onRemove, mode, canRemove = true }) {
   const selected = stocks.find(s => s.ingredientId === value.ingredientId);
 
   const gridClass = {
@@ -52,22 +56,7 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
         </div>
       )}
 
-      {/* Giá vốn (import) — Change 6 */}
-      {mode === 'import' && (
-        <div>
-          <input
-            className="wh-input"
-            type="number"
-            min="0"
-            step="1000"
-            placeholder="Giá vốn/đơn vị"
-            value={value.costPrice || ''}
-            onChange={e => onChange({ ...value, costPrice: e.target.value })}
-          />
-        </div>
-      )}
-
-      {/* Hạn sử dụng (import) */}
+      {/* Hạn sử dụng — chỉ hiện khi import, KHÔNG có giá vốn (kế toán trưởng nhập sau) */}
       {mode === 'import' && (
         <div>
           <input
@@ -79,7 +68,7 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
         </div>
       )}
 
-      {/* Điều chỉnh: số lượng thực tế + hiển thị chênh lệch */}
+      {/* Điều chỉnh: tồn hiện tại + số thực tế + chênh lệch */}
       {mode === 'adjust' && (
         <>
           <div>
@@ -88,7 +77,7 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
               placeholder="Tồn hiện tại"
               readOnly
               value={selected ? Number(selected.stockQuantity).toLocaleString() : '—'}
-              style={{ color:'var(--wh-muted)', cursor:'default' }}
+              style={{ color: 'var(--wh-muted)', cursor: 'default' }}
             />
           </div>
           <div>
@@ -102,25 +91,27 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
               onChange={e => onChange({ ...value, physicalQty: e.target.value })}
             />
           </div>
-          <div style={{ display:'flex', alignItems:'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             {selected && value.physicalQty !== '' && value.physicalQty !== undefined ? (
               <DiffBadge
                 diff={Number(value.physicalQty) - Number(selected.stockQuantity)}
                 unit={selected.unit}
               />
             ) : (
-              <span style={{ color:'var(--wh-muted)', fontSize:12 }}>—</span>
+              <span style={{ color: 'var(--wh-muted)', fontSize: 12 }}>—</span>
             )}
           </div>
         </>
       )}
 
       {/* Xóa */}
-      <button
-        className="wh-btn wh-btn-danger wh-btn-sm"
-        onClick={onRemove}
-        style={{ alignSelf: 'flex-start', marginTop: mode === 'adjust' ? 8 : 0 }}
-      >✕</button>
+      {canRemove && (
+        <button
+          className="wh-btn wh-btn-danger wh-btn-sm"
+          onClick={onRemove}
+          style={{ alignSelf: 'flex-start', marginTop: mode === 'adjust' ? 8 : 0 }}
+        >✕</button>
+      )}
     </div>
   );
 }

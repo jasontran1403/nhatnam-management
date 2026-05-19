@@ -1,0 +1,309 @@
+// src/components/common/ProfileButton.jsx
+import { useState } from 'react';
+import { UserCircle, X, Eye, EyeOff, Loader2, Check, Mail, Phone, Lock } from 'lucide-react';
+import api from '../../api/axios';
+import { useToast } from './Toast';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
+function inputCls(hasErr) {
+    return `w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none transition
+    ${hasErr
+            ? 'border-red-400 bg-red-50/40 focus:border-red-400'
+            : 'border-black/10 focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20'}`;
+}
+
+export default function ProfileButton() {
+    const navigate = useNavigate();
+    const [redirecting, setRedirecting] = useState(false);
+    const toast = useToast();
+    const { user: authUser, logout, updateUser } = useAuth();
+    const [open, setOpen] = useState(false);
+    const [tab, setTab] = useState('info'); // 'info' | 'password'
+
+    // Profile info state
+    const [profile, setProfile] = useState(null);
+    const [loadingProfile, setLoadingProfile] = useState(false);
+    const [infoForm, setInfoForm] = useState({ fullName: '', email: '', phoneNumber: '' });
+    const [infoErr, setInfoErr] = useState({});
+    const [savingInfo, setSavingInfo] = useState(false);
+
+    // Password state
+    const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [pwdErr, setPwdErr] = useState({});
+    const [savingPwd, setSavingPwd] = useState(false);
+    const [showPwd, setShowPwd] = useState({ current: false, new: false, confirm: false });
+
+    const loadProfile = async () => {
+        setLoadingProfile(true);
+        try {
+            const res = await api.get('/api/profile');
+            const data = res.data?.data;
+            setProfile(data);
+            setInfoForm({ fullName: data?.fullName || '', email: data?.email || '', phoneNumber: data?.phoneNumber || '' });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingProfile(false);
+        }
+    };
+
+    const handleOpen = () => {
+        setOpen(true);
+        setTab('info');
+        setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPwdErr({});
+        setInfoErr({});
+        loadProfile();
+    };
+
+    // ── Cập nhật thông tin ────────────────────────────────────────────────────
+    const handleSaveInfo = async () => {
+        const errs = {};
+        if (infoForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(infoForm.email))
+            errs.email = 'Email không hợp lệ';
+        setInfoErr(errs);
+        if (Object.keys(errs).length) return;
+
+        setSavingInfo(true);
+        try {
+            const res = await api.put('/api/profile', {
+                fullName: infoForm.fullName.trim() || null,
+                email: infoForm.email.trim() || null,
+                phoneNumber: infoForm.phoneNumber.trim() || null,
+            });
+            if (res.data?.success === false) {
+                toast(res.data?.message || 'Lỗi cập nhật', 'error');
+                return;
+            }
+            toast('Cập nhật thành công', 'success');
+            const updated = res.data?.data;
+            setProfile(updated);
+            updateUser({ fullName: updated?.fullName, email: updated?.email, phoneNumber: updated?.phoneNumber }); // ← thêm dòng này
+        } catch (e) {
+            toast(e?.response?.data?.message || 'Lỗi cập nhật', 'error');
+        } finally {
+            setSavingInfo(false);
+        }
+    };
+
+    // ── Đổi mật khẩu ─────────────────────────────────────────────────────────
+    const handleChangePassword = async () => {
+        const errs = {};
+        if (!pwdForm.currentPassword) errs.currentPassword = 'Bắt buộc';
+        if (!pwdForm.newPassword || pwdForm.newPassword.length < 6)
+            errs.newPassword = 'Tối thiểu 6 ký tự';
+        if (pwdForm.newPassword !== pwdForm.confirmPassword)
+            errs.confirmPassword = 'Mật khẩu xác nhận không khớp';
+        setPwdErr(errs);
+        if (Object.keys(errs).length) return;
+
+        setSavingPwd(true);
+        try {
+            const res = await api.put('/api/profile/password', {
+                currentPassword: pwdForm.currentPassword,
+                newPassword: pwdForm.newPassword,
+            });
+            if (res.data?.success === false) {
+                toast(res.data?.message || 'Lỗi đổi mật khẩu', 'error');
+                return;
+            }
+            toast('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.', 'success');
+            setRedirecting(true); // ← thêm
+            setTimeout(() => { setOpen(false); logout(); navigate('/login'); }, 1500);
+        } catch (e) {
+            toast(e?.response?.data?.message || 'Lỗi đổi mật khẩu', 'error');
+        } finally {
+            setSavingPwd(false);
+        }
+    };
+
+    const ROLE_LABEL = {
+        ADMIN: 'Quản trị viên', OWNER: 'Chủ sở hữu',
+        ACCOUNTANT: 'Kế toán', SUPER_ACCOUNTANT: 'Kế toán trưởng',
+        WAREHOUSE: 'Nhân viên kho', SUPER_WAREHOUSE: 'Trưởng kho',
+        SELLER: 'Nhân viên kinh doanh', SUPER_SELLER: 'Trưởng phòng kinh doanh',
+        OPERATOR: 'Nhân viên nhập liệu', SHIPPER: 'Giao hàng',
+    };
+
+    const displayRole = ROLE_LABEL[authUser?.role] || authUser?.role || '';
+
+    return (
+        <>
+            {/* Nút trigger */}
+            <button
+                onClick={handleOpen}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-[#FAF7F2] transition group"
+                title="Hồ sơ cá nhân"
+            >
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {(authUser?.fullName || authUser?.username || '?')[0]?.toUpperCase()}
+                </div>
+                <div className="hidden sm:block text-left">
+                    <p className="text-xs font-semibold text-[#1C1C1E] leading-tight truncate max-w-[120px]">
+                        {authUser?.fullName || authUser?.username}
+                    </p>
+                    <p className="text-[10px] text-[#8E8878] leading-tight">{displayRole}</p>
+                </div>
+            </button>
+
+            {/* Modal */}
+            {open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        {redirecting && (
+                            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 rounded-2xl">
+                                <Loader2 size={28} className="animate-spin text-[#C9A84C]" />
+                                <p className="text-sm font-semibold text-[#1C1C1E]">Đang đăng xuất...</p>
+                            </div>
+                        )}
+
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white font-bold">
+                                    {(authUser?.fullName || authUser?.username || '?')[0]?.toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-[#1C1C1E]">{authUser?.fullName || authUser?.username}</p>
+                                    <p className="text-xs text-[#8E8878]">@{authUser?.username} · {displayRole}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2]">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex border-b border-black/5">
+                            {[
+                                { key: 'info', label: 'Thông tin', icon: UserCircle },
+                                { key: 'password', label: 'Mật khẩu', icon: Lock },
+                            ].map(({ key, label, icon: Icon }) => (
+                                <button key={key} onClick={() => setTab(key)}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition border-b-2
+                    ${tab === key
+                                            ? 'border-[#C9A84C] text-[#C9A84C]'
+                                            : 'border-transparent text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
+                                    <Icon size={15} /> {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Tab: Thông tin */}
+                        {tab === 'info' && (
+                            <div className="p-5 space-y-4">
+                                {loadingProfile ? (
+                                    <div className="flex justify-center py-8">
+                                        <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Tên hiển thị */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+                                                <UserCircle size={13} className="text-[#C9A84C]" /> Tên hiển thị
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={infoForm.fullName}
+                                                onChange={e => setInfoForm(p => ({ ...p, fullName: e.target.value }))}
+                                                placeholder="Nguyễn Văn A"
+                                                className={inputCls(false)}
+                                            />
+                                        </div>
+
+                                        {/* Email */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+                                                <Mail size={13} className="text-[#C9A84C]" /> Email
+                                            </label>
+                                            <input
+                                                type="email"
+                                                value={infoForm.email}
+                                                onChange={e => { setInfoForm(p => ({ ...p, email: e.target.value })); setInfoErr(p => ({ ...p, email: '' })); }}
+                                                placeholder="email@example.com"
+                                                className={inputCls(!!infoErr.email)}
+                                            />
+                                            {infoErr.email && <p className="text-xs text-red-500 mt-1">{infoErr.email}</p>}
+                                        </div>
+
+                                        {/* Số điện thoại */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+                                                <Phone size={13} className="text-[#C9A84C]" /> Số điện thoại
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                value={infoForm.phoneNumber}
+                                                onChange={e => setInfoForm(p => ({ ...p, phoneNumber: e.target.value }))}
+                                                placeholder="0912 345 678"
+                                                className={inputCls(false)}
+                                            />
+                                        </div>
+
+                                        <button
+                                            onClick={handleSaveInfo}
+                                            disabled={savingInfo}
+                                            className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            {savingInfo
+                                                ? <><Loader2 size={16} className="animate-spin" /> Đang lưu...</>
+                                                : <><Check size={16} /> Lưu thay đổi</>}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Tab: Mật khẩu */}
+                        {tab === 'password' && (
+                            <div className="p-5 space-y-4">
+                                {[
+                                    { key: 'currentPassword', label: 'Mật khẩu hiện tại', showKey: 'current' },
+                                    { key: 'newPassword', label: 'Mật khẩu mới', showKey: 'new', hint: 'Tối thiểu 6 ký tự' },
+                                    { key: 'confirmPassword', label: 'Xác nhận mật khẩu mới', showKey: 'confirm' },
+                                ].map(({ key, label, showKey, hint }) => (
+                                    <div key={key}>
+                                        <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">{label}</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPwd[showKey] ? 'text' : 'password'}
+                                                value={pwdForm[key]}
+                                                onChange={e => { setPwdForm(p => ({ ...p, [key]: e.target.value })); setPwdErr(p => ({ ...p, [key]: '' })); }}
+                                                placeholder="••••••••"
+                                                className={`${inputCls(!!pwdErr[key])} pr-10`}
+                                            />
+                                            <button type="button"
+                                                onClick={() => setShowPwd(p => ({ ...p, [showKey]: !p[showKey] }))}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+                                                {showPwd[showKey] ? <EyeOff size={15} /> : <Eye size={15} />}
+                                            </button>
+                                        </div>
+                                        {pwdErr[key] && <p className="text-xs text-red-500 mt-1">{pwdErr[key]}</p>}
+                                        {hint && !pwdErr[key] && <p className="text-xs text-[#8E8878] mt-1">{hint}</p>}
+                                    </div>
+                                ))}
+
+                                <button
+                                    onClick={handleChangePassword}
+                                    disabled={savingPwd}
+                                    className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {savingPwd
+                                        ? <><Loader2 size={16} className="animate-spin" /> Đang đổi...</>
+                                        : <><Lock size={16} /> Đổi mật khẩu</>}
+                                </button>
+
+                                <p className="text-xs text-[#8E8878] text-center">
+                                    Sau khi đổi mật khẩu, bạn sẽ được đăng xuất và cần đăng nhập lại.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}

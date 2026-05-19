@@ -1,12 +1,7 @@
+// src/pages/admin/AdminUsers.jsx
 import { useEffect, useState, useCallback } from 'react';
 import {
-  UserCog,
-  Plus,
-  Search,
-  Lock,
-  Unlock,
-  KeyRound,
-  Edit2, X
+  UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { useAuth } from '../../context/AuthContext';
@@ -15,34 +10,66 @@ import { Badge } from '../../components/admin/Badge';
 import Modal from '../../components/admin/Modal';
 import Pagination from '../../components/admin/Pagination';
 import {
-  PageHeader,
-  LoadingSpinner,
-  EmptyState,
-  PrimaryButton,
-  SecondaryButton,
-  DangerButton,
-  Field,
-  inputCls,
-  formatNumber,
-  formatDateTime,
+  PageHeader, LoadingSpinner, EmptyState, PrimaryButton, SecondaryButton,
+  DangerButton, Field, inputCls, formatNumber, formatDateTime,
 } from '../../components/admin/ui';
 
 const ROLE_CONFIG = [
-  { value: 'OWNER',            label: 'Chủ tịch' },
-  { value: 'ADMIN',            label: 'Giám đốc' },
+  { value: 'OWNER', label: 'Chủ tịch' },
+  { value: 'ADMIN', label: 'Giám đốc' },
   { value: 'SUPER_ACCOUNTANT', label: 'Kế toán trưởng' },
-  { value: 'ACCOUNTANT',       label: 'Kế toán' },
-  { value: 'SUPER_SELLER',     label: 'Trưởng phòng kinh doanh' },
-  { value: 'SELLER',           label: 'Nhân viên kinh doanh' },
-  { value: 'SUPER_WAREHOUSE',  label: 'Trưởng xưởng' },
-  { value: 'WAREHOUSE',        label: 'Nhân viên kho' },
-  { value: 'OPERATOR',         label: 'Nhân viên nhập liệu' },
+  { value: 'ACCOUNTANT', label: 'Kế toán' },
+  { value: 'SUPER_SELLER', label: 'Trưởng phòng kinh doanh' },
+  { value: 'SELLER', label: 'Nhân viên kinh doanh' },
+  { value: 'SUPER_WAREHOUSE', label: 'Trưởng xưởng' },
+  { value: 'WAREHOUSE', label: 'Nhân viên kho' },
+  { value: 'OPERATOR', label: 'Nhân viên nhập liệu' },
 ];
-// OWNER tạo tất cả; ADMIN không tạo được OWNER
-const OWNER_ROLES = ROLE_CONFIG;
 const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
-const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+const ROLE_LABEL = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
 
+function canManageUser(currentUserRole, targetUser) {
+  if (currentUserRole === 'OWNER') return true;
+  const isTargetOwner = targetUser?.roles?.includes('OWNER') || targetUser?.role === 'OWNER';
+  return !isTargetOwner;
+}
+
+// ── Multi-role picker ─────────────────────────────────────────────────────────
+function RolePicker({ selected, onChange, availableRoles }) {
+  const toggle = (val) => {
+    if (selected.includes(val)) {
+      // Không cho bỏ hết — phải có ít nhất 1
+      if (selected.length === 1) return;
+      onChange(selected.filter(r => r !== val));
+    } else {
+      onChange([...selected, val]);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {availableRoles.map(r => {
+        const active = selected.includes(r.value);
+        return (
+          <button
+            key={r.value}
+            type="button"
+            onClick={() => toggle(r.value)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition
+              ${active
+                ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
+                : 'bg-white text-[#555] border-black/10 hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}
+          >
+            {active && <Check size={11} />}
+            {r.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminUsers() {
   const { user: currentUser } = useAuth();
   const [filters, setFilters] = useState({ q: '', role: '', locked: '' });
@@ -53,9 +80,8 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // null = create, object = edit
+  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
-
   const [lockConfirm, setLockConfirm] = useState(null);
   const [pwdTarget, setPwdTarget] = useState(null);
   const [newPwd, setNewPwd] = useState('');
@@ -64,23 +90,16 @@ export default function AdminUsers() {
     setLoading(true);
     try {
       const params = { page, size: 20, sort: 'id,desc' };
-
-      if (debouncedQ) params.q = debouncedQ; // ✅ chỉ dùng debounce
+      if (debouncedQ) params.q = debouncedQ;
       if (filters.role) params.role = filters.role;
       if (filters.locked !== '') params.locked = filters.locked;
-
       const res = await adminUserApi.list(params);
       setData(res);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, debouncedQ, filters.role, filters.locked]); // ✅ bỏ filters.q
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }, [page, debouncedQ, filters.role, filters.locked]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (u) => { setEditing(u); setFormOpen(true); };
@@ -90,9 +109,9 @@ export default function AdminUsers() {
     setSaving(true);
     try {
       await adminUserApi.setLocked(lockConfirm.id, !lockConfirm.isLockAccount);
-      setLockConfirm(null);
-      load();
-    } catch (e) { alert(e?.response?.data?.message || e.message); } finally { setSaving(false); }
+      setLockConfirm(null); load();
+    } catch (e) { alert(e?.response?.data?.message || e.message); }
+    finally { setSaving(false); }
   };
 
   const submitPwd = async () => {
@@ -102,7 +121,18 @@ export default function AdminUsers() {
       await adminUserApi.resetPassword(pwdTarget.id, newPwd);
       setPwdTarget(null); setNewPwd('');
       alert('Đổi mật khẩu thành công');
-    } catch (e) { alert(e?.response?.data?.message || e.message); } finally { setSaving(false); }
+    } catch (e) { alert(e?.response?.data?.message || e.message); }
+    finally { setSaving(false); }
+  };
+
+  // Helper: hiển thị tất cả roles của user
+  const renderRoleBadges = (u) => {
+    const roles = u.roles?.length ? [...u.roles] : (u.role ? [u.role] : []);
+    return roles.map(r => (
+      <Badge key={r} className="bg-slate-50 text-slate-700 ring-slate-200">
+        {ROLE_LABEL[r] || r}
+      </Badge>
+    ));
   };
 
   return (
@@ -117,47 +147,31 @@ export default function AdminUsers() {
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]"
-            size={16}
-          />
-
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
           <input
             type="text"
             placeholder="Tìm username, họ tên, email..."
             value={filters.q}
-            onChange={(e) => {
-              setFilters({ ...filters, q: e.target.value });
-              setPage(0); // 🔥 reset page khi search
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setFilters({ ...filters, q: '' });
-                setPage(0);
-              }
-            }}
-            className={`${inputCls} pl-9 pr-9`} // thêm padding phải
+            onChange={e => { setFilters({ ...filters, q: e.target.value }); setPage(0); }}
+            onKeyDown={e => { if (e.key === 'Escape') { setFilters({ ...filters, q: '' }); setPage(0); } }}
+            className={`${inputCls} pl-9 pr-9`}
           />
-
-          {/* Nút clear */}
           {filters.q && (
-            <button
-              type="button"
-              onClick={() => {
-                setFilters({ ...filters, q: '' });
-                setPage(0);
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"
-            >
+            <button type="button" onClick={() => { setFilters({ ...filters, q: '' }); setPage(0); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
               <X size={16} />
             </button>
           )}
         </div>
-        <select value={filters.role} onChange={(e) => { setFilters({ ...filters, role: e.target.value }); setPage(0); }} className={`${inputCls} sm:w-40`}>
+        <select value={filters.role}
+          onChange={e => { setFilters({ ...filters, role: e.target.value }); setPage(0); }}
+          className={`${inputCls} sm:w-44`}>
           <option value="">Tất cả quyền</option>
-          {ROLE_CONFIG.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+          {ROLE_CONFIG.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
-        <select value={filters.locked} onChange={(e) => { setFilters({ ...filters, locked: e.target.value }); setPage(0); }} className={`${inputCls} sm:w-40`}>
+        <select value={filters.locked}
+          onChange={e => { setFilters({ ...filters, locked: e.target.value }); setPage(0); }}
+          className={`${inputCls} sm:w-40`}>
           <option value="">Tất cả trạng thái</option>
           <option value="false">Đang hoạt động</option>
           <option value="true">Đã khóa</option>
@@ -166,9 +180,7 @@ export default function AdminUsers() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-        {loading ? (
-          <LoadingSpinner />
-        ) : data.content.length === 0 ? (
+        {loading ? <LoadingSpinner /> : data.content.length === 0 ? (
           <EmptyState icon={UserCog} title="Không có user nào" />
         ) : (
           <>
@@ -179,14 +191,14 @@ export default function AdminUsers() {
                   <tr className="bg-[#FAF7F2] text-[#8E8878]">
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">User</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Liên hệ</th>
-                    <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Quyền</th>
+                    <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Quyền</th>
                     <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Trạng thái</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Tạo lúc</th>
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.content.map((u) => (
+                  {data.content.map(u => (
                     <tr key={u.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
@@ -203,32 +215,41 @@ export default function AdminUsers() {
                         <p className="text-[#1C1C1E] text-xs truncate max-w-[180px]">{u.email || '—'}</p>
                         <p className="text-xs text-[#8E8878]">{u.phoneNumber || '—'}</p>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge className="bg-slate-50 text-slate-700 ring-slate-200">{ROLE_LABEL[u.role] || u.role}</Badge>
-                        {u.warehouseName && <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">🏭 {u.warehouseName}</Badge>}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {renderRoleBadges(u)}
+                          {u.warehouseName && (
+                            <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
+                              🏭 {u.warehouseName}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {u.isLockAccount
                           ? <Badge className="bg-red-50 text-red-700 ring-red-200">Đã khóa</Badge>
-                          : <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>
-                        }
+                          : <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>}
                       </td>
                       <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDateTime(u.timeCreate)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openEdit(u)} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E]" title="Sửa">
-                            <Edit2 size={15} />
-                          </button>
-                          <button onClick={() => setPwdTarget(u)} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#C9A84C]/10 hover:text-[#C9A84C]" title="Đổi mật khẩu">
-                            <KeyRound size={15} />
-                          </button>
-                          <button
-                            onClick={() => setLockConfirm(u)}
-                            className={`p-2 rounded-lg transition-colors ${u.isLockAccount ? 'text-[#8E8878] hover:bg-emerald-50 hover:text-emerald-600' : 'text-[#8E8878] hover:bg-red-50 hover:text-red-600'}`}
-                            title={u.isLockAccount ? 'Mở khóa' : 'Khóa'}
-                          >
-                            {u.isLockAccount ? <Unlock size={15} /> : <Lock size={15} />}
-                          </button>
+                          {canManageUser(currentUser?.role, u) ? (
+                            <>
+                              <button onClick={() => openEdit(u)} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E]" title="Sửa">
+                                <Edit2 size={15} />
+                              </button>
+                              <button onClick={() => setPwdTarget(u)} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#C9A84C]/10 hover:text-[#C9A84C]" title="Đổi mật khẩu">
+                                <KeyRound size={15} />
+                              </button>
+                              <button onClick={() => setLockConfirm(u)}
+                                className={`p-2 rounded-lg transition-colors ${u.isLockAccount ? 'text-[#8E8878] hover:bg-emerald-50 hover:text-emerald-600' : 'text-[#8E8878] hover:bg-red-50 hover:text-red-600'}`}
+                                title={u.isLockAccount ? 'Mở khóa' : 'Khóa'}>
+                                {u.isLockAccount ? <Unlock size={15} /> : <Lock size={15} />}
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-[#C4B9A8] italic px-2">Không có quyền</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -239,7 +260,7 @@ export default function AdminUsers() {
 
             {/* Mobile */}
             <div className="md:hidden divide-y divide-black/5">
-              {data.content.map((u) => (
+              {data.content.map(u => (
                 <div key={u.id} className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white text-sm font-bold shrink-0">
@@ -248,112 +269,116 @@ export default function AdminUsers() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-[#1C1C1E] truncate">{u.fullName || u.username}</p>
                       <p className="text-xs text-[#8E8878] truncate">@{u.username} · {u.email}</p>
-                      <div className="flex gap-1.5 mt-1.5">
-                        <Badge className="bg-slate-50 text-slate-700 ring-slate-200">{u.role}</Badge>
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {renderRoleBadges(u)}
                         {u.isLockAccount
                           ? <Badge className="bg-red-50 text-red-700 ring-red-200">Đã khóa</Badge>
-                          : <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>
-                        }
+                          : <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>}
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 mt-3">
-                    <button onClick={() => openEdit(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E]">Sửa</button>
-                    <button onClick={() => setPwdTarget(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#C9A84C]/10 text-[#C9A84C]">Mật khẩu</button>
-                    <button onClick={() => setLockConfirm(u)} className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${u.isLockAccount ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                      {u.isLockAccount ? 'Mở khóa' : 'Khóa'}
-                    </button>
+                    {canManageUser(currentUser?.role, u) ? (
+                      <>
+                        <button onClick={() => openEdit(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E]">Sửa</button>
+                        <button onClick={() => setPwdTarget(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#C9A84C]/10 text-[#C9A84C]">Mật khẩu</button>
+                        <button onClick={() => setLockConfirm(u)}
+                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${u.isLockAccount ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                          {u.isLockAccount ? 'Mở khóa' : 'Khóa'}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-[#C4B9A8] italic py-2">Không có quyền thao tác</p>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </>
         )}
-        {!loading && data.content.length > 0 && <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />}
+        {!loading && data.content.length > 0 && (
+          <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />
+        )}
       </div>
 
-      {/* Form modal */}
       {formOpen && (
         <UserFormModal
           open={formOpen}
           editing={editing}
+          currentUserRole={currentUser?.role}
           onClose={() => setFormOpen(false)}
           onSaved={() => { setFormOpen(false); load(); }}
         />
       )}
 
       {/* Lock confirm */}
-      <Modal
-        open={!!lockConfirm}
-        onClose={() => !saving && setLockConfirm(null)}
-        title={lockConfirm?.isLockAccount ? 'Mở khóa user' : 'Khóa user'}
-        size="sm"
+      <Modal open={!!lockConfirm} onClose={() => !saving && setLockConfirm(null)}
+        title={lockConfirm?.isLockAccount ? 'Mở khóa user' : 'Khóa user'} size="sm"
         footer={
           <div className="flex justify-end gap-2">
             <SecondaryButton onClick={() => setLockConfirm(null)} disabled={saving}>Hủy</SecondaryButton>
             {lockConfirm?.isLockAccount
               ? <PrimaryButton onClick={toggleLock} loading={saving}>Mở khóa</PrimaryButton>
-              : <DangerButton onClick={toggleLock} loading={saving}>Khóa</DangerButton>
-            }
+              : <DangerButton onClick={toggleLock} loading={saving}>Khóa</DangerButton>}
           </div>
-        }
-      >
+        }>
         <p className="text-sm text-[#1C1C1E]">
-          Bạn có chắc muốn {lockConfirm?.isLockAccount ? 'mở khóa' : 'khóa'} user <span className="font-semibold">{lockConfirm?.username}</span>?
+          Bạn có chắc muốn {lockConfirm?.isLockAccount ? 'mở khóa' : 'khóa'} user{' '}
+          <span className="font-semibold">{lockConfirm?.username}</span>?
         </p>
-        {!lockConfirm?.isLockAccount && (
-          <p className="text-xs text-[#8E8878] mt-2">User bị khóa sẽ không thể đăng nhập hay thao tác: tạo sản phẩm, tạo danh mục, tạo đơn hàng,...</p>
-        )}
       </Modal>
 
       {/* Reset password */}
-      <Modal
-        open={!!pwdTarget}
-        onClose={() => !saving && setPwdTarget(null)}
-        title="Đổi mật khẩu"
-        size="sm"
+      <Modal open={!!pwdTarget} onClose={() => !saving && setPwdTarget(null)}
+        title="Đổi mật khẩu" size="sm"
         footer={
           <div className="flex justify-end gap-2">
             <SecondaryButton onClick={() => setPwdTarget(null)} disabled={saving}>Hủy</SecondaryButton>
             <PrimaryButton onClick={submitPwd} loading={saving}>Xác nhận</PrimaryButton>
           </div>
-        }
-      >
-        <p className="text-sm text-[#1C1C1E] mb-3">
-          User: <span className="font-semibold">@{pwdTarget?.username}</span>
-        </p>
+        }>
+        <p className="text-sm text-[#1C1C1E] mb-3">User: <span className="font-semibold">@{pwdTarget?.username}</span></p>
         <Field label="Mật khẩu mới" required hint="Tối thiểu 6 ký tự">
-          <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} className={inputCls} />
+          <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} className={inputCls} />
         </Field>
       </Modal>
     </div>
   );
 }
 
-// ─── Form ─────────────────────────────────────────────────────────────────────
+// ── UserFormModal ─────────────────────────────────────────────────────────────
 function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
-  const [form, setForm] = useState(() => ({
+  const availableRoles = currentUserRole === 'OWNER' ? ROLE_CONFIG : ADMIN_ROLES;
+
+  // Khởi tạo selectedRoles từ user đang edit (dùng roles[] nếu có, fallback role đơn)
+  const initRoles = () => {
+    if (editing) {
+      if (editing.roles?.length) return [...editing.roles];
+      if (editing.role) return [editing.role];
+    }
+    return ['SELLER'];
+  };
+
+  const [selectedRoles, setSelectedRoles] = useState(initRoles);
+  const [form, setForm] = useState({
     username: editing?.username || '',
     password: '',
     fullName: editing?.fullName || '',
     email: editing?.email || '',
     phoneNumber: editing?.phoneNumber || '',
-    role: editing?.role || 'SELLER',
-    warehouseId: editing?.warehouseId || '',
-  }));
+    warehouseId: editing?.warehouseId ? String(editing.warehouseId) : '',
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [warehouses, setWarehouses] = useState([]);
 
   useEffect(() => {
     import('../../api/adminApi').then(({ adminWarehouseApi }) => {
-      adminWarehouseApi.list().then(whs => setWarehouses(whs || [])).catch(() => {});
+      adminWarehouseApi.list().then(whs => setWarehouses(whs || [])).catch(() => { });
     });
   }, []);
 
-  const needsWarehouse = form.role === 'WAREHOUSE' || form.role === 'SUPER_WAREHOUSE';
-  // OWNER được tạo tất cả; ADMIN chỉ tạo từ ADMIN trở xuống
-  const availableRoles = currentUserRole === 'OWNER' ? OWNER_ROLES : ADMIN_ROLES;
+  const needsWarehouse = selectedRoles.includes('WAREHOUSE') || selectedRoles.includes('SUPER_WAREHOUSE');
 
   const submit = async (e) => {
     e.preventDefault();
@@ -361,21 +386,21 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
     if (!editing && (!form.username || !form.password || !form.fullName)) {
       setErr('Username, password, họ tên là bắt buộc'); return;
     }
+    if (selectedRoles.length === 0) {
+      setErr('Phải chọn ít nhất 1 quyền'); return;
+    }
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        roles: selectedRoles,                              // gửi mảng roles
+        role: selectedRoles[0],                           // role chính = đầu tiên
+        warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
+      };
       if (editing) {
-        await adminUserApi.update(editing.id, {
-          fullName: form.fullName,
-          email: form.email,
-          phoneNumber: form.phoneNumber,
-          role: form.role,
-          warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
-        });
+        await adminUserApi.update(editing.id, payload);
       } else {
-        await adminUserApi.create({
-          ...form,
-          warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
-        });
+        await adminUserApi.create(payload);
       }
       onSaved();
     } catch (e) {
@@ -384,9 +409,7 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
+    <Modal open={open} onClose={onClose}
       title={editing ? `Sửa user: @${editing.username}` : 'Thêm user mới'}
       size="md"
       footer={
@@ -394,39 +417,46 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
           <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
           <PrimaryButton onClick={submit} loading={saving}>{editing ? 'Cập nhật' : 'Tạo user'}</PrimaryButton>
         </div>
-      }
-    >
-      <form onSubmit={submit} className="space-y-3">
+      }>
+      <form onSubmit={submit} className="space-y-4">
         {err && <div className="bg-red-50 text-red-700 text-sm p-3 rounded-xl">{err}</div>}
 
         {!editing && (
           <>
             <Field label="Username" required>
-              <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className={inputCls} />
+              <input value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} className={inputCls} />
             </Field>
             <Field label="Password" required hint="Tối thiểu 6 ký tự">
-              <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inputCls} />
+              <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className={inputCls} />
             </Field>
           </>
         )}
 
         <Field label="Họ tên" required={!editing}>
-          <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} className={inputCls} />
+          <input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} className={inputCls} />
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Email">
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputCls} />
+            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} />
           </Field>
           <Field label="Số điện thoại">
-            <input value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} className={inputCls} />
+            <input value={form.phoneNumber} onChange={e => setForm({ ...form, phoneNumber: e.target.value })} className={inputCls} />
           </Field>
         </div>
 
-        <Field label="Quyền" required>
-          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputCls}>
-            {ROLE_CONFIG.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
+        {/* Multi-role picker */}
+        <Field label="Quyền" required hint="Có thể chọn nhiều quyền cùng lúc">
+          <RolePicker
+            selected={selectedRoles}
+            onChange={setSelectedRoles}
+            availableRoles={availableRoles}
+          />
+          {selectedRoles.length > 1 && (
+            <p className="text-xs text-[#8E8878] mt-1.5">
+              Khi đăng nhập, user sẽ được chọn role muốn sử dụng trong phiên đó.
+            </p>
+          )}
         </Field>
 
         {needsWarehouse && (

@@ -6,13 +6,14 @@ import {
   LogOut, Menu, X, ChevronRight,
 } from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
+import ProfileButton from '../common/ProfileButton';
 
 const navItems = [
-  { to: '/operator/categories',  label: 'Danh mục',      icon: Layers },
-  { to: '/operator/ingredients', label: 'Nguyên liệu',   icon: Leaf },
-  { to: '/operator/products',    label: 'Sản phẩm',      icon: Package },
-  { to: '/operator/batches',     label: 'Phiếu của tôi', icon: ClipboardList },
-  { to: '/operator/landingpage',  label: 'Landing Page',  icon: Globe },
+  { to: '/operator/categories', label: 'Danh mục', icon: Layers },
+  { to: '/operator/ingredients', label: 'Nguyên liệu', icon: Leaf },
+  { to: '/operator/products', label: 'Sản phẩm', icon: Package },
+  { to: '/operator/batches', label: 'Phiếu của tôi', icon: ClipboardList },
+  { to: '/operator/landingpage', label: 'Landing Page', icon: Globe },
 ];
 
 export default function OperatorLayout() {
@@ -43,20 +44,6 @@ export default function OperatorLayout() {
             <button className="lg:hidden text-white/50 hover:text-white" onClick={() => setSidebarOpen(false)}>
               <X size={18} />
             </button>
-          </div>
-        </div>
-
-        <div className="px-4 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">
-                {user?.fullName?.[0] || user?.username?.[0] || 'O'}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user?.fullName || user?.username}</p>
-              <p className="text-[#8E8878] text-xs">Nhập liệu</p>
-            </div>
           </div>
         </div>
 
@@ -97,6 +84,8 @@ export default function OperatorLayout() {
         </header>
 
         <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
+          <ProfileButton />
+          <div className="w-px h-5 bg-black/10" />
           <NotificationBell role={user?.role} token={token} />
         </div>
 

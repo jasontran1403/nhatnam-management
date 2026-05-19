@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Warehouse as WarehouseIcon, Plus, Edit2, Power, Truck, Store, Package } from 'lucide-react';
 import { adminWarehouseApi } from '../../api/adminApi';
 import { Badge } from '../../components/admin/Badge';
@@ -19,6 +19,8 @@ import {
 
 export default function AdminWarehouses() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const rolePrefix = pathname.startsWith('/owner') ? '/owner' : '/admin';
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +73,7 @@ export default function AdminWarehouses() {
           {items.map((w) => (
             <div key={w.id}
               className={`bg-white rounded-2xl border border-black/5 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer ${!w.active ? 'opacity-60' : ''}`}
-              onClick={() => navigate(`/admin/warehouses/${w.id}/stock`)}>
+              onClick={() => navigate(`${rolePrefix}/warehouses/${w.id}/stock`)}>
               <div className="flex items-start justify-between gap-3">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ${w.type === 'TRANSIT' ? 'bg-blue-50 text-blue-600 ring-blue-200' : 'bg-[#C9A84C]/10 text-[#C9A84C] ring-[#C9A84C]/20'}`}>
                   {w.type === 'TRANSIT' ? <Truck size={22} /> : <Store size={22} />}

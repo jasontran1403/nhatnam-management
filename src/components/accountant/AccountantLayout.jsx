@@ -1,12 +1,19 @@
+// src/components/accountant/AccountantLayout.jsx
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, ClipboardList, LogOut, Menu, X, ChevronRight, Users } from 'lucide-react';
+import {
+  LayoutDashboard, ClipboardList, LogOut, Menu, X, ChevronRight,
+  Users, Building2,
+} from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
+import ProfileButton from '../common/ProfileButton';
 
+// ACCOUNTANT thường: Dashboard, Đơn Hàng, Khách hàng, Nhà cung cấp
+// KHÔNG có "Phiếu nhập kho" — chỉ SUPER_ACCOUNTANT mới có quyền đó
 const navItems = [
-  { to: '/accountant/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/accountant/orders',    label: 'Đơn Hàng',   icon: ClipboardList   },
+  { to: '/accountant/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/accountant/orders', label: 'Đơn Hàng', icon: ClipboardList },
   { to: '/accountant/customers', label: 'Khách hàng', icon: Users },
 ];
 
@@ -41,19 +48,7 @@ export default function AccountantLayout() {
           </div>
         </div>
 
-        <div className="px-4 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">
-                {user?.fullName?.[0] || user?.username?.[0] || 'K'}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user?.fullName || user?.username || 'Kế toán'}</p>
-              <p className="text-[#8E8878] text-xs">Kế toán</p>
-            </div>
-          </div>
-        </div>
+        
 
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="text-[#8E8878] text-xs uppercase tracking-wider px-3 mb-2">Menu</p>
@@ -94,6 +89,8 @@ export default function AccountantLayout() {
         </header>
 
         <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
+          <ProfileButton />
+          <div className="w-px h-5 bg-black/10" />
           <NotificationBell role={user?.role} token={token} />
         </div>
 

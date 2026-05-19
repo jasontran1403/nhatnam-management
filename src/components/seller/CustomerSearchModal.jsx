@@ -362,7 +362,13 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
         ok = false;
       }
     } else {
-      // RETAIL: email optional — chỉ validate format nếu có nhập
+      // RETAIL: bắt buộc phải có tên HOẶC SĐT
+      if (!form.name.trim() && !form.phone.trim()) {
+        errs.name = 'Nhập tên hoặc số điện thoại';
+        errs.phone = 'Nhập tên hoặc số điện thoại';
+        ok = false;
+      }
+      // Email optional — chỉ validate format nếu có nhập
       if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
     }
 

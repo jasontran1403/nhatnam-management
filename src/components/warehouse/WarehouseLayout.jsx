@@ -7,12 +7,13 @@ import {
   Warehouse, ClipboardList, History,
   LogOut, Menu, X, ChevronRight, Leaf, Truck
 } from 'lucide-react';
+import ProfileButton from '../common/ProfileButton';
 
 const navItems = [
-  { to: '/warehouse/management',    label: 'Quản lý kho',     icon: Warehouse },
-  { to: '/warehouse/operations',    label: 'Thao tác',        icon: ClipboardList },
-  { to: '/warehouse/history',       label: 'Lịch sử',         icon: History },
-  { to: '/warehouse/orders',        label: 'Đơn hàng',        icon: Truck },
+  { to: '/warehouse/management', label: 'Quản lý kho', icon: Warehouse },
+  { to: '/warehouse/operations', label: 'Thao tác', icon: ClipboardList },
+  { to: '/warehouse/history', label: 'Lịch sử', icon: History },
+  { to: '/warehouse/orders', label: 'Đơn hàng', icon: Truck },
 ];
 
 export default function WarehouseLayout() {
@@ -51,23 +52,6 @@ export default function WarehouseLayout() {
             <button className="lg:hidden text-white/50 hover:text-white" onClick={() => setSidebarOpen(false)}>
               <X size={18} />
             </button>
-          </div>
-        </div>
-
-        {/* User info */}
-        <div className="px-4 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">
-                {(user?.fullName?.[0] || user?.username?.[0] || 'W').toUpperCase()}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">
-                {user?.fullName || user?.username || 'Warehouse'}
-              </p>
-              <p className="text-[#8E8878] text-xs truncate">Quản lý kho</p>
-            </div>
           </div>
         </div>
 
@@ -122,6 +106,8 @@ export default function WarehouseLayout() {
         </header>
 
         <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
+          <ProfileButton />
+          <div className="w-px h-5 bg-black/10" />
           <NotificationBell role={user?.role} token={token} />
         </div>
 

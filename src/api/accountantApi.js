@@ -66,3 +66,31 @@ export const accountantCustomerApi = {
   getOrders: (customerId) =>
     api.get(`/api/accountant/customers/${customerId}/orders`).then(unwrap),
 };
+
+// ─── Feature 1: Nhà cung cấp (Supplier) ──────────────────────────────────────
+export const accountantSupplierApi = {
+  /** Danh sách đầy đủ (dùng cho dropdown) */
+  list: () => api.get('/api/accountant/suppliers/list'),
+
+  /** Tìm kiếm / phân trang */
+  search: (params) => api.get('/api/accountant/suppliers', { params }),
+
+  create: (data) => api.post('/api/accountant/suppliers', data),
+
+  update: (id, data) => api.put(`/api/accountant/suppliers/${id}`, data),
+
+  deactivate: (id) => api.delete(`/api/accountant/suppliers/${id}`),
+};
+
+// ─── Feature 2: Phiếu nhập kho chờ giá vốn ───────────────────────────────────
+export const accountantWarehouseApi = {
+  /** Danh sách phiếu nhập chờ nhập giá vốn */
+  getPendingCost: () => api.get('/api/accountant/warehouse-receipts/pending-cost'),
+
+  /** Chi tiết phiếu (kèm items) */
+  getDetail: (id) => api.get(`/api/accountant/warehouse-receipts/${id}`),
+
+  /** Xác nhận giá vốn + cộng tồn kho */
+  confirmCost: (id, data) =>
+    api.post(`/api/accountant/warehouse-receipts/${id}/confirm-cost`, data),
+};

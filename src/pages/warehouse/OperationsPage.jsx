@@ -35,22 +35,19 @@ export default function OperationsPage() {
 // ── Hook lấy kho của user hiện tại ───────────────────────────────────────────
 function useMyWarehouse() {
   const { user } = useAuth();
-  const [myWarehouse, setMyWarehouse]   = useState(null);  // { id, name, type }
+  const [myWarehouse, setMyWarehouse]     = useState(null);
   const [allWarehouses, setAllWarehouses] = useState([]);
-  const [stocks, setStocks]             = useState([]);
+  const [stocks, setStocks]               = useState([]);
 
   useEffect(() => {
     warehouseApi.getAll().then(res => {
       const list = res.data || [];
       setAllWarehouses(list);
-
-      // Lấy warehouseId từ login response (AuthResponse đã trả về warehouseId)
       const assignedId = user?.warehouseId;
       if (assignedId) {
         const found = list.find(w => w.id === Number(assignedId));
         if (found) setMyWarehouse(found);
       } else {
-        // Fallback: ADMIN/OWNER không gắn kho → dùng kho đầu tiên loại SALE
         const firstSale = list.find(w => w.type === 'SALE') || list[0];
         if (firstSale) setMyWarehouse(firstSale);
       }
@@ -66,7 +63,8 @@ function useMyWarehouse() {
 }
 
 function emptyRow(mode) {
-  if (mode === 'import') return { ingredientId: '', quantity: '', expiryDate: '', costPrice: '' };
+  // import: KHÔNG có costPrice — giá vốn do SUPER_ACCOUNTANT nhập sau
+  if (mode === 'import') return { ingredientId: '', quantity: '', expiryDate: '' };
   if (mode === 'adjust') return { ingredientId: '', physicalQty: '' };
   return { ingredientId: '', quantity: '' };
 }
@@ -98,6 +96,8 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
 }
 
 // ── NHẬP KHO ─────────────────────────────────────────────────────────────────
+// Nhân viên kho chỉ nhập: nguyên liệu, số lượng, ngày hết hạn.
+// Giá vốn sẽ do SUPER_ACCOUNTANT nhập và xác nhận sau — tồn kho chưa được cộng.
 function ImportForm() {
   const { myWarehouse, stocks } = useMyWarehouse();
   const [refCode, setRefCode] = useState('');
@@ -119,15 +119,18 @@ function ImportForm() {
     setLoading(true);
     try {
       const res = await warehouseApi.import({
-        warehouseId: myWarehouse.id, referenceCode: refCode, note, imageUrls: images,
+        warehouseId: myWarehouse.id,
+        referenceCode: refCode,
+        note,
+        imageUrls: images,
         items: validRows.map(r => ({
           ingredientId: r.ingredientId,
           quantity:     Number(r.quantity),
           expiryDate:   r.expiryDate || null,
-          costPrice:    r.costPrice ? Number(r.costPrice) : null,
+          // costPrice không gửi — để SUPER_ACCOUNTANT nhập sau
         })),
       });
-      setSuccess(`Nhập kho thành công! Mã phiếu: ${res.data.receiptCode}`);
+      setSuccess(`Phiếu nhập đã tạo! Mã phiếu: ${res.data.receiptCode} — Chờ kế toán trưởng nhập giá vốn để cộng tồn kho.`);
       setRows([emptyRow('import')]); setRefCode(''); setNote(''); setImages([]);
     } catch (e) {
       setError(e?.response?.data?.message || e?.message || 'Có lỗi xảy ra');
@@ -137,6 +140,17 @@ function ImportForm() {
   return (
     <FormShell title="📥 Phiếu nhập kho" warehouseName={myWarehouse?.name}
                onSubmit={handleSubmit} loading={loading} error={error} success={success}>
+
+      {/* Thông báo quy trình */}
+      <div style={{
+        background: 'rgba(201,168,76,.08)', border: '1px solid rgba(201,168,76,.3)',
+        borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+        fontSize: 12, color: '#92681a', lineHeight: 1.5,
+      }}>
+        ℹ️ Sau khi tạo phiếu, <strong>Kế toán trưởng</strong> sẽ nhập giá vốn và xác nhận.
+        Tồn kho sẽ được cộng sau khi kế toán trưởng xác nhận.
+      </div>
+
       <div className="wh-form-row">
         <div>
           <label className="wh-label">Mã phiếu NCC</label>
@@ -157,8 +171,9 @@ function ImportForm() {
       </div>
       <hr className="wh-sep" />
       <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>Danh sách nguyên liệu nhập</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 8, marginBottom: 6, paddingLeft: 12, fontSize: 12, color: 'var(--wh-muted)' }}>
-        <span>Nguyên liệu</span><span>Số lượng</span><span>Giá vốn (đ)</span><span>Hạn sử dụng</span><span></span>
+      {/* Header: bỏ cột "Giá vốn" */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 6, paddingLeft: 12, fontSize: 12, color: 'var(--wh-muted)' }}>
+        <span>Nguyên liệu</span><span>Số lượng</span><span>Hạn sử dụng</span><span></span>
       </div>
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
@@ -261,7 +276,6 @@ function TransferForm() {
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
 
-  // Kho đích: loại bỏ kho hiện tại của user
   const destWarehouses = allWarehouses.filter(w => w.id !== myWarehouse?.id);
 
   const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
@@ -293,8 +307,6 @@ function TransferForm() {
   return (
     <FormShell title="🔄 Phiếu chuyển kho" warehouseName={myWarehouse?.name}
                onSubmit={handleSubmit} loading={loading} error={error} success={success}>
-
-      {/* Kho nguồn: hiển thị label, không cho chọn */}
       <div className="wh-form-row cols-2">
         <div>
           <label className="wh-label">Kho nguồn</label>
@@ -302,8 +314,6 @@ function TransferForm() {
             {myWarehouse?.name || '—'}
           </div>
         </div>
-
-        {/* Kho đích: chọn từ danh sách, loại bỏ kho hiện tại */}
         <div>
           <label className="wh-label">Kho đích <span style={{ color: 'var(--wh-danger)' }}>*</span></label>
           <select className="wh-select" value={toWh} onChange={e => setToWh(Number(e.target.value))}>
@@ -316,8 +326,6 @@ function TransferForm() {
           </select>
         </div>
       </div>
-
-      {/* Preview chiều chuyển */}
       {toWh && myWarehouse && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
@@ -330,7 +338,6 @@ function TransferForm() {
           <span style={{ fontWeight: 600 }}>{toWhName}</span>
         </div>
       )}
-
       <div className="wh-form-row">
         <div>
           <label className="wh-label">Ghi chú</label>

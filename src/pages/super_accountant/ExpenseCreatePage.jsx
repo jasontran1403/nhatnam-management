@@ -1,11 +1,9 @@
 // src/pages/super_accountant/ExpenseCreatePage.jsx
-// Change 5: SUPER_ACCOUNTANT / SUPER_WAREHOUSE tạo phiếu chi
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { expenseApi } from '../../api/services';
+import { accountantSupplierApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
-import { Plus, Trash2, Upload, X, Receipt, Send } from 'lucide-react';
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import { Plus, Trash2, Upload, X, Receipt, Send, Building2, ChevronDown } from 'lucide-react';
 
 function formatVND(n) {
   return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ';
@@ -16,20 +14,45 @@ function parseVND(s) {
 
 export default function ExpenseCreatePage() {
   const toast = useToast();
-  const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
 
-  const [vendorName, setVendorName] = useState('');
-  const [reason, setReason] = useState('');
+  const [vendorName, setVendorName]           = useState('');
+  const [vendorSearchMode, setVendorSearchMode] = useState('select');
+  const [suppliers, setSuppliers]             = useState([]);
+  const [supplierLoading, setSupplierLoading] = useState(false);
+  const [supplierDropOpen, setSupplierDropOpen] = useState(false);
+  const [supplierSearch, setSupplierSearch]   = useState('');
+
+  const [reason, setReason]                   = useState('');
   const [requestedByName, setRequestedByName] = useState('');
-  const [items, setItems] = useState([{ id: 1, itemName: '', amount: '', note: '' }]);
-  const [images, setImages] = useState([]); // { file, url, uploading, uploadedUrl }
-  const [submitting, setSubmitting] = useState(false);
-  const [vouchers, setVouchers] = useState([]);
-  const [loadingList, setLoadingList] = useState(false);
-  const [listLoaded, setListLoaded] = useState(false);
+  const [items, setItems]                     = useState([{ id: 1, itemName: '', amount: '', note: '' }]);
+  const [images, setImages]                   = useState([]);
+  const [submitting, setSubmitting]           = useState(false);
+  const [vouchers, setVouchers]               = useState([]);
+  const [loadingList, setLoadingList]         = useState(false);
+  const [listLoaded, setListLoaded]           = useState(false);
   const fileRef = useRef();
 
-  const addItem = () => setItems(prev => [...prev, { id: Date.now(), itemName: '', amount: '', note: '' }]);
+  // Load danh sách nhà cung cấp — dùng đúng method .list()
+  useEffect(() => {
+    (async () => {
+      setSupplierLoading(true);
+      try {
+        const res = await accountantSupplierApi.list();  // ← đúng method
+        setSuppliers(res.data?.data || []);
+      } catch (e) {
+        console.error('Load suppliers error:', e);
+      } finally {
+        setSupplierLoading(false);
+      }
+    })();
+  }, []);
+
+  const filteredSuppliers = suppliers.filter(s =>
+    s.name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    (s.phone && s.phone.includes(supplierSearch))
+  );
+
+  const addItem    = () => setItems(prev => [...prev, { id: Date.now(), itemName: '', amount: '', note: '' }]);
   const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
   const updateItem = (id, key, val) => setItems(prev => prev.map(i => i.id === id ? { ...i, [key]: val } : i));
 
@@ -46,7 +69,7 @@ export default function ExpenseCreatePage() {
         const uploaded = res.data?.data?.imageUrl || res.data?.imageUrl || '';
         if (!uploaded) throw new Error('Không nhận được đường dẫn ảnh');
         setImages(prev => prev.map(img => img.id === tmp.id ? { ...img, uploading: false, uploadedUrl: uploaded } : img));
-      } catch(err) {
+      } catch (err) {
         setImages(prev => prev.filter(img => img.id !== tmp.id));
         toast('Lỗi upload ảnh: ' + (err?.response?.data?.message || err?.message || 'Unknown'), 'error');
       }
@@ -74,166 +97,244 @@ export default function ExpenseCreatePage() {
       toast('Phiếu chi đã gửi, chờ ADMIN/OWNER duyệt', 'success');
       setVendorName(''); setReason(''); setRequestedByName('');
       setItems([{ id: 1, itemName: '', amount: '', note: '' }]);
-      setImages([]);
+      setImages([]); setSupplierSearch('');
       if (listLoaded) loadMyVouchers();
-    } catch(e) { toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu', 'error'); }
-    finally { setSubmitting(false); }
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const loadMyVouchers = async () => {
     setLoadingList(true);
     try {
-      const res = await expenseApi.listMy({ page: 0, size: 30 });
+      const res = await expenseApi.listMy({ page: 0, size: 20 });
       setVouchers(res.data?.data?.content || []);
       setListLoaded(true);
-    } catch { toast('Không thể tải danh sách', 'error'); }
-    finally { setLoadingList(false); }
+    } catch (e) {
+      toast('Lỗi tải danh sách', 'error');
+    } finally {
+      setLoadingList(false);
+    }
   };
-
-  const STATUS_CLS = {
-    PENDING:  'bg-amber-50 text-amber-700 border-amber-200',
-    APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    REJECTED: 'bg-red-50 text-red-600 border-red-200',
-  };
-  const STATUS_LABEL = { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
+    // full width — bỏ max-w-3xl, dùng toàn bộ chiều rộng
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5">
+
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-[#C9A84C]/10 rounded-xl"><Receipt size={22} className="text-[#C9A84C]" /></div>
+        <Receipt size={24} className="text-[#C9A84C]" />
         <div>
-          <h1 className="text-xl font-bold text-[#1C1C1E]">Tạo phiếu chi phí</h1>
-          <p className="text-xs text-[#8E8878]">Người lập: <strong>{user?.fullName || user?.username}</strong></p>
+          <h1 className="text-2xl font-bold text-[#1C1C1E]">Tạo phiếu chi</h1>
+          <p className="text-sm text-[#8E8878]">Phiếu chi sẽ được gửi lên ADMIN/OWNER để duyệt</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#E8DDD0] p-5 space-y-4">
-        {/* Tên đơn vị */}
-        <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase block mb-1">Đơn vị thi công / Nhà cung cấp <span className="normal-case font-normal">(tùy chọn)</span></label>
-          <input value={vendorName} onChange={e => setVendorName(e.target.value)}
-            className="w-full border border-[#E8DDD0] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-            placeholder="Tên đơn vị..." />
-        </div>
+      {/* 2-col layout trên desktop */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
 
-        {/* Lý do */}
-        <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase block mb-1">Lý do chi <span className="text-red-400">*</span></label>
-          <textarea value={reason} onChange={e => setReason(e.target.value)}
-            className="w-full border border-[#E8DDD0] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 min-h-[80px]"
-            placeholder="Mô tả lý do chi phí..." />
-        </div>
+        {/* Cột trái: Form tạo phiếu (2/3) */}
+        <div className="xl:col-span-2 bg-white rounded-2xl border border-black/5 shadow-sm p-5 space-y-4">
 
-        {/* Người yêu cầu */}
-        <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase block mb-1">Người yêu cầu <span className="normal-case font-normal">(mặc định là bạn)</span></label>
-          <input value={requestedByName} onChange={e => setRequestedByName(e.target.value)}
-            className="w-full border border-[#E8DDD0] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-            placeholder="Tên người yêu cầu..." />
-        </div>
+          {/* Nhà cung cấp */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-semibold text-[#1C1C1E] flex items-center gap-1.5">
+                <Building2 size={14} className="text-[#C9A84C]" /> Nhà cung cấp / Đơn vị
+              </label>
+              <button
+                onClick={() => { setVendorSearchMode(m => m === 'select' ? 'manual' : 'select'); setVendorName(''); setSupplierSearch(''); }}
+                className="text-xs text-[#C9A84C] hover:underline"
+              >
+                {vendorSearchMode === 'select' ? '+ Nhập thủ công' : '← Chọn từ danh sách'}
+              </button>
+            </div>
 
-        {/* Danh sách khoản chi */}
-        <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase block mb-2">Khoản chi <span className="text-red-400">*</span></label>
-          <div className="space-y-2">
-            {items.map((item, idx) => (
-              <div key={item.id} className="flex gap-2 items-start">
-                <span className="text-xs text-[#8E8878] mt-2.5 w-5 shrink-0">{idx + 1}.</span>
-                <input value={item.itemName} onChange={e => updateItem(item.id, 'itemName', e.target.value)}
-                  className="flex-1 border border-[#E8DDD0] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-                  placeholder="Tên khoản chi..." />
-                <input value={item.amount} onChange={e => updateItem(item.id, 'amount', e.target.value.replace(/[^0-9]/g, ''))}
-                  className="w-32 border border-[#E8DDD0] rounded-xl px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-                  placeholder="Số tiền" />
-                {items.length > 1 && (
-                  <button onClick={() => removeItem(item.id)} className="p-2 text-red-400 hover:text-red-600 mt-0.5">
-                    <Trash2 size={14} />
-                  </button>
+            {vendorSearchMode === 'select' ? (
+              <div className="relative">
+                <div
+                  onClick={() => setSupplierDropOpen(o => !o)}
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-black/10 bg-white cursor-pointer hover:border-[#C9A84C] transition"
+                >
+                  <span className={vendorName ? 'text-[#1C1C1E] text-sm' : 'text-[#8E8878] text-sm'}>
+                    {vendorName || (supplierLoading ? 'Đang tải...' : suppliers.length === 0 ? 'Chưa có nhà cung cấp' : 'Chọn nhà cung cấp...')}
+                  </span>
+                  <ChevronDown size={16} className={`text-[#8E8878] transition-transform ${supplierDropOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {supplierDropOpen && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-black/10 rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-black/5">
+                      <input
+                        autoFocus
+                        value={supplierSearch}
+                        onChange={e => setSupplierSearch(e.target.value)}
+                        placeholder="Tìm kiếm..."
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      <button
+                        onClick={() => { setVendorName(''); setSupplierDropOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-[#8E8878] hover:bg-[#FAF7F2] transition"
+                      >
+                        — Không chọn —
+                      </button>
+                      {filteredSuppliers.length === 0 && supplierSearch && (
+                        <p className="text-center py-3 text-xs text-[#8E8878]">Không tìm thấy</p>
+                      )}
+                      {filteredSuppliers.map(s => (
+                        <button key={s.id}
+                          onClick={() => { setVendorName(s.name); setSupplierDropOpen(false); setSupplierSearch(''); }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-[#FAF7F2] transition"
+                        >
+                          <p className="text-sm font-medium text-[#1C1C1E]">{s.name}</p>
+                          {s.phone && <p className="text-xs text-[#8E8878]">{s.phone}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            ))}
+            ) : (
+              <input
+                value={vendorName}
+                onChange={e => setVendorName(e.target.value)}
+                placeholder="Nhập tên nhà cung cấp / đơn vị thi công..."
+                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+              />
+            )}
           </div>
-          <button onClick={addItem} className="mt-2 flex items-center gap-1 text-xs text-[#C9A84C] hover:text-[#B8973B] font-medium">
-            <Plus size={13} /> Thêm khoản chi
-          </button>
-          {totalAmount > 0 && (
-            <div className="mt-3 text-right text-sm font-bold text-[#C9A84C]">
+
+          {/* Lý do chi */}
+          <div>
+            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Lý do chi *</label>
+            <input value={reason} onChange={e => setReason(e.target.value)}
+              placeholder="Mô tả lý do chi tiết..."
+              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+          </div>
+
+          {/* Người yêu cầu */}
+          <div>
+            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Người yêu cầu</label>
+            <input value={requestedByName} onChange={e => setRequestedByName(e.target.value)}
+              placeholder="Tên người yêu cầu (nếu khác người lập phiếu)..."
+              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+          </div>
+
+          {/* Khoản chi */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-[#1C1C1E]">Các khoản chi *</label>
+              <button onClick={addItem} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline font-semibold">
+                <Plus size={13} /> Thêm khoản
+              </button>
+            </div>
+            <div className="space-y-2">
+              {items.map((item, idx) => (
+                <div key={item.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input value={item.itemName} onChange={e => updateItem(item.id, 'itemName', e.target.value)}
+                      placeholder={`Khoản chi ${idx + 1}...`}
+                      className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white" />
+                    <input
+                      value={item.amount ? new Intl.NumberFormat('vi-VN').format(parseVND(item.amount)) : ''}
+                      onChange={e => updateItem(item.id, 'amount', String(parseVND(e.target.value)))}
+                      placeholder="Số tiền"
+                      className="w-36 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white text-right" />
+                    {items.length > 1 && (
+                      <button onClick={() => removeItem(item.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <input value={item.note} onChange={e => updateItem(item.id, 'note', e.target.value)}
+                    placeholder="Ghi chú (tuỳ chọn)..."
+                    className="w-full px-3 py-2 rounded-lg border border-black/10 text-xs focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white" />
+                </div>
+              ))}
+            </div>
+            <div className="text-right mt-2 text-sm font-bold text-[#1C1C1E]">
               Tổng: {formatVND(totalAmount)}
+            </div>
+          </div>
+
+          {/* Ảnh chứng từ */}
+          <div>
+            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Ảnh chứng từ</label>
+            <div className="flex flex-wrap gap-2">
+              {images.map(img => (
+                <div key={img.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-black/10">
+                  <img src={img.url} alt="" className="w-full h-full object-cover" />
+                  {img.uploading && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    </div>
+                  )}
+                  {!img.uploading && (
+                    <button onClick={() => setImages(p => p.filter(i => i.id !== img.id))}
+                      className="absolute top-1 right-1 p-0.5 bg-red-500 text-white rounded-full">
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => fileRef.current?.click()}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-black/20 flex flex-col items-center justify-center gap-1 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition text-[#8E8878] hover:text-[#C9A84C]">
+                <Upload size={18} />
+                <span className="text-xs font-medium">Thêm ảnh</span>
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={handleImageChange} />
+            </div>
+          </div>
+
+          <button onClick={handleSubmit} disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#C9A84C] text-white font-bold hover:bg-[#B8923E] transition disabled:opacity-50">
+            {submitting ? <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Send size={18} />}
+            {submitting ? 'Đang gửi...' : 'Gửi phiếu chi'}
+          </button>
+        </div>
+
+        {/* Cột phải: Lịch sử phiếu chi (1/3) */}
+        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-[#1C1C1E]">Phiếu chi của tôi</h2>
+            <button onClick={loadMyVouchers} disabled={loadingList}
+              className="text-sm text-[#C9A84C] hover:underline disabled:opacity-50">
+              {loadingList ? 'Đang tải...' : 'Tải danh sách'}
+            </button>
+          </div>
+
+          {vouchers.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-[#8E8878] text-center py-4">Nhấn "Tải danh sách" để xem phiếu của bạn</p>
+            </div>
+          ) : (
+            <div className="space-y-2 overflow-y-auto flex-1">
+              {vouchers.map(v => (
+                <div key={v.id} className="flex items-center justify-between p-3 bg-[#FAF7F2] rounded-xl text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono font-bold text-[#C9A84C] text-xs">{v.voucherCode}</p>
+                    <p className="text-[#1C1C1E] font-medium truncate">{v.reason}</p>
+                    {v.vendorName && <p className="text-xs text-[#8E8878] truncate">{v.vendorName}</p>}
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p className="font-bold text-[#1C1C1E]">{formatVND(v.totalAmount)}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      v.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                      v.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {v.status === 'APPROVED' ? 'Đã duyệt' : v.status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
-
-        {/* Ảnh chứng từ */}
-        <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase block mb-2">Ảnh chứng từ <span className="normal-case font-normal">(tùy chọn)</span></label>
-          <div className="flex flex-wrap gap-2">
-            {images.map(img => (
-              <div key={img.id} className="relative w-20 h-20">
-                <img src={img.url} className="w-full h-full object-cover rounded-xl border border-[#E8DDD0]" />
-                {img.uploading && (
-                  <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-                {!img.uploading && (
-                  <button onClick={() => setImages(prev => prev.filter(i => i.id !== img.id))}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white">
-                    <X size={10} />
-                  </button>
-                )}
-              </div>
-            ))}
-            <button onClick={() => fileRef.current?.click()}
-              className="w-20 h-20 border-2 border-dashed border-[#E8DDD0] rounded-xl flex flex-col items-center justify-center text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
-              <Upload size={16} />
-              <span className="text-[9px] mt-1">Tải ảnh</span>
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-          </div>
-        </div>
-      </div>
-
-      <button onClick={handleSubmit} disabled={submitting}
-        className="w-full py-3 bg-[#C9A84C] hover:bg-[#B8973B] disabled:opacity-60 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 transition-colors">
-        <Send size={16} />
-        {submitting ? 'Đang gửi...' : 'Gửi phiếu chi'}
-      </button>
-
-      {/* Danh sách phiếu của tôi */}
-      <div>
-        {!listLoaded
-          ? <button onClick={loadMyVouchers} className="text-sm text-[#C9A84C] hover:underline">
-              Xem phiếu chi đã tạo →
-            </button>
-          : loadingList ? <p className="text-sm text-[#8E8878]">Đang tải...</p>
-          : (
-            <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#E8DDD0] bg-[#FAF7F2]">
-                <h2 className="text-sm font-bold text-[#1C1C1E]">Phiếu chi của tôi</h2>
-              </div>
-              {vouchers.length === 0
-                ? <p className="p-4 text-sm text-[#8E8878]">Chưa có phiếu nào</p>
-                : vouchers.map(v => (
-                  <div key={v.id} className="px-4 py-3 border-b border-[#F0EBE3] last:border-0">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-xs font-mono text-[#C9A84C]">{v.voucherCode}</p>
-                        <p className="text-sm font-medium text-[#1C1C1E]">{v.reason}</p>
-                        {v.rejectReason && <p className="text-xs text-red-500 mt-0.5">Từ chối: {v.rejectReason}</p>}
-                      </div>
-                      <div className="text-right">
-                        <span className={`inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_CLS[v.status]}`}>
-                          {STATUS_LABEL[v.status]}
-                        </span>
-                        <p className="text-sm font-bold text-[#C9A84C] mt-1">{formatVND(v.totalAmount)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          )
-        }
       </div>
     </div>
   );

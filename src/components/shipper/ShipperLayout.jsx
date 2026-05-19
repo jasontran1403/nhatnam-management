@@ -45,22 +45,6 @@ export default function ShipperLayout() {
           </div>
         </div>
 
-        <div className="px-4 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">
-                {user?.fullName?.[0] || user?.username?.[0] || 'G'}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">
-                {user?.fullName || user?.username || 'Shipper'}
-              </p>
-              <p className="text-[#8E8878] text-xs truncate">Giao hàng</p>
-            </div>
-          </div>
-        </div>
-
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="text-[#8E8878] text-xs uppercase tracking-wider px-3 mb-2">Menu</p>
           {navItems.map(({ to, label, icon: Icon }) => (

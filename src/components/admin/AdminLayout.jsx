@@ -1,19 +1,22 @@
+// src/components/admin/AdminLayout.jsx
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, ShoppingCart, Users, UserCog,
-  Warehouse, Package, LogOut, Menu, X, FileText, Receipt,
+  Warehouse, Package, LogOut, Menu, X, FileText, Receipt, TrendingUp,
 } from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
+import ProfileButton from '../common/ProfileButton';
 
 const navItems = [
-  { to: '/admin/dashboard',   label: 'Dashboard',    icon: LayoutDashboard },
-  { to: '/admin/orders',      label: 'Đơn hàng',     icon: ShoppingCart },
-  { to: '/admin/customers',   label: 'Khách hàng',   icon: Users },
-  { to: '/admin/users',       label: 'Nhân viên',    icon: UserCog },
-  { to: '/admin/warehouses',  label: 'Kho hàng',     icon: Warehouse },
-  { to: '/admin/expenses',    label: 'Phiếu chi phí', icon: Receipt },
+  { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/admin/orders', label: 'Đơn hàng', icon: ShoppingCart },
+  { to: '/admin/customers', label: 'Khách hàng', icon: Users },
+  { to: '/admin/users', label: 'Nhân viên', icon: UserCog },
+  { to: '/admin/warehouses', label: 'Kho hàng', icon: Warehouse },
+  { to: '/admin/expenses', label: 'Phiếu chi phí', icon: Receipt },
+  { to: '/admin/sale-kpi', label: 'KPI Phòng Sale', icon: TrendingUp },
 ];
 
 export default function AdminLayout() {
@@ -44,20 +47,6 @@ export default function AdminLayout() {
             <button className="lg:hidden text-white/50 hover:text-white" onClick={() => setSidebarOpen(false)}>
               <X size={18} />
             </button>
-          </div>
-        </div>
-
-        <div className="px-4 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">
-                {user?.fullName?.[0] || user?.username?.[0] || 'A'}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user?.fullName || user?.username || 'Admin'}</p>
-              <p className="text-[#8E8878] text-xs truncate">Quản trị viên</p>
-            </div>
           </div>
         </div>
 
@@ -93,6 +82,8 @@ export default function AdminLayout() {
         </header>
 
         <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
+          <ProfileButton />
+          <div className="w-px h-5 bg-black/10" />
           <NotificationBell role={user?.role} token={token} />
         </div>
 

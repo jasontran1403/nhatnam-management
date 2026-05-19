@@ -32,7 +32,7 @@ export const adminDashboardApi = {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 export const adminOrderApi = {
-  list: (params) => api.get('/api/admin/orders', { params }).then(unwrap), // params: q, status, fromDate, toDate, customerId, productId
+  list: (params) => api.get('/api/admin/orders', { params }).then(unwrap),
   getById: (id) => api.get(`/api/admin/orders/${id}`).then(unwrap),
   cancel: (id, reason) => api.post(`/api/admin/orders/${id}/cancel`, { reason }).then(unwrap),
   extendDeadline: (orderId, days) =>
@@ -92,6 +92,11 @@ export const adminExpenseApi = {
 // ─── KPI Admin ───────────────────────────────────────────────────────────────
 export const adminKpiApi = {
   getPeriod: (periodKey) => api.get('/api/admin/kpi', { params: { periodKey } }).then(unwrap),
+};
+
+// ─── Feature 4: KPI Phòng Sale ────────────────────────────────────────────────
+export const adminSaleKpiApi = {
+  get: (params) => api.get('/api/admin/sale-kpi', { params }),
 };
 
 // ─── Warehouse Stock Detail ──────────────────────────────────────────────────

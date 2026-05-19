@@ -5,7 +5,7 @@ import { useToast } from '../../components/common/Toast';
 import { Plus, Edit2, Search, X, Leaf, ImagePlus } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
-const UNITS = ['kg', 'gram', 'liter', 'ml', 'piece', 'box', 'bag', 'bottle'];
+const UNITS = ['kg', 'gram', 'lít', 'ml', 'cái', 'hộp', 'túi', 'chai'];
 
 export default function OperatorIngredientsPage() {
   const toast = useToast();

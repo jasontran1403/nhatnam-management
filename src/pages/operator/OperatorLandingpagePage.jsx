@@ -247,6 +247,8 @@ function ProductForm({ initial, categories: categoriesProp, onSave, onCancel, sa
 }
 
 // ── EventManager: quản lý ảnh bento gallery ─────────────────────────────────
+// ── EventManager: quản lý ảnh bento gallery ─────────────────────────────────
+// Thay thế toàn bộ function EventManager trong OperatorLandingpagePage.jsx
 function EventManager() {
   const toast = useToast();
   const [events, setEvents]     = useState([]);
@@ -255,9 +257,17 @@ function EventManager() {
   const [deleting, setDeleting] = useState(null);
   const [form, setForm]         = useState(null); // null=closed, {}=create, obj=edit
   const [label, setLabel]       = useState('');
-  const [imgFile, setImgFile]   = useState(null);
-  const [imgPrev, setImgPrev]   = useState(null);
-  const fileRef = useRef(null);
+
+  // Multi-image state (chỉ dùng khi tạo mới)
+  const [imgFiles, setImgFiles] = useState([]); // File[]
+  const [imgPrevs, setImgPrevs] = useState([]); // string[] (object URLs)
+
+  // Single image state (chỉ dùng khi edit)
+  const [editImgFile, setEditImgFile] = useState(null);
+  const [editImgPrev, setEditImgPrev] = useState(null);
+
+  const fileRef     = useRef(null);
+  const editFileRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -270,28 +280,87 @@ function EventManager() {
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setForm({}); setLabel(''); setImgFile(null); setImgPrev(null); };
-  const openEdit   = (e) => { setForm(e); setLabel(e.eventLabel||''); setImgFile(null); setImgPrev(imgUrl(e.eventImgPath)); };
-  const closeForm  = () => { setForm(null); };
-
-  const handleImg = e => {
-    const f = e.target.files[0]; if (!f) return;
-    setImgFile(f); setImgPrev(URL.createObjectURL(f)); e.target.value = '';
+  const openCreate = () => {
+    setForm({});
+    setLabel('');
+    setImgFiles([]);
+    setImgPrevs([]);
   };
 
+  const openEdit = (e) => {
+    setForm(e);
+    setLabel(e.eventLabel || '');
+    setEditImgFile(null);
+    setEditImgPrev(imgUrl(e.eventImgPath));
+  };
+
+  const closeForm = () => {
+    setForm(null);
+    // Revoke object URLs để giải phóng bộ nhớ
+    imgPrevs.forEach(url => URL.revokeObjectURL(url));
+    setImgFiles([]);
+    setImgPrevs([]);
+  };
+
+  // Chọn nhiều ảnh (chỉ khi tạo mới)
+  const handleMultiImg = e => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    const newPrevs = files.map(f => URL.createObjectURL(f));
+    setImgFiles(prev => [...prev, ...files]);
+    setImgPrevs(prev => [...prev, ...newPrevs]);
+    e.target.value = '';
+  };
+
+  const removeImg = (idx) => {
+    URL.revokeObjectURL(imgPrevs[idx]);
+    setImgFiles(prev => prev.filter((_, i) => i !== idx));
+    setImgPrevs(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // Ảnh edit (1 ảnh)
+  const handleEditImg = e => {
+    const f = e.target.files[0]; if (!f) return;
+    setEditImgFile(f);
+    setEditImgPrev(URL.createObjectURL(f));
+    e.target.value = '';
+  };
+
+  // Lưu: tạo mới = nhiều event (1 ảnh/event), edit = cập nhật 1 event
   const handleSave = async () => {
-    if (!imgFile && !form?.id) { toast('Vui lòng chọn ảnh', 'warning'); return; }
-    setSaving(true);
-    try {
-      const fd = new FormData();
-      if (label) fd.append('eventLabel', label);
-      if (imgFile) fd.append('image', imgFile);
-      const h = { 'Content-Type': 'multipart/form-data' };
-      if (form?.id) { await api.put(`/api/operator/landingpage/events/${form.id}`, fd, { headers: h }); toast('Cập nhật thành công', 'success'); }
-      else           { await api.post('/api/operator/landingpage/events', fd, { headers: h }); toast('Thêm thành công', 'success'); }
-      closeForm(); load();
-    } catch(e) { toast(e?.response?.data?.message || 'Lỗi khi lưu', 'error'); }
-    finally { setSaving(false); }
+    const h = { 'Content-Type': 'multipart/form-data' };
+
+    if (form?.id) {
+      // ── EDIT: cập nhật 1 event ──────────────────────────────────────────
+      setSaving(true);
+      try {
+        const fd = new FormData();
+        if (label)        fd.append('eventLabel', label);
+        if (editImgFile)  fd.append('image', editImgFile);
+        await api.put(`/api/operator/landingpage/events/${form.id}`, fd, { headers: h });
+        toast('Cập nhật thành công', 'success');
+        closeForm(); load();
+      } catch (e) {
+        toast(e?.response?.data?.message || 'Lỗi khi lưu', 'error');
+      } finally { setSaving(false); }
+
+    } else {
+      // ── CREATE: tạo nhiều event song song, 1 ảnh mỗi event ─────────────
+      if (!imgFiles.length) { toast('Vui lòng chọn ít nhất 1 ảnh', 'warning'); return; }
+      setSaving(true);
+      try {
+        await Promise.all(imgFiles.map(file => {
+          const fd = new FormData();
+          if (label) fd.append('eventLabel', label);
+          fd.append('image', file);
+          return api.post('/api/operator/landingpage/events', fd, { headers: h });
+        }));
+        toast(`Đã thêm ${imgFiles.length} ảnh event`, 'success');
+        closeForm(); load();
+      } catch (e) {
+        toast(e?.response?.data?.message || 'Lỗi khi lưu', 'error');
+      } finally { setSaving(false); }
+    }
   };
 
   const handleDelete = async id => {
@@ -302,45 +371,45 @@ function EventManager() {
     finally { setDeleting(null); }
   };
 
+  const isCreate = form !== null && !form?.id;
+
   return (
-    <div style={{ padding:'0 0 32px' }}>
+    <div style={{ padding: '0 0 32px' }}>
       {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <div>
-          <p style={{ fontSize:13, color:'#5C4E3D', margin:0 }}>
-            {events.length} ảnh · API tự random 9 ảnh mỗi lần load trang
-          </p>
-        </div>
-        <button onClick={openCreate} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 16px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#C9A84C,#A07830)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          <Plus size={14}/> Thêm ảnh
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <p style={{ fontSize: 13, color: '#5C4E3D', margin: 0 }}>
+          {events.length} ảnh · API tự random 9 ảnh mỗi lần load trang
+        </p>
+        <button onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#C9A84C,#A07830)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          <Plus size={14} /> Thêm ảnh
         </button>
       </div>
 
-      {/* Grid preview */}
+      {/* Grid */}
       {loading ? (
-        <div style={{ display:'flex', justifyContent:'center', padding:'40px 0' }}>
-          <div style={{ width:28,height:28,border:'3px solid #F0EBE3',borderTopColor:'#C9A84C',borderRadius:'50%',animation:'spin 1s linear infinite' }}/>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+          <div style={{ width: 28, height: 28, border: '3px solid #F0EBE3', borderTopColor: '#C9A84C', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
         </div>
       ) : events.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'40px 0', color:'#8E8878' }}>
-          <ImageIcon size={40} style={{ opacity:.2, marginBottom:10 }}/><p style={{margin:0}}>Chưa có ảnh nào</p>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#8E8878' }}>
+          <ImageIcon size={40} style={{ opacity: .2, marginBottom: 10 }} /><p style={{ margin: 0 }}>Chưa có ảnh nào</p>
         </div>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12 }}>
           {events.map(e => (
-            <div key={e.id} style={{ position:'relative', borderRadius:12, overflow:'hidden', border:'1px solid #E8DDD0', aspectRatio:'1', background:'#F0EBE3' }}>
-              <img src={imgUrl(e.eventImgPath)} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
+            <div key={e.id} style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E8DDD0', aspectRatio: '1', background: '#F0EBE3' }}>
+              <img src={imgUrl(e.eventImgPath)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               {e.eventLabel && (
-                <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(0,0,0,.6)', color:'#fff', fontSize:11, fontWeight:600, padding:'6px 8px', textAlign:'center' }}>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '6px 8px', textAlign: 'center' }}>
                   {e.eventLabel}
                 </div>
               )}
-              <div style={{ position:'absolute', top:6, right:6, display:'flex', gap:4 }}>
-                <button onClick={()=>openEdit(e)} style={{ width:26,height:26,borderRadius:8,border:'none',background:'rgba(255,255,255,.9)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <Pencil size={12} color="#5C4E3D"/>
+              <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4 }}>
+                <button onClick={() => openEdit(e)} style={{ width: 26, height: 26, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,.9)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Pencil size={12} color="#5C4E3D" />
                 </button>
-                <button onClick={()=>handleDelete(e.id)} disabled={deleting===e.id} style={{ width:26,height:26,borderRadius:8,border:'none',background:'rgba(255,255,255,.9)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:deleting===e.id?.4:1 }}>
-                  <Trash2 size={12} color="#dc2626"/>
+                <button onClick={() => handleDelete(e.id)} disabled={deleting === e.id} style={{ width: 26, height: 26, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,.9)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: deleting === e.id ? .4 : 1 }}>
+                  <Trash2 size={12} color="#dc2626" />
                 </button>
               </div>
             </div>
@@ -348,54 +417,113 @@ function EventManager() {
         </div>
       )}
 
-      {/* Form modal */}
+      {/* Modal */}
       {form !== null && (
-        <div style={{ position:'fixed',inset:0,zIndex:60,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-          <div style={{ background:'#fff',borderRadius:16,width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}>
-            <div style={{ padding:'18px 22px',borderBottom:'1px solid #F0EBE3',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-              <h3 style={{ margin:0,fontSize:15,fontWeight:700,color:'#1C1C1E' }}>{form?.id?'Cập nhật ảnh event':'Thêm ảnh event'}</h3>
-              <button onClick={closeForm} style={{ width:28,height:28,borderRadius:'50%',border:'none',background:'#F0EBE3',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                <X size={14} color="#5C4E3D"/>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: isCreate ? 580 : 420, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
+
+            {/* Modal header */}
+            <div style={{ padding: '18px 22px', borderBottom: '1px solid #F0EBE3', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1C1C1E' }}>
+                {isCreate ? 'Thêm ảnh event' : 'Cập nhật ảnh event'}
+              </h3>
+              <button onClick={closeForm} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#F0EBE3', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={14} color="#5C4E3D" />
               </button>
             </div>
-            <div style={{ padding:'18px 22px', display:'flex',flexDirection:'column',gap:16 }}>
-              {/* Ảnh */}
-              <div>
-                <label style={{ fontSize:11,fontWeight:700,color:'#8E8878',textTransform:'uppercase',letterSpacing:'.5px',display:'block',marginBottom:8 }}>
-                  Ảnh <span style={{color:'#ef4444'}}>*</span>
-                </label>
-                <div style={{ display:'flex',gap:12,alignItems:'flex-start' }}>
-                  {imgPrev && (
-                    <div style={{ width:90,height:90,borderRadius:10,overflow:'hidden',border:'1px solid #E8DDD0',flexShrink:0,position:'relative' }}>
-                      <img src={imgPrev} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
-                      <button onClick={()=>{setImgFile(null);setImgPrev(null);}} style={{ position:'absolute',top:2,right:2,width:18,height:18,borderRadius:'50%',background:'rgba(220,38,38,.9)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                        <X size={9} color="#fff"/>
+
+            <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* ── CREATE: multi-image picker ── */}
+              {isCreate && (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#8E8878', textTransform: 'uppercase', letterSpacing: '.5px', display: 'block', marginBottom: 8 }}>
+                    Ảnh <span style={{ color: '#ef4444' }}>*</span>
+                    <span style={{ marginLeft: 8, fontSize: 10, color: '#C4B9A8', fontWeight: 400, textTransform: 'none' }}>Chọn nhiều ảnh — mỗi ảnh tạo 1 event</span>
+                  </label>
+
+                  {/* Grid preview ảnh đã chọn */}
+                  {imgPrevs.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                      {imgPrevs.map((prev, idx) => (
+                        <div key={idx} style={{ position: 'relative', width: 80, height: 80, borderRadius: 10, overflow: 'hidden', border: '1px solid #E8DDD0', flexShrink: 0 }}>
+                          <img src={prev} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button onClick={() => removeImg(idx)} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(220,38,38,.9)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <X size={9} color="#fff" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Nút thêm ảnh nữa */}
+                      <button onClick={() => fileRef.current?.click()} style={{ width: 80, height: 80, borderRadius: 10, border: '2px dashed #E8DDD0', background: '#FAF7F2', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: '#8E8878', flexShrink: 0 }}>
+                        <Plus size={18} /><span style={{ fontSize: 10, fontWeight: 600 }}>Thêm</span>
                       </button>
                     </div>
                   )}
-                  <button onClick={()=>fileRef.current?.click()} style={{ width:90,height:90,borderRadius:10,border:'2px dashed #E8DDD0',background:'#FAF7F2',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,color:'#8E8878' }}>
-                    <Upload size={16}/><span style={{fontSize:10,fontWeight:600}}>{imgPrev?'Đổi ảnh':'Tải ảnh'}</span>
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImg}/>
+
+                  {/* Nút chọn ảnh lần đầu */}
+                  {imgPrevs.length === 0 && (
+                    <button onClick={() => fileRef.current?.click()} style={{ width: '100%', height: 100, borderRadius: 12, border: '2px dashed #E8DDD0', background: '#FAF7F2', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#8E8878' }}>
+                      <Upload size={22} />
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>Chọn ảnh (có thể chọn nhiều)</span>
+                    </button>
+                  )}
+
+                  <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleMultiImg} />
+
+                  {imgFiles.length > 0 && (
+                    <p style={{ fontSize: 11, color: '#C9A84C', fontWeight: 600, marginTop: 6 }}>
+                      ✓ Đã chọn {imgFiles.length} ảnh → sẽ tạo {imgFiles.length} event mới
+                    </p>
+                  )}
                 </div>
-              </div>
-              {/* Label */}
+              )}
+
+              {/* ── EDIT: single image picker ── */}
+              {!isCreate && (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#8E8878', textTransform: 'uppercase', letterSpacing: '.5px', display: 'block', marginBottom: 8 }}>Ảnh</label>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    {editImgPrev && (
+                      <div style={{ position: 'relative', width: 90, height: 90, borderRadius: 10, overflow: 'hidden', border: '1px solid #E8DDD0', flexShrink: 0 }}>
+                        <img src={editImgPrev} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
+                    <button onClick={() => editFileRef.current?.click()} style={{ width: 90, height: 90, borderRadius: 10, border: '2px dashed #E8DDD0', background: '#FAF7F2', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, color: '#8E8878' }}>
+                      <Upload size={16} /><span style={{ fontSize: 10, fontWeight: 600 }}>{editImgPrev ? 'Đổi ảnh' : 'Tải ảnh'}</span>
+                    </button>
+                    <input ref={editFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleEditImg} />
+                  </div>
+                </div>
+              )}
+
+              {/* Label — dùng chung cho create và edit */}
               <div>
-                <label style={{ fontSize:11,fontWeight:700,color:'#8E8878',textTransform:'uppercase',letterSpacing:'.5px',display:'block',marginBottom:6 }}>
-                  Label (tùy chọn)
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#8E8878', textTransform: 'uppercase', letterSpacing: '.5px', display: 'block', marginBottom: 6 }}>
+                  Label <span style={{ fontSize: 10, color: '#C4B9A8', fontWeight: 400, textTransform: 'none' }}>(tùy chọn{isCreate && imgFiles.length > 1 ? ' · áp dụng cho tất cả ảnh' : ''})</span>
                 </label>
-                <input value={label} onChange={e=>setLabel(e.target.value)}
+                <input value={label} onChange={e => setLabel(e.target.value)}
                   placeholder="Hiển thị khi hover..."
-                  style={{ width:'100%',border:'1px solid #E8DDD0',borderRadius:10,padding:'10px 14px',fontSize:14,outline:'none',boxSizing:'border-box' }}
-                  onFocus={e=>e.target.style.borderColor='#C9A84C'}
-                  onBlur={e=>e.target.style.borderColor='#E8DDD0'}
+                  style={{ width: '100%', border: '1px solid #E8DDD0', borderRadius: 10, padding: '10px 14px', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = '#C9A84C'}
+                  onBlur={e => e.target.style.borderColor = '#E8DDD0'}
                 />
               </div>
             </div>
-            <div style={{ padding:'14px 22px',borderTop:'1px solid #F0EBE3',display:'flex',gap:10 }}>
-              <button onClick={closeForm} style={{ flex:1,padding:'10px 0',borderRadius:10,border:'1px solid #E8DDD0',background:'#fff',fontSize:13,fontWeight:600,color:'#8E8878',cursor:'pointer' }}>Hủy</button>
-              <button onClick={handleSave} disabled={saving||(!imgFile&&!form?.id)} style={{ flex:2,padding:'10px 0',borderRadius:10,border:'none',background:(!imgFile&&!form?.id)?'#E8DDD0':'linear-gradient(135deg,#C9A84C,#A07830)',fontSize:13,fontWeight:700,color:(!imgFile&&!form?.id)?'#8E8878':'#fff',cursor:'pointer' }}>
-                {saving?'Đang lưu...':(form?.id?'Cập nhật':'Thêm ảnh')}
+
+            {/* Footer */}
+            <div style={{ padding: '14px 22px', borderTop: '1px solid #F0EBE3', display: 'flex', gap: 10 }}>
+              <button onClick={closeForm} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid #E8DDD0', background: '#fff', fontSize: 13, fontWeight: 600, color: '#8E8878', cursor: 'pointer' }}>Hủy</button>
+              <button
+                onClick={handleSave}
+                disabled={saving || (isCreate && imgFiles.length === 0)}
+                style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', background: (isCreate && imgFiles.length === 0) ? '#E8DDD0' : 'linear-gradient(135deg,#C9A84C,#A07830)', fontSize: 13, fontWeight: 700, color: (isCreate && imgFiles.length === 0) ? '#8E8878' : '#fff', cursor: 'pointer' }}
+              >
+                {saving
+                  ? 'Đang lưu...'
+                  : isCreate
+                    ? `Thêm ${imgFiles.length > 0 ? imgFiles.length + ' ảnh' : 'ảnh'}`
+                    : 'Cập nhật'}
               </button>
             </div>
           </div>

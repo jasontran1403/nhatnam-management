@@ -1,8 +1,22 @@
+// src/pages/auth/LoginPage.jsx
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/Toast';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, ChevronRight } from 'lucide-react';
+
+const ROLE_LABELS = {
+  ADMIN:            { label: 'Quản trị viên',      color: 'bg-red-100 text-red-700 border-red-200' },
+  OWNER:            { label: 'Chủ sở hữu',         color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  ACCOUNTANT:       { label: 'Kế toán',             color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  SUPER_ACCOUNTANT: { label: 'Trưởng kế toán',      color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  WAREHOUSE:        { label: 'Kho hàng',            color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  SUPER_WAREHOUSE:  { label: 'Trưởng kho',          color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  SELLER:           { label: 'Bán hàng',            color: 'bg-green-100 text-green-700 border-green-200' },
+  SUPER_SELLER:     { label: 'Trưởng bán hàng',     color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  OPERATOR:         { label: 'Vận hành',            color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  SHIPPER:          { label: 'Giao hàng',           color: 'bg-sky-100 text-sky-700 border-sky-200' },
+};
 
 function getRedirectPath(role) {
   switch (role) {
@@ -23,12 +37,14 @@ export default function LoginPage() {
   const toast    = useToast();
   const navigate = useNavigate();
 
-  // ── Tất cả hooks phải gọi TRƯỚC mọi early return ─────────────────────────
-  const [form, setForm]     = useState({ username: '', password: '' });
-  const [showPw, setShowPw] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [form, setForm]         = useState({ username: '', password: '' });
+  const [showPw, setShowPw]     = useState(false);
+  const [loading, setLoading]   = useState(false);
+  // Multi-role state
+  const [availableRoles, setAvailableRoles] = useState(null); // null = not shown
+  const [pendingCreds, setPendingCreds]     = useState(null);
+  const [selectingRole, setSelectingRole]   = useState(false);
 
-  // Early return SAU hooks
   if (isAuthenticated) {
     return <Navigate to={getRedirectPath(role)} replace />;
   }
@@ -41,8 +57,14 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const data = await login(form.username.trim(), form.password);
-      navigate(getRedirectPath(data.role));
+      const data = await login(form.username.trim(), form.password, null);
+      if (data.requireRoleSelection && data.availableRoles?.length > 1) {
+        // Hiện popup chọn role
+        setAvailableRoles(data.availableRoles);
+        setPendingCreds({ username: form.username.trim(), password: form.password });
+      } else {
+        navigate(getRedirectPath(data.role));
+      }
     } catch (err) {
       const msg = err?.response?.data?.message || 'Sai tên đăng nhập hoặc mật khẩu';
       toast(msg, 'error');
@@ -51,8 +73,25 @@ export default function LoginPage() {
     }
   };
 
+  const handleSelectRole = async (selectedRole) => {
+    if (!pendingCreds) return;
+    setSelectingRole(true);
+    try {
+      const data = await login(pendingCreds.username, pendingCreds.password, selectedRole);
+      setAvailableRoles(null);
+      setPendingCreds(null);
+      navigate(getRedirectPath(data.role));
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Lỗi đăng nhập';
+      toast(msg, 'error');
+    } finally {
+      setSelectingRole(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex">
+      {/* ── Left panel ────────────────────────────────── */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-[#1C1C1E] p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#C9A84C] blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -62,7 +101,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#C9A84C]/40 bg-[#C9A84C]/10 mb-8">
             <span className="text-[#C9A84C] text-xs tracking-widest uppercase font-semibold">Hệ thống quản lý</span>
           </div>
-          <h1 className="text-white text-5xl font-bold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+          <h1 className="text-white text-5xl font-bold leading-tight">
             Nhất Nam<br />
             <span className="text-[#C9A84C]">Fine Foods</span>
           </h1>
@@ -80,67 +119,92 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-[#FAF7F2]">
-        <div className="w-full max-w-sm animate-fadeIn">
-          <div className="lg:hidden text-center mb-8">
-            <h1 className="text-3xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
-              Nhất Nam
-            </h1>
-            <p className="text-[#C9A84C] text-xs tracking-widest uppercase">Fine Foods</p>
-          </div>
-
+      {/* ── Right panel ───────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center bg-[#FAF7F2] px-6">
+        <div className="w-full max-w-md">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
-              Đăng nhập
-            </h2>
-            <p className="text-[#8E8878] text-sm mt-1">Nhập thông tin để tiếp tục</p>
+            <h2 className="text-3xl font-bold text-[#1C1C1E]">Đăng nhập</h2>
+            <p className="text-[#8E8878] mt-2">Chào mừng trở lại!</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1 group">
-              <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider transition-colors group-focus-within:text-[#C9A84C]">
-                Tên đăng nhập
-              </label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Tên đăng nhập</label>
               <input
-                type="text" autoFocus placeholder="username"
+                type="text"
+                autoComplete="username"
                 value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                className="input-elegant w-full rounded-xl px-4 py-3 text-sm text-[#1C1C1E] placeholder:text-[#C4B9A8]"
+                onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#1C1C1E] placeholder:text-[#8E8878] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                placeholder="Nhập tên đăng nhập"
               />
             </div>
 
-            <div className="flex flex-col gap-1 group">
-              <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider transition-colors group-focus-within:text-[#C9A84C]">
-                Mật khẩu
-              </label>
+            <div>
+              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Mật khẩu</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  autoComplete="current-password"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="input-elegant w-full rounded-xl px-4 py-3 pr-11 text-sm text-[#1C1C1E] placeholder:text-[#C4B9A8]"
+                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#1C1C1E] placeholder:text-[#8E8878] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 pr-12"
+                  placeholder="Nhập mật khẩu"
                 />
-                <button type="button" onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
-                  {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                <button type="button" onClick={() => setShowPw(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            <button type="submit" disabled={loading}
-              className="btn-gold w-full rounded-xl py-3 mt-2 flex items-center justify-center gap-2 text-sm font-semibold">
-              {loading
-                ? <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                : <LogIn size={16} />}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50"
+            >
+              {loading ? <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <LogIn size={18} />}
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </button>
           </form>
         </div>
       </div>
+
+      {/* ── Multi-role popup ──────────────────────────── */}
+      {availableRoles && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-xl font-bold text-[#1C1C1E] mb-1">Chọn vai trò đăng nhập</h3>
+            <p className="text-sm text-[#8E8878] mb-5">
+              Tài khoản của bạn có {availableRoles.length} vai trò. Hãy chọn vai trò bạn muốn sử dụng trong phiên này.
+            </p>
+
+            <div className="space-y-3">
+              {availableRoles.map(r => {
+                const info = ROLE_LABELS[r] || { label: r, color: 'bg-gray-100 text-gray-700 border-gray-200' };
+                return (
+                  <button
+                    key={r}
+                    onClick={() => handleSelectRole(r)}
+                    disabled={selectingRole}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 hover:shadow-md transition font-medium ${info.color} disabled:opacity-50`}
+                  >
+                    <span>{info.label}</span>
+                    <ChevronRight size={18} />
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => { setAvailableRoles(null); setPendingCreds(null); }}
+              className="mt-4 w-full py-2.5 rounded-xl border border-black/10 text-[#8E8878] hover:bg-gray-50 text-sm"
+            >
+              Huỷ
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

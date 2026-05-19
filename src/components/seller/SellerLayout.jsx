@@ -6,9 +6,10 @@ import {
   ShoppingCart, ClipboardList,
   LogOut, Menu, X, ChevronRight,
 } from 'lucide-react';
+import ProfileButton from '../common/ProfileButton';
 
 const navItems = [
-  { to: '/seller/pos',    label: 'Bán Hàng', icon: ShoppingCart },
+  { to: '/seller/pos', label: 'Bán Hàng', icon: ShoppingCart },
   { to: '/seller/orders', label: 'Đơn Hàng', icon: ClipboardList },
 ];
 
@@ -40,20 +41,6 @@ export default function SellerLayout() {
             <button className="lg:hidden text-white/50 hover:text-white" onClick={() => setSidebarOpen(false)}>
               <X size={18} />
             </button>
-          </div>
-        </div>
-
-        <div className="px-4 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">
-                {user?.fullName?.[0] || user?.username?.[0] || 'S'}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user?.fullName || user?.username || 'Seller'}</p>
-              <p className="text-[#8E8878] text-xs truncate">Nhân viên bán hàng</p>
-            </div>
           </div>
         </div>
 
@@ -98,6 +85,8 @@ export default function SellerLayout() {
 
         {/* Topbar duy nhất — 1 NotificationBell instance */}
         <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
+          <ProfileButton />
+          <div className="w-px h-5 bg-black/10" />
           <NotificationBell role={user?.role} token={token} />
         </div>
 
