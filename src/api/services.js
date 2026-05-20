@@ -141,7 +141,15 @@ export const accountantApi = {
   getInvoice: (orderId) =>
     api.get(`/api/accountant/orders/${orderId}/invoice`, { responseType: 'blob' }),
 
+  waiveRemainder: (id, data) =>
+    api.patch(`/api/accountant/orders/${id}/waive-remainder`, data),
+
   getOrderDetail: (id) => api.get(`/api/accountant/orders/${id}/detail`),
+  getOrderLogs: (id) => api.get(`/api/accountant/orders/${id}/logs`),
+  bulkComplete: (data) => api.post('/api/accountant/orders/bulk-complete', data),
+  uploadReceiptFile: (id, formData) =>
+    api.patch(`/api/accountant/orders/${id}/receipt-file`, formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 // ─── Dashboard (shared) ───────────────────────────────────────────────────────
@@ -149,15 +157,29 @@ export const dashboardApi = accountantApi; // alias nếu cần dùng chung
 
 // ─── Expense Vouchers ────────────────────────────────────────────────────────
 export const expenseApi = {
-  create:  (data) => api.post('/api/expense-vouchers', data),
-  listMy:  (params) => api.get('/api/expense-vouchers/my', { params }),
+  create: (data) => api.post('/api/expense-vouchers', data),
+  listMy: (params) => api.get('/api/expense-vouchers/my', { params }),
   listAll: (params) => api.get('/api/expense-vouchers', { params }),
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
-  reject:  (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
+  reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
     // Dùng endpoint riêng cho expense image → lưu vào folder expense-voucher
+    return api.post('/api/upload/expense-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// ─── Income Vouchers (Phiếu thu) ─────────────────────────────────────────────
+export const incomeApi = {
+  create: (data) => api.post('/api/income-vouchers', data),
+  listMy: (params) => api.get('/api/income-vouchers/my', { params }),
+  listAll: (params) => api.get('/api/income-vouchers', { params }),
+  getById: (id) => api.get(`/api/income-vouchers/${id}`),
+  approve: (id, note) => api.post(`/api/income-vouchers/${id}/approve`, { note }),
+  reject: (id, reason) => api.post(`/api/income-vouchers/${id}/reject`, { reason }),
+  uploadImage: (file) => {
+    const fd = new FormData(); fd.append('image', file);
     return api.post('/api/upload/expense-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
 };

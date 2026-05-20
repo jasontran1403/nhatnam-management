@@ -57,6 +57,9 @@ export const accountantOrderApi = {
 
   recordPartialPayment: (id, paidAmount, debtDays) =>
     api.patch(`/api/accountant/orders/${id}/partial-payment`, { paidAmount, debtDays }).then(unwrap),
+
+  waiveRemainder: (id, data) =>
+    api.patch(`/api/accountant/orders/${id}/waive-remainder`, data),
 };
 
 // ─── Customers ────────────────────────────────────────────────────────────────

@@ -29,10 +29,51 @@ const STATUS_LABEL = {
   CANCELLED: 'Đã huỷ',
 };
 
+// ── Order log labels & styles ─────────────────────────────────────────────────
+const ACTION_LABEL = {
+  CREATED: 'Tạo đơn hàng',
+  PREPARING: 'Bắt đầu chuẩn bị',
+  DELIVERING: 'Bắt đầu giao hàng',
+  PENDING_PAYMENT: 'Chờ thanh toán',
+  COMPLETED: 'Hoàn thành đơn',
+  CANCELLED: 'Huỷ đơn',
+  PARTIAL_PAYMENT: 'Thu tiền 1 phần',
+  FULLY_PAID: 'Thanh toán đủ',
+  PAYMENT_METHOD_UPDATED: 'Đổi phương thức TT',
+  DEADLINE_EXTENDED: 'Gia hạn công nợ',
+  FAILED: 'Thất bại',
+};
+
+const ACTION_STYLE = {
+  CREATED: 'bg-sky-50 text-sky-700 border-sky-200',
+  PREPARING: 'bg-blue-50 text-blue-700 border-blue-200',
+  DELIVERING: 'bg-purple-50 text-purple-700 border-purple-200',
+  PENDING_PAYMENT: 'bg-orange-50 text-orange-700 border-orange-200',
+  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  CANCELLED: 'bg-red-50 text-red-600 border-red-200',
+  PARTIAL_PAYMENT: 'bg-amber-50 text-amber-700 border-amber-200',
+  FULLY_PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  PAYMENT_METHOD_UPDATED: 'bg-gray-50 text-gray-600 border-gray-200',
+};
+
+const ROLE_LABEL = {
+  SELLER: 'Bán hàng',
+  WAREHOUSE: 'Kho',
+  ACCOUNTANT: 'Kế toán',
+  ADMIN: 'Admin',
+  OWNER: 'Owner',
+};
+
+function formatLogDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 const PAYMENT_METHOD_OPTIONS = [
-  { value: 'CASH',          label: '💵 Tiền mặt' },
+  { value: 'CASH', label: '💵 Tiền mặt' },
   { value: 'BANK_TRANSFER', label: '🏦 Chuyển khoản' },
-  { value: 'DEBT',          label: '📋 Công nợ' },
+  { value: 'DEBT', label: '📋 Công nợ' },
 ];
 
 // ── Business logic helpers ────────────────────────────────────────────────────
@@ -419,11 +460,6 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 mr-3 flex-wrap justify-end">
-              <button onClick={handleInvoice}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors text-xs font-semibold">
-                <FileText size={13} /> Hoá đơn
-              </button>
-
               {canChangePayment(o) && (
                 <button onClick={() => setShowPaymentModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-semibold">
@@ -645,6 +681,42 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
               )}
             </div>
 
+            {/* ── Lịch sử thao tác (chỉ hiển thị nếu có logs) ── */}
+            {o.logs && o.logs.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  🕐 Lịch sử thao tác
+                </p>
+                <div className="bg-[#FAF7F2] rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-[#EDE8E0]">
+                        {['Thao tác', 'Người thực hiện', 'Vai trò', 'Ghi chú', 'Thời gian'].map(h => (
+                          <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-3 py-2 whitespace-nowrap">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {o.logs.map((l, i) => (
+                        <tr key={l.id} className={`${i < o.logs.length - 1 ? 'border-b border-[#EDE8E0]' : ''}`}>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${ACTION_STYLE[l.action] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                              {ACTION_LABEL[l.action] || l.action}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-medium text-[#1C1C1E] whitespace-nowrap">{l.actorName || '—'}</td>
+                          <td className="px-3 py-2 text-[#8E8878] whitespace-nowrap">{ROLE_LABEL[l.actorRole] || l.actorRole || '—'}</td>
+                          <td className="px-3 py-2 text-[#8E8878] max-w-[160px] truncate">{l.note || '—'}</td>
+                          <td className="px-3 py-2 text-[#8E8878] whitespace-nowrap">{formatLogDate(l.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
