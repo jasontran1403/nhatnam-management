@@ -10,7 +10,14 @@ import {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
-const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Con'];
+const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần'];
+
+const emptyIngredient = () => ({
+  _id: Date.now() + Math.random(),
+  ingredientId: '',
+  quantity: 1,
+  canOverride: false,
+});
 
 const emptyItem = () => ({
   _id: Date.now() + Math.random(),
@@ -19,9 +26,12 @@ const emptyItem = () => ({
   basePrice: '', maxDiscountRate: 0,
   vatRate: 8, vatMode: 'INCLUSIVE',
   imageUrl: '',
-  unitsPerBox: '',          // ← mới: số đơn vị / thùng
+  unitsPerBox: '',
   tiers: [{ _id: `tier-${Date.now()}`, fromQty: 0, price: '' }],
-  ingredients: [],
+
+  // sửa đoạn này
+  ingredients: [emptyIngredient()],
+
   _expanded: true,
   _uploading: false,
 });
@@ -106,12 +116,15 @@ export default function OperatorProductBatchPage() {
         fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
         price: t.price != null ? String(t.price) : '',
       })),
-      ingredients: (p.ingredients || []).map(ing => ({
-        _id: Date.now() + Math.random(),
-        ingredientId: String(ing.ingredientId || ''),
-        quantity: ing.quantity != null ? ing.quantity : 1,
-        canOverride: ing.canOverride || false,
-      })),
+      ingredients:
+        (p.ingredients || []).length > 0
+          ? (p.ingredients || []).map(ing => ({
+            _id: Date.now() + Math.random(),
+            ingredientId: String(ing.ingredientId || ''),
+            quantity: ing.quantity != null ? ing.quantity : 1,
+            canOverride: ing.canOverride || false,
+          }))
+          : [emptyIngredient()],
     });
   };
 
@@ -143,22 +156,22 @@ export default function OperatorProductBatchPage() {
             vatMode: it.vatMode || 'INCLUSIVE',
             imageUrl: it.imageUrl,
             unitsPerBox: it.unitsPerBox ? parseInt(it.unitsPerBox, 10) : null,
-          tiers: it.tiers
-            .filter(t => Number(String(t.price).replace(/[^0-9]/g, '')) > 0)
-            .map((t, idx, arr) => ({
-              tierName: `Khung giá ${idx + 1}`,
-              minQuantity: idx === 0 ? 0 : Number(t.fromQty) || 0,
-              maxQuantity: idx < arr.length - 1 ? Number(arr[idx + 1].fromQty) - 0.01 : null,
-              price: Number(String(t.price).replace(/[^0-9]/g, '')) || 0,
-              sortOrder: idx,
-            })),
-          ingredients: it.ingredients
-            .filter(ing => ing.ingredientId)
-            .map(ing => ({
-              ingredientId: Number(ing.ingredientId),
-              quantity: Number(ing.quantity) || 1,
-              canOverride: ing.canOverride || false,
-            })),
+            tiers: it.tiers
+              .filter(t => Number(String(t.price).replace(/[^0-9]/g, '')) > 0)
+              .map((t, idx, arr) => ({
+                tierName: `Khung giá ${idx + 1}`,
+                minQuantity: idx === 0 ? 0 : Number(t.fromQty) || 0,
+                maxQuantity: idx < arr.length - 1 ? Number(arr[idx + 1].fromQty) - 0.01 : null,
+                price: Number(String(t.price).replace(/[^0-9]/g, '')) || 0,
+                sortOrder: idx,
+              })),
+            ingredients: it.ingredients
+              .filter(ing => ing.ingredientId)
+              .map(ing => ({
+                ingredientId: Number(ing.ingredientId),
+                quantity: Number(ing.quantity) || 1,
+                canOverride: ing.canOverride || false,
+              })),
           };
         }),
       };
@@ -255,8 +268,13 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
       ingredientId: '', quantity: 1, canOverride: false,
     }],
   });
-  const removeIngredient = (iid) =>
-    onUpdate({ ingredients: item.ingredients.filter(i => i._id !== iid) });
+  const removeIngredient = (iid) => {
+    if (item.ingredients.length <= 1) return;
+
+    onUpdate({
+      ingredients: item.ingredients.filter(i => i._id !== iid)
+    });
+  };
   const setIng = (iid, patch) =>
     onUpdate({ ingredients: item.ingredients.map(i => i._id === iid ? { ...i, ...patch } : i) });
 
@@ -514,7 +532,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                     {ti === 0 ? (
                       /* Khung 1: hiển thị = giá gốc, không cho sửa */
                       <div className="relative">
-                        <PriceInput value={item.basePrice} onChange={() => {}} />
+                        <PriceInput value={item.basePrice} onChange={() => { }} />
                         <div className="absolute inset-0 rounded-xl bg-[#FAF7F2]/80 cursor-not-allowed" title="Giá khung 1 bằng giá gốc" />
                       </div>
                     ) : (
@@ -606,15 +624,31 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
 // ── PriceInput ────────────────────────────────────────────────────────────────
 function PriceInput({ value, onChange, placeholder = '0' }) {
   const [focused, setFocused] = useState(false);
+
   const rawNum = String(value ?? '').replace(/[^0-9]/g, '');
-  const display = focused ? rawNum : (rawNum ? Number(rawNum).toLocaleString('vi-VN') : '');
+  const display = focused
+    ? rawNum
+    : (rawNum ? Number(rawNum).toLocaleString('vi-VN') : '');
+
+  const handleFocus = (e) => {
+    setFocused(true);
+
+    requestAnimationFrame(() => {
+      e.target.select();
+    });
+  };
 
   return (
     <input
-      type="text" inputMode="numeric"
+      type="text"
+      inputMode="numeric"
       value={display}
       placeholder={placeholder}
-      onFocus={e => { setFocused(true); e.target.select(); }}
+      onFocus={handleFocus}
+
+      // thêm dòng này
+      onMouseUp={(e) => e.preventDefault()}
+
       onBlur={() => setFocused(false)}
       onChange={e => onChange(e.target.value.replace(/[^0-9]/g, ''))}
       className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white
