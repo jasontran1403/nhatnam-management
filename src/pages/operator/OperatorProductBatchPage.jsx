@@ -5,11 +5,12 @@ import { operatorApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
 import {
   Plus, Trash2, X, Package, ChevronDown, ChevronUp,
-  ImagePlus, Send, Info,
+  ImagePlus, Send, Info, Box,
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
+const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Con'];
 
 const emptyItem = () => ({
   _id: Date.now() + Math.random(),
@@ -18,7 +19,8 @@ const emptyItem = () => ({
   basePrice: '', maxDiscountRate: 0,
   vatRate: 8, vatMode: 'INCLUSIVE',
   imageUrl: '',
-  tiers: [{ _id: Date.now(), fromQty: 0, price: '' }],  // tier đầu mặc định
+  unitsPerBox: '',          // ← mới: số đơn vị / thùng
+  tiers: [{ _id: `tier-${Date.now()}`, fromQty: 0, price: '' }],
   ingredients: [],
   _expanded: true,
   _uploading: false,
@@ -30,6 +32,13 @@ const emptyTier = () => ({
   price: '',
 });
 
+// ── Helper ───────────────────────────────────────────────────────────────────
+const fmtNum = (v) => {
+  const n = parseInt(String(v ?? '').replace(/[^0-9]/g, ''), 10);
+  return isNaN(n) ? '' : n.toLocaleString('vi-VN');
+};
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 export default function OperatorProductBatchPage() {
   const toast = useToast();
   const [batchType, setBatchType] = useState('CREATE');
@@ -56,7 +65,8 @@ export default function OperatorProductBatchPage() {
     setItems(prev => prev.map(it => it._id === id ? { ...it, ...patch } : it));
   const removeItem = (id) => setItems(prev => prev.filter(it => it._id !== id));
   const addItem = () => setItems(prev => [...prev, emptyItem()]);
-  const toggleExpand = (id) => setItem(id, { _expanded: !items.find(i => i._id === id)?._expanded });
+  const toggleExpand = (id) =>
+    setItem(id, { _expanded: !items.find(i => i._id === id)?._expanded });
 
   const handleUpload = async (itemId, file) => {
     if (!file) return;
@@ -70,55 +80,48 @@ export default function OperatorProductBatchPage() {
       });
       const json = await res.json();
       setItem(itemId, { imageUrl: json?.data?.imageUrl || '', _uploading: false });
-    } catch { toast('Lỗi upload ảnh', 'error'); setItem(itemId, { _uploading: false }); }
+    } catch {
+      toast('Lỗi upload ảnh', 'error');
+      setItem(itemId, { _uploading: false });
+    }
   };
 
   const selectExistingProduct = (itemId, productId) => {
     if (!productId) { setItem(itemId, { existingProductId: null }); return; }
     const p = products.find(p => String(p.id) === String(productId));
     if (!p) return;
-
-    const mappedTiers = (p.tiers || []).map(t => ({
-      _id: Date.now() + Math.random(),
-      fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
-      price: t.price != null ? String(t.price) : '',
-    }));
-
-
-    const mappedIngredients = (p.ingredients || []).map(ing => ({
-      _id: Date.now() + Math.random(),
-      ingredientId: String(ing.ingredientId || ''),
-      quantity: ing.quantity != null ? ing.quantity : 1,
-      canOverride: ing.canOverride || false,
-    }));
-
     setItem(itemId, {
       existingProductId: p.id,
       name: p.name || '',
       categoryName: p.category || '',
-      unit: p.unit || 'kg',
+      unit: p.unit || '',
       basePrice: p.basePrice != null ? String(p.basePrice) : '',
       maxDiscountRate: p.maxDiscountRate ?? 0,
       vatRate: p.vatRate ?? 8,
       vatMode: p.vatMode || 'INCLUSIVE',
       imageUrl: p.imageUrl || '',
-      tiers: mappedTiers,
-      ingredients: mappedIngredients,
+      unitsPerBox: p.unitsPerBox ? String(p.unitsPerBox) : '',
+      tiers: (p.tiers || []).map(t => ({
+        _id: `tier-${Date.now()}-${Math.random()}`,
+        fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
+        price: t.price != null ? String(t.price) : '',
+      })),
+      ingredients: (p.ingredients || []).map(ing => ({
+        _id: Date.now() + Math.random(),
+        ingredientId: String(ing.ingredientId || ''),
+        quantity: ing.quantity != null ? ing.quantity : 1,
+        canOverride: ing.canOverride || false,
+      })),
     });
   };
 
   const handleSubmit = async () => {
     for (const it of items) {
       if (!it.name.trim()) return toast('Tên sản phẩm không được trống', 'error');
-
-      if (!it.unit.trim())
-        return toast(`Đơn vị tính "${it.name || 'sản phẩm ' + (idx + 1)}" không được trống`, 'error');
-
+      if (!it.unit.trim()) return toast(`Đơn vị tính của "${it.name}" không được trống`, 'error');
       const price = Number(String(it.basePrice).replace(/[^0-9]/g, ''));
-      if (!price || price <= 0)
-        return toast(`Giá gốc "${it.name}" không hợp lệ`, 'error');
+      if (!price || price <= 0) return toast(`Giá gốc "${it.name}" không hợp lệ`, 'error');
     }
-
     setSubmitting(true);
     try {
       const payload = {
@@ -129,19 +132,18 @@ export default function OperatorProductBatchPage() {
           name: it.name.trim(),
           categoryName: it.categoryName,
           unit: it.unit,
-          basePrice: Number(String(it.basePrice).replace(/[^0-9]/g, '')),  // ← parse đúng
+          basePrice: Number(String(it.basePrice).replace(/[^0-9]/g, '')),
           maxDiscountRate: Number(it.maxDiscountRate) || 0,
-          vatRate: 8,
-          vatMode: 'INCLUSIVE',
+          vatRate: it.vatRate ?? 8,
+          vatMode: it.vatMode || 'INCLUSIVE',
           imageUrl: it.imageUrl,
-          tiers: it.tiers                                                          // ← it, không phải item
+          unitsPerBox: it.unitsPerBox ? parseInt(it.unitsPerBox, 10) : null,
+          tiers: it.tiers
             .filter(t => Number(String(t.price).replace(/[^0-9]/g, '')) > 0)
             .map((t, idx, arr) => ({
               tierName: `Khung giá ${idx + 1}`,
               minQuantity: idx === 0 ? 0 : Number(t.fromQty) || 0,
-              maxQuantity: idx < arr.length - 1                                   // ← arr, không phải it.tiers
-                ? Number(arr[idx + 1].fromQty) - 0.01
-                : null,
+              maxQuantity: idx < arr.length - 1 ? Number(arr[idx + 1].fromQty) - 0.01 : null,
               price: Number(String(t.price).replace(/[^0-9]/g, '')) || 0,
               sortOrder: idx,
             })),
@@ -154,11 +156,8 @@ export default function OperatorProductBatchPage() {
             })),
         })),
       };
-
-      console.log('payload:', JSON.stringify(payload, null, 2));
       await operatorApi.submitBatch(payload);
-
-      toast('Phiếu đã được áp dụng thành công!', 'success');
+      toast('Phiếu đã được gửi thành công!', 'success');
       setItems([emptyItem()]);
       setNote('');
     } catch (e) {
@@ -173,39 +172,35 @@ export default function OperatorProductBatchPage() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-[#F0EBE3]">
+    <div className="h-full flex flex-col overflow-hidden bg-[#F9F6F1]">
+      {/* ── Header ── */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-[#EDE8E0]">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
+            <h1 className="text-lg font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
               Tạo phiếu sản phẩm
             </h1>
-            <p className="text-xs text-[#8E8878]">Gửi cho Admin duyệt trước khi áp dụng</p>
+            <p className="text-xs text-[#8E8878] mt-0.5">Gửi cho Admin duyệt trước khi áp dụng</p>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Batch type toggle */}
-            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden">
+          <div className="flex items-center gap-2">
+            {/* Toggle Tạo mới / Cập nhật */}
+            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden bg-[#FAF7F2]">
               {['CREATE', 'UPDATE'].map(t => (
-                <button key={t} onClick={() => {
-                  setBatchType(t);
-                  setItems([emptyItem()]);
-                  setNote('');
-                }}
-                  className={`px-4 py-2 text-xs font-medium transition-colors
-                    ${batchType === t ? 'bg-[#C9A84C] text-white' : 'text-[#5C5C5C] hover:bg-[#FAF7F2]'}`}>
+                <button key={t}
+                  onClick={() => { setBatchType(t); setItems([emptyItem()]); setNote(''); }}
+                  className={`px-4 py-2 text-xs font-semibold transition-colors
+                    ${batchType === t ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
                   {t === 'CREATE' ? 'Tạo mới' : 'Cập nhật'}
                 </button>
               ))}
             </div>
             <button onClick={handleSubmit} disabled={submitting || items.length === 0}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl btn-gold text-sm font-medium disabled:opacity-50">
-              <Send size={14} />
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#A07830] text-white text-xs font-semibold disabled:opacity-50 transition-colors">
+              <Send size={13} />
               {submitting ? 'Đang gửi...' : 'Gửi phiếu'}
             </button>
           </div>
         </div>
-        {/* Note */}
         <div className="mt-3">
           <input value={note} onChange={e => setNote(e.target.value)}
             placeholder="Ghi chú cho phiếu (tuỳ chọn)..."
@@ -213,8 +208,8 @@ export default function OperatorProductBatchPage() {
         </div>
       </div>
 
-      {/* Items */}
-      <div className="flex-1 overflow-auto p-6 space-y-4">
+      {/* ── Item list ── */}
+      <div className="flex-1 overflow-auto p-5 space-y-4">
         {items.map((item, idx) => (
           <ProductItemCard
             key={item._id}
@@ -234,63 +229,70 @@ export default function OperatorProductBatchPage() {
         ))}
 
         <button onClick={addItem}
-          className="w-full py-3 rounded-2xl border-2 border-dashed border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all flex items-center justify-center gap-2 text-sm">
-          <Plus size={16} /> Thêm sản phẩm
+          className="w-full py-3 rounded-2xl border-2 border-dashed border-[#D8D0C4] text-[#8E8878]
+            hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all flex items-center justify-center gap-2 text-sm font-medium bg-white">
+          <Plus size={15} /> Thêm sản phẩm
         </button>
       </div>
     </div>
   );
 }
 
-// ── Sub-component: ProductItemCard ───────────────────────────────────────────
+// ── ProductItemCard ───────────────────────────────────────────────────────────
 function ProductItemCard({ item, idx, batchType, categories, ingredients, products,
   imgSrc, onUpdate, onRemove, onToggle, onUpload, onSelectProduct }) {
 
-  const addTier = () =>
-    onUpdate({ tiers: [...item.tiers, emptyTier()] });
-
-  const removeTier = (tid) =>
-    onUpdate({ tiers: item.tiers.filter(t => t._id !== tid) });
-
-  const setTier = (tid, patch) =>
-    onUpdate({ tiers: item.tiers.map(t => t._id === tid ? { ...t, ...patch } : t) });
-
+  const addTier = () => onUpdate({ tiers: [...item.tiers, emptyTier()] });
   const addIngredient = () => onUpdate({
-    ingredients: [...item.ingredients, { _id: Date.now(), ingredientId: '', quantity: 1, canOverride: false, _searchText: '' }],
+    ingredients: [...item.ingredients, {
+      _id: Date.now() + Math.random(),
+      ingredientId: '', quantity: 1, canOverride: false,
+    }],
   });
-  const removeIngredient = (iid) => onUpdate({ ingredients: item.ingredients.filter(i => i._id !== iid) });
-  const setIng = (iid, patch) => onUpdate({
-    ingredients: item.ingredients.map(i => i._id === iid ? { ...i, ...patch } : i),
-  });
+  const removeIngredient = (iid) =>
+    onUpdate({ ingredients: item.ingredients.filter(i => i._id !== iid) });
+  const setIng = (iid, patch) =>
+    onUpdate({ ingredients: item.ingredients.map(i => i._id === iid ? { ...i, ...patch } : i) });
+
+  // Tính giá thùng preview
+  const basePrice0 = Number(String(item.tiers[0]?.price ?? item.basePrice ?? '').replace(/[^0-9]/g, ''));
+  const unitsPerBoxNum = parseInt(item.unitsPerBox, 10);
+  const boxPrice = !isNaN(unitsPerBoxNum) && unitsPerBoxNum > 0 && basePrice0 > 0
+    ? basePrice0 * unitsPerBoxNum : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden shadow-sm">
-      {/* Card Header */}
-      <div className="flex items-center gap-3 px-5 py-3 border-b border-[#F8F5F0] bg-[#FDFAF6]">
-        <div className="w-7 h-7 rounded-full bg-[#C9A84C]/15 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-[#C9A84C]">{idx + 1}</span>
+    <div className="bg-white rounded-2xl border border-[#EDE8E0] shadow-sm overflow-hidden">
+      {/* Card header */}
+      <div className="flex items-center gap-3 px-5 py-3 bg-[#FDFAF6] border-b border-[#F0EBE3]">
+        <div className="w-6 h-6 rounded-full bg-[#C9A84C]/20 flex items-center justify-center flex-shrink-0">
+          <span className="text-[11px] font-bold text-[#C9A84C]">{idx + 1}</span>
         </div>
         <span className="flex-1 text-sm font-semibold text-[#1C1C1E] truncate">
-          {item.name || 'Sản phẩm mới'}
+          {item.name || <span className="text-[#B0A898] font-normal">Sản phẩm mới</span>}
         </span>
-        <button onClick={onToggle} className="p-1 text-[#8E8878] hover:text-[#1C1C1E]">
-          {item._expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {item.unitsPerBox && parseInt(item.unitsPerBox) > 0 && (
+          <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 font-medium flex items-center gap-1">
+            <Box size={9} /> {item.unitsPerBox} {item.unit || 'đvt'}/thùng
+          </span>
+        )}
+        <button onClick={onToggle} className="p-1 text-[#B0A898] hover:text-[#1C1C1E] transition-colors">
+          {item._expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </button>
-        <button onClick={onRemove} className="p-1 text-[#8E8878] hover:text-red-500 transition-colors">
-          <Trash2 size={15} />
+        <button onClick={onRemove} className="p-1 text-[#B0A898] hover:text-red-500 transition-colors">
+          <Trash2 size={14} />
         </button>
       </div>
 
       {item._expanded && (
         <div className="p-5 space-y-5">
-          {/* If UPDATE: select existing product */}
+
+          {/* Chọn sản phẩm cập nhật */}
           {batchType === 'UPDATE' && (
             <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <label className="block text-xs font-medium text-blue-700 mb-1.5">
-                <Info size={11} className="inline mr-1" />Chọn sản phẩm cần cập nhật
+              <label className="block text-xs font-semibold text-blue-700 mb-1.5 flex items-center gap-1">
+                <Info size={11} /> Chọn sản phẩm cần cập nhật
               </label>
-              <select
-                value={item.existingProductId || ''}
+              <select value={item.existingProductId || ''}
                 onChange={e => onSelectProduct(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-xl border border-blue-200 bg-white focus:outline-none focus:border-blue-400">
                 <option value="">— Chọn sản phẩm —</option>
@@ -299,265 +301,308 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Left: Image */}
-            <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Ảnh sản phẩm</label>
-              <div className="flex items-center gap-3">
-                <div className="w-20 h-20 rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {imgSrc(item.imageUrl)
-                    ? <img src={imgSrc(item.imageUrl)} alt="" className="w-full h-full object-cover" />
-                    : <Package size={24} className="text-[#D3CFC8]" />}
-                </div>
-                <label className="flex flex-col items-center gap-1 px-3 py-2 text-xs rounded-xl border border-[#E8DDD0] cursor-pointer hover:border-[#C9A84C] transition-all text-[#5C5C5C]">
-                  {item._uploading
-                    ? <div className="w-4 h-4 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-                    : <ImagePlus size={14} />}
-                  {item._uploading ? 'Đang tải...' : 'Chọn ảnh'}
-                  <input type="file" accept="image/*" className="hidden" onChange={e => onUpload(e.target.files[0])} />
-                </label>
-              </div>
+          {/* ── Row 1: Ảnh + Tên + Danh mục + Đơn vị ── */}
+          <div className="flex gap-4">
+            {/* Ảnh */}
+            <div className="flex-shrink-0">
+              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">Ảnh</label>
+              <label className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#E8DDD0] bg-[#FAF7F2]
+                flex items-center justify-center cursor-pointer hover:border-[#C9A84C] transition-all overflow-hidden group">
+                {imgSrc(item.imageUrl)
+                  ? <>
+                    <img src={imgSrc(item.imageUrl)} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <ImagePlus size={16} className="text-white" />
+                    </div>
+                  </>
+                  : item._uploading
+                    ? <div className="w-5 h-5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                    : <div className="flex flex-col items-center gap-1 text-[#C4B9A8]">
+                      <ImagePlus size={18} />
+                      <span className="text-[10px]">Chọn ảnh</span>
+                    </div>
+                }
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={e => onUpload(e.target.files[0])} />
+              </label>
             </div>
 
-            {/* Right: Basic info */}
-            <div className="space-y-3">
+            {/* Tên + Danh mục + Đơn vị */}
+            <div className="flex-1 grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Tên sản phẩm *</label>
+                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                  Tên sản phẩm <span className="text-red-400">*</span>
+                </label>
                 <input value={item.name} onChange={e => onUpdate({ name: e.target.value })}
-                  placeholder="Tên sản phẩm" className="w-full px-3 py-2 text-sm rounded-xl input-elegant" />
+                  placeholder="Ví dụ: Sốt dừa Nhất Nam"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Danh mục</label>
+                  <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Danh mục</label>
                   <select value={item.categoryName} onChange={e => onUpdate({ categoryName: e.target.value })}
-                    className="w-full px-3 py-2 text-sm rounded-xl input-elegant bg-white">
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
                     <option value="">— Chọn —</option>
                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Đơn vị *</label>
-                  <input
-                    value={item.unit}
-                    onChange={e => onUpdate({ unit: e.target.value })}
-                    placeholder="vd: kg, pkt, ea, roll..."
-                    className={`w-full px-3 py-2 text-sm rounded-xl input-elegant ${!item.unit.trim() ? 'border-red-300 focus:border-red-400' : ''
-                      }`}
-                  />
-                  {!item.unit.trim() && (
-                    <p className="text-[10px] text-red-400 mt-0.5">Bắt buộc</p>
-                  )}
+                  <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                    Đơn vị tính <span className="text-red-400">*</span>
+                  </label>
+                  <select value={item.unit}
+                    onChange={e => onUpdate({ unit: e.target.value, unitsPerBox: '' })}
+                    className={`w-full px-3 py-2 text-sm rounded-xl border bg-white focus:outline-none focus:border-[#C9A84C]
+                      ${!item.unit ? 'border-red-300' : 'border-[#E8DDD0]'}`}>
+                    <option value="">— Chọn —</option>
+                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Pricing */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {/* ── Row 2: Giá + CK + VAT rate + VAT mode ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Giá gốc *</label>
-              <PriceInput
-                value={item.basePrice}
-                onChange={val => onUpdate({ basePrice: val })}
-              />
+              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                Giá gốc (đ) <span className="text-red-400">*</span>
+              </label>
+              <PriceInput value={item.basePrice} onChange={val => onUpdate({ basePrice: val })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">CK tối đa (%)</label>
+              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">CK tối đa (%)</label>
               <input type="number" min={0} max={100} value={item.maxDiscountRate}
                 onChange={e => onUpdate({ maxDiscountRate: e.target.value })}
-                className="w-full px-3 py-2 text-sm rounded-xl input-elegant" />
+                className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Thuế VAT (%)</label>
-              <select value={item.vatRate}
-                onChange={e => setItem(item._id, { vatRate: Number(e.target.value) })}
-                className="w-full px-3 py-2 text-sm rounded-xl input-elegant">
+              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Thuế VAT (%)</label>
+              <select value={item.vatRate} onChange={e => onUpdate({ vatRate: Number(e.target.value) })}
+                className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
                 {VAT_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Kiểu VAT</label>
-              <select value={item.vatMode}
-                onChange={e => setItem(item._id, { vatMode: e.target.value })}
-                className="w-full px-3 py-2 text-sm rounded-xl input-elegant">
+              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Kiểu VAT</label>
+              <select value={item.vatMode} onChange={e => onUpdate({ vatMode: e.target.value })}
+                className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
                 <option value="INCLUSIVE">VAT trong giá</option>
                 <option value="EXCLUSIVE">VAT tính thêm</option>
               </select>
             </div>
           </div>
 
-          {/* Price Tiers */}
-          <div className="border border-[#F0EBE3] rounded-xl overflow-hidden">
+          {/* ── Row 3: Quy cách thùng ── */}
+          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+            {/* Toggle header */}
+            <button type="button"
+              onClick={() => onUpdate({ unitsPerBox: item.unitsPerBox ? '' : '1' })}
+              className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors">
+              <div className="flex items-center gap-2">
+                <Box size={14} className="text-[#C9A84C]" />
+                <span className="text-xs font-semibold text-[#1C1C1E]">Bán theo thùng / quy cách</span>
+                <span className="text-[10px] text-[#B0A898]">(tuỳ chọn)</span>
+              </div>
+              {/* Toggle pill */}
+              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0
+                ${item.unitsPerBox ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all
+                  ${item.unitsPerBox ? 'left-4' : 'left-0.5'}`} />
+              </div>
+            </button>
+
+            {/* Expanded: nhập số lượng/thùng */}
+            {item.unitsPerBox !== '' && (
+              <div className="px-4 py-3 bg-white border-t border-[#F0EBE3] space-y-3">
+                <p className="text-[11px] text-[#8E8878]">
+                  Cho phép bán nguyên thùng. Khi đặt 1 thùng, hệ thống tự nhân giá và trừ kho tương ứng.
+                </p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#5C5C5C] whitespace-nowrap font-medium">1 thùng =</span>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={item.unitsPerBox}
+                      onChange={e => onUpdate({ unitsPerBox: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="12"
+                      className="w-20 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-[#C9A84C] focus:outline-none text-[#1C1C1E] bg-[#FFFDF7]"
+                    />
+                    <span className="text-xs text-[#5C5C5C] font-medium">
+                      {item.unit || 'đơn vị'}
+                    </span>
+                  </div>
+
+                  {/* Preview giá thùng */}
+                  {boxPrice && (
+                    <div className="flex items-center gap-2 bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#EDD98A]">
+                      <Box size={13} className="text-[#C9A84C]" />
+                      <span className="text-xs text-[#8E8878]">Giá 1 thùng:</span>
+                      <span className="text-sm font-bold text-[#C9A84C]">
+                        {fmtNum(boxPrice)} đ
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Row 4: Khung giá sỉ ── */}
+          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#FAF7F2]">
               <span className="text-xs font-semibold text-[#5C5C5C]">
                 Khung giá sỉ
-                {item.tiers.length > 0 && (
-                  <span className="ml-1.5 text-[10px] text-[#C9A84C] font-normal">
-                    ({item.tiers.length} khung)
-                  </span>
-                )}
+                <span className="ml-1.5 text-[10px] text-[#C9A84C] font-normal">
+                  ({item.tiers.length} khung)
+                </span>
               </span>
               <button onClick={addTier}
-                className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline font-medium">
+                className="flex items-center gap-1 text-xs text-[#C9A84C] hover:text-[#A07830] font-semibold transition-colors">
                 <Plus size={12} /> Thêm khung
               </button>
             </div>
 
-            {item.tiers.length === 0 ? (
-              <p className="text-xs text-[#8E8878] italic px-4 py-3">
-                Nhấn "Thêm khung" để thêm khung giá.
-              </p>
-            ) : (
-              <div className="px-3 py-2 space-y-2">
-                <div className="grid grid-cols-4 gap-2 text-[10px] font-medium text-[#8E8878] px-1">
-                  <span>Tên khung</span>
-                  <span>SL từ</span>
-                  <span>SL đến</span>
-                  <span>Giá (đ)</span>
-                </div>
-                {item.tiers.map((tier, ti) => {
-                  const tierName = `Khung giá ${ti + 1}`;
-                  const nextTier = item.tiers[ti + 1];
-                  const toQtyDisplay = nextTier
-                    ? (nextTier.fromQty !== '' && nextTier.fromQty !== null
-                      ? `< ${Number(nextTier.fromQty).toLocaleString('vi-VN')}`
-                      : '—')
-                    : 'Max';
-
-                  return (
-                    <div key={tier._id}
-                      className="grid grid-cols-4 gap-2 items-center p-2 bg-white rounded-xl border border-[#F0EBE3]">
-                      {/* Tên: read-only, tự tính theo index */}
-                      <div className="px-2 py-1.5 text-xs rounded-lg bg-[#FAF7F2] text-[#5C5C5C] font-medium truncate">
-                        {tierName}
-                      </div>
-                      {/* SL từ: tier 0 luôn là 0 và locked */}
-                      {ti === 0 ? (
-                        <div className="px-2 py-1.5 text-xs rounded-lg bg-[#FAF7F2] text-[#8E8878]">0</div>
-                      ) : (
-                        <input
-                          key={`from-${tier._id}`}
-                          type="number" min={0}
-                          value={tier.fromQty}
-                          onChange={e => {
-                            const val = e.target.value;
-                            onUpdate({
-                              tiers: item.tiers.map(t =>
-                                t._id === tier._id ? { ...t, fromQty: val } : t
-                              )
-                            });
-                          }}
-                          className="px-2 py-1.5 text-xs rounded-lg input-elegant"
-                        />
-                      )}
-                      {/* SL đến: luôn read-only */}
-                      <div className="px-2 py-1.5 text-xs rounded-lg bg-[#FAF7F2] text-[#8E8878]">
-                        {toQtyDisplay}
-                      </div>
-
-                      {/* Giá */}
-                      <div className="flex items-center gap-1">
-                        <PriceInput
-                          key={`price-${tier._id}`}
-                          value={tier.price}
-                          onChange={val => {
-                            onUpdate({
-                              tiers: item.tiers.map(t =>
-                                t._id === tier._id ? { ...t, price: val } : t
-                              )
-                            });
-                          }}
-                        />
-                        {/* Chỉ hiện nút xóa ở tier cuối cùng, và không cho xóa nếu chỉ còn 1 tier */}
-                        {ti === item.tiers.length - 1 && item.tiers.length > 1 && (
-                          <button
-                            onClick={() => onUpdate({ tiers: item.tiers.filter(t => t._id !== tier._id) })}
-                            className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0">
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                        {/* Placeholder để giữ layout khi không có nút xóa */}
-                        {!(ti === item.tiers.length - 1 && item.tiers.length > 1) && (
-                          <div className="w-[13px] flex-shrink-0" />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="px-4 py-3 space-y-2">
+              {/* Header row */}
+              <div className="grid gap-2 text-[10px] font-semibold text-[#B0A898] uppercase tracking-wide px-1"
+                style={{ gridTemplateColumns: '1fr 80px 80px 1fr 28px' }}>
+                <span>Tên khung</span>
+                <span className="text-center">SL từ</span>
+                <span className="text-center">SL đến</span>
+                <span className="text-right">Giá (đ)</span>
+                <span />
               </div>
-            )}
-          </div>
 
-          {/* Ingredients */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-[#5C5C5C]">Nguyên liệu</label>
-              <button onClick={addIngredient} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline">
-                <Plus size={11} /> Thêm nguyên liệu
-              </button>
-            </div>
-            {item.ingredients.length === 0 ? (
-              <p className="text-xs text-[#8E8878] italic">Chưa có nguyên liệu.</p>
-            ) : (
-              <div className="space-y-2">
-                {item.ingredients.map((ing) => (
-                  <div key={ing._id} className="grid grid-cols-4 gap-2 items-center p-2 bg-[#FAF7F2] rounded-xl border border-[#F0EBE3]">
-                    <IngredientSelect
-                      ingredients={ingredients}
-                      value={ing.ingredientId}
-                      onChange={val => setIng(ing._id, { ingredientId: val })}
-                    />
-                    <input
-                      type="number" min={0.001} step={0.001} value={ing.quantity}
-                      onChange={e => setIng(ing._id, { quantity: e.target.value })}
-                      placeholder="Số lượng"
-                      className="px-2 py-1.5 text-xs rounded-lg input-elegant"
-                    />
-                    <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-1 text-[10px] text-[#5C5C5C] cursor-pointer select-none">
-                        <input type="checkbox" checked={ing.canOverride}
-                          onChange={e => setIng(ing._id, { canOverride: e.target.checked })}
-                          className="rounded" />
-                        Linh hoạt
-                      </label>
-                      <button onClick={() => removeIngredient(ing._id)}
-                        className="ml-auto text-red-400 hover:text-red-600">
-                        <Trash2 size={13} />
-                      </button>
+              {item.tiers.map((tier, ti) => {
+                const nextTier = item.tiers[ti + 1];
+                const toQtyDisplay = nextTier
+                  ? (nextTier.fromQty !== '' ? `< ${Number(nextTier.fromQty).toLocaleString('vi-VN')}` : '—')
+                  : 'Max';
+                return (
+                  <div key={tier._id}
+                    className="grid gap-2 items-center bg-[#FDFAF6] rounded-xl px-3 py-2.5 border border-[#F0EBE3]"
+                    style={{ gridTemplateColumns: '1fr 80px 80px 1fr 28px' }}>
+                    <div className="text-xs font-medium text-[#5C5C5C] truncate px-1">
+                      Khung {ti + 1}
+                    </div>
+                    {ti === 0
+                      ? <div className="text-xs text-center text-[#B0A898] bg-[#F5F0E8] rounded-lg py-1.5">0</div>
+                      : <input type="number" min={0} value={tier.fromQty}
+                        onChange={e => onUpdate({
+                          tiers: item.tiers.map(t => t._id === tier._id ? { ...t, fromQty: e.target.value } : t)
+                        })}
+                        className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C] bg-white
+                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                    }
+                    <div className="text-xs text-center text-[#B0A898] bg-[#F5F0E8] rounded-lg py-1.5 px-1 truncate">
+                      {toQtyDisplay}
+                    </div>
+                    <PriceInput value={tier.price}
+                      onChange={val => onUpdate({
+                        tiers: item.tiers.map(t => t._id === tier._id ? { ...t, price: val } : t)
+                      })} />
+                    <div className="flex justify-center">
+                      {ti === item.tiers.length - 1 && item.tiers.length > 1
+                        ? <button onClick={() => onUpdate({ tiers: item.tiers.filter(t => t._id !== tier._id) })}
+                          className="text-[#D8D0C4] hover:text-red-500 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                        : <div className="w-[13px]" />
+                      }
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
+
+          {/* ── Row 5: Nguyên liệu ── */}
+          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#FAF7F2]">
+              <span className="text-xs font-semibold text-[#5C5C5C]">
+                Nguyên liệu
+                {item.ingredients.length > 0 && (
+                  <span className="ml-1.5 text-[10px] text-[#C9A84C] font-normal">
+                    ({item.ingredients.length})
+                  </span>
+                )}
+              </span>
+              <button onClick={addIngredient}
+                className="flex items-center gap-1 text-xs text-[#C9A84C] hover:text-[#A07830] font-semibold transition-colors">
+                <Plus size={12} /> Thêm nguyên liệu
+              </button>
+            </div>
+
+            <div className="px-4 py-3">
+              {item.ingredients.length === 0
+                ? <p className="text-xs text-[#B0A898] italic text-center py-2">Chưa có nguyên liệu.</p>
+                : (
+                  <div className="space-y-2">
+                    {/* Header */}
+                    <div className="grid gap-2 text-[10px] font-semibold text-[#B0A898] uppercase tracking-wide px-1"
+                      style={{ gridTemplateColumns: '1fr 80px auto 28px' }}>
+                      <span>Nguyên liệu</span>
+                      <span className="text-center">Số lượng</span>
+                      <span className="text-center">Linh hoạt</span>
+                      <span />
+                    </div>
+                    {item.ingredients.map((ing) => (
+                      <div key={ing._id}
+                        className="grid gap-2 items-center bg-[#FDFAF6] rounded-xl px-3 py-2 border border-[#F0EBE3]"
+                        style={{ gridTemplateColumns: '1fr 80px auto 28px' }}>
+                        <IngredientSelect
+                          ingredients={ingredients}
+                          value={ing.ingredientId}
+                          onChange={val => setIng(ing._id, { ingredientId: val })}
+                        />
+                        <input type="number" min={0.001} step={0.001} value={ing.quantity}
+                          onChange={e => setIng(ing._id, { quantity: e.target.value })}
+                          className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C] bg-white
+                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                        <label className="flex items-center justify-center gap-1 cursor-pointer select-none">
+                          <input type="checkbox" checked={ing.canOverride}
+                            onChange={e => setIng(ing._id, { canOverride: e.target.checked })}
+                            className="rounded accent-[#C9A84C]" />
+                        </label>
+                        <button onClick={() => removeIngredient(ing._id)}
+                          className="flex justify-center text-[#D8D0C4] hover:text-red-500 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+
         </div>
       )}
     </div>
   );
 }
 
-function PriceInput({ value, onChange }) {
+// ── PriceInput ────────────────────────────────────────────────────────────────
+function PriceInput({ value, onChange, placeholder = '0' }) {
   const [focused, setFocused] = useState(false);
-
   const rawNum = String(value ?? '').replace(/[^0-9]/g, '');
-  const display = focused
-    ? rawNum
-    : rawNum ? Number(rawNum).toLocaleString('vi-VN') : '';
+  const display = focused ? rawNum : (rawNum ? Number(rawNum).toLocaleString('vi-VN') : '');
 
   return (
     <input
-      type="text"
-      inputMode="numeric"
+      type="text" inputMode="numeric"
       value={display}
-      placeholder="0"
+      placeholder={placeholder}
       onFocus={e => { setFocused(true); e.target.select(); }}
       onBlur={() => setFocused(false)}
       onChange={e => onChange(e.target.value.replace(/[^0-9]/g, ''))}
-      className="w-full px-2 py-1.5 text-xs rounded-lg input-elegant text-right"
+      className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white
+        focus:outline-none focus:border-[#C9A84C] text-right"
     />
   );
 }
 
+// ── IngredientSelect (portal dropdown) ───────────────────────────────────────
 function IngredientSelect({ ingredients, value, onChange }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -575,22 +620,18 @@ function IngredientSelect({ ingredients, value, onChange }) {
     if (!open) {
       const rect = triggerRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      const dropHeight = 260; // max-h-52 ~208px + search ~52px
-
-      const goUp = spaceBelow < dropHeight && spaceAbove > spaceBelow;
-
+      const dropHeight = 280;
+      const goUp = spaceBelow < dropHeight && rect.top > spaceBelow;
       setDropPos({
         top: goUp
-          ? rect.top + window.scrollY - dropHeight - 4   // dropup
-          : rect.bottom + window.scrollY + 4,             // dropdown
+          ? rect.top + window.scrollY - dropHeight - 4
+          : rect.bottom + window.scrollY + 4,
         left: rect.left + window.scrollX,
-        width: Math.max(rect.width, 280),
+        width: Math.max(rect.width, 260),
       });
     }
     setOpen(v => !v);
   };
-
 
   useEffect(() => {
     if (!open) return;
@@ -599,8 +640,7 @@ function IngredientSelect({ ingredients, value, onChange }) {
       if (triggerRef.current && !triggerRef.current.contains(e.target)) {
         const portal = document.getElementById('ing-dropdown-portal');
         if (portal && portal.contains(e.target)) return;
-        setOpen(false);
-        setSearch('');
+        setOpen(false); setSearch('');
       }
     };
     document.addEventListener('mousedown', handler);
@@ -608,69 +648,56 @@ function IngredientSelect({ ingredients, value, onChange }) {
   }, [open]);
 
   const dropdown = open && (
-    <div
-      id="ing-dropdown-portal"
+    <div id="ing-dropdown-portal"
       style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
-      className="bg-white rounded-xl shadow-2xl border border-[#E8DDD0] flex flex-col overflow-hidden"
-    >
+      className="bg-white rounded-xl shadow-2xl border border-[#E8DDD0] flex flex-col overflow-hidden">
       <div className="p-2 border-b border-[#F0EBE3]">
-        <input
-          ref={inputRef}
-          value={search}
+        <input ref={inputRef} value={search}
           onChange={e => setSearch(e.target.value)}
           onMouseDown={e => e.stopPropagation()}
           placeholder="Tìm nguyên liệu..."
-          className="w-full px-2 py-1.5 text-xs rounded-lg border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2]"
-        />
+          className="w-full px-2 py-1.5 text-xs rounded-lg border border-[#E8DDD0]
+            focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2]" />
       </div>
       <div className="overflow-y-auto max-h-52">
-        {filtered.length === 0 ? (
-          <p className="text-xs text-[#8E8878] text-center py-4 italic">Không tìm thấy</p>
-        ) : filtered.map(i => (
-          <div
-            key={i.id}
-            onMouseDown={e => {
-              e.preventDefault();
-              onChange(String(i.id));
-              setOpen(false);
-              setSearch('');
-            }}
-            className={`flex items-center justify-between px-3 py-2 text-xs cursor-pointer transition-colors
-              ${String(i.id) === String(value)
-                ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-semibold'
-                : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'
-              }`}
-          >
-            <span className="truncate mr-2">{i.name}</span>
-            <span className="text-[10px] text-[#8E8878] flex-shrink-0 bg-[#F0EBE3] px-1.5 py-0.5 rounded-full">{i.unit}</span>
-          </div>
-        ))}
+        {filtered.length === 0
+          ? <p className="text-xs text-[#8E8878] text-center py-4 italic">Không tìm thấy</p>
+          : filtered.map(i => (
+            <div key={i.id}
+              onMouseDown={e => { e.preventDefault(); onChange(String(i.id)); setOpen(false); setSearch(''); }}
+              className={`flex items-center justify-between px-3 py-2 text-xs cursor-pointer transition-colors
+                ${String(i.id) === String(value)
+                  ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-semibold'
+                  : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'}`}>
+              <span className="truncate mr-2">{i.name}</span>
+              <span className="text-[10px] text-[#8E8878] flex-shrink-0 bg-[#F0EBE3] px-1.5 py-0.5 rounded-full">
+                {i.unit}
+              </span>
+            </div>
+          ))
+        }
       </div>
     </div>
   );
 
   return (
     <>
-      <div ref={triggerRef} className="relative col-span-2">
-        <div
-          onMouseDown={openDropdown}
-          className="flex items-center gap-1 w-full px-2 py-1.5 text-xs rounded-lg input-elegant bg-white cursor-pointer select-none"
-        >
-          <span className="flex-1 truncate text-left text-[#1C1C1E]">
+      <div ref={triggerRef}>
+        <div onMouseDown={openDropdown}
+          className="flex items-center gap-1 w-full px-2 py-1.5 text-xs rounded-lg border border-[#E8DDD0]
+            bg-white cursor-pointer select-none hover:border-[#C9A84C] transition-colors">
+          <span className="flex-1 truncate">
             {selected
-              ? `${selected.name} (${selected.unit})`
-              : <span className="text-[#8E8878]">Tìm nguyên liệu...</span>
+              ? <span className="text-[#1C1C1E]">{selected.name} <span className="text-[#B0A898]">({selected.unit})</span></span>
+              : <span className="text-[#B0A898]">Tìm nguyên liệu...</span>
             }
           </span>
-          <ChevronDown size={11} className={`text-[#8E8878] flex-shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown size={10} className={`text-[#B0A898] flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </div>
       </div>
-
-      {/* Render dropdown vào body — tránh bị clip bởi overflow:hidden */}
       {typeof document !== 'undefined' && open
         ? ReactDOM.createPortal(dropdown, document.body)
-        : null
-      }
+        : null}
     </>
   );
 }

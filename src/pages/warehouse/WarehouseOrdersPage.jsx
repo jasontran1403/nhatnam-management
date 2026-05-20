@@ -75,12 +75,21 @@ function OrderDetailModal({ order, onClose, onDeliver, delivering }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-[#1C1C1E] truncate">{item.productName}</p>
-                  <p className="text-xs text-[#C9A84C] font-semibold mt-0.5">
-                    SL: {formatQty(item.quantity)} {item.unit}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {/* Quy cách badge */}
+                    {item.saleType === 'BOX' ? (
+                      <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                        📦 Thùng
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold bg-[#F0EBE3] text-[#8E8878] rounded px-1.5 py-0.5">
+                        Lẻ
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="shrink-0 w-8 h-8 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
-                  <span className="text-xs font-bold text-[#C9A84C]">{idx + 1}</span>
+                  <span className="text-xs font-bold text-[#C9A84C]">x{item.quantity}</span>
                 </div>
               </div>
 

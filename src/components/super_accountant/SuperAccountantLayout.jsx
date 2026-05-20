@@ -4,7 +4,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, History, LogOut, Menu, X, ChevronRight,
-  Receipt, Building2, Warehouse,
+  Receipt, Building2, Warehouse, TrendingUp,
 } from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
 import ProfileButton from '../common/ProfileButton';
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/super-accountant/history',            label: 'Lịch Sử',        icon: History         },
   { to: '/super-accountant/suppliers',          label: 'Nhà cung cấp',   icon: Building2       },
   { to: '/super-accountant/expenses',           label: 'Phiếu Chi',      icon: Receipt         },
+  { to: '/super-accountant/incomes',            label: 'Phiếu Thu',      icon: TrendingUp      },
   { to: '/super-accountant/warehouse-receipts', label: 'Phiếu nhập kho', icon: Warehouse       },
 ];
 
@@ -85,7 +86,7 @@ export default function SuperAccountantLayout() {
           </h1>
         </header>
 
-        {/* Top bar với ProfileButton và NotificationBell */}
+        {/* Top bar */}
         <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
           <ProfileButton />
           <div className="w-px h-5 bg-black/10" />

@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import ProductCard from '../../components/seller/ProductCard';
 import CartItem from '../../components/seller/CartItem';
 import CustomerSearchModal from '../../components/seller/CustomerSearchModal';
+import SaleTypeModal from '../../components/seller/SaleTypeModal';
 
 const PRICE_CHANGED_CODE = 950;
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -397,9 +398,13 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
       for (const item of cartItems) {
         const prod = products.find(p => p.id === item.productId);
         if (!prod?.ingredients?.length) continue;
+        // Nếu bán thùng: item.quantity = số thùng → quy ra đơn vị lẻ
+        const effectiveQty = (item.saleType === 'BOX' && item.unitsPerBox > 0)
+          ? item.quantity * item.unitsPerBox
+          : item.quantity;
         for (const ing of prod.ingredients) {
           const qtyPerUnit = Number(ing.quantity) || 1;
-          ingMap[ing.ingredientId] = (ingMap[ing.ingredientId] || 0) + item.quantity * qtyPerUnit;
+          ingMap[ing.ingredientId] = (ingMap[ing.ingredientId] || 0) + effectiveQty * qtyPerUnit;
         }
       }
       const holdItems = Object.entries(ingMap).map(([ingredientId, qty]) => ({
@@ -524,7 +529,11 @@ export default function POSPage() {
         if (!cp?.ingredients?.length) return sum;
         const cpIng = cp.ingredients.find(i => String(i.ingredientId) === ingKey);
         if (!cpIng) return sum;
-        return sum + cartItem.quantity * (Number(cpIng.quantity) || 1);
+        // Quy đổi về đơn vị lẻ nếu bán thùng
+        const effectiveQty = (cartItem.saleType === 'BOX' && cartItem.unitsPerBox > 0)
+          ? cartItem.quantity * cartItem.unitsPerBox
+          : cartItem.quantity;
+        return sum + effectiveQty * (Number(cpIng.quantity) || 1);
       }, 0);
 
       // stock khả dụng = ingStockMap (actualStock - heldByAll) + myHold - myCartUsage
@@ -613,16 +622,25 @@ export default function POSPage() {
     return list;
   }, [products, activeCategory, searchQuery, sortField, sortDir]);
 
-  const addToCart = useCallback((product) => {
+  const addToCart = useCallback((product, saleType = 'RETAIL') => {
     setPriceChangedIds(prev => { const n = new Set(prev); n.delete(product.id); return n; });
+
+    const unitsPerBox = (saleType === 'BOX' && product.unitsPerBox > 0)
+      ? product.unitsPerBox : null;
 
     setCartItems((prev) => {
       const tier = product.priceTiers?.find((t) => t.sortOrder === 0) || product.priceTiers?.[0];
-      const key = `${product.id}-nv-${tier?.id || 'np'}`;
+      // Key phân biệt BOX vs RETAIL của cùng 1 sản phẩm
+      const key = `${product.id}-nv-${tier?.id || 'np'}-${saleType}`;
       const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
       if (stock !== null && stock <= 0) return prev;
 
-      const basePrice = tier?.price ?? product.basePrice ?? 0;
+      // Giá đơn vị: bán thùng = unitPrice × unitsPerBox, bán lẻ = unitPrice
+      const unitPrice = tier?.price ?? product.basePrice ?? 0;
+      const effectivePrice = unitsPerBox ? unitPrice * unitsPerBox : unitPrice;
+      // ĐVT hiển thị: thùng = "Thùng", lẻ = unit gốc
+      const displayUnit = unitsPerBox ? 'Thùng' : (product.unit || '');
+
       const existing = prev.find((i) => i.key === key);
       const addQty = (stock !== null && stock < 1)
         ? Math.round(stock * 1000) / 1000
@@ -639,7 +657,7 @@ export default function POSPage() {
         );
         if (newQty <= existing.quantity) return prev;
 
-        if (!existing.isManualPrice) {
+        if (!existing.isManualPrice && !unitsPerBox) {
           const allTiers = product.priceTiers || existing.priceTiers || [];
           const r = resolveTierForQty(allTiers, newQty, existing.basePrice ?? existing.unitPrice);
           if (r) {
@@ -662,22 +680,33 @@ export default function POSPage() {
         variantName: null,
         tierId: tier?.id || null,
         tierName: tier?.tierName || null,
-        unitPrice: basePrice,
-        originalUnitPrice: basePrice,
+        unitPrice: effectivePrice,
+        originalUnitPrice: effectivePrice,
         quantity: addQty,
-        unit: product.unit || '',
+        unit: displayUnit,
         imageUrl: product.imageUrl || null,
         vatRate: product.vatRate ?? 0,
         vatMode: product.vatMode ?? 'INCLUSIVE',
         maxDiscountRate: product.maxDiscountRate ?? 0,
         itemDiscountRate: 0,
         priceTiers: product.priceTiers || [],
-        basePrice: product.basePrice ?? basePrice,
+        basePrice: product.basePrice ?? unitPrice,
+        saleType,
+        unitsPerBox,
       }];
     });
   }, []);
 
-  const handleAddProduct = useCallback((product) => addToCart(product), [addToCart]);
+  // Sản phẩm pending modal chọn quy cách
+  const [pendingSaleProduct, setPendingSaleProduct] = useState(null);
+
+  const handleAddProduct = useCallback((product) => {
+    if (product.unitsPerBox && product.unitsPerBox > 0) {
+      setPendingSaleProduct(product);
+    } else {
+      addToCart(product, 'RETAIL');
+    }
+  }, [addToCart]);
 
   const updateQty = useCallback((cartId, qty) => {
     if (qty <= 0) { setCartItems((prev) => prev.filter((i) => i.id !== cartId)); return; }
@@ -692,6 +721,10 @@ export default function POSPage() {
         }
       }
       if (i.isManualPrice) return { ...i, quantity: cappedQty };
+      // BOX: giá đã được nhân sẵn khi addToCart, không resolve tier lại
+      if (i.saleType === 'BOX' && i.unitsPerBox > 0) {
+        return { ...i, quantity: cappedQty };
+      }
       const allTiers = i.priceTiers || prod?.priceTiers || [];
       const r = resolveTierForQty(allTiers, cappedQty, i.basePrice ?? i.unitPrice);
       if (!r) return { ...i, quantity: cappedQty };
@@ -787,6 +820,8 @@ export default function POSPage() {
 
     setCartItems(prev => prev.map(item => {
       if (item.isManualPrice) return item;
+      // BOX: giá đã nhân unitsPerBox, không override lại theo tier lẻ
+      if (item.saleType === 'BOX' && item.unitsPerBox > 0) return item;
       const freshProduct = fresh.find(p => p.id === item.productId);
       if (!freshProduct) return item;
 
@@ -842,10 +877,14 @@ export default function POSPage() {
           productId: i.productId,
           tierId: i.tierId,
           quantity: i.quantity,
-          sentUnitPrice: i.unitPrice,
+          // BOX: unitPrice đã nhân unitsPerBox → gửi giá lẻ gốc để backend validate đúng
+          sentUnitPrice: (i.saleType === 'BOX' && i.unitsPerBox > 0)
+            ? i.unitPrice / i.unitsPerBox
+            : i.unitPrice,
           priceMode: (i.itemDiscountRate > 0) ? 'DISCOUNT_PERCENT' : 'TIER',
           discountPercent: i.itemDiscountRate > 0 ? i.itemDiscountRate : undefined,
           isManualPrice: i.isManualPrice === true,
+          saleType: i.saleType || 'RETAIL',
         })),
       };
 
@@ -1054,6 +1093,18 @@ export default function POSPage() {
         onSelect={setCustomer}
         selected={customer}
       />
+
+      {/* Modal chọn quy cách: Thùng / Lẻ */}
+      {pendingSaleProduct && (
+        <SaleTypeModal
+          product={pendingSaleProduct}
+          onConfirm={({ saleType }) => {
+            addToCart(pendingSaleProduct, saleType);
+            setPendingSaleProduct(null);
+          }}
+          onClose={() => setPendingSaleProduct(null)}
+        />
+      )}
     </div>
   );
 }

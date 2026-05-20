@@ -558,6 +558,18 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                       <p className="text-sm font-semibold text-[#1C1C1E] truncate">{item.productName}</p>
                       {item.variantName && <p className="text-xs text-[#8E8878]">{item.variantName}</p>}
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {/* Quy cách — chỉ hiện badge khi BOX */}
+                        {item.saleType === 'BOX' && (
+                          <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                            📦 Thùng {item.unitsPerBox ? `(${item.unitsPerBox} ${item.unit}/thùng)` : ''}
+                          </span>
+                        )}
+                        {/* Lẻ: chỉ hiện ĐVT, không badge "Lẻ" */}
+                        {item.saleType !== 'BOX' && item.unit && (
+                          <span className="text-[10px] text-[#8E8878] bg-[#F5F0E8] rounded px-1.5 py-0.5">
+                            ĐVT: {item.unit}
+                          </span>
+                        )}
                         {item.priceName && item.priceMode !== 'DISCOUNT_PERCENT' && (
                           <span className="text-[10px] text-[#C9A84C] bg-[#C9A84C]/10 rounded px-1.5 py-0.5">
                             {item.priceName}
@@ -576,13 +588,17 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                       </div>
                     </div>
                     <div className="text-right ml-3 shrink-0">
-                      {/* Giá tier gốc (originalUnitPrice) — gross, trước CK */}
                       {(() => {
                         const discPct = item.discountPercent ?? 0;
-                        const displayPrice = discPct > 0
+                        const isBox = item.saleType === 'BOX' && item.unitsPerBox > 0;
+                        // unitPrice từ backend luôn là giá lẻ
+                        // BOX: đơn giá hiển thị = unitPrice × unitsPerBox
+                        const unitPriceRaw = discPct > 0
                           ? Math.round(Number(item.unitPrice) / (1 - discPct / 100))
                           : Number(item.unitPrice ?? 0);
-
+                        const displayPrice = isBox
+                          ? unitPriceRaw * item.unitsPerBox
+                          : unitPriceRaw;
                         const gross = displayPrice * Number(item.quantity ?? 1);
                         return (
                           <>
@@ -601,16 +617,18 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
 
             {/* ── Tổng tiền ── */}
             <div className="bg-[#1C1C1E] rounded-xl p-4 space-y-1.5">
-              {/* Tạm tính = Σ(originalUnitPrice × qty) */}
+              {/* Tạm tính = Σ(displayUnitPrice × qty) — BOX: unitPrice × unitsPerBox */}
               <TotalRow
                 label="Tạm tính"
                 value={formatPrice((o.items ?? []).reduce(
                   (s, item) => {
                     const discPct = item.discountPercent ?? 0;
-                    const tierPrice = discPct > 0
+                    const isBox = item.saleType === 'BOX' && item.unitsPerBox > 0;
+                    const unitPriceRaw = discPct > 0
                       ? Math.round(Number(item.unitPrice) / (1 - discPct / 100))
                       : Number(item.unitPrice ?? 0);
-                    return s + tierPrice * Number(item.quantity ?? 1);
+                    const displayPrice = isBox ? unitPriceRaw * item.unitsPerBox : unitPriceRaw;
+                    return s + displayPrice * Number(item.quantity ?? 1);
                   }, 0
                 ))}
               />
@@ -621,8 +639,10 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                 const itemDiscount = (o.items ?? []).reduce((s, item) => {
                   const discPct = item.discountPercent ?? 0;
                   if (!discPct) return s;
+                  const isBox = item.saleType === 'BOX' && item.unitsPerBox > 0;
                   const tierPrice = Math.round(Number(item.unitPrice) / (1 - discPct / 100));
-                  return s + tierPrice * (discPct / 100) * Number(item.quantity ?? 1);
+                  const displayPrice = isBox ? tierPrice * item.unitsPerBox : tierPrice;
+                  return s + displayPrice * (discPct / 100) * Number(item.quantity ?? 1);
                 }, 0);
                 const billDiscount = Number(o.discountAmount ?? 0);
                 const totalDiscount = itemDiscount + billDiscount;

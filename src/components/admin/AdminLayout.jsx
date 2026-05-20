@@ -4,19 +4,20 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, ShoppingCart, Users, UserCog,
-  Warehouse, Package, LogOut, Menu, X, FileText, Receipt, TrendingUp,
+  Warehouse, Package, LogOut, Menu, X, FileText, Receipt, TrendingUp, TrendingDown,
 } from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
 import ProfileButton from '../common/ProfileButton';
 
 const navItems = [
-  { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/orders', label: 'Đơn hàng', icon: ShoppingCart },
-  { to: '/admin/customers', label: 'Khách hàng', icon: Users },
-  { to: '/admin/users', label: 'Nhân viên', icon: UserCog },
-  { to: '/admin/warehouses', label: 'Kho hàng', icon: Warehouse },
-  { to: '/admin/expenses', label: 'Phiếu chi phí', icon: Receipt },
-  { to: '/admin/sale-kpi', label: 'KPI Phòng Sale', icon: TrendingUp },
+  { to: '/admin/dashboard', label: 'Dashboard',    icon: LayoutDashboard },
+  { to: '/admin/orders',    label: 'Đơn hàng',     icon: ShoppingCart    },
+  { to: '/admin/customers', label: 'Khách hàng',   icon: Users           },
+  { to: '/admin/users',     label: 'Nhân viên',    icon: UserCog         },
+  { to: '/admin/warehouses',label: 'Kho hàng',     icon: Warehouse       },
+  { to: '/admin/expenses',  label: 'Phiếu chi',    icon: TrendingDown    },
+  { to: '/admin/incomes',   label: 'Phiếu thu',    icon: TrendingUp      },
+  { to: '/admin/sale-kpi',  label: 'KPI Phòng Sale',icon: Receipt        },
 ];
 
 export default function AdminLayout() {

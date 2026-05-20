@@ -287,6 +287,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
     categoryId: null, description: '',
     vatRate: 0,
     vatMode: 'INCLUDED',   // UI value — map sang INCLUSIVE khi submit
+    unitsPerBox: '',       // Số đơn vị / thùng (rỗng = không hỗ trợ bán thùng)
   });
   const [tiers, setTiers] = useState([{ fromQty: 0, price: '' }]);
   const [ingredients, setIngredients] = useState([]);
@@ -302,6 +303,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
         vatRate: product.vatRate ?? 0,
         // backend trả về INCLUSIVE/EXCLUSIVE → map về INCLUDED/ADDED cho UI
         vatMode: toUiVatMode(product.vatMode),
+        unitsPerBox: product.unitsPerBox ? String(product.unitsPerBox) : '',
       });
       if (product.priceTiers?.length > 0) {
         setTiers(product.priceTiers.map(t => ({
@@ -370,6 +372,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
         // ✅ Map UI vatMode → backend enum trước khi gửi
         vatMode: toBackendVatMode(form.vatMode),
         basePrice: tiers[0].price || 0,
+        unitsPerBox: form.unitsPerBox ? parseInt(form.unitsPerBox, 10) : null,
         tiers: tiers.map((t, idx) => ({
           tierName: idx === 0 ? 'Mặc định' : `Từ ${t.fromQty}`,
           minQuantity: parseFloat(t.fromQty) || 0,
@@ -462,12 +465,75 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
               <label className="text-xs text-[#8E8878] mb-1 block font-medium">Đơn vị tính</label>
               <div className="relative">
                 <select value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                  onChange={(e) => setForm({ ...form, unit: e.target.value, unitsPerBox: '' })}
                   className="w-full px-3 py-2 pr-8 rounded-lg border border-[#E8DDD0] text-sm bg-white appearance-none focus:outline-none focus:border-[#C9A84C]">
                   {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
                 <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
               </div>
+            </div>
+
+            {/* Quy cách bán thùng */}
+            <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+              {/* Toggle header */}
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, unitsPerBox: f.unitsPerBox ? '' : '1' }))}
+                className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">📦</span>
+                  <span className="text-xs font-semibold text-[#1C1C1E]">Bán theo thùng / quy cách</span>
+                </div>
+                {/* Toggle pill */}
+                <div className={`w-10 h-5 rounded-full transition-colors relative ${form.unitsPerBox ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.unitsPerBox ? 'left-5' : 'left-0.5'}`} />
+                </div>
+              </button>
+
+              {/* Expanded content */}
+              {form.unitsPerBox !== '' && (
+                <div className="px-4 py-3 space-y-3 border-t border-[#E8DDD0] bg-white">
+                  <p className="text-[11px] text-[#8E8878]">
+                    Cho phép bán nguyên thùng. Giá thùng = giá {form.unit} × số {form.unit}/thùng.
+                  </p>
+
+                  {/* Input số lượng / thùng */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-xs text-[#8E8878] whitespace-nowrap">1 thùng =</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.unitsPerBox}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^0-9]/g, '');
+                          setForm({ ...form, unitsPerBox: raw });
+                        }}
+                        placeholder="12"
+                        className="w-20 px-3 py-2 rounded-lg border-2 border-[#C9A84C] text-sm font-bold text-center focus:outline-none text-[#1C1C1E]"
+                      />
+                      <span className="text-xs text-[#8E8878]">{form.unit}</span>
+                    </div>
+                  </div>
+
+                  {/* Preview giá thùng */}
+                  {form.unitsPerBox && parseInt(form.unitsPerBox) > 0 && tiers[0]?.price && (
+                    <div className="bg-[#FDF8ED] rounded-lg px-3 py-2 flex items-center justify-between">
+                      <span className="text-xs text-[#8E8878]">Giá 1 thùng ({form.unitsPerBox} {form.unit})</span>
+                      <span className="text-sm font-bold text-[#C9A84C]">
+                        {new Intl.NumberFormat('vi-VN').format(
+                          parseInt(form.unitsPerBox) * (parseFloat(tiers[0].price) || 0)
+                        )} đ
+                      </span>
+                    </div>
+                  )}
+
+                  {form.unitsPerBox && parseInt(form.unitsPerBox) > 0 && !tiers[0]?.price && (
+                    <p className="text-[11px] text-[#C4B9A8] italic">Nhập giá bên dưới để xem giá thùng.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* VAT */}

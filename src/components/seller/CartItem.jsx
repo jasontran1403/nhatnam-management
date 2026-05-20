@@ -107,6 +107,17 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-[#1C1C1E] truncate">{item.productName}</p>
 
+        {/* Quy cách badge */}
+        {item.saleType === 'BOX' ? (
+          <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+            📦 Thùng ({item.unitsPerBox} {item.unit === 'Thùng' ? (item.baseUnit || '') : item.unit}/thùng)
+          </span>
+        ) : item.saleType === 'RETAIL' ? (
+          <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-sky-50 text-sky-600 border border-sky-200">
+            Lẻ
+          </span>
+        ) : null}
+
         {/* VAT badge */}
         {showVatBadge && (
           <span className={`text-[9px] rounded px-1 py-0.5 font-medium

@@ -1,5 +1,6 @@
 // src/pages/accountant/AccountantDashboardPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -47,7 +48,7 @@ function useCountUp(target, duration = 800) {
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, icon: Icon, accent, value, isPrice, loading, alert }) {
+function StatCard({ label, icon: Icon, accent, value, isPrice, loading, alert, onClick }) {
   const map = {
     gold:   { bg: 'bg-[#C9A84C]/10', ico: 'text-[#C9A84C]',  val: 'text-[#1C1C1E]' },
     green:  { bg: 'bg-emerald-50',   ico: 'text-emerald-500', val: 'text-emerald-600' },
@@ -57,14 +58,25 @@ function StatCard({ label, icon: Icon, accent, value, isPrice, loading, alert })
     purple: { bg: 'bg-purple-50',    ico: 'text-purple-500',  val: 'text-[#1C1C1E]' },
   };
   const cls = map[accent] ?? map.gold;
+  const isClickable = !!onClick;
+
   const AnimVal = () => {
     const v = useCountUp(value ?? 0);
     return isPrice
       ? <span className={`text-base sm:text-xl font-bold tabular-nums ${cls.val}`}>{formatPrice(v)}</span>
       : <span className={`text-2xl sm:text-3xl font-bold tabular-nums ${cls.val}`}>{fmtNum(Math.round(v))}</span>;
   };
+
   return (
-    <div className={`bg-white rounded-2xl p-4 sm:p-5 border shadow-sm ${alert ? 'border-orange-200' : 'border-[#F0EBE3]'}`}>
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-4 sm:p-5 border shadow-sm transition-all
+        ${alert ? 'border-orange-200' : 'border-[#F0EBE3]'}
+        ${isClickable
+          ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-[#C9A84C]/50 active:scale-95'
+          : ''}
+      `}
+    >
       <div className="flex items-center justify-between mb-2 sm:mb-3">
         <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium leading-tight">{label}</p>
         <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 ${cls.bg}`}>
@@ -75,6 +87,9 @@ function StatCard({ label, icon: Icon, accent, value, isPrice, loading, alert })
         ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse" />
         : <AnimVal />
       }
+      {isClickable && !loading && (
+        <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
+      )}
     </div>
   );
 }
@@ -140,6 +155,8 @@ function TopProductRow({ p, i, imgUrl, pct }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AccountantDashboardPage() {
+  const navigate = useNavigate();
+
   const [preset,       setPreset]       = useState('today');
   const [range,        setRange]        = useState(() => presetToRange('today'));
   const [summary,      setSummary]      = useState(null);
@@ -150,6 +167,10 @@ export default function AccountantDashboardPage() {
   const [debtStats,    setDebtStats]    = useState(null);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState(null);
+
+  // Detect base path để navigate đúng cho từng role
+  const basePath = window.location.pathname.split('/').slice(0, 2).join('/');
+  // basePath = /accountant | /super-accountant | /admin | /owner
 
   const groupByFromRange = (r) => {
     if (!r) return 'DAY';
@@ -184,6 +205,8 @@ export default function AccountantDashboardPage() {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
   const maxRevenue = Number(topProducts[0]?.totalRevenue) || 1;
 
+  const goDebt = (type) => navigate(`${basePath}/debt-orders`, { state: { type } });
+
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 min-h-full bg-[#FAF7F2]">
 
@@ -201,7 +224,7 @@ export default function AccountantDashboardPage() {
         )}
       </div>
 
-      {/* Date picker — same component as admin */}
+      {/* Date picker */}
       <div className="bg-white rounded-2xl border border-[#F0EBE3] px-4 py-3 shadow-sm">
         <DateRangePicker preset={preset} onPreset={setPreset} onRangeChange={setRange} />
       </div>
@@ -220,12 +243,28 @@ export default function AccountantDashboardPage() {
         <StatCard label="Đơn hoàn thành" icon={CheckCircle} accent="blue"  value={summary?.successOrders} loading={loading} />
       </div>
 
-      {/* Row 2: công nợ & trạng thái */}
+      {/* Row 2: công nợ — 2 card có thể click */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Sắp đến hạn TT"  icon={Clock}         accent="orange" value={debtStats?.nearingDeadline} loading={loading} alert />
-        <StatCard label="Công nợ quá hạn" icon={AlertTriangle} accent="red"    value={debtStats?.overdueCount}    loading={loading} alert />
-        <StatCard label="Đang giao hàng"  icon={Truck}         accent="blue"   value={summary?.deliveringOrders}  loading={loading} />
-        <StatCard label="Tổng đơn nợ"    icon={Users}         accent="purple" value={debtStats?.totalDebtOrders} loading={loading} />
+        <StatCard
+          label="Sắp đến hạn TT"
+          icon={Clock}
+          accent="orange"
+          value={debtStats?.nearingDeadline}
+          loading={loading}
+          alert
+          onClick={() => goDebt('NEARING')}
+        />
+        <StatCard
+          label="Công nợ quá hạn"
+          icon={AlertTriangle}
+          accent="red"
+          value={debtStats?.overdueCount}
+          loading={loading}
+          alert
+          onClick={() => goDebt('OVERDUE')}
+        />
+        <StatCard label="Đang giao hàng" icon={Truck}  accent="blue"   value={summary?.deliveringOrders}  loading={loading} />
+        <StatCard label="Tổng đơn nợ"   icon={Users}  accent="purple" value={debtStats?.totalDebtOrders} loading={loading} />
       </div>
 
       {/* Chart */}

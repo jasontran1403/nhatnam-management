@@ -37,6 +37,24 @@ export function useNotifications(role, onNewNotification) {
     }
   }, []);
 
+  const handleMessage = (msg) => {
+    try {
+      const notification = JSON.parse(msg.body);
+      // Nếu có targetUserId → lọc đúng user
+      if (notification.targetUserId !== undefined) {
+        try {
+          const me = JSON.parse(localStorage.getItem('user'));
+          if (!me?.userId || String(me.userId) !== String(notification.targetUserId)) return;
+        } catch (_) { return; }
+      }
+      setNotifications(prev => [{ ...notification, isRead: false }, ...prev]);
+      setUnreadCount(prev => prev + 1);
+      if (onNewNotification) onNewNotification(notification);
+    } catch (e) {
+      console.error('[WS] parse error', e);
+    }
+  };
+
   // ── Mark single read ─────────────────────────────────────────────
   const markRead = useCallback(async (id) => {
     try {
@@ -87,31 +105,19 @@ export function useNotifications(role, onNewNotification) {
           reconnectDelay: 5000,
           onConnect: () => {
             connectedRef.current = true;
-            const topic = `/topic/notifications/${role.toLowerCase()}`;
-            client.subscribe(topic, (msg) => {
-              try {
-                const notification = JSON.parse(msg.body);
 
-                // Nếu message có targetUserId → chỉ xử lý nếu đúng user hiện tại
-                console.log('Received nofi for user:', msg.targetUserId);
-                if (notification.targetUserId !== undefined) {
-                  try {
-                    const me = JSON.parse(localStorage.getItem('user'));
-                    console.log('Received nofi for user:', me?.userId);
-                    if (!me?.userId || String(me.userId) !== String(notification.targetUserId)) {
-                      return;
-                    }
-                  } catch (_) { return; }
-                }
+            // Subscribe theo role (broadcast)
+            const roleTopic = `/topic/notifications/${role.toLowerCase()}`;
+            client.subscribe(roleTopic, handleMessage);
 
-                // Là của mình (hoặc broadcast không có targetUserId) → xử lý bình thường
-                setNotifications(prev => [{ ...notification, isRead: false }, ...prev]);
-                setUnreadCount(prev => prev + 1);
-                if (onNewNotification) onNewNotification(notification);
-              } catch (e) {
-                console.error('[WS] parse error', e);
+            // Subscribe theo personal topic (chính xác, tránh miss khi multi-role)
+            try {
+              const me = JSON.parse(localStorage.getItem('user'));
+              if (me?.userId) {
+                const userTopic = `/topic/notifications/user/${me.userId}`;
+                client.subscribe(userTopic, handleMessage);
               }
-            });
+            } catch (_) { }
           },
           onDisconnect: () => { connectedRef.current = false; },
           onStompError: (err) => console.error('[STOMP] error', err),

@@ -89,6 +89,11 @@ export const adminExpenseApi = {
   reject:   (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }).then(unwrap),
 };
 
+export const adminIncomeApi = {
+  listAll: (params) => api.get('/api/income-vouchers', { params }).then(unwrap),
+  getById: (id)     => api.get(`/api/income-vouchers/${id}`).then(unwrap),
+};
+
 // ─── KPI Admin ───────────────────────────────────────────────────────────────
 export const adminKpiApi = {
   getPeriod: (periodKey) => api.get('/api/admin/kpi', { params: { periodKey } }).then(unwrap),

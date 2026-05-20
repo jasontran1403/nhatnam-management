@@ -4,17 +4,16 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, ClipboardList, LogOut, Menu, X, ChevronRight,
-  Users, Building2,
+  Users, TrendingUp,
 } from 'lucide-react';
 import NotificationBell from '../common/NotificationBell';
 import ProfileButton from '../common/ProfileButton';
 
-// ACCOUNTANT thường: Dashboard, Đơn Hàng, Khách hàng, Nhà cung cấp
-// KHÔNG có "Phiếu nhập kho" — chỉ SUPER_ACCOUNTANT mới có quyền đó
 const navItems = [
-  { to: '/accountant/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/accountant/orders', label: 'Đơn Hàng', icon: ClipboardList },
-  { to: '/accountant/customers', label: 'Khách hàng', icon: Users },
+  { to: '/accountant/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
+  { to: '/accountant/orders',    label: 'Đơn Hàng',   icon: ClipboardList   },
+  { to: '/accountant/customers', label: 'Khách hàng', icon: Users           },
+  { to: '/accountant/incomes',   label: 'Phiếu Thu',  icon: TrendingUp      },
 ];
 
 export default function AccountantLayout() {
@@ -47,8 +46,6 @@ export default function AccountantLayout() {
             </button>
           </div>
         </div>
-
-        
 
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="text-[#8E8878] text-xs uppercase tracking-wider px-3 mb-2">Menu</p>

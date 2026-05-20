@@ -16,7 +16,8 @@ const navItems = [
   { to: '/owner/customers', label: 'Khách hàng', icon: Users },
   { to: '/owner/users', label: 'Nhân viên', icon: UserCog },
   { to: '/owner/warehouses', label: 'Kho hàng', icon: Warehouse },
-  { to: '/owner/expenses', label: 'Phiếu chi phí', icon: Receipt },
+  { to: '/owner/expenses', label: 'Phiếu chi', icon: Receipt },
+  { to: '/owner/incomes', label: 'Phiếu thu', icon: TrendingUp },
   { to: '/owner/sale-kpi', label: 'KPI Phòng Sale', icon: TrendingUp },
 ];
 

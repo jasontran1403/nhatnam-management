@@ -180,7 +180,7 @@ export const incomeApi = {
   reject: (id, reason) => api.post(`/api/income-vouchers/${id}/reject`, { reason }),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
-    return api.post('/api/upload/expense-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return api.post('/api/upload/income-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
 };
 
