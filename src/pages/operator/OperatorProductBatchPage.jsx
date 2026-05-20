@@ -127,17 +127,22 @@ export default function OperatorProductBatchPage() {
       const payload = {
         type: batchType,
         note,
-        items: items.map(it => ({
-          existingProductId: it.existingProductId,
-          name: it.name.trim(),
-          categoryName: it.categoryName,
-          unit: it.unit,
-          basePrice: Number(String(it.basePrice).replace(/[^0-9]/g, '')),
-          maxDiscountRate: Number(it.maxDiscountRate) || 0,
-          vatRate: it.vatRate ?? 8,
-          vatMode: it.vatMode || 'INCLUSIVE',
-          imageUrl: it.imageUrl,
-          unitsPerBox: it.unitsPerBox ? parseInt(it.unitsPerBox, 10) : null,
+        items: items.map(it => {
+          // Đảm bảo basePrice luôn = tiers[0].price nếu có tier
+          const resolvedBasePrice = it.tiers.length > 0 && it.tiers[0].price
+            ? Number(String(it.tiers[0].price).replace(/[^0-9]/g, ''))
+            : Number(String(it.basePrice).replace(/[^0-9]/g, ''));
+          return {
+            existingProductId: it.existingProductId,
+            name: it.name.trim(),
+            categoryName: it.categoryName,
+            unit: it.unit,
+            basePrice: resolvedBasePrice,
+            maxDiscountRate: Number(it.maxDiscountRate) || 0,
+            vatRate: it.vatRate ?? 8,
+            vatMode: it.vatMode || 'INCLUSIVE',
+            imageUrl: it.imageUrl,
+            unitsPerBox: it.unitsPerBox ? parseInt(it.unitsPerBox, 10) : null,
           tiers: it.tiers
             .filter(t => Number(String(t.price).replace(/[^0-9]/g, '')) > 0)
             .map((t, idx, arr) => ({
@@ -154,7 +159,8 @@ export default function OperatorProductBatchPage() {
               quantity: Number(ing.quantity) || 1,
               canOverride: ing.canOverride || false,
             })),
-        })),
+          };
+        }),
       };
       await operatorApi.submitBatch(payload);
       toast('Phiếu đã được gửi thành công!', 'success');
@@ -368,7 +374,13 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
               <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
                 Giá gốc (đ) <span className="text-red-400">*</span>
               </label>
-              <PriceInput value={item.basePrice} onChange={val => onUpdate({ basePrice: val })} />
+              <PriceInput value={item.basePrice} onChange={val => {
+                // Đồng bộ giá gốc → khung giá 1 (tiers[0])
+                const updatedTiers = item.tiers.length > 0
+                  ? item.tiers.map((t, i) => i === 0 ? { ...t, price: val } : t)
+                  : item.tiers;
+                onUpdate({ basePrice: val, tiers: updatedTiers });
+              }} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">CK tối đa (%)</label>
@@ -457,6 +469,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                   ({item.tiers.length} khung)
                 </span>
               </span>
+              <span className="text-[10px] text-[#B0A898]">Khung 1 = giá gốc</span>
               <button onClick={addTier}
                 className="flex items-center gap-1 text-xs text-[#C9A84C] hover:text-[#A07830] font-semibold transition-colors">
                 <Plus size={12} /> Thêm khung
@@ -498,10 +511,18 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                     <div className="text-xs text-center text-[#B0A898] bg-[#F5F0E8] rounded-lg py-1.5 px-1 truncate">
                       {toQtyDisplay}
                     </div>
-                    <PriceInput value={tier.price}
-                      onChange={val => onUpdate({
-                        tiers: item.tiers.map(t => t._id === tier._id ? { ...t, price: val } : t)
-                      })} />
+                    {ti === 0 ? (
+                      /* Khung 1: hiển thị = giá gốc, không cho sửa */
+                      <div className="relative">
+                        <PriceInput value={item.basePrice} onChange={() => {}} />
+                        <div className="absolute inset-0 rounded-xl bg-[#FAF7F2]/80 cursor-not-allowed" title="Giá khung 1 bằng giá gốc" />
+                      </div>
+                    ) : (
+                      <PriceInput value={tier.price}
+                        onChange={val => onUpdate({
+                          tiers: item.tiers.map(t => t._id === tier._id ? { ...t, price: val } : t)
+                        })} />
+                    )}
                     <div className="flex justify-center">
                       {ti === item.tiers.length - 1 && item.tiers.length > 1
                         ? <button onClick={() => onUpdate({ tiers: item.tiers.filter(t => t._id !== tier._id) })}
