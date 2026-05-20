@@ -141,6 +141,7 @@ export default function App() {
               <Route path="ingredients" element={<AdminIngredients />} />
               <Route path="expenses" element={<ExpenseVoucherPage />} />
               <Route path="incomes"   element={<IncomeVoucherPage />} />
+              <Route path="debt-orders"   element={<DebtOrdersPage />} />
               <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
               <Route path="sale-kpi" element={<SaleKpiPage />} />
             </Route>
@@ -162,6 +163,7 @@ export default function App() {
               <Route path="batches" element={<AdminBatchApproval />} />
               <Route path="expenses" element={<ExpenseVoucherPage />} />
               <Route path="incomes"   element={<IncomeVoucherPage />} />
+              <Route path="debt-orders"   element={<DebtOrdersPage />} />
               <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
               <Route path="sale-kpi" element={<SaleKpiPage />} />
             </Route>

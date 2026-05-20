@@ -28,6 +28,8 @@ export const adminDashboardApi = {
     api.get('/api/admin/dashboard/top-sellers', { params: { limit, from, to, sortBy } }).then(r => r.data?.data ?? r.data),
   getTopCustomers: (limit = 10, from, to) =>
     api.get('/api/admin/dashboard/top-customers', { params: { limit, from, to } }).then(r => r.data?.data ?? r.data),
+  getDebtStats: () =>
+    api.get('/api/admin/dashboard/debt-stats').then(r => r.data?.data ?? r.data),
 };
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
@@ -83,15 +85,15 @@ export const adminIngredientApi = {
 
 // ─── Expense Vouchers (ADMIN/OWNER side) ─────────────────────────────────────
 export const adminExpenseApi = {
-  listAll:  (params) => api.get('/api/expense-vouchers', { params }).then(unwrap),
-  getById:  (id) => api.get(`/api/expense-vouchers/${id}`).then(unwrap),
-  approve:  (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }).then(unwrap),
-  reject:   (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }).then(unwrap),
+  listAll: (params) => api.get('/api/expense-vouchers', { params }).then(unwrap),
+  getById: (id) => api.get(`/api/expense-vouchers/${id}`).then(unwrap),
+  approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }).then(unwrap),
+  reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }).then(unwrap),
 };
 
 export const adminIncomeApi = {
   listAll: (params) => api.get('/api/income-vouchers', { params }).then(unwrap),
-  getById: (id)     => api.get(`/api/income-vouchers/${id}`).then(unwrap),
+  getById: (id) => api.get(`/api/income-vouchers/${id}`).then(unwrap),
 };
 
 // ─── KPI Admin ───────────────────────────────────────────────────────────────

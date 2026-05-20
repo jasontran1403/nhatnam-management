@@ -1,9 +1,11 @@
 // src/pages/admin/AdminDashboard.jsx
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, DollarSign, ShoppingCart, Users, Package,
   UserPlus, Clock, CheckCircle2, XCircle, Trophy, Medal,
   ChevronDown, CalendarDays, TrendingUp, TrendingDown, Minus, Crown,
+  AlertTriangle, Wallet,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -152,8 +154,12 @@ function ChangeBadge({ pct }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const basePath = window.location.pathname.split('/').slice(0, 2).join('/');
+
   const [preset, setPreset] = useState('today');
   const [stats, setStats] = useState(null);
+  const [debtStats, setDebtStats] = useState(null);
   const [topProducts, setTopProducts] = useState([]);
   const [topSellers, setTopSellers] = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
@@ -166,13 +172,15 @@ export default function AdminDashboard() {
     if (!r) return;
     setLoading(true);
     try {
-      const [s, p, u, tc] = await Promise.all([
+      const [s, p, u, tc, ds] = await Promise.all([
         adminDashboardApi.getStats(r.from, r.to),
         adminDashboardApi.getTopProducts(10, r.from, r.to, ps),
         adminDashboardApi.getTopSellers(10, r.from, r.to, ss),
         adminDashboardApi.getTopCustomers(10, r.from, r.to).catch(() => []),
+        adminDashboardApi.getDebtStats().catch(() => null),
       ]);
       setStats(s);
+      setDebtStats(ds);
       setTopProducts(p || []);
       setTopSellers(u || []);
       setTopCustomers(tc || []);
@@ -218,8 +226,10 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* ── Stats cards row 1 ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      {/* ══════════════════════════════════════════════════════════════
+           ROW 1 — 4 card: Doanh thu | Tổng thu | Tổng chi | Đơn hàng
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           {
             label: 'Doanh thu kỳ này', icon: DollarSign, accent: 'gold',
@@ -227,22 +237,19 @@ export default function AdminDashboard() {
             pct: stats?.revenueChangePercent, isCurrency: true,
           },
           {
+            label: 'Tổng số tiền đã thu', icon: Wallet, accent: 'green',
+            value: loading ? null : stats?.totalPaidAmount ?? stats?.totalPaid,
+            isCurrency: true,
+          },
+          {
+            label: 'Tổng chi', icon: TrendingDown, accent: 'red',
+            value: loading ? null : stats?.totalExpenses,
+            isCurrency: true,
+          },
+          {
             label: 'Đơn hàng kỳ này', icon: ShoppingCart, accent: 'blue',
             value: loading ? null : stats?.ordersToday,
             pct: stats?.ordersChangePercent,
-          },
-          {
-            label: 'Khách hàng mới', icon: UserPlus, accent: 'green',
-            value: loading ? null : stats?.newCustomersToday,
-          },
-          {
-            label: 'Đơn đang xử lý', icon: Clock, accent: 'purple',
-            value: loading ? null : stats?.totalActiveOrders,
-          },
-          {
-            label: 'Chi phí đã duyệt', icon: TrendingDown, accent: 'red',
-            value: loading ? null : stats?.totalExpenses,
-            isCurrency: true,
           },
         ].map((c, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
@@ -270,33 +277,104 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* ── Stats cards row 2 ── */}
+      {/* ══════════════════════════════════════════════════════════════
+           ROW 2 — 4 card: KH (mới + tổng) | Đang xử lý | Hoàn thành | Đã hủy
+      ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
+        {/* Card gộp: Khách hàng mới + Tổng */}
+        <div className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">Khách hàng</p>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <Users size={14} className="text-emerald-500" />
+            </div>
+          </div>
+          {loading ? (
+            <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
+          ) : (
+            <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums">
+              <AnimNumber value={stats?.totalCustomers ?? 0} />
+            </p>
+          )}
+          {!loading && (
+            <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+              +<AnimNumber value={stats?.newCustomersToday ?? 0} /> mới kỳ này
+            </p>
+          )}
+        </div>
+
         {[
-          { label: 'Tổng sản phẩm', icon: Package, value: stats?.totalProducts, accent: 'gold' },
-          { label: 'Tổng khách hàng', icon: Users, value: stats?.totalCustomers, accent: 'blue' },
-          { label: 'Đã hoàn thành', icon: CheckCircle2, value: stats?.completedOrdersAllTime, accent: 'green' },
-          { label: 'Đã hủy', icon: XCircle, value: stats?.cancelledOrdersAllTime, accent: 'purple' },
+          { label: 'Đơn đang xử lý', icon: Clock,        accent: 'purple', value: stats?.totalActiveOrders      },
+          { label: 'Đã hoàn thành',  icon: CheckCircle2,  accent: 'green',  value: stats?.completedOrdersAllTime },
+          { label: 'Đã hủy',         icon: XCircle,       accent: 'red',    value: stats?.cancelledOrdersAllTime },
         ].map((c, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">{c.label}</p>
               <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center
-                ${c.accent === 'gold' ? 'bg-[#C9A84C]/10' : c.accent === 'blue' ? 'bg-blue-50'
-                  : c.accent === 'green' ? 'bg-emerald-50' : c.accent === 'red' ? 'bg-red-50' : 'bg-purple-50'}`}>
+                ${c.accent === 'purple' ? 'bg-purple-50' : c.accent === 'green' ? 'bg-emerald-50' : 'bg-red-50'}`}>
                 <c.icon size={14} className={
-                  c.accent === 'gold' ? 'text-[#C9A84C]' : c.accent === 'blue' ? 'text-blue-500'
-                    : c.accent === 'green' ? 'text-emerald-500' : c.accent === 'red' ? 'text-red-500' : 'text-purple-500'} />
+                  c.accent === 'purple' ? 'text-purple-500' : c.accent === 'green' ? 'text-emerald-500' : 'text-red-500'} />
               </div>
             </div>
             {loading
               ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
               : <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums">
-                <AnimNumber value={c.value ?? 0} />
-              </p>
+                  <AnimNumber value={c.value ?? 0} />
+                </p>
             }
           </div>
         ))}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+           ROW 3 — 2 card debt clickable (full width 2 col)
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        {/* Sắp đến hạn */}
+        <div
+          onClick={() => navigate(`${basePath}/debt-orders`, { state: { type: 'NEARING' } })}
+          className="bg-white rounded-2xl border border-orange-200 shadow-sm p-4 sm:p-5
+            cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-[#C9A84C]/60
+            active:scale-95 transition-all duration-150"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">Sắp đến hạn TT</p>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-orange-50 flex items-center justify-center">
+              <Clock size={14} className="text-orange-500" />
+            </div>
+          </div>
+          {loading
+            ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
+            : <p className="text-2xl sm:text-3xl font-bold text-orange-500 tabular-nums">
+                <AnimNumber value={debtStats?.nearingDeadline ?? 0} />
+              </p>
+          }
+          <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
+        </div>
+
+        {/* Quá hạn */}
+        <div
+          onClick={() => navigate(`${basePath}/debt-orders`, { state: { type: 'OVERDUE' } })}
+          className="bg-white rounded-2xl border border-red-200 shadow-sm p-4 sm:p-5
+            cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-red-400/60
+            active:scale-95 transition-all duration-150"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">Công nợ quá hạn</p>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-red-50 flex items-center justify-center">
+              <AlertTriangle size={14} className="text-red-500" />
+            </div>
+          </div>
+          {loading
+            ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
+            : <p className="text-2xl sm:text-3xl font-bold text-red-500 tabular-nums">
+                <AnimNumber value={debtStats?.overdueCount ?? 0} />
+              </p>
+          }
+          <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
+        </div>
       </div>
 
       {/* ── Chart + Pie ── */}
