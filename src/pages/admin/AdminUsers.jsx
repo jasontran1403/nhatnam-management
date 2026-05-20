@@ -1,7 +1,7 @@
 // src/pages/admin/AdminUsers.jsx
 import { useEffect, useState, useCallback } from 'react';
 import {
-  UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check,
+  UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check, AlertCircle,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { useAuth } from '../../context/AuthContext';
@@ -15,18 +15,53 @@ import {
 } from '../../components/admin/ui';
 
 const ROLE_CONFIG = [
-  { value: 'OWNER', label: 'Chủ tịch' },
-  { value: 'ADMIN', label: 'Giám đốc' },
-  { value: 'SUPER_ACCOUNTANT', label: 'Kế toán trưởng' },
-  { value: 'ACCOUNTANT', label: 'Kế toán' },
-  { value: 'SUPER_SELLER', label: 'Trưởng phòng kinh doanh' },
-  { value: 'SELLER', label: 'Nhân viên kinh doanh' },
+  { value: 'OWNER',           label: 'Chủ tịch' },
+  { value: 'ADMIN',           label: 'Giám đốc' },
+  { value: 'SUPER_ACCOUNTANT',label: 'Kế toán trưởng' },
+  { value: 'ACCOUNTANT',      label: 'Kế toán' },
+  { value: 'SUPER_SELLER',    label: 'Trưởng phòng kinh doanh' },
+  { value: 'SELLER',          label: 'Nhân viên kinh doanh' },
   { value: 'SUPER_WAREHOUSE', label: 'Trưởng xưởng' },
-  { value: 'WAREHOUSE', label: 'Nhân viên kho' },
-  { value: 'OPERATOR', label: 'Nhân viên nhập liệu' },
+  { value: 'WAREHOUSE',       label: 'Nhân viên kho' },
+  { value: 'OPERATOR',        label: 'Nhân viên nhập liệu' },
 ];
 const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
-const ROLE_LABEL = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+
+// ── Các cặp role XUNG ĐỘT — không được tồn tại cùng nhau ─────────────────────
+// Mỗi phần tử là 1 nhóm loại trừ lẫn nhau
+const CONFLICT_GROUPS = [
+  ['ACCOUNTANT',      'SUPER_ACCOUNTANT'],
+  ['WAREHOUSE',       'SUPER_WAREHOUSE'],
+  ['SELLER',          'SUPER_SELLER'],
+  ['OWNER',           'ADMIN'],
+];
+
+/**
+ * Trả về role xung đột với `adding` trong danh sách `current`,
+ * hoặc null nếu không có xung đột.
+ */
+function findConflict(current, adding) {
+  for (const group of CONFLICT_GROUPS) {
+    if (!group.includes(adding)) continue;
+    const conflicting = group.find(r => r !== adding && current.includes(r));
+    if (conflicting) return conflicting;
+  }
+  return null;
+}
+
+/**
+ * Trả về tên của nhóm xung đột mà `role` thuộc về (để hiển thị hint),
+ * hoặc null nếu không bị disabled.
+ */
+function getDisabledReason(selected, candidate) {
+  for (const group of CONFLICT_GROUPS) {
+    if (!group.includes(candidate)) continue;
+    const blocking = group.find(r => r !== candidate && selected.includes(r));
+    if (blocking) return `Xung đột với "${ROLE_LABEL[blocking]}"`;
+  }
+  return null;
+}
 
 function canManageUser(currentUserRole, targetUser) {
   if (currentUserRole === 'OWNER') return true;
@@ -36,35 +71,72 @@ function canManageUser(currentUserRole, targetUser) {
 
 // ── Multi-role picker ─────────────────────────────────────────────────────────
 function RolePicker({ selected, onChange, availableRoles }) {
+  const [conflictMsg, setConflictMsg] = useState('');
+
   const toggle = (val) => {
+    setConflictMsg('');
+
     if (selected.includes(val)) {
-      // Không cho bỏ hết — phải có ít nhất 1
+      // Bỏ role — không cho bỏ nếu chỉ còn 1
       if (selected.length === 1) return;
       onChange(selected.filter(r => r !== val));
     } else {
+      // Thêm role — kiểm tra xung đột
+      const conflict = findConflict(selected, val);
+      if (conflict) {
+        setConflictMsg(
+          `"${ROLE_LABEL[val]}" không thể đi chung với "${ROLE_LABEL[conflict]}". Bỏ chọn "${ROLE_LABEL[conflict]}" trước.`
+        );
+        return;
+      }
       onChange([...selected, val]);
     }
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {availableRoles.map(r => {
-        const active = selected.includes(r.value);
-        return (
-          <button
-            key={r.value}
-            type="button"
-            onClick={() => toggle(r.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition
-              ${active
-                ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                : 'bg-white text-[#555] border-black/10 hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}
-          >
-            {active && <Check size={11} />}
-            {r.label}
-          </button>
-        );
-      })}
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {availableRoles.map(r => {
+          const active        = selected.includes(r.value);
+          const disabledReason = !active ? getDisabledReason(selected, r.value) : null;
+          const isDisabled    = !!disabledReason;
+
+          return (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => toggle(r.value)}
+              disabled={isDisabled}
+              title={disabledReason ?? undefined}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition
+                ${active
+                  ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
+                  : isDisabled
+                    ? 'bg-[#FAF7F2] text-[#C4B9A8] border-black/5 cursor-not-allowed opacity-60'
+                    : 'bg-white text-[#555] border-black/10 hover:border-[#C9A84C] hover:text-[#C9A84C]'
+                }`}
+            >
+              {active && <Check size={11} />}
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Conflict error message */}
+      {conflictMsg && (
+        <div className="flex items-start gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
+          <span>{conflictMsg}</span>
+        </div>
+      )}
+
+      {/* Info khi chọn nhiều role */}
+      {selected.length > 1 && !conflictMsg && (
+        <p className="text-xs text-[#8E8878]">
+          Khi đăng nhập, user sẽ được chọn role muốn sử dụng trong phiên đó.
+        </p>
+      )}
     </div>
   );
 }
@@ -72,26 +144,26 @@ function RolePicker({ selected, onChange, availableRoles }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminUsers() {
   const { user: currentUser } = useAuth();
-  const [filters, setFilters] = useState({ q: '', role: '', locked: '' });
+  const [filters, setFilters]  = useState({ q: '', role: '', locked: '' });
   const debouncedQ = useDebounce(filters.q, 600);
 
-  const [page, setPage] = useState(0);
-  const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
+  const [page, setPage]     = useState(0);
+  const [data, setData]     = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useState(true);
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen]     = useState(false);
+  const [editing, setEditing]       = useState(null);
+  const [saving, setSaving]         = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null);
-  const [pwdTarget, setPwdTarget] = useState(null);
-  const [newPwd, setNewPwd] = useState('');
+  const [pwdTarget, setPwdTarget]   = useState(null);
+  const [newPwd, setNewPwd]         = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, size: 20, sort: 'id,desc' };
-      if (debouncedQ) params.q = debouncedQ;
-      if (filters.role) params.role = filters.role;
+      if (debouncedQ)        params.q      = debouncedQ;
+      if (filters.role)      params.role   = filters.role;
       if (filters.locked !== '') params.locked = filters.locked;
       const res = await adminUserApi.list(params);
       setData(res);
@@ -102,7 +174,7 @@ export default function AdminUsers() {
   useEffect(() => { load(); }, [load]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
-  const openEdit = (u) => { setEditing(u); setFormOpen(true); };
+  const openEdit   = (u) => { setEditing(u);   setFormOpen(true); };
 
   const toggleLock = async () => {
     if (!lockConfirm) return;
@@ -125,7 +197,6 @@ export default function AdminUsers() {
     finally { setSaving(false); }
   };
 
-  // Helper: hiển thị tất cả roles của user
   const renderRoleBadges = (u) => {
     const roles = u.roles?.length ? [...u.roles] : (u.role ? [u.role] : []);
     return roles.map(r => (
@@ -350,7 +421,6 @@ export default function AdminUsers() {
 function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
   const availableRoles = currentUserRole === 'OWNER' ? ROLE_CONFIG : ADMIN_ROLES;
 
-  // Khởi tạo selectedRoles từ user đang edit (dùng roles[] nếu có, fallback role đơn)
   const initRoles = () => {
     if (editing) {
       if (editing.roles?.length) return [...editing.roles];
@@ -361,40 +431,57 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
 
   const [selectedRoles, setSelectedRoles] = useState(initRoles);
   const [form, setForm] = useState({
-    username: editing?.username || '',
-    password: '',
-    fullName: editing?.fullName || '',
-    email: editing?.email || '',
+    username:    editing?.username    || '',
+    password:    '',
+    fullName:    editing?.fullName    || '',
+    email:       editing?.email       || '',
     phoneNumber: editing?.phoneNumber || '',
     warehouseId: editing?.warehouseId ? String(editing.warehouseId) : '',
   });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
+  const [saving, setSaving]     = useState(false);
+  const [err, setErr]           = useState('');
   const [warehouses, setWarehouses] = useState([]);
 
   useEffect(() => {
     import('../../api/adminApi').then(({ adminWarehouseApi }) => {
-      adminWarehouseApi.list().then(whs => setWarehouses(whs || [])).catch(() => { });
+      adminWarehouseApi.list().then(whs => setWarehouses(whs || [])).catch(() => {});
     });
   }, []);
 
   const needsWarehouse = selectedRoles.includes('WAREHOUSE') || selectedRoles.includes('SUPER_WAREHOUSE');
 
+  // Validate toàn bộ danh sách roles trước khi submit (phòng trường hợp data cũ bị conflict)
+  const validateRoles = (roles) => {
+    for (const group of CONFLICT_GROUPS) {
+      const hits = group.filter(r => roles.includes(r));
+      if (hits.length > 1) {
+        return `"${ROLE_LABEL[hits[0]]}" và "${ROLE_LABEL[hits[1]]}" không thể đi chung nhau.`;
+      }
+    }
+    return null;
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
+
     if (!editing && (!form.username || !form.password || !form.fullName)) {
       setErr('Username, password, họ tên là bắt buộc'); return;
     }
     if (selectedRoles.length === 0) {
       setErr('Phải chọn ít nhất 1 quyền'); return;
     }
+
+    // Double-check conflict (phòng thủ)
+    const conflictErr = validateRoles(selectedRoles);
+    if (conflictErr) { setErr(conflictErr); return; }
+
     setSaving(true);
     try {
       const payload = {
         ...form,
-        roles: selectedRoles,                              // gửi mảng roles
-        role: selectedRoles[0],                           // role chính = đầu tiên
+        roles:       selectedRoles,
+        role:        selectedRoles[0],
         warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
       };
       if (editing) {
@@ -419,7 +506,12 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
         </div>
       }>
       <form onSubmit={submit} className="space-y-4">
-        {err && <div className="bg-red-50 text-red-700 text-sm p-3 rounded-xl">{err}</div>}
+        {err && (
+          <div className="flex items-start gap-2 bg-red-50 text-red-700 text-sm p-3 rounded-xl border border-red-200">
+            <AlertCircle size={15} className="mt-0.5 flex-shrink-0" />
+            <span>{err}</span>
+          </div>
+        )}
 
         {!editing && (
           <>
@@ -445,18 +537,13 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
           </Field>
         </div>
 
-        {/* Multi-role picker */}
-        <Field label="Quyền" required hint="Có thể chọn nhiều quyền cùng lúc">
+        {/* Multi-role picker với conflict guard */}
+        <Field label="Quyền" required hint="Một số quyền không thể kết hợp với nhau">
           <RolePicker
             selected={selectedRoles}
             onChange={setSelectedRoles}
             availableRoles={availableRoles}
           />
-          {selectedRoles.length > 1 && (
-            <p className="text-xs text-[#8E8878] mt-1.5">
-              Khi đăng nhập, user sẽ được chọn role muốn sử dụng trong phiên đó.
-            </p>
-          )}
         </Field>
 
         {needsWarehouse && (
