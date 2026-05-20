@@ -73,7 +73,12 @@ export default function OperatorProductBatchPage() {
 
   const setItem = (id, patch) =>
     setItems(prev => prev.map(it => it._id === id ? { ...it, ...patch } : it));
-  const removeItem = (id) => setItems(prev => prev.filter(it => it._id !== id));
+  const removeItem = (id) => {
+    setItems(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter(it => it._id !== id);
+    });
+  };
   const addItem = () => setItems(prev => [...prev, emptyItem()]);
   const toggleExpand = (id) =>
     setItem(id, { _expanded: !items.find(i => i._id === id)?._expanded });
@@ -263,10 +268,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
 
   const addTier = () => onUpdate({ tiers: [...item.tiers, emptyTier()] });
   const addIngredient = () => onUpdate({
-    ingredients: [...item.ingredients, {
-      _id: Date.now() + Math.random(),
-      ingredientId: '', quantity: 1, canOverride: false,
-    }],
+    ingredients: [...item.ingredients, emptyIngredient()],
   });
   const removeIngredient = (iid) => {
     if (item.ingredients.length <= 1) return;
@@ -402,7 +404,15 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">CK tối đa (%)</label>
-              <input type="number" min={0} max={100} value={item.maxDiscountRate}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={item.maxDiscountRate}
+                onFocus={(e) => {
+                  requestAnimationFrame(() => e.target.select());
+                }}
+                onMouseUp={(e) => e.preventDefault()}
                 onChange={e => onUpdate({ maxDiscountRate: e.target.value })}
                 className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]" />
             </div>
@@ -452,8 +462,13 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-[#5C5C5C] whitespace-nowrap font-medium">1 thùng =</span>
                     <input
-                      type="text" inputMode="numeric"
+                      type="text"
+                      inputMode="numeric"
                       value={item.unitsPerBox}
+                      onFocus={(e) => {
+                        requestAnimationFrame(() => e.target.select());
+                      }}
+                      onMouseUp={(e) => e.preventDefault()}
                       onChange={e => onUpdate({ unitsPerBox: e.target.value.replace(/[^0-9]/g, '') })}
                       placeholder="12"
                       className="w-20 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-[#C9A84C] focus:outline-none text-[#1C1C1E] bg-[#FFFDF7]"
@@ -519,12 +534,25 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                     </div>
                     {ti === 0
                       ? <div className="text-xs text-center text-[#B0A898] bg-[#F5F0E8] rounded-lg py-1.5">0</div>
-                      : <input type="number" min={0} value={tier.fromQty}
+                      :
+                      <input
+                        type="number"
+                        min={0}
+                        value={tier.fromQty}
+                        onFocus={(e) => {
+                          requestAnimationFrame(() => e.target.select());
+                        }}
+                        onMouseUp={(e) => e.preventDefault()}
                         onChange={e => onUpdate({
-                          tiers: item.tiers.map(t => t._id === tier._id ? { ...t, fromQty: e.target.value } : t)
+                          tiers: item.tiers.map(t =>
+                            t._id === tier._id
+                              ? { ...t, fromQty: e.target.value }
+                              : t
+                          )
                         })}
                         className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C] bg-white
-                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+    [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
                     }
                     <div className="text-xs text-center text-[#B0A898] bg-[#F5F0E8] rounded-lg py-1.5 px-1 truncate">
                       {toQtyDisplay}
@@ -595,10 +623,19 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                           value={ing.ingredientId}
                           onChange={val => setIng(ing._id, { ingredientId: val })}
                         />
-                        <input type="number" min={0.001} step={0.001} value={ing.quantity}
+                        <input
+                          type="number"
+                          min={0.001}
+                          step={0.001}
+                          value={ing.quantity}
+                          onFocus={(e) => {
+                            requestAnimationFrame(() => e.target.select());
+                          }}
+                          onMouseUp={(e) => e.preventDefault()}
                           onChange={e => setIng(ing._id, { quantity: e.target.value })}
                           className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C] bg-white
-                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+    [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
                         <label className="flex items-center justify-center gap-1 cursor-pointer select-none">
                           <input type="checkbox" checked={ing.canOverride}
                             onChange={e => setIng(ing._id, { canOverride: e.target.checked })}
