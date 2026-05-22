@@ -1,9 +1,8 @@
 // src/pages/admin/AdminIngredients.jsx
-// Feature 5: Thêm filter theo danh mục, sort theo tên và số lượng tồn kho
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  Package, Search, AlertTriangle, AlertCircle, ArrowUpDown, Download, Upload,
-  ArrowUp, ArrowDown, Warehouse as WhIcon, Tag, SlidersHorizontal
+  Package, Search, AlertTriangle, AlertCircle,
+  ChevronDown, ChevronRight, Warehouse as WhIcon,
 } from 'lucide-react';
 import { adminIngredientApi, adminWarehouseApi, getImageUrl } from '../../api/adminApi';
 import { ExpiryBadge } from '../../components/admin/Badge';
@@ -12,21 +11,18 @@ import {
   PageHeader, LoadingSpinner, EmptyState, inputCls, formatNumber, formatDate,
 } from '../../components/admin/ui';
 
-// Danh mục (category) được lấy từ danh sách nguyên liệu thực tế
-// Nếu backend có field `category` trên ingredient → dùng; nếu không → auto-generate từ đơn vị
+// ── Formatters ────────────────────────────────────────────────────────────────
+function formatPrice(n) {
+  if (n == null || Number(n) === 0) return '—';
+  return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n))) + ' đ';
+}
 
-const SORT_OPTIONS = [
-  { value: 'name_asc',   label: 'Tên A → Z',     icon: ArrowUp },
-  { value: 'name_desc',  label: 'Tên Z → A',     icon: ArrowDown },
-  { value: 'stock_asc',  label: 'Tồn ít → nhiều', icon: ArrowUp },
-  { value: 'stock_desc', label: 'Tồn nhiều → ít', icon: ArrowDown },
-];
-
+// ── Summary card ─────────────────────────────────────────────────────────────
 function SummaryCard({ icon: Icon, label, value, color }) {
   const colors = {
-    gold: 'bg-[#C9A84C]/10 text-[#C9A84C]',
+    gold:  'bg-[#C9A84C]/10 text-[#C9A84C]',
     amber: 'bg-amber-50 text-amber-600',
-    red: 'bg-red-50 text-red-500',
+    red:   'bg-red-50 text-red-500',
   };
   return (
     <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
@@ -39,19 +35,200 @@ function SummaryCard({ icon: Icon, label, value, color }) {
   );
 }
 
-export default function AdminIngredients() {
-  const [warehouses, setWarehouses]     = useState([]);
-  const [selectedWhId, setSelectedWhId] = useState(null);
-  const [q, setQ]                       = useState('');
-  const [rows, setRows]                 = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [loadingWh, setLoadingWh]       = useState(true);
-  const debouncedQ                      = useDebounce(q, 600);
+// ── Single ingredient row ─────────────────────────────────────────────────────
+function IngredientRow({ row }) {
+  const [open, setOpen] = useState(false);
 
-  // Feature 5: new state
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
-  const [sortBy, setSortBy]                     = useState('name_asc');
-  const [showFilters, setShowFilters]           = useState(false);
+  return (
+    <div className="border-b border-black/5 last:border-0">
+      {/* Header row */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FAF7F2]/60 transition text-left"
+      >
+        {/* Expand icon */}
+        <span className="text-[#C4B9A8] flex-shrink-0">
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </span>
+
+        {/* Image */}
+        {row.ingredientImageUrl ? (
+          <img src={getImageUrl(row.ingredientImageUrl)} alt=""
+            className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
+        ) : (
+          <div className="w-9 h-9 rounded-xl bg-[#FAF7F2] flex items-center justify-center flex-shrink-0">
+            <Package size={16} className="text-[#C9A84C]" />
+          </div>
+        )}
+
+        {/* Name + badge */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-[#1C1C1E] text-sm truncate">{row.ingredientName}</p>
+            {row.expiryBadge === 'DANGER'  && <AlertCircle  size={13} className="text-red-500 flex-shrink-0" />}
+            {row.expiryBadge === 'WARNING' && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />}
+          </div>
+          <p className="text-xs text-[#8E8878]">
+            {row.lots?.length || 0} lô
+            {row.lots?.length > 0 && row.lots.some(l => l.expiryDate) && (
+              <> · HSD gần nhất: {formatDate(row.nearestExpiryDate)}</>
+            )}
+          </p>
+        </div>
+
+        {/* Stock + cost */}
+        <div className="text-right flex-shrink-0">
+          <p className="font-bold text-[#1C1C1E] text-sm">
+            {formatNumber(row.stockQuantity)} <span className="text-[#8E8878] font-normal text-xs">{row.unit}</span>
+          </p>
+          {row.totalCostValue != null && Number(row.totalCostValue) > 0 && (
+            <p className="text-xs text-[#C9A84C] font-medium">{formatPrice(row.totalCostValue)}</p>
+          )}
+        </div>
+      </button>
+
+      {/* Lot detail */}
+      {open && row.lots?.length > 0 && (
+        <div className="bg-[#FAF7F2] px-4 py-3 border-t border-black/5">
+          <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">Chi tiết lô</p>
+          <div className="space-y-1.5">
+            {row.lots.map((lot, i) => (
+              <div key={i} className="flex items-center justify-between text-xs gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[#555]">
+                    HSD: {lot.expiryDate ? formatDate(lot.expiryDate) : 'Không có HSD'}
+                  </span>
+                  <ExpiryBadge expiryDate={lot.expiryDate} />
+                </div>
+                <div className="flex items-center gap-4 flex-shrink-0 text-right">
+                  <span className="text-[#8E8878]">
+                    Giá vốn: <span className="font-medium text-[#1C1C1E]">{formatPrice(lot.costPrice)}</span>
+                  </span>
+                  <span className="font-semibold text-[#1C1C1E]">
+                    {formatNumber(lot.quantity)} {row.unit}
+                  </span>
+                  {lot.totalCost != null && Number(lot.totalCost) > 0 && (
+                    <span className="text-[#C9A84C] font-medium">{formatPrice(lot.totalCost)}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Tổng giá vốn */}
+          {row.totalCostValue != null && Number(row.totalCostValue) > 0 && (
+            <div className="mt-2 pt-2 border-t border-black/5 flex justify-end">
+              <span className="text-xs text-[#8E8878]">
+                Tổng giá vốn: <span className="font-bold text-[#C9A84C]">{formatPrice(row.totalCostValue)}</span>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SubCategory section ───────────────────────────────────────────────────────
+function SubCategorySection({ name, rows }) {
+  const [open, setOpen] = useState(true);
+  const totalStock = rows.reduce((s, r) => s + Number(r.stockQuantity || 0), 0);
+  const totalCost  = rows.reduce((s, r) => s + Number(r.totalCostValue || 0), 0);
+  const hasDanger  = rows.some(r => r.expiryBadge === 'DANGER');
+  const hasWarning = rows.some(r => r.expiryBadge === 'WARNING');
+
+  return (
+    <div className="ml-4 border-l-2 border-[#F0EBE3] mb-1">
+      {/* SubCat header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#FAF7F2] transition text-left"
+      >
+        {open ? <ChevronDown size={13} className="text-[#C4B9A8]" /> : <ChevronRight size={13} className="text-[#C4B9A8]" />}
+        <span className="text-xs font-semibold text-[#5C5C5C] flex-1 truncate">
+          {name || 'Chưa phân loại'}
+        </span>
+        {hasDanger  && <AlertCircle  size={11} className="text-red-400 flex-shrink-0" />}
+        {hasWarning && !hasDanger && <AlertTriangle size={11} className="text-amber-400 flex-shrink-0" />}
+        <span className="text-[10px] text-[#8E8878] flex-shrink-0">{rows.length} NL</span>
+        {totalCost > 0 && (
+          <span className="text-[10px] text-[#C9A84C] font-medium flex-shrink-0">{formatPrice(totalCost)}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="bg-white rounded-xl mx-2 mb-2 border border-black/5 overflow-hidden">
+          {rows.map(r => <IngredientRow key={r.ingredientId} row={r} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Category section ──────────────────────────────────────────────────────────
+function CategorySection({ name, rows }) {
+  const [open, setOpen] = useState(true);
+
+  // Group by subCategoryName
+  const subGroups = useMemo(() => {
+    const map = new Map();
+    rows.forEach(r => {
+      const key = r.subCategoryName || '__none__';
+      if (!map.has(key)) map.set(key, { name: r.subCategoryName || null, rows: [] });
+      map.get(key).rows.push(r);
+    });
+    // Sort: subcat with name first, null last
+    return Array.from(map.values()).sort((a, b) => {
+      if (!a.name && b.name) return 1;
+      if (a.name && !b.name) return -1;
+      return (a.name || '').localeCompare(b.name || '', 'vi');
+    });
+  }, [rows]);
+
+  const totalCost  = rows.reduce((s, r) => s + Number(r.totalCostValue || 0), 0);
+  const hasDanger  = rows.some(r => r.expiryBadge === 'DANGER');
+  const hasWarning = rows.some(r => r.expiryBadge === 'WARNING');
+  const hasSubCats = subGroups.length > 1 || subGroups[0]?.name;
+
+  return (
+    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden mb-3">
+      {/* Category header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2.5 px-4 py-3 bg-[#FAF7F2] hover:bg-[#F0EBE3] transition text-left border-b border-black/5"
+      >
+        {open ? <ChevronDown size={15} className="text-[#C9A84C]" /> : <ChevronRight size={15} className="text-[#C9A84C]" />}
+        <span className="font-bold text-[#1C1C1E] flex-1 truncate">{name}</span>
+        {hasDanger  && <AlertCircle  size={13} className="text-red-500 flex-shrink-0" />}
+        {hasWarning && !hasDanger && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />}
+        <span className="text-xs text-[#8E8878] flex-shrink-0">{rows.length} nguyên liệu</span>
+        {totalCost > 0 && (
+          <span className="text-xs text-[#C9A84C] font-semibold flex-shrink-0 ml-2">{formatPrice(totalCost)}</span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          {hasSubCats
+            ? subGroups.map(sg => (
+                <SubCategorySection key={sg.name || '__none__'} name={sg.name} rows={sg.rows} />
+              ))
+            : rows.map(r => <IngredientRow key={r.ingredientId} row={r} />)
+          }
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+export default function AdminIngredients() {
+  const [warehouses,   setWarehouses]   = useState([]);
+  const [selectedWhId, setSelectedWhId] = useState(null);
+  const [q,            setQ]            = useState('');
+  const [rows,         setRows]         = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [loadingWh,    setLoadingWh]    = useState(true);
+  const debouncedQ = useDebounce(q, 600);
 
   useEffect(() => {
     (async () => {
@@ -59,7 +236,8 @@ export default function AdminIngredients() {
         const list = await adminWarehouseApi.list();
         setWarehouses(list || []);
         if (list?.length) setSelectedWhId(list[0].id);
-      } catch (e) { console.error(e); } finally { setLoadingWh(false); }
+      } catch (e) { console.error(e); }
+      finally { setLoadingWh(false); }
     })();
   }, []);
 
@@ -69,67 +247,43 @@ export default function AdminIngredients() {
     try {
       const res = await adminIngredientApi.listByWarehouse(selectedWhId, debouncedQ || undefined);
       setRows(res || []);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   }, [selectedWhId, debouncedQ]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Lấy danh mục từ dữ liệu (dùng field `category` nếu có, hoặc `unit` để phân nhóm)
-  const categories = useMemo(() => {
-    const cats = new Set();
+  // Group rows: category → subCategory → ingredients
+  const categoryGroups = useMemo(() => {
+    const map = new Map();
+
     rows.forEach(r => {
-      if (r.category) cats.add(r.category);
-      else if (r.unit) cats.add(r.unit); // fallback: nhóm theo đơn vị
+      const catKey  = r.categoryId   || '__none__';
+      const catName = r.categoryName || 'Chưa phân loại';
+
+      if (!map.has(catKey)) map.set(catKey, { id: catKey, name: catName, rows: [] });
+      map.get(catKey).rows.push(r);
     });
-    return ['ALL', ...Array.from(cats).sort()];
+
+    // Sort: named categories first (by name), Chưa phân loại last
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.id === '__none__') return 1;
+      if (b.id === '__none__') return -1;
+      return a.name.localeCompare(b.name, 'vi');
+    });
   }, [rows]);
 
-  // Filter + Sort
-  const filteredRows = useMemo(() => {
-    let result = [...rows];
-
-    // Filter theo danh mục
-    if (selectedCategory !== 'ALL') {
-      result = result.filter(r => (r.category || r.unit) === selectedCategory);
-    }
-
-    // Sort
-    switch (sortBy) {
-      case 'name_asc':   result.sort((a, b) => (a.ingredientName || '').localeCompare(b.ingredientName || '', 'vi')); break;
-      case 'name_desc':  result.sort((a, b) => (b.ingredientName || '').localeCompare(a.ingredientName || '', 'vi')); break;
-      case 'stock_asc':  result.sort((a, b) => Number(a.stockQuantity || 0) - Number(b.stockQuantity || 0)); break;
-      case 'stock_desc': result.sort((a, b) => Number(b.stockQuantity || 0) - Number(a.stockQuantity || 0)); break;
-    }
-
-    return result;
-  }, [rows, selectedCategory, sortBy]);
-
   const counts = {
-    total:   filteredRows.length,
-    warning: filteredRows.filter(r => r.expiryBadge === 'WARNING').length,
-    danger:  filteredRows.filter(r => r.expiryBadge === 'DANGER').length,
+    total:   rows.length,
+    warning: rows.filter(r => r.expiryBadge === 'WARNING').length,
+    danger:  rows.filter(r => r.expiryBadge === 'DANGER').length,
   };
 
-  const currentSort = SORT_OPTIONS.find(s => s.value === sortBy);
+  const grandTotalCost = rows.reduce((s, r) => s + Number(r.totalCostValue || 0), 0);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      <div className="flex items-center justify-between">
-        <PageHeader icon={Package} title="Nguyên liệu" subtitle="Quản lý tồn kho và hạn sử dụng" />
-        {/* FIX #3: Import / Export Nguyên liệu */}
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
-            <Upload size={13} /> Import
-            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
-              if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
-            }} />
-          </label>
-          <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
-            <Download size={13} /> Export
-          </button>
-        </div>
-      </div>
+      <PageHeader icon={Package} title="Nguyên liệu" subtitle="Quản lý tồn kho và hạn sử dụng" />
 
       {/* Warehouse selector */}
       <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
@@ -144,9 +298,10 @@ export default function AdminIngredients() {
           <div className="flex flex-wrap gap-2">
             {warehouses.map(w => (
               <button key={w.id} onClick={() => setSelectedWhId(w.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition ring-1 ${selectedWhId === w.id
-                  ? 'bg-[#C9A84C] text-white ring-[#C9A84C]'
-                  : 'bg-white text-[#1C1C1E] ring-black/10 hover:bg-[#FAF7F2]'}`}>
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition ring-1
+                  ${selectedWhId === w.id
+                    ? 'bg-[#C9A84C] text-white ring-[#C9A84C]'
+                    : 'bg-white text-[#1C1C1E] ring-black/10 hover:bg-[#FAF7F2]'}`}>
                 {w.name}
                 <span className={`ml-2 text-xs ${selectedWhId === w.id ? 'text-white/80' : 'text-[#8E8878]'}`}>
                   {w.type === 'SALE' ? 'Bán hàng' : 'Trung chuyển'}
@@ -157,165 +312,46 @@ export default function AdminIngredients() {
         )}
       </div>
 
-      {/* Summary */}
+      {/* Summary cards */}
       {!loading && rows.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <SummaryCard icon={Package}       label="Tổng nguyên liệu"        value={counts.total}   color="gold" />
           <SummaryCard icon={AlertTriangle} label="Sắp hết hạn (≤ 3 tháng)" value={counts.warning} color="amber" />
           <SummaryCard icon={AlertCircle}   label="Hết hạn gấp (≤ 1 tháng)" value={counts.danger}  color="red" />
+          <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+            <div className="inline-flex p-2 rounded-xl bg-emerald-50 text-emerald-600 mb-2">
+              <Package size={16} />
+            </div>
+            <p className="text-lg font-bold text-[#1C1C1E] truncate">{formatPrice(grandTotalCost)}</p>
+            <p className="text-xs text-[#8E8878] mt-0.5">Tổng giá vốn tồn kho</p>
+          </div>
         </div>
       )}
 
-      {/* Filters row */}
-      <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm space-y-3">
-        <div className="flex gap-2 items-center flex-wrap">
-          {/* Search */}
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
-            <input
-              type="text"
-              placeholder="Tìm tên nguyên liệu..."
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              className={`${inputCls} pl-9 w-full`}
-            />
-          </div>
-
-          {/* Toggle filters */}
-          <button
-            onClick={() => setShowFilters(s => !s)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition ${showFilters ? 'border-[#C9A84C] text-[#C9A84C] bg-[#C9A84C]/5' : 'border-black/10 text-[#555] hover:bg-[#FAF7F2]'}`}
-          >
-            <SlidersHorizontal size={15} />
-            Bộ lọc
-            {(selectedCategory !== 'ALL' || sortBy !== 'name_asc') && (
-              <span className="w-2 h-2 bg-[#C9A84C] rounded-full" />
-            )}
-          </button>
-        </div>
-
-        {showFilters && (
-          <div className="pt-2 border-t border-black/5 space-y-3">
-            {/* Category filter */}
-            {categories.length > 2 && (
-              <div>
-                <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <Tag size={11} /> Danh mục
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map(cat => (
-                    <button key={cat} onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${selectedCategory === cat
-                        ? 'bg-[#C9A84C] text-white'
-                        : 'bg-[#FAF7F2] text-[#555] hover:bg-[#C9A84C]/10'}`}>
-                      {cat === 'ALL' ? 'Tất cả' : cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Sort */}
-            <div>
-              <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1">
-                <ArrowUpDown size={11} /> Sắp xếp
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {SORT_OPTIONS.map(opt => {
-                  const Icon = opt.icon;
-                  return (
-                    <button key={opt.value} onClick={() => setSortBy(opt.value)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${sortBy === opt.value
-                        ? 'bg-[#C9A84C] text-white'
-                        : 'bg-[#FAF7F2] text-[#555] hover:bg-[#C9A84C]/10'}`}>
-                      <Icon size={12} /> {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
+        <input
+          type="text"
+          placeholder="Tìm tên nguyên liệu..."
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          className={`${inputCls} pl-9 w-full`}
+        />
       </div>
 
-      {/* Results */}
+      {/* Content */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-8 h-8 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
         </div>
-      ) : filteredRows.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState icon={Package} message="Không có nguyên liệu nào" />
       ) : (
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-black/5 flex items-center gap-2">
-            <span className="text-sm text-[#8E8878]">Hiển thị {filteredRows.length} nguyên liệu</span>
-            {currentSort && (
-              <span className="text-xs bg-[#FAF7F2] px-2 py-0.5 rounded-full text-[#8E8878]">
-                Sắp xếp: {currentSort.label}
-              </span>
-            )}
-          </div>
-          <div className="divide-y divide-black/5">
-            {filteredRows.map(row => (
-              <IngredientRow key={row.ingredientId} row={row} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function IngredientRow({ row }) {
-  const [open, setOpen] = useState(false);
-  const expiryBadge = row.expiryBadge;
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FAF7F2]/60 transition text-left"
-      >
-        {row.imageUrl && (
-          <img src={getImageUrl(row.imageUrl)} alt="" className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
-        )}
-        {!row.imageUrl && (
-          <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] flex items-center justify-center flex-shrink-0">
-            <Package size={18} className="text-[#C9A84C]" />
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-[#1C1C1E] text-sm">{row.ingredientName}</p>
-            {expiryBadge === 'DANGER'  && <AlertCircle size={13} className="text-red-500 flex-shrink-0" />}
-            {expiryBadge === 'WARNING' && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />}
-          </div>
-          <p className="text-xs text-[#8E8878]">
-            {row.category || row.unit || '—'} · {row.expiryList?.length || 0} lô
-          </p>
-        </div>
-        <div className="text-right flex-shrink-0">
-          <p className="font-bold text-[#1C1C1E]">{formatNumber(row.stockQuantity)}</p>
-          <p className="text-xs text-[#8E8878]">{row.unit}</p>
-        </div>
-      </button>
-
-      {open && row.expiryList?.length > 0 && (
-        <div className="bg-[#FAF7F2] px-4 py-3 border-t border-black/5">
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Chi tiết lô</p>
-          <div className="space-y-1.5">
-            {row.expiryList.map(e => (
-              <div key={e.id} className="flex items-center justify-between text-xs">
-                <span className="text-[#555]">
-                  HSD: {e.expiryDate ? formatDate(e.expiryDate) : 'Không có HSD'}
-                </span>
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-[#1C1C1E]">{formatNumber(e.quantity)} {row.unit}</span>
-                  <ExpiryBadge expiryDate={e.expiryDate} />
-                </div>
-              </div>
-            ))}
-          </div>
+        <div>
+          {categoryGroups.map(cg => (
+            <CategorySection key={cg.id} name={cg.name} rows={cg.rows} />
+          ))}
         </div>
       )}
     </div>
