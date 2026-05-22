@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
+import { useWarehouse } from '../../context/WarehouseContext';
 import { ChevronRight, ChevronDown, Layers } from 'lucide-react';
 
 const TODAY = new Date();
@@ -352,6 +353,7 @@ function UncategorizedSection({ ingredients }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ManagementPage() {
   const { user } = useAuth();
+  const { activeWarehouseId } = useWarehouse();
   const [stocks, setStocks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
@@ -360,7 +362,8 @@ export default function ManagementPage() {
   const [search, setSearch] = useState('');
   const [warehouseInfo, setWarehouseInfo] = useState(null);
 
-  const warehouseId = user?.warehouseId || user?.warehouse?.id;
+  // Dùng activeWarehouseId từ context (hỗ trợ đa kho)
+  const warehouseId = activeWarehouseId || user?.warehouseId || user?.warehouse?.id;
 
   useEffect(() => {
     warehouseApi.getCategories()

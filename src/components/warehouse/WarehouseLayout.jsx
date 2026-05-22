@@ -2,10 +2,12 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { WarehouseProvider } from '../../context/WarehouseContext';
 import NotificationBell from '../common/NotificationBell';
+import WarehouseSelector from './WarehouseSelector';
 import {
   Warehouse, ClipboardList, History,
-  LogOut, Menu, X, ChevronRight, Leaf, Truck
+  LogOut, Menu, X, ChevronRight, Truck
 } from 'lucide-react';
 import ProfileButton from '../common/ProfileButton';
 
@@ -24,6 +26,7 @@ export default function WarehouseLayout() {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
+    <WarehouseProvider>
     <div className="flex h-screen overflow-hidden bg-[#FAF7F2]">
 
       {/* Mobile overlay */}
@@ -106,6 +109,8 @@ export default function WarehouseLayout() {
         </header>
 
         <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
+          <WarehouseSelector />
+          <div className="w-px h-5 bg-black/10 mx-2" />
           <ProfileButton />
           <div className="w-px h-5 bg-black/10" />
           <NotificationBell role={user?.role} token={token} />
@@ -219,5 +224,6 @@ export default function WarehouseLayout() {
         @keyframes pulse { from{opacity:.4} to{opacity:1} }
       `}</style>
     </div>
+    </WarehouseProvider>
   );
 }

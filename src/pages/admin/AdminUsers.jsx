@@ -289,11 +289,18 @@ export default function AdminUsers() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {renderRoleBadges(u)}
-                          {u.warehouseName && (
-                            <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
-                              🏭 {u.warehouseName}
-                            </Badge>
-                          )}
+                          {/* Hiển thị tất cả kho được phân công */}
+                          {u.warehouses?.length > 0
+                            ? u.warehouses.map(w => (
+                                <Badge key={w.id} className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
+                                  🏭 {w.name}
+                                </Badge>
+                              ))
+                            : u.warehouseName && (
+                                <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
+                                  🏭 {u.warehouseName}
+                                </Badge>
+                              )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -438,6 +445,10 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
     phoneNumber: editing?.phoneNumber || '',
     warehouseId: editing?.warehouseId ? String(editing.warehouseId) : '',
   });
+  // Multi-warehouse selection
+  const initWarehouseIds = editing?.warehouses?.map(w => String(w.id)) || 
+                           (editing?.warehouseId ? [String(editing.warehouseId)] : []);
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState(initWarehouseIds);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState('');
   const [warehouses, setWarehouses] = useState([]);
@@ -450,7 +461,15 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
 
   const needsWarehouse = selectedRoles.includes('WAREHOUSE') || selectedRoles.includes('SUPER_WAREHOUSE');
 
-  // Validate toàn bộ danh sách roles trước khi submit (phòng trường hợp data cũ bị conflict)
+  const toggleWarehouse = (wId) => {
+    setSelectedWarehouseIds(prev =>
+      prev.includes(String(wId))
+        ? prev.filter(id => id !== String(wId))
+        : [...prev, String(wId)]
+    );
+  };
+
+  // Validate toàn bộ danh sách roles trước khi submit
   const validateRoles = (roles) => {
     for (const group of CONFLICT_GROUPS) {
       const hits = group.filter(r => roles.includes(r));
@@ -471,8 +490,10 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
     if (selectedRoles.length === 0) {
       setErr('Phải chọn ít nhất 1 quyền'); return;
     }
+    if (needsWarehouse && selectedWarehouseIds.length === 0) {
+      setErr('Phải chọn ít nhất 1 kho cho role kho'); return;
+    }
 
-    // Double-check conflict (phòng thủ)
     const conflictErr = validateRoles(selectedRoles);
     if (conflictErr) { setErr(conflictErr); return; }
 
@@ -480,9 +501,10 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
     try {
       const payload = {
         ...form,
-        roles:       selectedRoles,
-        role:        selectedRoles[0],
-        warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
+        roles:        selectedRoles,
+        role:         selectedRoles[0],
+        warehouseId:  selectedWarehouseIds.length > 0 ? Number(selectedWarehouseIds[0]) : null,
+        warehouseIds: selectedWarehouseIds.map(Number),
       };
       if (editing) {
         await adminUserApi.update(editing.id, payload);
@@ -537,7 +559,6 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
           </Field>
         </div>
 
-        {/* Multi-role picker với conflict guard */}
         <Field label="Quyền" required hint="Một số quyền không thể kết hợp với nhau">
           <RolePicker
             selected={selectedRoles}
@@ -547,11 +568,34 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
         </Field>
 
         {needsWarehouse && (
-          <Field label="Gắn kho" required hint="Bắt buộc với role WAREHOUSE / SUPER_WAREHOUSE">
-            <select value={form.warehouseId} onChange={e => setForm({ ...form, warehouseId: e.target.value })} className={inputCls}>
-              <option value="">-- Chọn kho --</option>
-              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
+          <Field label="Kho được phân công" required
+            hint="Có thể chọn nhiều kho — tài khoản sẽ quản lý tất cả kho đã chọn">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {warehouses.length === 0 && (
+                <p className="text-xs text-[#8E8878] italic py-1">Chưa có kho nào</p>
+              )}
+              {warehouses.map(w => {
+                const checked = selectedWarehouseIds.includes(String(w.id));
+                return (
+                  <label key={w.id}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-colors
+                      ${checked ? 'bg-amber-50 border border-amber-200' : 'bg-[#FAF7F2] border border-transparent hover:border-[#E8DDD0]'}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleWarehouse(w.id)}
+                      className="w-4 h-4 accent-amber-500 rounded"
+                    />
+                    <span className={`text-sm font-medium ${checked ? 'text-amber-700' : 'text-[#1C1C1E]'}`}>
+                      {w.name}
+                    </span>
+                    {w.type === 'TRANSIT' && (
+                      <span className="ml-auto text-[10px] text-[#8E8878] bg-[#F0EBE3] px-1.5 py-0.5 rounded">Trung chuyển</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
           </Field>
         )}
       </form>

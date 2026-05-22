@@ -26,22 +26,32 @@ export const warehouseApi = {
   // ── Tồn kho ───────────────────────────────────────────────────────────────
   getStock: (warehouseId) => api.get(`${BASE}/${warehouseId}/stock`),
 
-  // ── Thao tác ──────────────────────────────────────────────────────────────
+  // ── Thao tác — luôn gửi warehouseId trong body ───────────────────────────
   import:   (data) => api.post(`${BASE}/import`,   data),
   export:   (data) => api.post(`${BASE}/export`,   data),
   transfer: (data) => api.post(`${BASE}/transfer`, data),
   adjust:   (data) => api.post(`${BASE}/adjust`,   data),
 
-  // ── Lịch sử ───────────────────────────────────────────────────────────────
-  getHistory: (tab, warehouseId, page = 0, size = 20) =>
-    api.get(`${BASE}/history`, { params: { tab, warehouseId: warehouseId || undefined, page, size } }),
+  // ── Lịch sử — gửi warehouseId qua query param ────────────────────────────
+  getHistory: (tab, warehouseId, page = 0, size = 20, extra = {}) =>
+    api.get(`${BASE}/history`, {
+      params: { tab, warehouseId: warehouseId || undefined, page, size, ...extra },
+    }),
   getReceiptDetail: (id) => api.get(`${BASE}/receipt/${id}`),
 
-  // ── Orders ────────────────────────────────────────────────────────────────
-  getPreparingOrders: ()         => api.get(`${BASE}/orders/preparing`),
-  markDelivering:     (id)       => api.patch(`${BASE}/orders/${id}/deliver`),
-  cancelOrder:        (id, reason) => api.patch(`${BASE}/orders/${id}/cancel`, { reason }),
-  getInvoice: (id) => api.get(`${BASE}/orders/${id}/invoice`, { responseType: 'blob' }),
+  // ── Orders — gửi warehouseId qua query param ─────────────────────────────
+  getPreparingOrders: (warehouseId) =>
+    api.get(`${BASE}/orders/preparing`, {
+      params: { warehouseId: warehouseId || undefined },
+    }),
+  markDelivering:  (id)          => api.patch(`${BASE}/orders/${id}/deliver`),
+  cancelOrder:     (id, reason)  => api.patch(`${BASE}/orders/${id}/cancel`, { reason }),
+  getInvoice:      (id)          => api.get(`${BASE}/orders/${id}/invoice`, { responseType: 'blob' }),
+  setOrderDrivers: (id, driverIds) => api.patch(`${BASE}/orders/${id}/drivers`, { driverIds }),
+
+  // ── Drivers ───────────────────────────────────────────────────────────────
+  getDrivers:   (q = '')  => api.get(`${BASE}/drivers`, { params: { q } }),
+  createDriver: (name)    => api.post(`${BASE}/drivers`, { name }),
 };
 
 export const uploadInventoryImage = (file) => {

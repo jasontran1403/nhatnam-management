@@ -1,13 +1,15 @@
 // src/pages/warehouse/WarehouseOrdersPage.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
+import { useWarehouse } from '../../context/WarehouseContext';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import {
   RefreshCw, Package, Truck, Clock, X,
-  ChevronRight, Box, Search, FileText, Ban,
+  ChevronRight, Box, Search, FileText, Ban, UserCircle, Plus, Check,
 } from 'lucide-react';
+import api from '../../api/axios';
 
 // Trạng thái cho phép hủy (PENDING_PAYMENT không được hủy)
 const CANCELLABLE = new Set(['PENDING','CONFIRMED','PREPARING','READY','DELIVERING']);
@@ -24,10 +26,157 @@ function formatQty(n) {
   return parseFloat(Number(n).toFixed(3)).toLocaleString('vi-VN');
 }
 
+// ── Driver Picker ─────────────────────────────────────────────────────────────
+function DriverPicker({ selectedDrivers, onChange }) {
+  const [query, setQuery]       = useState('');
+  const [results, setResults]   = useState([]);
+  const [open, setOpen]         = useState(false);
+  const [creating, setCreating] = useState(false);
+  const inputRef = useRef(null);
+  const dropRef  = useRef(null);
+
+  // Đóng dropdown khi click ngoài
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Search drivers
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      api.get(`/api/warehouse/drivers?q=${encodeURIComponent(query)}`)
+        .then(r => setResults(r.data?.data || []))
+        .catch(() => setResults([]));
+    }, 200);
+    return () => clearTimeout(t);
+  }, [query, open]);
+
+  const toggle = (driver) => {
+    const exists = selectedDrivers.some(d => d.id === driver.id);
+    onChange(exists
+      ? selectedDrivers.filter(d => d.id !== driver.id)
+      : [...selectedDrivers, driver]
+    );
+  };
+
+  const createDriver = async () => {
+    const name = query.trim();
+    if (!name) return;
+    setCreating(true);
+    try {
+      const r = await api.post('/api/warehouse/drivers', { name });
+      const d = r.data?.data;
+      if (d) { onChange([...selectedDrivers, d]); setQuery(''); }
+    } catch (_) {}
+    setCreating(false);
+  };
+
+  const showCreate = query.trim() && !results.some(r => r.name.toLowerCase() === query.trim().toLowerCase());
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider">
+        Tài xế giao hàng
+      </p>
+
+      {/* Selected tags */}
+      {selectedDrivers.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedDrivers.map(d => (
+            <span key={d.id}
+              className="inline-flex items-center gap-1 text-xs bg-[#C9A84C]/10 text-[#C9A84C]
+                border border-[#C9A84C]/30 rounded-full px-2.5 py-0.5 font-medium">
+              <UserCircle size={12} /> {d.name}
+              <button onClick={() => toggle(d)} className="ml-0.5 hover:text-red-500 transition-colors">
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search input + dropdown */}
+      <div ref={dropRef} className="relative">
+        <div className="flex gap-1.5">
+          <div className="relative flex-1">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Tìm hoặc thêm tài xế..."
+              value={query}
+              onChange={e => { setQuery(e.target.value); setOpen(true); }}
+              onFocus={() => setOpen(true)}
+              className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#E8DDD0] rounded-lg
+                focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2]"
+            />
+          </div>
+          {showCreate && (
+            <button onClick={createDriver} disabled={creating}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold
+                bg-[#C9A84C] text-white hover:bg-[#B8943C] transition-colors disabled:opacity-60">
+              <Plus size={13} /> Thêm
+            </button>
+          )}
+        </div>
+
+        {open && results.length > 0 && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl
+            border border-[#E8DDD0] shadow-xl py-1 max-h-44 overflow-y-auto">
+            {results.map(d => {
+              const sel = selectedDrivers.some(s => s.id === d.id);
+              return (
+                <button key={d.id} onClick={() => { toggle(d); setQuery(''); setOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors
+                    ${sel ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-semibold' : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'}`}>
+                  <UserCircle size={14} />
+                  <span className="flex-1">{d.name}</span>
+                  {sel && <Check size={13} />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {selectedDrivers.length === 0 && (
+        <p className="text-[11px] text-[#8E8878] italic">
+          Không chọn = khách đến mua tận nơi
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Order Detail Modal ────────────────────────────────────────────────────────
 function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
   if (!order) return null;
   const canCancel = CANCELLABLE.has(order.status);
+  const [drivers, setDrivers] = useState(order.drivers || []);
+  const [saving,  setSaving]  = useState(false);
+  const toast = useToast?.() || { success: () => {}, error: () => {} };
+
+  const handleSaveDrivers = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/api/warehouse/orders/${order.id}/drivers`, {
+        driverIds: drivers.map(d => d.id),
+      });
+    } catch (_) {}
+    setSaving(false);
+  };
+
+  // Auto-save khi drivers thay đổi (debounce)
+  useEffect(() => {
+    if (drivers === (order.drivers || [])) return;
+    const t = setTimeout(handleSaveDrivers, 600);
+    return () => clearTimeout(t);
+  }, [drivers]); // eslint-disable-line
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -61,6 +210,11 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* Driver picker */}
+          <div className="bg-[#FAF7F2] rounded-2xl p-3.5">
+            <DriverPicker selectedDrivers={drivers} onChange={setDrivers} />
+          </div>
+
           <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">
             Danh sách sản phẩm cần chuẩn bị
           </p>
@@ -153,6 +307,15 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
             {order.customerName || 'Khách lẻ/Khách vãng lai'}
           </p>
           <p className="text-[11px] text-[#8E8878] mt-0.5">{order.customerPhone}</p>
+          {/* Hiển thị tài xế đã gán nếu có */}
+          {order.drivers?.length > 0 && (
+            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+              <UserCircle size={11} className="text-[#C9A84C]" />
+              <span className="text-[10px] text-[#C9A84C] font-medium">
+                {order.drivers.map(d => d.name).join(', ')}
+              </span>
+            </div>
+          )}
           <div className="flex items-center gap-3 mt-2">
             <span className="flex items-center gap-1 text-[10px] text-[#8E8878]">
               <Clock size={10} /> {formatDate(order.createdAt)}
@@ -189,6 +352,7 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
 export default function WarehouseOrdersPage() {
   const toast = useToast();
   const { user } = useAuth();
+  const { activeWarehouseId } = useWarehouse();
 
   const [orders,           setOrders]           = useState([]);
   const [loading,          setLoading]          = useState(false);
@@ -219,11 +383,12 @@ export default function WarehouseOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await warehouseApi.getPreparingOrders();
+      // Luôn gửi activeWarehouseId để backend lọc đúng kho đang chọn
+      const res = await warehouseApi.getPreparingOrders(activeWarehouseId);
       setOrders(res.data?.data || []);
     } catch { toast('Không thể tải danh sách đơn hàng', 'error'); }
     finally { setLoading(false); }
-  }, []);
+  }, [activeWarehouseId]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 

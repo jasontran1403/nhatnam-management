@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { warehouseApi } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
+import { useWarehouse } from '../../context/WarehouseContext';
 import ImageUploader from '../../components/warehouse/ImageUploader';
 import IngredientSelector from '../../components/warehouse/IngredientSelector';
 
@@ -32,9 +33,9 @@ export default function OperationsPage() {
   );
 }
 
-// ── Hook lấy kho của user hiện tại ───────────────────────────────────────────
+// ── Hook lấy kho đang active ──────────────────────────────────────────────────
 function useMyWarehouse() {
-  const { user } = useAuth();
+  const { activeWarehouseId } = useWarehouse();
   const [myWarehouse, setMyWarehouse]     = useState(null);
   const [allWarehouses, setAllWarehouses] = useState([]);
   const [stocks, setStocks]               = useState([]);
@@ -43,16 +44,15 @@ function useMyWarehouse() {
     warehouseApi.getAll().then(res => {
       const list = res.data || [];
       setAllWarehouses(list);
-      const assignedId = user?.warehouseId;
-      if (assignedId) {
-        const found = list.find(w => w.id === Number(assignedId));
+      if (activeWarehouseId) {
+        const found = list.find(w => w.id === Number(activeWarehouseId));
         if (found) setMyWarehouse(found);
       } else {
         const firstSale = list.find(w => w.type === 'SALE') || list[0];
         if (firstSale) setMyWarehouse(firstSale);
       }
     });
-  }, [user?.warehouseId]);
+  }, [activeWarehouseId]);
 
   useEffect(() => {
     if (!myWarehouse?.id) return;

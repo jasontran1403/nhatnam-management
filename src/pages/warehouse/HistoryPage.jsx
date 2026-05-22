@@ -1,8 +1,9 @@
 // src/pages/warehouse/HistoryPage.jsx
-// FIX #4: Chỉ hiển thị lịch sử của kho mà user quản lý
+// FIX #4: Chỉ hiển thị lịch sử của kho đang active (hỗ trợ đa kho)
 import { useState, useEffect, useCallback } from 'react';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
+import { useWarehouse } from '../../context/WarehouseContext';
 
 const TABS = [
   { key: 'IMPORT', label: '📥 Nhập kho' },
@@ -22,9 +23,10 @@ const TYPE_BADGE = {
 
 export default function HistoryPage() {
   const { user } = useAuth();
+  const { activeWarehouseId, activeWarehouseName } = useWarehouse();
 
-  // FIX #4: lấy warehouseId từ user, không cho phép chọn kho khác
-  const assignedWarehouseId = user?.warehouseId || user?.warehouse?.id;
+  // Dùng activeWarehouseId từ context (đa kho), fallback user.warehouseId
+  const assignedWarehouseId = activeWarehouseId || user?.warehouseId || user?.warehouse?.id;
 
   const [tab, setTab] = useState('IMPORT');
   const [warehouseId, setWarehouseId] = useState('');
@@ -39,17 +41,20 @@ export default function HistoryPage() {
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [warehouseName, setWarehouseName] = useState('');
 
-  // Resolve warehouseId khi mount
+  // Resolve warehouseId khi mount hoặc khi activeWarehouseId thay đổi
   useEffect(() => {
     if (assignedWarehouseId) {
       setWarehouseId(String(assignedWarehouseId));
-      // Lấy tên kho để hiển thị
-      warehouseApi.getAll().then(res => {
-        const found = res.data.find(w => w.id === Number(assignedWarehouseId));
-        if (found) setWarehouseName(found.name);
-      });
+      // Dùng tên từ context nếu có, ngược lại fetch
+      if (activeWarehouseName) {
+        setWarehouseName(activeWarehouseName);
+      } else {
+        warehouseApi.getAll().then(res => {
+          const found = res.data.find(w => w.id === Number(assignedWarehouseId));
+          if (found) setWarehouseName(found.name);
+        });
+      }
     } else {
-      // Fallback: lấy kho đầu tiên nếu user chưa gán kho
       warehouseApi.getAll().then(res => {
         if (res.data.length > 0) {
           setWarehouseId(String(res.data[0].id));
@@ -57,16 +62,16 @@ export default function HistoryPage() {
         }
       });
     }
-  }, [assignedWarehouseId]);
+  }, [assignedWarehouseId, activeWarehouseName]);
 
   const load = useCallback((p = 0) => {
     if (!warehouseId) return;
     setLoading(true);
-    const params = { tab, page: p, size: 15 };
-    params.warehouseId = warehouseId; // FIX #4: luôn lọc theo kho của user
-    if (dateFrom) params.from = new Date(dateFrom).getTime();
-    if (dateTo)   params.to   = new Date(dateTo).getTime() + 86399999;
-    warehouseApi.getHistory(tab, warehouseId, p, 15, params)
+    const extra = {};
+    if (dateFrom) extra.from = new Date(dateFrom).getTime();
+    if (dateTo)   extra.to   = new Date(dateTo).getTime() + 86399999;
+    // warehouseId truyền thẳng vào API — backend sẽ validate user có quyền trên kho này
+    warehouseApi.getHistory(tab, warehouseId, p, 15, extra)
       .then(res => {
         let items = res.data.content || [];
         if (ingredientSearch.trim()) {
