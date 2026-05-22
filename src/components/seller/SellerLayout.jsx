@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../common/NotificationBell';
 import {
-  ShoppingCart, ClipboardList,
+  ShoppingCart, ClipboardList, FileSpreadsheet,
   LogOut, Menu, X, ChevronRight,
 } from 'lucide-react';
 import ProfileButton from '../common/ProfileButton';
@@ -71,7 +71,6 @@ export default function SellerLayout() {
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile header — không có NotificationBell */}
         <header className="lg:hidden bg-[#1C1C1E] px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="text-white p-1">
             <Menu size={22} />
@@ -83,7 +82,6 @@ export default function SellerLayout() {
           </div>
         </header>
 
-        {/* Topbar duy nhất — 1 NotificationBell instance */}
         <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
           <ProfileButton />
           <div className="w-px h-5 bg-black/10" />

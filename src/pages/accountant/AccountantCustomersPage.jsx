@@ -5,7 +5,7 @@ import { useToast } from '../../components/common/Toast';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
-  Building2, User as UserIcon, Clock3,
+  Building2, User as UserIcon, Clock3, Download, Upload,
 } from 'lucide-react';
 
 // ── Debt urgency ──────────────────────────────────────────────────────────────
@@ -77,6 +77,17 @@ export default function AccountantCustomersPage() {
             <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">Khách hàng</h1>
             <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} khách hàng</p>
           </div>
+          {/* FIX #3: Import / Export */}
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+            <Upload size={13} /> Import
+            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
+              if (e.target.files[0]) toast('Chức năng Import sẽ được xử lý ở backend', 'info');
+            }} />
+          </label>
+          <button onClick={() => toast('Chức năng Export sẽ được xử lý ở backend', 'info')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            <Download size={13} /> Export
+          </button>
           <button onClick={() => fetchCustomers(0)}
             className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />

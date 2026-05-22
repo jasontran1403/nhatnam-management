@@ -11,28 +11,37 @@ export const getImageUrl = (path) => {
 };
 
 export const warehouseApi = {
-  // ── Kho ────────────────────────────────────────────────────────────────────
+  // ── Kho ──────────────────────────────────────────────────────────────────
   getAll:   ()           => api.get(BASE),
   create:   (data)       => api.post(BASE,           data),
   update:   (id, data)   => api.put(`${BASE}/${id}`, data),
 
-  // ── Tồn kho ────────────────────────────────────────────────────────────────
+  // ── Categories & SubCategories ────────────────────────────────────────────
+  getCategories:      () => api.get(`${BASE}/categories`),
+  getAllSubCategories: () => api.get(`${BASE}/subcategories`),
+
+  // ── Nguyên liệu ───────────────────────────────────────────────────────────
+  getIngredients: () => api.get(`${BASE}/all-ingredients`),
+
+  // ── Tồn kho ───────────────────────────────────────────────────────────────
   getStock: (warehouseId) => api.get(`${BASE}/${warehouseId}/stock`),
 
-  // ── Thao tác ───────────────────────────────────────────────────────────────
+  // ── Thao tác ──────────────────────────────────────────────────────────────
   import:   (data) => api.post(`${BASE}/import`,   data),
   export:   (data) => api.post(`${BASE}/export`,   data),
   transfer: (data) => api.post(`${BASE}/transfer`, data),
   adjust:   (data) => api.post(`${BASE}/adjust`,   data),
 
-  // ── Lịch sử ────────────────────────────────────────────────────────────────
-  getHistory:      (tab, warehouseId, page = 0, size = 20) =>
+  // ── Lịch sử ───────────────────────────────────────────────────────────────
+  getHistory: (tab, warehouseId, page = 0, size = 20) =>
     api.get(`${BASE}/history`, { params: { tab, warehouseId: warehouseId || undefined, page, size } }),
-  getReceiptDetail:(id) => api.get(`${BASE}/receipt/${id}`),
+  getReceiptDetail: (id) => api.get(`${BASE}/receipt/${id}`),
 
-  // ── Orders ─────────────────────────────────────────────────────────────────
-  getPreparingOrders: ()   => api.get(`${BASE}/orders/preparing`),
-  markDelivering:     (id) => api.patch(`${BASE}/orders/${id}/deliver`),
+  // ── Orders ────────────────────────────────────────────────────────────────
+  getPreparingOrders: ()         => api.get(`${BASE}/orders/preparing`),
+  markDelivering:     (id)       => api.patch(`${BASE}/orders/${id}/deliver`),
+  cancelOrder:        (id, reason) => api.patch(`${BASE}/orders/${id}/cancel`, { reason }),
+  getInvoice: (id) => api.get(`${BASE}/orders/${id}/invoice`, { responseType: 'blob' }),
 };
 
 export const uploadInventoryImage = (file) => {

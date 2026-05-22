@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminIncomeApi } from '../../api/adminApi';
 import { useToast } from '../../components/common/Toast';
-import { TrendingUp, Clock, DollarSign, FileText, BadgeCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { TrendingUp, Clock, DollarSign, FileText, BadgeCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Download, Upload } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState, formatCurrency, formatDateTime,
 } from '../../components/admin/ui';
@@ -206,6 +206,19 @@ export default function IncomeVoucherPage() {
             onChange={r => { setDateRange(r); setPage(0); }}
             placeholder="Lọc theo ngày"
           />
+          {/* FIX #3: Import / Export Phiếu thu */}
+          <div className="flex items-center gap-2 ml-auto">
+            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+              <Upload size={13} /> Import
+              <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
+                if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
+              }} />
+            </label>
+            <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+              <Download size={13} /> Export
+            </button>
+          </div>
         </div>
 
         {loading

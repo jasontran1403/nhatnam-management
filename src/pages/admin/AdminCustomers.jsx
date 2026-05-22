@@ -6,7 +6,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Users, Search, Percent, Lock, Unlock,
-  Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown,
+  Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
 } from 'lucide-react';
 import { adminCustomerApi } from '../../api/adminApi';
 import useDebounce from '../../utils/useDebounce';
@@ -338,7 +338,22 @@ export default function AdminCustomers() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
+      <div className="flex items-center justify-between">
+        <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
+        {/* FIX #3: Import / Export Khách hàng */}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+            <Upload size={13} /> Import
+            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
+              if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
+            }} />
+          </label>
+          <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            <Download size={13} /> Export
+          </button>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm flex flex-col gap-3">

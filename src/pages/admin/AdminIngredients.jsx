@@ -2,7 +2,7 @@
 // Feature 5: Thêm filter theo danh mục, sort theo tên và số lượng tồn kho
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  Package, Search, AlertTriangle, AlertCircle, ArrowUpDown,
+  Package, Search, AlertTriangle, AlertCircle, ArrowUpDown, Download, Upload,
   ArrowUp, ArrowDown, Warehouse as WhIcon, Tag, SlidersHorizontal
 } from 'lucide-react';
 import { adminIngredientApi, adminWarehouseApi, getImageUrl } from '../../api/adminApi';
@@ -114,7 +114,22 @@ export default function AdminIngredients() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      <PageHeader icon={Package} title="Nguyên liệu" subtitle="Quản lý tồn kho và hạn sử dụng" />
+      <div className="flex items-center justify-between">
+        <PageHeader icon={Package} title="Nguyên liệu" subtitle="Quản lý tồn kho và hạn sử dụng" />
+        {/* FIX #3: Import / Export Nguyên liệu */}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+            <Upload size={13} /> Import
+            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
+              if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
+            }} />
+          </label>
+          <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            <Download size={13} /> Export
+          </button>
+        </div>
+      </div>
 
       {/* Warehouse selector */}
       <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">

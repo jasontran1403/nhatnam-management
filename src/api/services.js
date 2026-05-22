@@ -100,6 +100,8 @@ export const orderApi = {
     api.get('/api/seller/orders/export', { responseType: 'blob' }),
   markPendingPayment: (orderId) =>
     api.patch(`/api/seller/orders/${orderId}/pending-payment`),
+  cancelOrder: (id, reason) =>
+    api.patch(`/api/seller/orders/${id}/cancel`, { reason }),
 };
 
 // ─── Inventory ───────────────────────────────────────────────────────────────
@@ -112,7 +114,7 @@ export const inventoryApi = {
 // ─── Accountant ──────────────────────────────────────────────────────────────
 export const accountantApi = {
   // Orders
-  getOrders: (params) => api.get('/api/accountant/orders', { params }), // supports: status, fromDate, toDate, customerId, productId, page, size
+  getOrders: (params) => api.get('/api/accountant/orders', { params }),
   markPendingPayment: (id) => api.patch(`/api/accountant/orders/${id}/pending-payment`),
   markCompleted: (id) => api.patch(`/api/accountant/orders/${id}/complete`),
   updatePaymentMethod: (id, paymentMethod) => api.patch(`/api/accountant/orders/${id}/payment`, { paymentMethod }),
@@ -131,7 +133,6 @@ export const accountantApi = {
   getTopProducts: (from, to, limit = 10) => api.get('/api/accountant/dashboard/top-products', { params: { from, to, limit } }),
 
   recordPartialPayment: (id, paidAmountOrData, debtDays) => {
-    // Support both old (id, amount, days) and new (id, dataObj) signature
     const body = typeof paidAmountOrData === 'object' && paidAmountOrData !== null
       ? paidAmountOrData
       : { paidAmount: paidAmountOrData, debtDays };
@@ -150,10 +151,14 @@ export const accountantApi = {
   uploadReceiptFile: (id, formData) =>
     api.patch(`/api/accountant/orders/${id}/receipt-file`, formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }),
+
+  // ── THÊM: hủy đơn ────────────────────────────────────────────────────────
+  cancelOrder: (id, reason) =>
+    api.patch(`/api/accountant/orders/${id}/cancel`, { reason }),
 };
 
 // ─── Dashboard (shared) ───────────────────────────────────────────────────────
-export const dashboardApi = accountantApi; // alias nếu cần dùng chung
+export const dashboardApi = accountantApi;
 
 // ─── Expense Vouchers ────────────────────────────────────────────────────────
 export const expenseApi = {
@@ -165,12 +170,11 @@ export const expenseApi = {
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
-    // Dùng endpoint riêng cho expense image → lưu vào folder expense-voucher
     return api.post('/api/upload/expense-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
 };
 
-// ─── Income Vouchers (Phiếu thu) ─────────────────────────────────────────────
+// ─── Income Vouchers ─────────────────────────────────────────────────────────
 export const incomeApi = {
   create: (data) => api.post('/api/income-vouchers', data),
   listMy: (params) => api.get('/api/income-vouchers/my', { params }),
@@ -197,31 +201,22 @@ export const adminWarehouseStockApi = {
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
 // ─── Operator API ─────────────────────────────────────────────────────────────
 export const operatorApi = {
-  // Categories
   getCategories: () => api.get('/api/operator/categories'),
   createCategory: (data) => api.post('/api/operator/categories', data),
   updateCategory: (id, data) => api.put(`/api/operator/categories/${id}`, data),
   deleteCategory: (id) => api.delete(`/api/operator/categories/${id}`),
-
-  // Ingredients
   getIngredients: () => api.get('/api/operator/ingredients'),
   createIngredient: (data) => api.post('/api/operator/ingredients', data),
   updateIngredient: (id, data) => api.put(`/api/operator/ingredients/${id}`, data),
-
-  // Products (read-only list)
   getProducts: () => api.get('/api/operator/products'),
-
-  // Batches
   submitBatch: (data) => api.post('/api/operator/batches', data),
   getMyBatches: () => api.get('/api/operator/batches'),
 };

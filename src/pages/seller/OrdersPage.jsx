@@ -1,238 +1,212 @@
 // src/pages/seller/OrdersPage.jsx
-import { useState, useEffect } from 'react';
-import { orderApi, downloadBlob } from '../../api/services';
-import DateRangePicker from '../../components/common/DateRangePicker';
+// DIFF vs original: thêm nút hủy đơn
+// 1. import Ban, CancelOrderModal
+// 2. CANCELLABLE_STATUSES
+// 3. state cancelTarget, cancelLoading
+// 4. handleCancelConfirm
+// 5. StatusActionButtons: thêm onCancel + nút Hủy đơn
+// 6. Desktop table: onCancel → setCancelTarget(o)
+// 7. Mobile cards: onCancel → setCancelTarget(o)
+// 8. Chứng từ seller: bỏ text "Chưa có" → span rỗng
+// 9. <CancelOrderModal> ở cuối
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { accountantApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
-import {
-  Search, FileText, Clock, CheckCircle, RefreshCw,
-  Eye, Truck, Package, XCircle, AlertCircle,
-  CreditCard, CheckSquare, X, Download,
-} from 'lucide-react';
+import CancelOrderModal from '../../components/common/CancelOrderModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
+import DateRangePicker from '../../components/common/DateRangePicker';
+import {
+  Search, RefreshCw, ChevronLeft, ChevronRight,
+  Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
+  ChevronDown, DollarSign, X, AlertCircle, Calendar,
+  Download, FileText, List, Ban,
+} from 'lucide-react';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const CANCELLABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERING']);
 
-function formatPrice(price) {
-  return new Intl.NumberFormat('vi-VN').format(price || 0) + ' đ';
-}
-
+function formatPrice(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(n || 0)) + ' đ'; }
 function formatDate(ts) {
   if (!ts) return '—';
-  return new Date(ts).toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  return new Date(ts).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
-
 function formatDateShort(ts) {
   if (!ts) return '—';
-  return new Date(ts).toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  });
+  return new Date(ts).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
+function parseVND(str) { return Number(String(str).replace(/[^0-9]/g, '')); }
 
-function parseDeadlineDate(str) {
-  if (!str || str === 'Thanh toán khi nhận hàng') return null;
-  const m = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-  return null;
-}
-
-function getPaymentBadge(order) {
-  if (order.status === 'CANCELLED') return null;
-
-  const { paymentStatus, paymentMethod, paymentDeadline } = order;
-
-  if (paymentStatus === 'PAID') {
-    return { label: 'Đã thanh toán', color: 'text-emerald-600 bg-emerald-50 border-emerald-200', deadline: null, diffDays: null, urgency: 'paid' };
-  }
-
-  if (paymentStatus === 'PARTIAL') {
-    const paid = Number(order.paidAmount || 0);
-    const remaining = Number(order.finalAmount || 0) - paid;
-    const deadlineDate = parseDeadlineDate(order.paymentDeadline);
-    let deadline = null, diffDays = null, urgency = 'partial';
-    let color = 'text-blue-600 bg-blue-50 border-blue-200';
-
-    if (deadlineDate) {
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      diffDays = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      deadline = deadlineDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-
-      if (diffDays < 0) { urgency = 'overdue'; color = 'text-red-600 bg-red-50 border-red-300'; }
-      else if (diffDays <= 4) { urgency = 'critical'; color = 'text-rose-600 bg-rose-50 border-rose-300'; }
-      else if (diffDays <= 7) { urgency = 'warning'; color = 'text-amber-600 bg-amber-50 border-amber-300'; }
-      else { urgency = 'normal'; color = 'text-orange-500 bg-orange-50 border-orange-200'; }
-    }
-
-    return { label: 'TT một phần', color, deadline, diffDays, urgency, paid, remaining };
-  }
-
-  const method = (paymentMethod || '').toUpperCase();
-
-  // COD / CASH / TRANSFER → chưa thanh toán thông thường, không phải công nợ
-  if (['CASH', 'BANK_TRANSFER'].includes(method)) {
-    return { label: 'Chưa thanh toán', color: 'text-gray-500 bg-gray-50 border-gray-200', deadline: null, diffDays: null, urgency: null };
-  }
-
-  // Chỉ DEBT / OTHER mới là công nợ
-  const isDebt = ['DEBT', 'OTHER'].includes(method);
-
-  if (!isDebt) {
-    return { label: 'Chưa thanh toán', color: 'text-gray-500 bg-gray-50 border-gray-200', deadline: null, diffDays: null, urgency: null };
-  }
-
-  const deadlineDate = parseDeadlineDate(paymentDeadline);
-  if (!deadlineDate) {
-    return { label: 'Công nợ', color: 'text-orange-500 bg-orange-50 border-orange-200', deadline: null, diffDays: null, urgency: 'normal' };
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffMs = deadlineDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  const deadlineStr = deadlineDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-
-  if (diffDays < 0) return { label: 'Quá hạn', color: 'text-red-600 bg-red-50 border-red-300', deadline: deadlineStr, diffDays, urgency: 'overdue' };
-  if (diffDays <= 4) return { label: 'Công nợ', color: 'text-rose-600 bg-rose-50 border-rose-300', deadline: deadlineStr, diffDays, urgency: 'critical' };
-  if (diffDays <= 7) return { label: 'Công nợ', color: 'text-amber-600 bg-amber-50 border-amber-300', deadline: deadlineStr, diffDays, urgency: 'warning' };
-  return { label: 'Công nợ', color: 'text-orange-500 bg-orange-50 border-orange-200', deadline: deadlineStr, diffDays, urgency: 'normal' };
-}
-
-const STATUS_CONFIG = {
-  PENDING: { label: 'Chờ xử lý', color: 'text-gray-600 bg-gray-50 border-gray-200', icon: Clock },
-  CONFIRMED: { label: 'Đã xác nhận', color: 'text-sky-600 bg-sky-50 border-sky-200', icon: CheckCircle },
-  PREPARING: { label: 'Đang chuẩn bị', color: 'text-blue-600 bg-blue-50 border-blue-200', icon: Package },
-  READY: { label: 'Sẵn sàng', color: 'text-indigo-600 bg-indigo-50 border-indigo-200', icon: CheckCircle },
-  DELIVERING: { label: 'Đang giao', color: 'text-purple-600 bg-purple-50 border-purple-200', icon: Truck },
-  PENDING_PAYMENT: { label: 'Chờ thanh toán', color: 'text-orange-600 bg-orange-50 border-orange-200', icon: Clock },
-  COMPLETED: { label: 'Hoàn thành', color: 'text-emerald-600 bg-emerald-50 border-emerald-200', icon: CheckCircle },
-  CANCELLED: { label: 'Đã huỷ', color: 'text-red-500 bg-red-50 border-red-200', icon: XCircle },
+const STATUS_MAP = {
+  PENDING: { label: 'Chờ xử lý', bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
+  CONFIRMED: { label: 'Đã xác nhận', bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle },
+  PREPARING: { label: 'Đang chuẩn bị', bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
+  READY: { label: 'Sẵn sàng', bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle },
+  DELIVERING: { label: 'Đang giao', bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
+  PENDING_PAYMENT: { label: 'Chờ thanh toán', bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CreditCard },
+  COMPLETED: { label: 'Hoàn thành', bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
+  CANCELLED: { label: 'Đã huỷ', bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
+  FAILED: { label: 'Thất bại', bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
 };
-
-const FILTER_TABS = [
-  { value: 'ALL', label: 'Tất cả' },
-  { value: 'PENDING', label: 'Chờ xử lý' },
-  { value: 'PREPARING', label: 'Đang chuẩn bị' },
-  { value: 'READY', label: 'Sẵn sàng' },
-  { value: 'DELIVERING', label: 'Đang giao' },
-  { value: 'PENDING_PAYMENT', label: 'Chờ thanh toán' },
-  { value: 'COMPLETED', label: 'Hoàn thành' },
-  { value: 'CANCELLED', label: 'Đã huỷ' },
-];
-
-const PAYMENT_METHOD_OPTIONS = [
+const PAYMENT_METHOD_MAP = {
+  CASH: { label: '💵 Tiền mặt', bg: 'bg-green-50  text-green-700  border-green-200' },
+  BANK_TRANSFER: { label: '🏦 Chuyển khoản', bg: 'bg-blue-50   text-blue-700   border-blue-200' },
+  DEBT: { label: '📋 Công nợ', bg: 'bg-orange-50 text-orange-700 border-orange-200' },
+};
+const PAYMENT_METHODS = [
   { value: 'CASH', label: '💵 Tiền mặt' },
   { value: 'BANK_TRANSFER', label: '🏦 Chuyển khoản' },
   { value: 'DEBT', label: '📋 Công nợ' },
 ];
+const FILTER_TABS = [
+  { value: 'ALL', label: 'Tất cả' },
+  { value: 'DELIVERING', label: 'Đang giao' },
+  { value: 'PENDING_PAYMENT', label: 'Chờ thanh toán' },
+  { value: 'COMPLETED', label: 'Hoàn thành' },
+  { value: 'PENDING', label: 'Chờ xử lý' },
+  { value: 'PREPARING', label: 'Đang chuẩn bị' },
+  { value: 'CANCELLED', label: 'Đã huỷ' },
+];
 
-function canComplete(order) {
-  const okStatus = ['DELIVERING', 'PENDING_PAYMENT'].includes(order.status);
-  const okPartial = order.paymentStatus === 'PARTIAL';
-  return okStatus || okPartial;
+function BtnSpinner({ size = 13, colorClass = 'border-current' }) {
+  return <div style={{ width: size, height: size }} className={`border-2 ${colorClass} border-t-transparent rounded-full animate-spin flex-shrink-0`} />;
 }
-
-// Chỉ DELIVERING → PENDING_PAYMENT (đã giao nhưng chưa thanh toán)
-function canPendingPayment(order) {
-  return order.status === 'DELIVERING';
-}
-
-function canChangePayment(order) {
-  return ['DELIVERING', 'PENDING_PAYMENT'].includes(order.status)
-    && order.paymentStatus !== 'PAID';
-}
-
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status];
-  if (!cfg) return null;
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.color}`}>
-      <Icon size={9} /> {cfg.label}
-    </span>
-  );
+  const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING; const Icon = cfg.icon;
+  return <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}><Icon size={9} /> {cfg.label}</span>;
 }
-
-function PaymentBadge({ order }) {
-  const badge = getPaymentBadge(order);
-  if (!badge) return <span className="text-xs text-[#C4B9A8]">—</span>;
+function PaymentMethodBadge({ method }) {
+  const cfg = PAYMENT_METHOD_MAP[method];
+  if (!cfg) return <span className="text-xs text-[#8E8878]">{method || '—'}</span>;
+  return <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}>{cfg.label}</span>;
+}
+function WarehouseBadge({ name }) {
+  if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
+  return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-sky-50 text-sky-700 border-sky-200 whitespace-nowrap">🏭 {name}</span>;
+}
+function CreatedByBadge({ name }) {
+  if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
+  return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0] whitespace-nowrap">👤 {name}</span>;
+}
+function PaymentMethodCell({ value, onSave, disabled }) {
+  const [open, setOpen] = useState(false);
+  const handleSelect = (val) => { setOpen(false); if (val !== value) onSave(val); };
+  if (disabled) return <PaymentMethodBadge method={value} />;
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border w-fit ${badge.color}`}>
-        {badge.urgency === 'overdue' && <AlertCircle size={9} />}
-        {badge.label}
-      </span>
-      {badge.deadline && (
-        <span className={`text-[10px] font-medium px-2 ${badge.urgency === 'overdue' ? 'text-red-500' :
-          badge.urgency === 'critical' ? 'text-rose-500' :
-            badge.urgency === 'warning' ? 'text-amber-500' : 'text-orange-400'}`}>
-          {badge.urgency === 'overdue'
-            ? `⚠ Quá hạn TT ${badge.deadline}`
-            : badge.diffDays === 0
-              ? `Hôm nay (${badge.deadline})`
-              : `Hạn TT ${badge.deadline} (còn ${badge.diffDays}d)`}
-        </span>
-      )}
-      {badge.paid > 0 && (
-        <span className="text-[10px] font-medium px-2 text-blue-500">
-          Đã thu: {formatPrice(badge.paid)} · Còn: {formatPrice(badge.remaining)}
-        </span>
-      )}
+    <div className="relative">
+      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 group"><PaymentMethodBadge method={value} /><ChevronDown size={10} className="text-[#C9A84C] opacity-70 group-hover:opacity-100 transition-opacity" /></button>
+      {open && (<><div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+        <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[#E8DDD0] rounded-xl shadow-lg py-1 min-w-[160px]">
+          {PAYMENT_METHODS.map(m => <button key={m.value} onClick={() => handleSelect(m.value)} className={`w-full text-left px-3 py-2 text-xs hover:bg-[#FAF7F2] transition-colors ${m.value === value ? 'font-bold text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>{m.label}</button>)}
+        </div>
+      </>)}
     </div>
   );
 }
 
-// ── Modal đổi phương thức thanh toán ─────────────────────────────────────────
-function ChangePaymentModal({ order, onClose, onSuccess }) {
-  const toast = useToast();
-  const [method, setMethod] = useState(order.paymentMethod || 'CASH');
-  const [loading, setLoading] = useState(false);
+// ── PartialPaymentModal — giữ nguyên từ original (document 23) ───────────────
+function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
+  const finalAmount = Number(order?.finalAmount || 0); const alreadyPaid = Number(order?.paidAmount || 0); const remaining = finalAmount - alreadyPaid;
+  const [amountInput, setAmountInput] = useState(''); const [hasDeadline, setHasDeadline] = useState(false);
+  const [deadlineDays, setDeadlineDays] = useState(''); const [paymentMethod, setPaymentMethod] = useState(order?.paymentMethod || 'CASH');
+  const [bankName, setBankName] = useState(''); const [transactionRef, setTransactionRef] = useState('');
+  const [error, setError] = useState(''); const [txHistory, setTxHistory] = useState([]); const [txLoading, setTxLoading] = useState(true);
+  const [waiveConfirm, setWaiveConfirm] = useState(false);
 
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      await orderApi.updatePaymentMethod(order.id, method);
-      toast('Cập nhật phương thức thanh toán thành công', 'success');
-      onSuccess();
-      onClose();
-    } catch {
-      toast('Không thể cập nhật phương thức thanh toán', 'error');
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => { paymentApi.getTransactions(order.id).then(r => setTxHistory(r.data?.data || [])).catch(() => { }).finally(() => setTxLoading(false)); }, [order.id]);
+
+  const paidNum = parseVND(amountInput); const newRemaining = remaining - paidNum;
+  const totalWouldPay = alreadyPaid + paidNum; const shortfall = finalAmount - totalWouldPay;
+  const isFullPayment = paidNum === remaining && paidNum > 0; const canWaive = paidNum > 0 && shortfall > 0 && shortfall < 50000;
+  const isBankTransfer = paymentMethod === 'BANK_TRANSFER';
+
+  const handleAmountChange = (e) => { const raw = e.target.value.replace(/[^0-9]/g, ''); setAmountInput(raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : ''); setError(''); };
+  const handleConfirm = () => {
+    if (!paidNum || paidNum <= 0) { setError('Vui lòng nhập số tiền đã thanh toán'); return; }
+    if (paidNum > remaining) { setError(`Số tiền không được vượt quá số còn lại (${formatPrice(remaining)})`); return; }
+    if (hasDeadline && (!deadlineDays || Number(deadlineDays) <= 0)) { setError('Vui lòng nhập số ngày hạn thanh toán hợp lệ'); return; }
+    if (isBankTransfer && !bankName.trim()) { setError('Vui lòng nhập tên ngân hàng'); return; }
+    onConfirm({ paidAmount: paidNum, debtDays: hasDeadline ? Number(deadlineDays) : 0, paymentMethod, bankName: isBankTransfer ? bankName.trim() : undefined, transactionRef: isBankTransfer ? transactionRef.trim() : undefined });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-[#1C1C1E] text-base">Đổi phương thức thanh toán</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#F0EBE3] text-[#8E8878]"><X size={16} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3] flex-shrink-0">
+          <div><p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Ghi nhận thanh toán</p><h2 className="font-bold text-[#1C1C1E] font-mono text-sm">{order?.orderCode}</h2></div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
         </div>
-        <p className="text-xs text-[#8E8878] mb-4">
-          Đơn <span className="font-mono font-bold text-[#C9A84C]">{order.orderCode}</span>
-          {' '}— chỉ áp dụng khi đơn đang ở trạng thái <strong>Chờ thanh toán</strong>.
-        </p>
-        <div className="grid grid-cols-1 gap-2 mb-5">
-          {PAYMENT_METHOD_OPTIONS.map(opt => (
-            <button key={opt.value} onClick={() => setMethod(opt.value)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all
-                ${method === opt.value
-                  ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
-                  : 'border-[#F0EBE3] bg-white text-[#1C1C1E] hover:border-[#C9A84C]/40'}`}>
-              <CreditCard size={14} />
-              {opt.label}
-              {method === opt.value && <CheckCircle size={14} className="ml-auto" />}
-            </button>
-          ))}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
+            <div className="flex justify-between text-xs"><span className="text-[#8E8878]">Tổng đơn hàng</span><span className="font-semibold text-[#1C1C1E]">{formatPrice(finalAmount)}</span></div>
+            {alreadyPaid > 0 && <div className="flex justify-between text-xs"><span className="text-[#8E8878]">Đã thanh toán trước</span><span className="font-semibold text-emerald-600">−{formatPrice(alreadyPaid)}</span></div>}
+            <div className="flex justify-between text-xs pt-1 border-t border-[#E8DDD0]"><span className="font-bold text-[#1C1C1E]">Còn lại cần thu</span><span className="font-bold text-orange-600">{formatPrice(remaining)}</span></div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#1C1C1E]">Số tiền thu được lần này</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] text-xs font-medium">₫</span>
+              <input type="text" inputMode="numeric" value={amountInput} onChange={handleAmountChange} placeholder="0" autoFocus className="w-full pl-7 pr-28 py-3 border border-[#E8DDD0] rounded-xl text-sm font-bold text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/20" />
+              <button onClick={() => setAmountInput(new Intl.NumberFormat('vi-VN').format(remaining))} className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] font-semibold hover:bg-[#C9A84C]/20 transition-colors">Tất cả</button>
+            </div>
+            {paidNum > 0 && paidNum <= remaining && (
+              <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-lg text-xs ${isFullPayment ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                <div className="flex items-center gap-1.5">{isFullPayment ? <><CheckCircle size={12} /> Thanh toán đủ — đơn sẽ chuyển sang <strong>Hoàn thành</strong></> : <><AlertCircle size={12} /> Còn lại: <strong>{formatPrice(newRemaining)}</strong> — đơn sẽ là <strong>Còn nợ</strong></>}</div>
+                {canWaive && !waiveConfirm && <button onClick={() => setWaiveConfirm(true)} className="self-start mt-0.5 px-2.5 py-1 rounded-lg bg-amber-600/15 text-amber-800 text-[10px] font-semibold hover:bg-amber-600/25 transition-colors">Bỏ số lẻ {formatPrice(shortfall)} — xác nhận thu đủ luôn</button>}
+                {canWaive && waiveConfirm && (
+                  <div className="flex flex-col gap-1.5 p-2 bg-amber-100 rounded-lg border border-amber-300">
+                    <p className="text-[10px] font-semibold text-amber-900">⚠️ Xác nhận bỏ {formatPrice(shortfall)} — thực thu {formatPrice(totalWouldPay)} thay vì {formatPrice(finalAmount)}?</p>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setWaiveConfirm(false)} className="flex-1 py-1 rounded-lg border border-amber-300 text-[10px] text-amber-700 hover:bg-amber-50">Không</button>
+                      <button onClick={() => onConfirm({ paidAmount: paidNum, debtDays: 0, paymentMethod, bankName: isBankTransfer ? bankName.trim() : undefined, transactionRef: isBankTransfer ? transactionRef.trim() : undefined, waiveRemainder: true, actualPaid: totalWouldPay })} className="flex-1 py-1 rounded-lg bg-amber-600 text-white text-[10px] font-semibold hover:bg-amber-700">Xác nhận bỏ số lẻ</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#1C1C1E]">Phương thức thanh toán lần này</label>
+            <div className="grid grid-cols-3 gap-2">
+              {PAYMENT_METHODS.map(m => <button key={m.value} onClick={() => setPaymentMethod(m.value)} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${paymentMethod === m.value ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C]'}`}>{m.label}</button>)}
+            </div>
+          </div>
+          {isBankTransfer && (
+            <div className="space-y-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+              <p className="text-xs font-semibold text-blue-700">Thông tin chuyển khoản</p>
+              <div><label className="block text-[10px] font-medium text-blue-600 mb-1">Tên ngân hàng *</label><input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="VD: Vietcombank, BIDV..." className="w-full px-3 py-2 text-sm rounded-xl border border-blue-200 bg-white focus:outline-none focus:border-blue-400" /></div>
+              <div><label className="block text-[10px] font-medium text-blue-600 mb-1">Mã giao dịch</label><input value={transactionRef} onChange={e => setTransactionRef(e.target.value)} placeholder="VD: FT23161234567" className="w-full px-3 py-2 text-sm rounded-xl border border-blue-200 bg-white focus:outline-none focus:border-blue-400" /></div>
+            </div>
+          )}
+          {!isFullPayment && paidNum > 0 && paidNum < remaining && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div onClick={() => setHasDeadline(v => !v)} className={`w-9 h-5 rounded-full transition-colors relative ${hasDeadline ? 'bg-[#C9A84C]' : 'bg-[#E8DDD0]'}`}><div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${hasDeadline ? 'translate-x-4' : 'translate-x-0.5'}`} /></div>
+                <span className="text-xs font-medium text-[#1C1C1E]">Đặt hạn cho phần còn nợ</span>
+              </label>
+              {hasDeadline && <div className="flex items-center gap-2 pl-11"><Calendar size={13} className="text-[#8E8878] shrink-0" /><input type="number" min="1" max="365" value={deadlineDays} onChange={e => { setDeadlineDays(e.target.value); setError(''); }} placeholder="Số ngày" className="w-24 px-3 py-1.5 border border-[#E8DDD0] rounded-lg text-xs focus:outline-none focus:border-[#C9A84C] text-center font-bold" /><span className="text-xs text-[#8E8878]">ngày kể từ hôm nay</span></div>}
+            </div>
+          )}
+          {error && <div className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-xs"><AlertCircle size={12} /> {error}</div>}
+          {!txLoading && txHistory.length > 0 && (
+            <div><p className="text-xs font-semibold text-[#5C5C5C] mb-2">Lịch sử thanh toán ({txHistory.length} lần)</p>
+              <div className="space-y-2">{txHistory.map((tx, i) => (
+                <div key={tx.id} className="flex items-start gap-3 p-3 bg-[#FAF7F2] rounded-xl border border-[#F0EBE3]">
+                  <div className="w-5 h-5 rounded-full bg-[#C9A84C]/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span className="text-[9px] font-bold text-[#C9A84C]">{i + 1}</span></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between"><span className="text-xs font-semibold text-[#1C1C1E]">{formatPrice(tx.amount)}</span><span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${tx.paymentMethod === 'BANK_TRANSFER' ? 'bg-blue-50 text-blue-700' : tx.paymentMethod === 'DEBT' ? 'bg-orange-50 text-orange-700' : 'bg-emerald-50 text-emerald-700'}`}>{tx.paymentMethod === 'CASH' ? '💵 TM' : tx.paymentMethod === 'BANK_TRANSFER' ? '🏦 CK' : tx.paymentMethod === 'DEBT' ? '📋 Nợ' : tx.paymentMethod}</span></div>
+                    {tx.bankName && <p className="text-[10px] text-[#5C5C5C] mt-0.5">{tx.bankName}{tx.transactionRef ? ` — ${tx.transactionRef}` : ''}</p>}
+                    <p className="text-[10px] text-[#8E8878]">{tx.collectedBy} · {formatDateShort(tx.createdAt)}</p>
+                  </div>
+                </div>
+              ))}</div>
+            </div>
+          )}
         </div>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#F0EBE3] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">Huỷ</button>
-          <button onClick={handleSave} disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] transition-colors disabled:opacity-60">
-            {loading ? 'Đang lưu...' : 'Lưu'}
+        <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-[#F0EBE3] flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors font-medium">Huỷ</button>
+          <button onClick={handleConfirm} disabled={loading || !paidNum || paidNum <= 0} className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            {loading ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><DollarSign size={14} /> Xác nhận thu tiền</>}
           </button>
         </div>
       </div>
@@ -240,537 +214,355 @@ function ChangePaymentModal({ order, onClose, onSuccess }) {
   );
 }
 
-// ── Modal xác nhận hoàn thành đơn ────────────────────────────────────────────
-function ConfirmCompleteModal({ order, onClose, onSuccess }) {
-  const toast = useToast();
-  const [loading, setLoading] = useState(false);
+// ── StatusActionButtons — THÊM onCancel ───────────────────────────────────────
+function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPayment, onCancel, loading }) {
+  const { status, paymentMethod } = order;
+  const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
+  if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
 
-  const handleConfirm = async () => {
-    setLoading(true);
-    try {
-      await orderApi.completeOrder(order.id);
-      toast('Đơn hàng đã hoàn thành!', 'success');
-      onSuccess();
-      onClose();
-    } catch {
-      toast('Không thể hoàn thành đơn hàng', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const canPendingPayment = status === 'DELIVERING' && paymentMethod === 'DEBT';
+  const canComplete = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
+  const canPartial = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
+  const canCancel = CANCELLABLE_STATUSES.has(status);
+
+  if (!canPendingPayment && !canComplete && !canPartial && !canCancel) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-[#1C1C1E] text-base">Xác nhận hoàn thành</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#F0EBE3] text-[#8E8878]"><X size={16} /></button>
-        </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-5">
-          <p className="text-sm text-emerald-700 font-medium mb-1">
-            Đơn <span className="font-mono font-bold">{order.orderCode}</span>
-          </p>
-          <p className="text-xs text-emerald-600">
-            Thao tác này sẽ chuyển trạng thái đơn thành <strong>Hoàn thành</strong> và trạng thái thanh toán thành <strong>Đã thanh toán</strong>.
-          </p>
-        </div>
-        <p className="text-xs text-[#8E8878] mb-5">Hành động này không thể hoàn tác.</p>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#F0EBE3] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">Huỷ</button>
-          <button onClick={handleConfirm} disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-60">
-            {loading ? 'Đang xử lý...' : '✓ Xác nhận'}
-          </button>
-        </div>
-      </div>
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {canPendingPayment && <button onClick={e => { e.stopPropagation(); onPendingPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-orange-400 !border-t-orange-600" /> : <><CreditCard size={10} /> Chờ TT</>}</button>}
+      {canPartial && <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-blue-400 !border-t-blue-600" /> : <><DollarSign size={10} /> Thu tiền</>}</button>}
+      {canComplete && <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-emerald-400 !border-t-emerald-600" /> : <><CheckCircle size={10} /> Hoàn thành</>}</button>}
+      {canCancel && <button onClick={e => { e.stopPropagation(); onCancel(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-red-400 !border-t-red-500" /> : <><Ban size={10} /> Hủy đơn</>}</button>}
     </div>
   );
 }
 
-// ── Modal xác nhận chờ thanh toán ────────────────────────────────────────────
-function ConfirmPendingPaymentModal({ order, onClose, onSuccess }) {
-  const toast = useToast();
-  const [loading, setLoading] = useState(false);
-
-  const handleConfirm = async () => {
-    setLoading(true);
-    try {
-      await orderApi.markPendingPayment(order.id);
-      toast('Đã chuyển sang Chờ thanh toán', 'success');
-      onSuccess();
-      onClose();
-    } catch {
-      toast('Không thể cập nhật trạng thái đơn hàng', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
+  const isThisLoading = invoiceLoadingId === order.id; const isOtherLoading = !!invoiceLoadingId && !isThisLoading;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
-        onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-[#1C1C1E] text-base">Xác nhận chờ thanh toán</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#F0EBE3] text-[#8E8878]">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
-          <p className="text-sm text-orange-700 font-medium mb-1">
-            Đơn <span className="font-mono font-bold">{order.orderCode}</span>
-          </p>
-          <p className="text-xs text-orange-600">
-            Đơn đã được giao nhưng <strong>chưa thanh toán</strong>.
-            Thao tác này sẽ chuyển trạng thái sang <strong>Chờ thanh toán</strong>.
-          </p>
-        </div>
-
-        <p className="text-xs text-[#8E8878] mb-5">
-          Sau khi xác nhận, đơn sẽ chờ kế toán ghi nhận thanh toán.
-        </p>
-
-        <div className="flex gap-2">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#F0EBE3] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
-            Huỷ
-          </button>
-          <button onClick={handleConfirm} disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-            {loading
-              ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              : <><Clock size={14} /> Xác nhận</>
-            }
-          </button>
-        </div>
-      </div>
-    </div>
+    <button onClick={e => { e.stopPropagation(); onInvoice(order.id, e); }} disabled={!!invoiceLoadingId}
+      className={`relative p-1.5 rounded-lg border transition-all duration-200 ${isThisLoading ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1' : isOtherLoading ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40' : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
+      {isThisLoading ? <BtnSpinner size={13} colorClass="border-[#C9A84C] !border-t-transparent" /> : <FileText size={13} />}
+      {isThisLoading && <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md pointer-events-none z-10">Đang tạo...</span>}
+    </button>
   );
 }
 
-// ── Spinner nhỏ dùng trong nút ────────────────────────────────────────────────
-function BtnSpinner({ size = 13, color = 'border-current' }) {
-  return (
-    <div
-      style={{ width: size, height: size }}
-      className={`border-2 ${color} border-t-transparent rounded-full animate-spin`}
-    />
-  );
+function getRowBg(o) {
+  if (o.status === 'COMPLETED') return 'bg-emerald-50/70';
+  if (o.status === 'DELIVERING' || o.status === 'PENDING_PAYMENT') {
+    if (o.debtDays > 0 && o.pendingPaymentAt) { const dl = o.pendingPaymentAt + o.debtDays * 86400000; if (dl - Date.now() < 3 * 86400000) return 'bg-red-50/70'; }
+    return 'bg-orange-50/50';
+  }
+  return '';
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OrdersPage() {
   const toast = useToast();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [dateRange, setDateRange] = useState({ from: null, to: null });
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [exporting, setExporting] = useState(false);
-
-  // id của đơn đang tạo invoice — null khi rảnh
-  // Khi có giá trị: nút invoice của đơn đó hiện spinner,
-  // toàn bộ nút invoice của đơn khác bị disabled + mờ.
+  const [orders, setOrders] = useState([]); const [selectedOrder, setSelectedOrder] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(null); const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0); const [loading, setLoading] = useState(false);
+  const [searchInput, setSearchInput] = useState(''); const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL'); const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [actionLoading, setActionLoading] = useState(null); const [exporting, setExporting] = useState(false);
   const [invoiceLoadingId, setInvoiceLoadingId] = useState(null);
+  const [partialOrder, setPartialOrder] = useState(null); const [partialLoading, setPartialLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkConfirm, setBulkConfirm] = useState(null);
+  const [bulkLoading, setBulkLoading] = useState(false); const [pageSize, setPageSize] = useState(20);
 
-  // Modal states
-  const [paymentModalOrder, setPaymentModalOrder] = useState(null);
-  const [completeModalOrder, setCompleteModalOrder] = useState(null);
-  const [pendingPaymentModalOrder, setPendingPaymentModalOrder] = useState(null);
+  // ── THÊM ─────────────────────────────────────────────────────────────────
+  const [cancelTarget, setCancelTarget] = useState(null); const [cancelLoading, setCancelLoading] = useState(false);
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  const fetchOrders = useCallback(async (p = 0) => {
+    setLoading(true);
+    try {
+      const params = { page: p, size: pageSize };
+      if (statusFilter !== 'ALL') params.status = statusFilter;
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
+      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+      const res = await accountantApi.getOrders(params);
+      let content = res.data?.data?.content || [];
+      if (search.trim()) { const q = search.toLowerCase(); content = content.filter(o => o.orderCode?.toLowerCase().includes(q) || o.customerName?.toLowerCase().includes(q) || o.customerPhone?.includes(q)); }
+      setOrders(content); setTotal(res.data?.data?.totalItems || 0); setPage(p);
+    } catch { toast('Không thể tải danh sách đơn hàng', 'error'); }
+    finally { setLoading(false); }
+  }, [statusFilter, dateRange, search, pageSize]);
+
+  useEffect(() => { fetchOrders(0); }, [fetchOrders]);
+  useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 500); return () => clearTimeout(t); }, [searchInput]);
 
   const handleExport = async () => {
     setExporting(true);
     try {
-      const params = {};
-      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
-      if (dateRange.to)   params.to   = new Date(dateRange.to).setHours(23,59,59,999);
-      const res = await orderApi.exportMyOrders(params);
-      downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
-    } catch {
-      toast('Không thể xuất file Excel', 'error');
-    } finally {
-      setExporting(false);
-    }
+      const params = {}; if (statusFilter !== 'ALL') params.status = statusFilter; if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0); if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+      const res = await accountantApi.exportOrders(params); downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+    } catch { toast('Không thể xuất file Excel', 'error'); } finally { setExporting(false); }
   };
-
-  const fetchOrders = () => {
-    setLoading(true);
-    const params = {};
-    if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
-    if (dateRange.to)   params.to   = new Date(dateRange.to).setHours(23,59,59,999);
-    orderApi.getMyOrders(params)
-      .then(r => setOrders(r.data?.data || []))
-      .catch(() => toast('Không thể tải đơn hàng', 'error'))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchOrders(); }, [dateRange]);
 
   const handleInvoice = async (orderId, e) => {
-    e.stopPropagation();
-    if (invoiceLoadingId) return;
-    setInvoiceLoadingId(orderId);
-
-    try {
-      const res = await orderApi.getInvoice(orderId);
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-
-      // Trên mobile thì ưu tiên download, trên desktop thì mở tab
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      if (isMobile) {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `hoa-don-${orderId}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        window.open(url, '_blank');
-      }
-
-      setTimeout(() => URL.revokeObjectURL(url), 60000); // revoke sau 1 phút
-
-    } catch {
-      toast('Không thể tải hoá đơn', 'error');
-    } finally {
-      setInvoiceLoadingId(null);
-    }
+    if (e) e.stopPropagation(); if (invoiceLoadingId) return; setInvoiceLoadingId(orderId);
+    try { const res = await accountantApi.getInvoice(orderId); const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); window.open(url, '_blank'); }
+    catch { toast('Không thể tải hoá đơn', 'error'); } finally { setInvoiceLoadingId(null); }
   };
 
-  const filtered = orders.filter(o => {
-    const matchStatus = statusFilter === 'ALL' || o.status === statusFilter;
-    const q = search.toLowerCase();
-    const matchSearch = !search
-      || o.orderCode?.toLowerCase().includes(q)
-      || o.customerName?.toLowerCase().includes(q);
-    return matchStatus && matchSearch;
-  });
+  const handlePendingPayment = async (orderId) => {
+    setActionLoading(orderId);
+    try {
+      const res = await accountantApi.markPendingPayment(orderId); if (res?.data?.success === false) { toast(res.data.message || 'Không thể cập nhật', 'error'); return; }
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'PENDING_PAYMENT' } : o)); toast('Đã chuyển sang Chờ thanh toán', 'success');
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi cập nhật', 'error'); } finally { setActionLoading(null); }
+  };
 
-  // ── Action buttons ────────────────────────────────────────────────────────
-  const ActionButtons = ({ o }) => {
-    const isThisLoading = invoiceLoadingId === o.id;
-    const isOtherLoading = !!invoiceLoadingId && !isThisLoading;
+  const handleComplete = async (orderId) => {
+    setActionLoading(orderId);
+    try {
+      const res = await accountantApi.markCompleted(orderId); if (res?.data?.success === false) { toast(res.data.message || 'Không thể hoàn thành', 'error'); return; }
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'COMPLETED', paymentStatus: 'PAID', paidAmount: o.finalAmount } : o)); toast('Đã hoàn thành đơn hàng', 'success');
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi hoàn thành', 'error'); } finally { setActionLoading(null); }
+  };
 
-    return (
-      <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+  const handlePartialPayment = async (payload) => {
+    if (!partialOrder) return;
+    const { paidAmount, debtDays = 0, paymentMethod, bankName, transactionRef, waiveRemainder, actualPaid } = payload;
+    setPartialLoading(true);
+    try {
+      if (waiveRemainder) {
+        await accountantApi.waiveRemainder(partialOrder.id, { actualPaid: Number(actualPaid), paymentMethod, bankName: paymentMethod === 'BANK_TRANSFER' ? bankName?.trim() : undefined, transactionRef: paymentMethod === 'BANK_TRANSFER' ? transactionRef?.trim() : undefined });
+        setOrders(prev => prev.map(o => o.id === partialOrder.id ? { ...o, paidAmount: Number(actualPaid), paymentStatus: 'PAID', status: 'COMPLETED' } : o));
+        toast(`Đã bỏ số lẻ ${formatPrice(Number(partialOrder.finalAmount) - Number(actualPaid))} — đơn hoàn thành`, 'success');
+      } else {
+        await accountantApi.recordPartialPayment(partialOrder.id, paidAmount, debtDays);
+        const newPaid = Number(partialOrder.paidAmount || 0) + paidAmount; const isFullPaid = newPaid >= Number(partialOrder.finalAmount || 0);
+        setOrders(prev => prev.map(o => o.id === partialOrder.id ? { ...o, paidAmount: newPaid, paymentStatus: isFullPaid ? 'PAID' : 'PARTIAL', status: isFullPaid ? 'COMPLETED' : 'PENDING_PAYMENT' } : o));
+        toast(isFullPaid ? 'Đã thanh toán đủ — đơn hoàn thành' : `Đã ghi nhận ${formatPrice(paidAmount)}`, 'success');
+      }
+      setPartialOrder(null);
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi ghi nhận thanh toán', 'error'); } finally { setPartialLoading(false); }
+  };
 
-        {/* ── Nút Invoice ── */}
-        <button
-          onClick={e => handleInvoice(o.id, e)}
-          disabled={!!invoiceLoadingId}
-          title={
-            isThisLoading ? 'Đang tạo hoá đơn...' :
-              isOtherLoading ? 'Chờ đơn khác xong' : 'Xem hoá đơn PDF'
-          }
-          className={`
-            relative p-1.5 rounded-lg border transition-all duration-200
-            ${isThisLoading
-              /* đơn này đang load: vàng + pulse ring */
-              ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1'
-              : isOtherLoading
-                /* đơn khác đang load: xám mờ */
-                ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
-                /* bình thường */
-                : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'
-            }
-          `}
-        >
-          {isThisLoading
-            ? <BtnSpinner size={13} color="border-[#C9A84C]" />
-            : <FileText size={13} />
-          }
+  const handleUpdatePaymentMethod = async (orderId, paymentMethod) => {
+    setActionLoading(orderId);
+    try {
+      const res = await accountantApi.updatePaymentMethod(orderId, paymentMethod); if (res?.data?.success === false) { toast(res.data.message || 'Không thể cập nhật', 'error'); return; }
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentMethod } : o)); toast('Đã cập nhật phương thức thanh toán', 'success');
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi cập nhật', 'error'); } finally { setActionLoading(null); }
+  };
 
-          {/* Tooltip nhỏ khi đang load */}
-          {isThisLoading && (
-            <span className="
-              absolute -top-7 left-1/2 -translate-x-1/2
-              whitespace-nowrap text-[10px] font-medium
-              bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md
-              pointer-events-none
-            ">
-              Đang tạo...
-            </span>
-          )}
-        </button>
+  // ── THÊM: hủy đơn ─────────────────────────────────────────────────────────
+  const handleCancelConfirm = async (reason) => {
+    if (!cancelTarget) return;
+    setCancelLoading(true);
+    try {
+      await accountantApi.cancelOrder(cancelTarget.id, reason);
+      setOrders(prev => prev.map(o => o.id === cancelTarget.id ? { ...o, status: 'CANCELLED' } : o));
+      setCancelTarget(null);
+      toast('Đã hủy đơn hàng thành công', 'success');
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi hủy đơn', 'error'); }
+    finally { setCancelLoading(false); }
+  };
 
-        {/* ── Nút Chờ thanh toán (DELIVERING → PENDING_PAYMENT) ── */}
-        {canPendingPayment(o) && (
-          <button
-            onClick={e => { e.stopPropagation(); setPendingPaymentModalOrder(o); }}
-            disabled={!!invoiceLoadingId}
-            title="Đã giao — chờ thanh toán"
-            className={`
-              p-1.5 rounded-lg border transition-all duration-200
-              ${invoiceLoadingId
-                ? 'bg-orange-50 text-orange-200 border-transparent cursor-not-allowed opacity-40'
-                : 'bg-orange-50 text-orange-500 border-transparent hover:bg-orange-100 hover:scale-105 active:scale-95'
-              }
-            `}
-          >
-            <Clock size={13} />
-          </button>
-        )}
-
-        {/* ── Nút đổi thanh toán ── */}
-        {canChangePayment(o) && (
-          <button
-            onClick={e => { e.stopPropagation(); setPaymentModalOrder(o); }}
-            disabled={!!invoiceLoadingId}
-            title="Đổi phương thức thanh toán"
-            className={`
-              p-1.5 rounded-lg border transition-all duration-200
-              ${invoiceLoadingId
-                ? 'bg-blue-50 text-blue-200 border-transparent cursor-not-allowed opacity-40'
-                : 'bg-blue-50 text-blue-600 border-transparent hover:bg-blue-100 hover:scale-105 active:scale-95'
-              }
-            `}
-          >
-            <CreditCard size={13} />
-          </button>
-        )}
-
-        {/* ── Nút hoàn thành đơn ── */}
-        {canComplete(o) && (
-          <button
-            onClick={e => { e.stopPropagation(); setCompleteModalOrder(o); }}
-            disabled={!!invoiceLoadingId}
-            title="Hoàn thành đơn hàng"
-            className={`
-              p-1.5 rounded-lg border transition-all duration-200
-              ${invoiceLoadingId
-                ? 'bg-emerald-50 text-emerald-200 border-transparent cursor-not-allowed opacity-40'
-                : 'bg-emerald-50 text-emerald-600 border-transparent hover:bg-emerald-100 hover:scale-105 active:scale-95'
-              }
-            `}
-          >
-            <CheckSquare size={13} />
-          </button>
-        )}
-      </div>
-    );
+  const executeBulkComplete = async (mode) => {
+    setBulkLoading(true);
+    try {
+      const res = await accountantApi.bulkComplete({ orderIds: Array.from(selectedIds), mode });
+      const result = res.data?.data; const successCount = result?.success || 0; const errors = result?.errors || [];
+      if (errors.length === 0) toast(`✅ Đã cập nhật thành công ${successCount} đơn`, 'success');
+      else if (successCount === 0) toast(`❌ Không cập nhật được đơn nào`, 'error');
+      else toast(`⚠️ ${successCount} đơn thành công, ${errors.length} đơn lỗi`, 'warning');
+      setSelectedIds(new Set()); fetchOrders(page);
+    } catch { toast('Lỗi bulk update', 'error'); } finally { setBulkLoading(false); }
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-
-      {/* ── Header ── */}
+    <div className="flex flex-col h-full bg-[#FAF7F2]">
       <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
-              Đơn hàng
-            </h1>
-            <p className="text-xs text-[#8E8878]">{orders.length} đơn hàng của bạn</p>
-          </div>
-          <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
-              <input type="text" placeholder="Tìm đơn hàng..." value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="input-elegant rounded-xl pl-9 pr-4 py-2 text-sm w-44 sm:w-52" />
-            </div>
-            <DateRangePicker
-              from={dateRange.from} to={dateRange.to}
-              onChange={r => { setDateRange(r); }}
-              placeholder="Khoảng ngày" />
-            <button onClick={fetchOrders}
-              className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
-              <RefreshCw size={15} />
-            </button>
-            <button onClick={handleExport} disabled={exporting}
-              className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60"
-              title="Xuất Excel">
-              {exporting
-                ? <BtnSpinner size={15} color="border-emerald-500" />
-                : <Download size={15} />}
-            </button>
-          </div>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex-1 min-w-0"><h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">Đơn hàng</h1><p className="text-[10px] sm:text-xs text-[#8E8878]">{total} đơn hàng</p></div>
+          <div className="relative hidden sm:block"><Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" /><input type="text" placeholder="Tìm đơn, khách hàng..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C] w-48 lg:w-56" /></div>
+          <div className="hidden sm:flex items-center gap-1.5"><DateRangePicker from={dateRange.from} to={dateRange.to} onChange={r => { setDateRange(r); setPage(0); }} placeholder="Khoảng ngày" /></div>
+          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); fetchOrders(0); }} className="border border-[#E8DDD0] rounded-xl px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-[#C9A84C] hidden sm:block">{[20, 50, 100].map(n => <option key={n} value={n}>{n}/trang</option>)}</select>
+          <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
+          <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0">{exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}</button>
         </div>
-
-        {/* Status tabs */}
-        <div className="flex gap-1.5 mt-3 overflow-x-auto pb-0.5 scrollbar-hide">
-          {FILTER_TABS.map(({ value, label }) => (
-            <button key={value} onClick={() => setStatusFilter(value)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${statusFilter === value
-                  ? 'bg-[#C9A84C] text-white'
-                  : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
-              {label}
-            </button>
-          ))}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+          {FILTER_TABS.map(t => <button key={t.value} onClick={() => setStatusFilter(t.value)} className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${statusFilter === t.value ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>{t.label}</button>)}
         </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2">
-            <FileText size={36} strokeWidth={1} />
-            <p className="text-sm">Không có đơn hàng nào</p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop table */}
-            <div className="hidden md:block bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden shadow-sm">
-              <table className="w-full text-sm">
-                <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
-                  <tr>
-                    {['Mã đơn', 'Khách hàng', 'Kho', 'Thời gian', 'Tổng tiền', 'Trạng thái', 'Thanh toán', 'Thao tác'].map(h => (
-                      <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(o => (
-                    <tr
-                      key={o.id}
-                      onClick={() => setSelectedOrder(o)}
-                      className={`
-                        border-b border-[#F0EBE3] last:border-0 cursor-pointer transition-colors
-                        ${invoiceLoadingId === o.id
-                          ? 'bg-[#C9A84C]/5'          // highlight nhẹ dòng đang tạo invoice
-                          : 'hover:bg-[#FAF7F2]'
-                        }
-                      `}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</span>
-                          {/* Dot loading nhỏ bên cạnh mã đơn khi đang tạo invoice */}
-                          {invoiceLoadingId === o.id && (
-                            <span className="flex gap-0.5 items-center">
-                              {[0, 1, 2].map(i => (
-                                <span
-                                  key={i}
-                                  className="w-1 h-1 rounded-full bg-[#C9A84C] animate-bounce"
-                                  style={{ animationDelay: `${i * 0.15}s` }}
-                                />
-                              ))}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-xs font-medium text-[#1C1C1E]">{o.customerName}</p>
-                        <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        {o.warehouseName
-                          ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">{o.warehouseName}</span>
-                          : <span className="text-[10px] text-[#C4B9A8]">—</span>
-                        }
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDate(o.createdAt)}</td>
-                      <td className="px-4 py-3 text-xs font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</td>
-                      <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
-                      <td className="px-4 py-3"><PaymentBadge order={o} /></td>
-                      <td className="px-4 py-3"><ActionButtons o={o} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      <div className="flex-1 overflow-auto px-4 sm:px-6 py-4">
+        {loading && orders.length === 0 ? (<div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" /></div>)
+          : orders.length === 0 ? (<div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2"><Search size={32} strokeWidth={1} /><p className="text-sm">Không có đơn hàng nào</p></div>)
+            : (<>
+              {/* Desktop table */}
+              <div className="hidden md:block bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
+                      <tr>
+                        <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.size === orders.length && orders.length > 0} onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} /></th>
+                        {['Mã đơn', 'Thời gian', 'Khách hàng', 'Kho', 'Trạng thái', 'PT Thanh toán', 'Tổng tiền / Đã thu', 'Người tạo', 'Chứng từ', 'Hoá đơn', 'Thao tác'].map(h => <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map(o => {
+                        const isCompleted = o.status === 'COMPLETED' || o.status === 'CANCELLED';
+                        const isActioning = actionLoading === o.id; const isThisInvoice = invoiceLoadingId === o.id;
+                        const paidAmount = Number(o.paidAmount || 0);
+                        return (
+                          <tr key={o.id}
+                            className={`border-b border-[#F0EBE3] last:border-0 transition-colors ${getRowBg(o)} ${isThisInvoice ? 'opacity-80' : ''} ${isActioning ? 'opacity-60' : ''}`}>
+                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.has(o.id)} onChange={e => { const next = new Set(selectedIds); e.target.checked ? next.add(o.id) : next.delete(o.id); setSelectedIds(next); }} /></td>
+                            <td className="px-4 py-3 whitespace-nowrap"><div className="flex items-center gap-1.5"><span className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</span>{detailLoading === o.id && <div className="w-3 h-3 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" />}</div></td>
+                            <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDate(o.createdAt)}</td>
+                            <td className="px-4 py-3"><p className="text-xs font-medium text-[#1C1C1E] whitespace-nowrap">{o.customerName}</p><p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p></td>
+                            <td className="px-4 py-3"><WarehouseBadge name={o.warehouseName} /></td>
+                            <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
+                            <td className="px-4 py-3"><PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} /></td>
+                            <td className="px-4 py-3">
+                              <p className="text-xs font-bold text-[#1C1C1E] whitespace-nowrap">{formatPrice(o.finalAmount)}</p>
+                              {o.status === 'COMPLETED' && o.paymentStatus === 'PAID' ? (paidAmount > 0 && paidAmount !== Number(o.finalAmount) && <p className="text-[10px] text-sky-600 font-medium whitespace-nowrap">TT Thực tế: {formatPrice(paidAmount)}</p>) : (<>{paidAmount > 0 && <p className="text-[10px] text-emerald-600 font-medium whitespace-nowrap">Đã thu: {formatPrice(paidAmount)}</p>}{paidAmount > 0 && paidAmount < Number(o.finalAmount) && <p className="text-[10px] text-orange-500 font-medium whitespace-nowrap">Còn: {formatPrice(Number(o.finalAmount) - paidAmount)}</p>}</>)}
+                            </td>
+                            <td className="px-4 py-3"><CreatedByBadge name={o.orderedByName} /></td>
+                            {/* Seller: chỉ xem chứng từ, không upload, không hiện text "Chưa có" */}
+                            <td className="px-4 py-3">
+                              {o.receiptFileUrl ? (
+                                <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap hover:bg-emerald-100">📄 Chứng từ</a>
+                              ) : <span className="text-[10px] text-[#C4B9A8]">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5">
+                                <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setDetailLoading(o.id);
 
-            {/* Mobile cards */}
-            <div className="md:hidden space-y-2">
-              {filtered.map(o => (
-                <div
-                  key={o.id}
-                  onClick={() => setSelectedOrder(o)}
-                  className={`
-                    rounded-xl border p-4 cursor-pointer transition-all
-                    ${invoiceLoadingId === o.id
-                      ? 'bg-[#C9A84C]/5 border-[#C9A84C]/40'
-                      : 'bg-white border-[#F0EBE3] hover:border-[#C9A84C]'
-                    }
-                  `}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
-                        {invoiceLoadingId === o.id && (
-                          <span className="flex gap-0.5 items-center">
-                            {[0, 1, 2].map(i => (
-                              <span
-                                key={i}
-                                className="w-1 h-1 rounded-full bg-[#C9A84C] animate-bounce"
-                                style={{ animationDelay: `${i * 0.15}s` }}
-                              />
-                            ))}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm font-semibold text-[#1C1C1E] mt-0.5">{o.customerName}</p>
-                      {o.warehouseName && (
-                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full border bg-blue-50 text-blue-600 border-blue-200 mt-0.5 inline-block">
-                          {o.warehouseName}
-                        </span>
-                      )}
-                    </div>
-                    <StatusBadge status={o.status} />
-                  </div>
+                                    try {
+                                      const [dr, lr] = await Promise.all([
+                                        accountantApi.getOrderDetail(o.id),
+                                        accountantApi.getOrderLogs(o.id),
+                                      ]);
 
-                  <div className="mb-2">
-                    <PaymentBadge order={o} />
-                  </div>
-
-                  <div className="flex items-center justify-between mt-2">
-                    <div>
-                      <p className="text-xs text-[#8E8878]">{formatDateShort(o.createdAt)}</p>
-                      <p className="font-bold text-[#1C1C1E] text-sm mt-0.5">{formatPrice(o.finalAmount)}</p>
-                    </div>
-                    <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
-                      <ActionButtons o={o} />
-                      <button
-                        onClick={e => { e.stopPropagation(); setSelectedOrder(o); }}
-                        className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878]"
-                      >
-                        <Eye size={13} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Banner loading ở bottom card */}
-                  {invoiceLoadingId === o.id && (
-                    <div className="mt-3 flex items-center gap-2 bg-[#C9A84C]/10 rounded-lg px-3 py-2">
-                      <BtnSpinner size={11} color="border-[#C9A84C]" />
-                      <span className="text-[11px] font-medium text-[#C9A84C]">Đang tạo hoá đơn PDF...</span>
-                    </div>
-                  )}
+                                      setSelectedOrder({
+                                        ...(dr.data?.data || o),
+                                        logs: lr.data?.data || [],
+                                      });
+                                    } catch {
+                                      setSelectedOrder(o);
+                                    } finally {
+                                      setDetailLoading(null);
+                                    }
+                                  }}
+                                  className="relative p-1.5 rounded-lg border bg-sky-50 text-sky-600 border-transparent hover:bg-sky-100 hover:scale-105 active:scale-95 transition-all duration-200"
+                                >
+                                  {detailLoading === o.id ? (
+                                    <BtnSpinner
+                                      size={13}
+                                      colorClass="border-sky-400 !border-t-transparent"
+                                    />
+                                  ) : (
+                                    <Search size={13} />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                              <StatusActionButtons order={o}
+                                onPendingPayment={() => handlePendingPayment(o.id)}
+                                onComplete={() => handleComplete(o.id)}
+                                onPartialPayment={() => setPartialOrder(o)}
+                                onCancel={() => setCancelTarget(o)}
+                                loading={isActioning} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
-          </>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-3">
+                {orders.map(o => {
+                  const isCompleted = o.status === 'COMPLETED' || o.status === 'CANCELLED';
+                  const isActioning = actionLoading === o.id;
+                  return (
+                    <div key={o.id} onClick={() => setSelectedOrder(o)}
+                      className={`rounded-2xl border p-4 space-y-3 transition-all cursor-pointer ${invoiceLoadingId === o.id ? 'bg-[#C9A84C]/5 border-[#C9A84C]/40' : 'bg-white border-[#F0EBE3]'} ${isActioning ? 'opacity-60' : ''}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div><p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p><p className="text-xs font-semibold text-[#1C1C1E] mt-0.5">{o.customerName}</p><p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p></div>
+                        <div className="text-right shrink-0"><p className="text-sm font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</p><p className="text-[10px] text-[#8E8878] mt-0.5">{formatDateShort(o.createdAt)}</p></div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#F0EBE3]"><StatusBadge status={o.status} /><WarehouseBadge name={o.warehouseName} /></div>
+                      <div className="flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
+                        <CreatedByBadge name={o.orderedByName} />
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
+                          <PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
+                          <StatusActionButtons order={o}
+                            onPendingPayment={() => handlePendingPayment(o.id)}
+                            onComplete={() => handleComplete(o.id)}
+                            onPartialPayment={() => setPartialOrder(o)}
+                            onCancel={() => setCancelTarget(o)}
+                            loading={isActioning} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>)}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <button onClick={() => fetchOrders(page - 1)} disabled={page === 0 || loading} className="p-2 rounded-xl bg-white border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] disabled:opacity-40 transition-colors"><ChevronLeft size={15} /></button>
+            <span className="text-sm text-[#8E8878] px-3">{page + 1} / {totalPages}</span>
+            <button onClick={() => fetchOrders(page + 1)} disabled={page >= totalPages - 1 || loading} className="p-2 rounded-xl bg-white border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] disabled:opacity-40 transition-colors"><ChevronRight size={15} /></button>
+          </div>
         )}
       </div>
 
-      {/* ── Modals ── */}
-      {selectedOrder && (
-        <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onRefresh={fetchOrders} />
+      {partialOrder && <PartialPaymentModal order={partialOrder} onClose={() => setPartialOrder(null)} onConfirm={handlePartialPayment} loading={partialLoading} />}
+
+      {selectedIds.size > 0 && (() => {
+        const totalSelected = orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + Number(o.finalAmount || 0), 0);
+        return (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-white border border-[#E8DDD0] rounded-2xl shadow-xl px-4 py-2.5">
+            <div className="flex flex-col mr-2"><span className="text-xs font-semibold text-[#5C5C5C]">{selectedIds.size} đơn đã chọn</span><span className="text-[11px] font-bold text-[#C9A84C]">{new Intl.NumberFormat('vi-VN').format(Math.round(totalSelected))} đ</span></div>
+            <button onClick={() => setBulkConfirm({ mode: 'DELIVERED_UNPAID' })} className="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold hover:bg-orange-100">🚚 Đã giao hàng</button>
+            <button onClick={() => setBulkConfirm({ mode: 'DELIVERED_PAID' })} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100">✅ Hoàn thành (đã TT)</button>
+            <button onClick={() => setSelectedIds(new Set())} className="ml-1 p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={13} /></button>
+          </div>
+        );
+      })()}
+
+      {bulkConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setBulkConfirm(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="font-bold text-[#1C1C1E]">Xác nhận {bulkConfirm.mode === 'DELIVERED_PAID' ? 'hoàn thành (đã TT)' : 'đã giao hàng'}</h2>
+            <p className="text-sm text-[#8E8878]">{selectedIds.size} đơn đã chọn</p>
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setBulkConfirm(null)} className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
+              <button disabled={bulkLoading} onClick={async () => { const c = bulkConfirm; setBulkConfirm(null); await executeBulkComplete(c.mode); }} className="flex-1 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold disabled:opacity-50">{bulkLoading ? 'Đang xử lý...' : 'Xác nhận'}</button>
+            </div>
+          </div>
+        </div>
       )}
-      {paymentModalOrder && (
-        <ChangePaymentModal order={paymentModalOrder} onClose={() => setPaymentModalOrder(null)} onSuccess={fetchOrders} />
-      )}
-      {completeModalOrder && (
-        <ConfirmCompleteModal order={completeModalOrder} onClose={() => setCompleteModalOrder(null)} onSuccess={fetchOrders} />
-      )}
-      {pendingPaymentModalOrder && (
-        <ConfirmPendingPaymentModal
-          order={pendingPaymentModalOrder}
-          onClose={() => setPendingPaymentModalOrder(null)}
-          onSuccess={fetchOrders}
+
+      {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onRefresh={fetchOrders} />}
+
+      {/* THÊM: Modal hủy đơn */}
+      {cancelTarget && (
+        <CancelOrderModal
+          order={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={handleCancelConfirm}
+          loading={cancelLoading}
         />
       )}
     </div>

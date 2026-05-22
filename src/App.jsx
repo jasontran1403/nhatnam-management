@@ -106,6 +106,8 @@ export default function App() {
               <Route index element={<Navigate to="/seller/pos" replace />} />
               <Route path="pos" element={<POSPage />} />
               <Route path="orders" element={<OrdersPage />} />
+              {/* FIX #1: Seller có thể xem/thao tác đơn hàng như Accountant */}
+              <Route path="orders-manage" element={<AccountantOrdersPage />} />
             </Route>
 
             {/* ── SUPER ACCOUNTANT ───────────────────────────────────── */}

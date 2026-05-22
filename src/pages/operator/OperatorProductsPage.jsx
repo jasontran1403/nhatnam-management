@@ -1,11 +1,13 @@
 // src/pages/operator/OperatorProductsPage.jsx
-import { useState, useEffect, useCallback } from 'react';
+// FIX #3: Thêm nút Import/Export
+// FIX #4: Thêm mã hàng (itemCode), danh mục con (subCategoryId) vào form sản phẩm
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { operatorApi, uploadApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import {
   Plus, Send, Trash2, Edit2, X, ChevronDown, ChevronUp,
   Package, AlertTriangle, CheckCircle, Image as ImageIcon,
-  Loader2,
+  Loader2, Download, Upload,
 } from 'lucide-react';
 
 const DEFAULT_VAT = 8;
@@ -23,6 +25,9 @@ const emptyItem = () => ({
   _id: Date.now() + Math.random(),
   name: '',
   categoryName: '',
+  categoryId: '',
+  subCategoryId: '',
+  itemCode: '',
   unit: '',
   basePrice: '',
   maxDiscountRate: 0,
@@ -31,7 +36,6 @@ const emptyItem = () => ({
   imageUrl: '',
   tiers: [],
   ingredients: [],
-  // for UPDATE batch
   existingProductId: null,
   isUpdate: false,
 });
@@ -77,6 +81,13 @@ function ProductItemCard({ item, idx, categories, ingredients, existingProducts,
 
   const update = (field, val) => onUpdate(idx, field, val);
 
+  // Danh mục con của categoryId đang chọn
+  const rootCats = useMemo(() => categories.filter(c => !c.parentId), [categories]);
+  const subCats = useMemo(() => {
+    if (!item.categoryId) return [];
+    return categories.filter(c => String(c.parentId) === String(item.categoryId));
+  }, [categories, item.categoryId]);
+
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -119,6 +130,11 @@ function ProductItemCard({ item, idx, categories, ingredients, existingProducts,
           <span className="text-sm font-semibold text-[#1C1C1E]">
             {item.name || <span className="text-[#C4B9A8]">Sản phẩm {idx + 1}</span>}
           </span>
+          {item.itemCode && (
+            <span className="text-[10px] font-mono bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5">
+              {item.itemCode}
+            </span>
+          )}
           {item.isUpdate && (
             <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5">
               Cập nhật
@@ -152,6 +168,9 @@ function ProductItemCard({ item, idx, categories, ingredients, existingProducts,
                     onUpdate(idx, 'existingProductId', prod.id);
                     onUpdate(idx, 'name', prod.name);
                     onUpdate(idx, 'categoryName', prod.category || '');
+                    onUpdate(idx, 'categoryId', prod.categoryId ? String(prod.categoryId) : '');
+                    onUpdate(idx, 'subCategoryId', prod.subCategoryId ? String(prod.subCategoryId) : '');
+                    onUpdate(idx, 'itemCode', prod.itemCode || '');
                     onUpdate(idx, 'unit', prod.unit || '');
                     onUpdate(idx, 'basePrice', prod.basePrice || '');
                     onUpdate(idx, 'vatRate', prod.vatRate ?? DEFAULT_VAT);
@@ -180,17 +199,49 @@ function ProductItemCard({ item, idx, categories, ingredients, existingProducts,
             />
           </div>
 
-          {/* Category */}
+          {/* Item code — FIX #4 */}
+          <div>
+            <label className="text-xs font-medium text-[#1C1C1E] mb-1 block">Mã hàng</label>
+            <input
+              className="w-full text-xs border border-[#E8DDD0] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C] font-mono"
+              placeholder="VD: SP-001, NUOC-DUA"
+              value={item.itemCode}
+              onChange={e => update('itemCode', e.target.value)}
+            />
+          </div>
+
+          {/* Category — FIX #4: dùng ID thay vì tên */}
           <div>
             <label className="text-xs font-medium text-[#1C1C1E] mb-1 block">Danh mục</label>
             <select
               className="w-full text-xs border border-[#E8DDD0] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C] bg-white"
-              value={item.categoryName}
-              onChange={e => update('categoryName', e.target.value)}
+              value={item.categoryId}
+              onChange={e => {
+                const cat = rootCats.find(c => String(c.id) === e.target.value);
+                update('categoryId', e.target.value);
+                update('categoryName', cat?.name || '');
+                update('subCategoryId', '');
+              }}
             >
               <option value="">— Chọn danh mục —</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
+              {rootCats.map(c => (
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sub category — FIX #4 */}
+          <div>
+            <label className="text-xs font-medium text-[#1C1C1E] mb-1 block">Danh mục con</label>
+            <select
+              className="w-full text-xs border border-[#E8DDD0] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C] bg-white"
+              value={item.subCategoryId}
+              onChange={e => update('subCategoryId', e.target.value)}
+              disabled={!item.categoryId || subCats.length === 0}
+            >
+              <option value="">{!item.categoryId ? '— Chọn danh mục trước —' : subCats.length === 0 ? '— Không có danh mục con —' : '— Chọn danh mục con —'}</option>
+              {subCats.map(c => (
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
               ))}
             </select>
           </div>
@@ -367,6 +418,19 @@ export default function OperatorProductsPage() {
     return null;
   };
 
+  // FIX #3: Export stub
+  const handleExport = () => {
+    toast('Chức năng Export sẽ được xử lý ở backend', 'info');
+    // TODO: api.get('/api/operator/products/export', { responseType: 'blob' })
+  };
+
+  // FIX #3: Import stub
+  const handleImport = (file) => {
+    if (!file) return;
+    toast('Chức năng Import sẽ được xử lý ở backend', 'info');
+    // TODO: POST /api/operator/products/import với FormData
+  };
+
   const handleSubmit = async () => {
     const err = validate();
     if (err) { toast(err, 'warning'); return; }
@@ -381,6 +445,9 @@ export default function OperatorProductsPage() {
             ? { existingProductId: item.existingProductId } : {}),
           name: item.name.trim(),
           categoryName: item.categoryName || null,
+          categoryId: item.categoryId ? Number(item.categoryId) : null,
+          subCategoryId: item.subCategoryId ? Number(item.subCategoryId) : null,
+          itemCode: item.itemCode || null,
           unit: item.unit || null,
           basePrice: item.basePrice ? Number(item.basePrice) : null,
           maxDiscountRate: item.maxDiscountRate || 0,
@@ -432,11 +499,24 @@ export default function OperatorProductsPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Gửi phiếu sản phẩm</h1>
-        <p className="text-sm text-[#8E8878] mt-1">
-          Tạo phiếu thêm mới hoặc cập nhật sản phẩm — Admin sẽ duyệt trước khi áp dụng.
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[#1C1C1E]">Gửi phiếu sản phẩm</h1>
+          <p className="text-sm text-[#8E8878] mt-1">
+            Tạo phiếu thêm mới hoặc cập nhật sản phẩm — Admin sẽ duyệt trước khi áp dụng.
+          </p>
+        </div>
+        {/* FIX #3: Import / Export buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+            <Upload size={14} /> Import
+            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => handleImport(e.target.files[0])} />
+          </label>
+          <button onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            <Download size={14} /> Export
+          </button>
+        </div>
       </div>
 
       {/* Batch type + note */}

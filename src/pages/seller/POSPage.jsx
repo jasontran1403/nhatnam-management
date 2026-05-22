@@ -661,6 +661,11 @@ export default function POSPage() {
           const allTiers = product.priceTiers || existing.priceTiers || [];
           const r = resolveTierForQty(allTiers, newQty, existing.basePrice ?? existing.unitPrice);
           if (r) {
+            // FIX #2b: Nếu item đang là BOX, giữ nguyên unitPrice (đã nhân sẵn unitsPerBox)
+            // chỉ update tier metadata nếu RETAIL
+            if (existing.saleType === 'BOX' && existing.unitsPerBox > 0) {
+              return prev.map(i => i.key === key ? { ...i, quantity: newQty } : i);
+            }
             return prev.map(i => i.key === key ? {
               ...i, quantity: newQty,
               tierId: r.tierId, tierName: r.tierName,
@@ -700,13 +705,19 @@ export default function POSPage() {
   // Sản phẩm pending modal chọn quy cách
   const [pendingSaleProduct, setPendingSaleProduct] = useState(null);
 
+  // FIX #2: Truyền effectiveStock (đã trừ hold của tất cả sellers) vào product
+  // để addToCart dùng đúng maxQty, không dùng số gốc từ DB
   const handleAddProduct = useCallback((product) => {
+    const effStock = calcEffectiveStock(product);
+    const productWithEffectiveStock = effStock !== null
+      ? { ...product, stockQuantity: effStock }
+      : product;
     if (product.unitsPerBox && product.unitsPerBox > 0) {
-      setPendingSaleProduct(product);
+      setPendingSaleProduct(productWithEffectiveStock);
     } else {
-      addToCart(product, 'RETAIL');
+      addToCart(productWithEffectiveStock, 'RETAIL');
     }
-  }, [addToCart]);
+  }, [addToCart, calcEffectiveStock]);
 
   const updateQty = useCallback((cartId, qty) => {
     if (qty <= 0) { setCartItems((prev) => prev.filter((i) => i.id !== cartId)); return; }

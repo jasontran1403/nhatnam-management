@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminExpenseApi } from '../../api/adminApi';
 import { useToast } from '../../components/common/Toast';
-import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, BadgeCheck, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, BadgeCheck, X, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   SecondaryButton, DangerButton,
@@ -318,6 +318,19 @@ export default function ExpenseVoucherPage() {
           <option value="APPROVED">Đã duyệt</option>
           <option value="REJECTED">Từ chối</option>
         </select>
+        {/* FIX #3: Import / Export Phiếu chi */}
+        <div className="flex items-center gap-2 ml-auto">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+            <Upload size={13} /> Import
+            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
+              if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
+            }} />
+          </label>
+          <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            <Download size={13} /> Export
+          </button>
+        </div>
       </div>
 
       {loading
