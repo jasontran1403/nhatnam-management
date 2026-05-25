@@ -3,14 +3,14 @@
  * Tránh skeleton flash khi API quá nhanh.
  *
  * Usage:
- *   const [loading, setLoading] = useMinLoading();
- *   // Dùng setLoading(true/false) thay cho useState bình thường
+ *   const [loading, setLoading] = useMinLoading();        // bắt đầu false (form/action)
+ *   const [loading, setLoading] = useMinLoading(true);    // bắt đầu true  (fetch data ngay khi mount)
  */
 import { useState, useRef, useCallback } from 'react';
 
 const MIN_MS = 600;
 
-export default function useMinLoading(initial = true) {
+export default function useMinLoading(initial = false) {
   const [loading, _setLoading] = useState(initial);
   const startRef = useRef(initial ? Date.now() : null);
   const timerRef = useRef(null);
