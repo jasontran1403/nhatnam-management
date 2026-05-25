@@ -1,7 +1,5 @@
 // src/pages/warehouse/WarehouseOrdersPage.jsx
-// ADDED: WarehouseSelector — chọn kho để xem đơn hàng, fetch lại khi đổi kho
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useToast } from '../../components/common/Toast';
@@ -15,7 +13,6 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 
-// Trạng thái cho phép hủy (PENDING_PAYMENT không được hủy)
 const CANCELLABLE = new Set(['PENDING','CONFIRMED','PREPARING','READY','DELIVERING']);
 
 function formatDate(ts) {
@@ -81,30 +78,37 @@ function DriverPicker({ selectedDrivers, onChange }) {
   const showCreate = query.trim() && !results.some(r => r.name.toLowerCase() === query.trim().toLowerCase());
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-2">
-      <p className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider">
-        Tài xế giao hàng
+    <div className="space-y-2.5">
+      {/* Label */}
+      <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+        🚗 Tài xế giao hàng
       </p>
 
+      {/* Selected tags */}
       {selectedDrivers.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selectedDrivers.map(d => (
             <span key={d.id}
               className="inline-flex items-center gap-1 text-xs bg-[#C9A84C]/10 text-[#C9A84C]
-                border border-[#C9A84C]/30 rounded-full px-2.5 py-0.5 font-medium">
-              <UserCircle size={12} /> {d.name}
-              <button onClick={() => toggle(d)} className="ml-0.5 hover:text-red-500 transition-colors">
-                <X size={11} />
+                border border-[#C9A84C]/30 rounded-full px-2.5 py-1 font-medium">
+              <UserCircle size={11} />
+              {d.name}
+              <button
+                onClick={() => toggle(d)}
+                className="ml-0.5 hover:text-red-500 transition-colors leading-none"
+              >
+                <X size={10} />
               </button>
             </span>
           ))}
         </div>
       )}
 
+      {/* Search input */}
       <div ref={dropRef} className="relative">
         <div className="flex gap-1.5">
           <div className="relative flex-1">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
             <input
               ref={inputRef}
               type="text"
@@ -112,31 +116,43 @@ function DriverPicker({ selectedDrivers, onChange }) {
               value={query}
               onChange={e => { setQuery(e.target.value); setOpen(true); }}
               onFocus={() => setOpen(true)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#E8DDD0] rounded-lg
-                focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2]"
+              className="w-full pl-8 pr-3 py-2 text-xs border border-[#E8DDD0] rounded-lg
+                focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/10
+                bg-white placeholder:text-[#C4B9A8]"
             />
           </div>
           {showCreate && (
-            <button onClick={createDriver} disabled={creating}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold
-                bg-[#C9A84C] text-white hover:bg-[#B8943C] transition-colors disabled:opacity-60">
-              <Plus size={13} /> Thêm
+            <button
+              onClick={createDriver}
+              disabled={creating}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold
+                bg-[#C9A84C] text-white hover:bg-[#B8943C] transition-colors disabled:opacity-60"
+            >
+              <Plus size={12} />
+              Thêm
             </button>
           )}
         </div>
 
+        {/* Dropdown */}
         {open && results.length > 0 && (
           <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl
-            border border-[#E8DDD0] shadow-xl py-1 max-h-44 overflow-y-auto">
+            border border-[#E8DDD0] shadow-lg py-1 max-h-40 overflow-y-auto">
             {results.map(d => {
               const sel = selectedDrivers.some(s => s.id === d.id);
               return (
-                <button key={d.id} onClick={() => { toggle(d); setQuery(''); setOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors
-                    ${sel ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-semibold' : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'}`}>
-                  <UserCircle size={14} />
+                <button
+                  key={d.id}
+                  onClick={() => { toggle(d); setQuery(''); setOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors
+                    ${sel
+                      ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-semibold'
+                      : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'
+                    }`}
+                >
+                  <UserCircle size={13} />
                   <span className="flex-1">{d.name}</span>
-                  {sel && <Check size={13} />}
+                  {sel && <Check size={12} />}
                 </button>
               );
             })}
@@ -144,8 +160,9 @@ function DriverPicker({ selectedDrivers, onChange }) {
         )}
       </div>
 
+      {/* Hint */}
       {selectedDrivers.length === 0 && (
-        <p className="text-[11px] text-[#8E8878] italic">
+        <p className="text-[10px] text-[#C4B9A8] italic">
           Không chọn = khách đến mua tận nơi
         </p>
       )}
@@ -183,6 +200,7 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
       <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl
         max-h-[90vh] flex flex-col overflow-hidden">
 
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3] flex-shrink-0">
           <div>
             <p className="font-mono text-sm font-bold text-[#C9A84C]">{order.orderCode}</p>
@@ -194,30 +212,31 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
           </button>
         </div>
 
+        {/* Customer info */}
         <div className="px-5 py-3 bg-[#FAF7F2] border-b border-[#F0EBE3] flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-[#1C1C1E]">
-                {order.customerName || 'Khách lẻ/Khách vãng lai'}
-              </p>
-              <p className="text-[10px] text-[#8E8878]">{order.customerPhone}</p>
-            </div>
-          </div>
+          <p className="text-xs font-semibold text-[#1C1C1E]">
+            {order.customerName || 'Khách lẻ/Khách vãng lai'}
+          </p>
+          <p className="text-[10px] text-[#8E8878]">{order.customerPhone}</p>
           {order.notes && (
             <p className="text-[11px] text-[#8E8878] mt-1.5 italic">📝 {order.notes}</p>
           )}
         </div>
 
+        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          <div className="bg-[#FAF7F2] rounded-2xl p-3.5">
+
+          {/* Driver picker — đồng bộ style với phần còn lại */}
+          <div className="bg-[#FAF7F2] rounded-2xl px-4 py-3.5 border border-[#F0EBE3]">
             <DriverPicker selectedDrivers={drivers} onChange={setDrivers} />
           </div>
 
-          <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">
+          {/* Product list */}
+          <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
             Danh sách sản phẩm cần chuẩn bị
           </p>
           {order.items?.map((item, idx) => (
-            <div key={idx} className="bg-[#FAF7F2] rounded-2xl p-3.5 space-y-3">
+            <div key={idx} className="bg-[#FAF7F2] rounded-2xl p-3.5 space-y-3 border border-[#F0EBE3]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white overflow-hidden shrink-0 border border-[#F0EBE3]">
                   {item.productImageUrl
@@ -259,6 +278,7 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
           ))}
         </div>
 
+        {/* Footer actions */}
         <div className="px-5 py-4 border-t border-[#F0EBE3] flex-shrink-0 flex gap-2">
           {canCancel && (
             <button onClick={() => onCancel(order)}
@@ -352,13 +372,13 @@ export default function WarehouseOrdersPage() {
   const { activeWarehouseId, activeWarehouseName } = useWarehouse();
 
   const [orders,           setOrders]           = useState([]);
-  const [loading, setLoading] = useMinLoading();
+  const [loading,          setLoading]          = useMinLoading();
   const [selected,         setSelected]         = useState(null);
   const [delivering,       setDelivering]       = useState(false);
   const [search,           setSearch]           = useState('');
   const [invoiceLoadingId, setInvoiceLoadingId] = useState(null);
   const [cancelTarget,     setCancelTarget]     = useState(null);
-  const [cancelLoading, setCancelLoading] = useMinLoading();
+  const [cancelLoading,    setCancelLoading]    = useMinLoading();
 
   const handleInvoice = async (orderId, e) => {
     if (e) e.stopPropagation();
@@ -380,14 +400,12 @@ export default function WarehouseOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      // Luôn gửi activeWarehouseId để backend lọc đúng kho đang chọn
       const res = await warehouseApi.getPreparingOrders(activeWarehouseId);
       setOrders(res.data?.data || []);
     } catch { toast('Không thể tải danh sách đơn hàng', 'error'); }
     finally { setLoading(false); }
   }, [activeWarehouseId]);
 
-  // Fetch lại khi đổi kho
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const handleDeliver = async (orderId) => {
@@ -430,12 +448,9 @@ export default function WarehouseOrdersPage() {
       <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
-              Đơn cần giao
-            </h1>
+            <h1 className="text-xl font-bold text-[#1C1C1E]">Đơn cần giao</h1>
             <p className="text-xs text-[#8E8878] mt-0.5">{orders.length} đơn đang chuẩn bị</p>
           </div>
-          {/* ── WarehouseSelector — chọn kho để xem đơn hàng ── */}
           <WarehouseSelector compact />
           <button onClick={fetchOrders}
             className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">

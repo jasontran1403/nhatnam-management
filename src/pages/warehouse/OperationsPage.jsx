@@ -182,6 +182,7 @@ function ImportForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
+                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
                               onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="import"
                               canRemove={rows.length > 1} />
         ))}
@@ -257,6 +258,7 @@ function ExportForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
+                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
                               onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="export"
                               canRemove={rows.length > 1} />
         ))}
@@ -360,6 +362,7 @@ function TransferForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
+                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
                               onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="transfer"
                               canRemove={rows.length > 1} />
         ))}
@@ -433,6 +436,7 @@ function AdjustForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
+                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
                               onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="adjust"
                               canRemove={rows.length > 1} />
         ))}
