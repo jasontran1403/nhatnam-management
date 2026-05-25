@@ -461,8 +461,105 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POSPage
+// DeliveryTimeModal — Nhập thời gian giao hàng trước khi tạo đơn
 // ─────────────────────────────────────────────────────────────────────────────
+function DeliveryTimeModal({ onConfirm, onClose }) {
+  const now = new Date();
+  // Default: làm tròn lên giờ chẵn tiếp theo + 1h
+  const defaultDelivery = (() => {
+    const d = new Date(now);
+    d.setSeconds(0, 0);
+    if (now.getMinutes() > 0 || now.getSeconds() > 0) {
+      d.setMinutes(0);
+      d.setHours(d.getHours() + 1);
+    }
+    d.setHours(d.getHours() + 1);
+    return d;
+  })();
+
+  const pad = (n) => String(n).padStart(2, '0');
+
+  const toInputDatetime = (d) => {
+    const yyyy = d.getFullYear();
+    const mo = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    return `${yyyy}-${mo}-${dd}T${hh}:${mm}`;
+  };
+
+  const [value, setValue] = useState(toInputDatetime(defaultDelivery));
+
+  const handleDefault = () => {
+    setValue(toInputDatetime(now));
+  };
+
+  const handleConfirm = () => {
+    if (!value) return;
+    const ts = new Date(value).getTime();
+    onConfirm(ts);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
+          <div>
+            <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xác nhận đơn hàng</p>
+            <h3 className="font-bold text-[#1C1C1E] text-base">Thời gian giao hàng</h3>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
+            <X size={17} />
+          </button>
+        </div>
+
+        <div className="px-5 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[#8E8878] mb-2">
+              🕐 Chọn ngày &amp; giờ giao hàng
+            </label>
+            <input
+              type="datetime-local"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-3 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors"
+            />
+          </div>
+
+          <button
+            onClick={handleDefault}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-[#C9A84C] text-[#C9A84C] text-sm font-semibold hover:bg-[#C9A84C]/5 transition-colors"
+          >
+            ⚡ Mặc định (giao ngay — khách đến lấy)
+          </button>
+
+          <p className="text-[10px] text-[#8E8878] text-center">
+            Nút &quot;Mặc định&quot; dùng cho đơn khách đến mua tại cửa hàng/kho hàng.
+          </p>
+        </div>
+
+        <div className="px-5 pb-5 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3] transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!value}
+            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            <Receipt size={15} /> Tạo đơn hàng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function POSPage() {
   const toast = useToast();
   const { user } = useAuth();
@@ -497,6 +594,7 @@ export default function POSPage() {
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(inputSearch), 600);
@@ -924,7 +1022,16 @@ export default function POSPage() {
     );
   }, [fetchProducts, toast]);
 
-  const handleSubmit = useCallback(async () => {
+  /** Bước 1: validate & mở modal nhập thời gian giao hàng */
+  const handleOpenDeliveryModal = useCallback(() => {
+    if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
+    if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
+    setDeliveryModalOpen(true);
+  }, [customer, cartItems, toast]);
+
+  /** Bước 2: thực sự gọi API tạo đơn sau khi có deliveryDatetime */
+  const handleSubmit = useCallback(async (deliveryDatetime) => {
+    setDeliveryModalOpen(false);
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
     if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
 
@@ -943,11 +1050,11 @@ export default function POSPage() {
         discountAmount: discountFixedAmt !== null ? Math.min(discountFixedAmt, maxDiscountFixed) : undefined,
         surcharge: surchargeNum,
         warehouseId: selectedWarehouse?.id,
+        deliveryDatetime: deliveryDatetime ?? null,
         items: cartItems.map((i) => ({
           productId: i.productId,
           tierId: i.tierId,
           quantity: i.quantity,
-          // BOX: unitPrice đã nhân unitsPerBox → gửi giá lẻ gốc để backend validate đúng
           sentUnitPrice: (i.saleType === 'BOX' && i.unitsPerBox > 0)
             ? i.unitPrice / i.unitsPerBox
             : i.unitPrice,
@@ -1021,7 +1128,7 @@ export default function POSPage() {
         return { ...i, itemDiscountRate: Math.max(0, Math.min(100, capped)) };
       }));
     },
-    onSubmit: handleSubmit,
+    onSubmit: handleOpenDeliveryModal,
   };
 
   return (
@@ -1179,6 +1286,14 @@ export default function POSPage() {
             setPendingSaleProduct(null);
           }}
           onClose={() => setPendingSaleProduct(null)}
+        />
+      )}
+
+      {/* Modal nhập thời gian giao hàng */}
+      {deliveryModalOpen && (
+        <DeliveryTimeModal
+          onConfirm={(ts) => handleSubmit(ts)}
+          onClose={() => setDeliveryModalOpen(false)}
         />
       )}
     </div>

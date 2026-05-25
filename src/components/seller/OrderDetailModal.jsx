@@ -18,6 +18,29 @@ function formatDate(ts) {
   return `${hh}:${mm} ${dd}/${mo}/${yyyy}`;
 }
 
+/**
+ * Hiển thị thời gian giao hàng:
+ * - Nếu có deliveryDatetime → format trực tiếp
+ * - Nếu không → tính fallback: createdAt làm tròn lên giờ chẵn + 1h
+ *   Ví dụ: 13:59 → 15:00 (làm tròn lên 14:00 rồi + 1h)
+ */
+function formatDeliveryTime(o) {
+  if (o.deliveryDatetime) {
+    return formatDate(o.deliveryDatetime);
+  }
+  if (o.estimatedDelivery) return o.estimatedDelivery;
+  if (!o.createdAt) return '—';
+  const ordered = new Date(o.createdAt);
+  const rounded = new Date(ordered);
+  rounded.setSeconds(0, 0);
+  if (ordered.getMinutes() > 0 || ordered.getSeconds() > 0) {
+    rounded.setMinutes(0);
+    rounded.setHours(rounded.getHours() + 1);
+  }
+  rounded.setHours(rounded.getHours() + 1);
+  return formatDate(rounded.getTime());
+}
+
 const STATUS_LABEL = {
   PENDING: 'Chờ xử lý',
   CONFIRMED: 'Đã xác nhận',
@@ -513,7 +536,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                     <InfoRow label="Ngày đặt hàng" value={formatDate(o.createdAt)} />
                     <InfoRow label="Tên người nhận" value={recipientName} />
                     <InfoRow label="Tên người đặt" value={orderedByName} />
-                    <InfoRow label="Ngày/giờ giao hàng" value={o.estimatedDelivery || '—'} />
+                    <InfoRow label="Ngày/giờ giao hàng" value={formatDeliveryTime(o)} />
                   </div>
                 </div>
               </div>
