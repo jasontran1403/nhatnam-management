@@ -1,10 +1,12 @@
 // src/pages/warehouse/OperationsPage.jsx
+// ADDED: WarehouseSelector — chọn kho để thao tác (nhập/xuất/chuyển/điều chỉnh)
 import { useState, useEffect } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
+import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import ImageUploader from '../../components/warehouse/ImageUploader';
 import IngredientSelector from '../../components/warehouse/IngredientSelector';
 
@@ -17,9 +19,16 @@ const TABS = [
 
 export default function OperationsPage() {
   const [tab, setTab] = useState('import');
+  const { activeWarehouseName, hasMultipleWarehouses } = useWarehouse();
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <h1 className="wh-page-title">Thao tác kho</h1>
+      {/* ── Header với WarehouseSelector ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <h1 className="wh-page-title" style={{ margin: 0 }}>Thao tác kho</h1>
+        <WarehouseSelector />
+      </div>
+
       <div className="wh-tabs">
         {TABS.map(t => (
           <button key={t.key} className={`wh-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
@@ -65,7 +74,6 @@ function useMyWarehouse() {
 }
 
 function emptyRow(mode) {
-  // import: KHÔNG có costPrice — giá vốn do SUPER_ACCOUNTANT nhập sau
   if (mode === 'import') return { ingredientId: '', quantity: '', expiryDate: '' };
   if (mode === 'adjust') return { ingredientId: '', physicalQty: '' };
   return { ingredientId: '', quantity: '' };
@@ -98,8 +106,6 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
 }
 
 // ── NHẬP KHO ─────────────────────────────────────────────────────────────────
-// Nhân viên kho chỉ nhập: nguyên liệu, số lượng, ngày hết hạn.
-// Giá vốn sẽ do SUPER_ACCOUNTANT nhập và xác nhận sau — tồn kho chưa được cộng.
 function ImportForm() {
   const { myWarehouse, stocks } = useMyWarehouse();
   const [refCode, setRefCode] = useState('');
@@ -129,7 +135,6 @@ function ImportForm() {
           ingredientId: r.ingredientId,
           quantity:     Number(r.quantity),
           expiryDate:   r.expiryDate || null,
-          // costPrice không gửi — để SUPER_ACCOUNTANT nhập sau
         })),
       });
       setSuccess(`Phiếu nhập đã tạo! Mã phiếu: ${res.data.receiptCode} — Chờ kế toán trưởng nhập giá vốn để cộng tồn kho.`);
@@ -142,8 +147,6 @@ function ImportForm() {
   return (
     <FormShell title="📥 Phiếu nhập kho" warehouseName={myWarehouse?.name}
                onSubmit={handleSubmit} loading={loading} error={error} success={success}>
-
-      {/* Thông báo quy trình */}
       <div style={{
         background: 'rgba(201,168,76,.08)', border: '1px solid rgba(201,168,76,.3)',
         borderRadius: 10, padding: '10px 14px', marginBottom: 16,
@@ -173,7 +176,6 @@ function ImportForm() {
       </div>
       <hr className="wh-sep" />
       <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>Danh sách nguyên liệu nhập</div>
-      {/* Header: bỏ cột "Giá vốn" */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 6, paddingLeft: 12, fontSize: 12, color: 'var(--wh-muted)' }}>
         <span>Nguyên liệu</span><span>Số lượng</span><span>Hạn sử dụng</span><span></span>
       </div>

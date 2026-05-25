@@ -1,12 +1,14 @@
 // src/pages/warehouse/ManagementPage.jsx
 // FIX 1: Popup hạn sử dụng không tràn màn hình — luôn hiển thị vào trong
 // FIX 2: Hiển thị category/subcategory dạng cây, collapse/expand
+// ADDED: WarehouseSelector — chọn kho cho tài khoản quản lý nhiều kho
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Sk, StatCardSkeleton, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
+import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import { ChevronRight, ChevronDown, Layers } from 'lucide-react';
 
 const TODAY = new Date();
@@ -154,15 +156,12 @@ function ExpiryCell({ expiryList }) {
 
 // ── Category tree row ─────────────────────────────────────────────────────────
 function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
-  // Nếu có search → flatten, không dùng cây
   const [expanded, setExpanded] = useState(true);
 
-  // Lọc ingredient thuộc cat này (không thuộc bất kỳ subCat nào — hoặc subCat chưa được map)
   const catIngredients = useMemo(() => {
     const subCatIds = new Set(subCats.map(s => String(s.id)));
     return ingredients.filter(s => {
       if (String(s.categoryId) !== String(cat.id)) return false;
-      // Nếu không có subCategoryId hoặc subCategoryId không thuộc các sub đã biết → show ở cấp cat
       return !s.subCategoryId || !subCatIds.has(String(s.subCategoryId));
     });
   }, [ingredients, cat.id, subCats]);
@@ -171,14 +170,12 @@ function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
 
   return (
     <div style={{ marginBottom: 12 }}>
-      {/* Category header */}
       <div
         onClick={() => setExpanded(v => !v)}
         style={{
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
           padding: '10px 14px', background: 'var(--wh-bg)',
           borderRadius: 10, border: '1px solid var(--wh-border)',
-          marginBottom: expanded ? 0 : 0,
           borderBottomLeftRadius: expanded ? 0 : 10,
           borderBottomRightRadius: expanded ? 0 : 10,
         }}
@@ -212,11 +209,9 @@ function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
           border: '1px solid var(--wh-border)', borderTop: 'none',
           borderBottomLeftRadius: 10, borderBottomRightRadius: 10, overflow: 'hidden',
         }}>
-          {/* Sub categories */}
           {subCats.map(sub => (
             <SubCategorySection key={sub.id} sub={sub} allIngredients={ingredients} search={search} />
           ))}
-          {/* Ingredients không thuộc sub nào */}
           {catIngredients.map(s => (
             <IngredientRow key={s.ingredientId} s={s} indent={subCats.length > 0} />
           ))}
@@ -241,7 +236,6 @@ function SubCategorySection({ sub, allIngredients, search }) {
 
   return (
     <div>
-      {/* Sub header */}
       <div
         onClick={() => setExpanded(v => !v)}
         style={{
@@ -288,7 +282,6 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
       borderBottom: '1px solid var(--wh-border)',
       background: 'white',
     }}>
-      {/* Name + image */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8, flexShrink: 0,
@@ -304,9 +297,7 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
           {s.ingredientName}
         </span>
       </div>
-      {/* Unit */}
       <span style={{ fontSize: 12, color: 'var(--wh-muted)', whiteSpace: 'nowrap' }}>{s.unit}</span>
-      {/* Stock */}
       <span style={{
         fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
         padding: '2px 10px', borderRadius: 99,
@@ -315,7 +306,6 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
       }}>
         {isLow && '⚠️ '}{Number(s.stockQuantity).toLocaleString('vi-VN')}
       </span>
-      {/* Expiry */}
       <div style={{ minWidth: 80 }}>
         <ExpiryCell expiryList={s.expiryList} />
       </div>
@@ -355,7 +345,7 @@ function UncategorizedSection({ ingredients }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ManagementPage() {
   const { user } = useAuth();
-  const { activeWarehouseId } = useWarehouse();
+  const { activeWarehouseId, activeWarehouseName, hasMultipleWarehouses } = useWarehouse();
   const [stocks, setStocks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
@@ -364,7 +354,6 @@ export default function ManagementPage() {
   const [search, setSearch] = useState('');
   const [warehouseInfo, setWarehouseInfo] = useState(null);
 
-  // Dùng activeWarehouseId từ context (hỗ trợ đa kho)
   const warehouseId = activeWarehouseId || user?.warehouseId || user?.warehouse?.id;
 
   useEffect(() => {
@@ -401,7 +390,6 @@ export default function ManagementPage() {
       .finally(() => setLoading(false));
   };
 
-  // Join stock với ingredient metadata để biết categoryId/subCategoryId
   const enrichedStocks = useMemo(() => {
     const metaMap = {};
     ingredientMeta.forEach(i => { metaMap[i.id] = i; });
@@ -415,7 +403,6 @@ export default function ManagementPage() {
     });
   }, [stocks, ingredientMeta]);
 
-  // Category tree: root cats và sub cats
   const rootCats = useMemo(() => categories, [categories]);
 
   const subCatMap = useMemo(() => {
@@ -428,7 +415,6 @@ export default function ManagementPage() {
     return m;
   }, [subCategories]);
 
-  // Filtered stocks by search
   const filteredStocks = useMemo(() => {
     if (!search.trim()) return enrichedStocks;
     const q = search.toLowerCase();
@@ -437,7 +423,6 @@ export default function ManagementPage() {
 
   const lowStockCount = filteredStocks.filter(s => Number(s.stockQuantity) < 5).length;
 
-  // Group stocks by category
   const stocksByCat = useMemo(() => {
     const m = {};
     filteredStocks.forEach(s => {
@@ -452,7 +437,8 @@ export default function ManagementPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      {/* ── Header với WarehouseSelector ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 className="wh-page-title" style={{ marginBottom: 4 }}>Quản lý kho nguyên liệu</h1>
           {warehouseInfo && (
@@ -463,6 +449,8 @@ export default function ManagementPage() {
             </span>
           )}
         </div>
+        {/* Chọn kho — chỉ hiển thị nếu quản lý nhiều kho, hoặc luôn hiển thị để biết đang ở kho nào */}
+        <WarehouseSelector />
       </div>
 
       {/* Stats */}
@@ -492,7 +480,6 @@ export default function ManagementPage() {
           <div>Không có nguyên liệu nào trong kho này</div>
         </div>
       ) : search.trim() ? (
-        /* Khi search → hiển thị flat table đơn giản */
         <div className="wh-table-wrap">
           <table className="wh-table">
             <thead>
@@ -530,16 +517,9 @@ export default function ManagementPage() {
           </table>
         </div>
       ) : (
-        /* Không search → hiển thị cây category/subcategory */
         <div>
           {rootCats.map(cat => {
-            const catStocks = stocksByCat[String(cat.id)] || [];
             const subCats = subCatMap[cat.id] || [];
-            // Chỉ show nếu có nguyên liệu trong cat này (bao gồm trong sub)
-            const allCatStocks = catStocks.concat(
-              subCats.flatMap(s => (stocksByCat[String(s.id)] || []))
-            );
-            // Merge stocks bởi cả direct và subcat
             const directAndSub = filteredStocks.filter(s => String(s.categoryId) === String(cat.id));
             if (directAndSub.length === 0) return null;
             return (

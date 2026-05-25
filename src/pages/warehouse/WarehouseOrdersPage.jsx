@@ -1,4 +1,5 @@
 // src/pages/warehouse/WarehouseOrdersPage.jsx
+// ADDED: WarehouseSelector — chọn kho để xem đơn hàng, fetch lại khi đổi kho
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -6,6 +7,7 @@ import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
+import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import {
   RefreshCw, Package, Truck, Clock, X,
@@ -37,7 +39,6 @@ function DriverPicker({ selectedDrivers, onChange }) {
   const inputRef = useRef(null);
   const dropRef  = useRef(null);
 
-  // Đóng dropdown khi click ngoài
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -47,7 +48,6 @@ function DriverPicker({ selectedDrivers, onChange }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Search drivers
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => {
@@ -86,7 +86,6 @@ function DriverPicker({ selectedDrivers, onChange }) {
         Tài xế giao hàng
       </p>
 
-      {/* Selected tags */}
       {selectedDrivers.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selectedDrivers.map(d => (
@@ -102,7 +101,6 @@ function DriverPicker({ selectedDrivers, onChange }) {
         </div>
       )}
 
-      {/* Search input + dropdown */}
       <div ref={dropRef} className="relative">
         <div className="flex gap-1.5">
           <div className="relative flex-1">
@@ -173,7 +171,6 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
     setSaving(false);
   };
 
-  // Auto-save khi drivers thay đổi (debounce)
   useEffect(() => {
     if (drivers === (order.drivers || [])) return;
     const t = setTimeout(handleSaveDrivers, 600);
@@ -212,7 +209,6 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* Driver picker */}
           <div className="bg-[#FAF7F2] rounded-2xl p-3.5">
             <DriverPicker selectedDrivers={drivers} onChange={setDrivers} />
           </div>
@@ -309,7 +305,6 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
             {order.customerName || 'Khách lẻ/Khách vãng lai'}
           </p>
           <p className="text-[11px] text-[#8E8878] mt-0.5">{order.customerPhone}</p>
-          {/* Hiển thị tài xế đã gán nếu có */}
           {order.drivers?.length > 0 && (
             <div className="flex items-center gap-1 mt-1.5 flex-wrap">
               <UserCircle size={11} className="text-[#C9A84C]" />
@@ -354,7 +349,7 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
 export default function WarehouseOrdersPage() {
   const toast = useToast();
   const { user } = useAuth();
-  const { activeWarehouseId } = useWarehouse();
+  const { activeWarehouseId, activeWarehouseName } = useWarehouse();
 
   const [orders,           setOrders]           = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -392,6 +387,7 @@ export default function WarehouseOrdersPage() {
     finally { setLoading(false); }
   }, [activeWarehouseId]);
 
+  // Fetch lại khi đổi kho
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const handleDeliver = async (orderId) => {
@@ -439,6 +435,8 @@ export default function WarehouseOrdersPage() {
             </h1>
             <p className="text-xs text-[#8E8878] mt-0.5">{orders.length} đơn đang chuẩn bị</p>
           </div>
+          {/* ── WarehouseSelector — chọn kho để xem đơn hàng ── */}
+          <WarehouseSelector compact />
           <button onClick={fetchOrders}
             className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -466,6 +464,11 @@ export default function WarehouseOrdersPage() {
             <p className="text-sm font-medium">
               {search ? 'Không tìm thấy đơn hàng' : 'Không có đơn hàng cần chuẩn bị'}
             </p>
+            {!search && activeWarehouseName && (
+              <p className="text-xs text-center max-w-[220px] text-[#8E8878]">
+                Kho: <strong>{activeWarehouseName}</strong>
+              </p>
+            )}
             {!search && (
               <p className="text-xs text-center max-w-[200px]">
                 Các đơn hàng trạng thái "Đang chuẩn bị" sẽ xuất hiện ở đây
