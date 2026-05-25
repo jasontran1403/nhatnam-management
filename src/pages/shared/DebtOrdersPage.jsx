@@ -2,6 +2,8 @@
 // Dùng chung cho ACCOUNTANT, SUPER_ACCOUNTANT, ADMIN, OWNER
 // Nhận prop `type` = 'NEARING' | 'OVERDUE' từ route state hoặc searchParam
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import {
@@ -232,7 +234,7 @@ export default function DebtOrdersPage() {
   const isOverdue = type === 'OVERDUE';
 
   const [orders, setOrders]         = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [error, setError]           = useState(null);
   const [search, setSearch]         = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());

@@ -1,9 +1,11 @@
 // src/pages/accountant/AccountantWarehouseReceiptsPage.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { Warehouse, DollarSign, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { accountantWarehouseApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
-import Modal from '../../components/common/Modal';
+import Modal from '../../components/ui/Modal';
 
 function fmt(n) {
   return new Intl.NumberFormat('vi-VN').format(n || 0);
@@ -20,7 +22,7 @@ function fmtInput(s) {
 export default function AccountantWarehouseReceiptsPage() {
   const toast = useToast();
   const [receipts, setReceipts]         = useState([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [detailOpen, setDetailOpen]     = useState(false);
   const [costInputs, setCostInputs]     = useState({});

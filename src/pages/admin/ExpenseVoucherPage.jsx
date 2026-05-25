@@ -1,5 +1,7 @@
 // src/pages/admin/ExpenseVoucherPage.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { adminExpenseApi } from '../../api/adminApi';
 import { useToast } from '../../components/common/Toast';
 import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, BadgeCheck, X, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
@@ -7,9 +9,9 @@ import {
   PageHeader, LoadingSpinner, EmptyState,
   SecondaryButton, DangerButton,
   formatCurrency, formatDateTime,
-} from '../../components/admin/ui';
-import Modal from '../../components/admin/Modal';
-import DateRangePicker from '../../components/common/DateRangePicker';
+} from '../../components/ui';
+import Modal from '../../components/ui/Modal';
+import DateRangePicker from '../../components/ui/DateRangePicker';
 
 const STATUS_MAP = {
   PENDING:  { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-700 border-amber-200',      icon: Clock },
@@ -223,7 +225,7 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox }) {
 export default function ExpenseVoucherPage() {
   const toast = useToast();
   const [vouchers, setVouchers]       = useState([]);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [page, setPage]               = useState(0);
   const [totalPages, setTotalPages]   = useState(0);
   const [dateRange, setDateRange]     = useState({ from: null, to: null });
@@ -333,9 +335,9 @@ export default function ExpenseVoucherPage() {
         </div>
       </div>
 
-      {loading
-        ? <LoadingSpinner />
-        : vouchers.length === 0
+      {loading ? (
+        <TableSkeleton cols={5} rows={8} />
+      ) : vouchers.length === 0
         ? <EmptyState icon={Receipt} title="Không có phiếu chi nào" />
         : (
           <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">

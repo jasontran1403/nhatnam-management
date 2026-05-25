@@ -1,18 +1,20 @@
 // src/pages/admin/AdminUsers.jsx
 import { useEffect, useState, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check, AlertCircle,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { useAuth } from '../../context/AuthContext';
-import useDebounce from '../../utils/useDebounce';
-import { Badge } from '../../components/admin/Badge';
-import Modal from '../../components/admin/Modal';
-import Pagination from '../../components/admin/Pagination';
+import useDebounce from '../../utils/useDebounce.js';
+import { Badge } from '../../components/ui/Badge';
+import Modal from '../../components/ui/Modal';
+import Pagination from '../../components/ui/Pagination';
 import {
   PageHeader, LoadingSpinner, EmptyState, PrimaryButton, SecondaryButton,
   DangerButton, Field, inputCls, formatNumber, formatDateTime,
-} from '../../components/admin/ui';
+} from '../../components/ui';
 
 const ROLE_CONFIG = [
   { value: 'OWNER',           label: 'Chủ tịch' },
@@ -24,6 +26,8 @@ const ROLE_CONFIG = [
   { value: 'SUPER_WAREHOUSE', label: 'Trưởng xưởng' },
   { value: 'WAREHOUSE',       label: 'Nhân viên kho' },
   { value: 'OPERATOR',        label: 'Nhân viên nhập liệu' },
+  { value: 'FACTORY_WORKER',  label: 'Nhân viên xưởng SX' },
+  { value: 'HR',              label: 'Nhân viên nhân sự' },
 ];
 const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
 const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
@@ -149,7 +153,7 @@ export default function AdminUsers() {
 
   const [page, setPage]     = useState(0);
   const [data, setData]     = useState({ content: [], totalPages: 0, totalElements: 0 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
 
   const [formOpen, setFormOpen]     = useState(false);
   const [editing, setEditing]       = useState(null);
@@ -251,7 +255,9 @@ export default function AdminUsers() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-        {loading ? <LoadingSpinner /> : data.content.length === 0 ? (
+        {loading ? (
+        <TableSkeleton cols={5} rows={8} />
+      ) : data.content.length === 0 ? (
           <EmptyState icon={UserCog} title="Không có user nào" />
         ) : (
           <>

@@ -14,6 +14,13 @@ function calcNetPrice(grossPrice, vatRate, vatMode) {
   return grossPrice / (1 + rate / 100);
 }
 
+// Chỉ kg/lít (và không phải bán thùng) mới được nhập số lẻ
+const DECIMAL_UNITS = ['kg', 'kgs', 'lít', 'lit', 'l', 'liter', 'litre'];
+function allowDecimal(unit, saleType) {
+  if (saleType === 'BOX') return false;
+  return DECIMAL_UNITS.includes((unit || '').toLowerCase().trim());
+}
+
 export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, onDiscountChange }) {
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceDisplay, setPriceDisplay] = useState('');
@@ -47,8 +54,12 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
     setTimeout(() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select(); }, 30);
   };
   const commitQty = () => {
-    const val = parseFloat(qtyDisplay);
-    if (!isNaN(val) && val > 0) onUpdate(item.id, val);
+    let val = parseFloat(qtyDisplay);
+    if (!isNaN(val) && val > 0) {
+      // Làm tròn về số nguyên nếu đơn vị không phải kg/lít hoặc bán thùng
+      if (!allowDecimal(item.unit, item.saleType)) val = Math.max(1, Math.round(val));
+      onUpdate(item.id, val);
+    }
     setEditingQty(false);
   };
 
@@ -230,14 +241,20 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
           {editingQty ? (
             <input
               ref={qtyInputRef}
-              type="text" inputMode="decimal"
+              type="text" inputMode={allowDecimal(item.unit, item.saleType) ? "decimal" : "numeric"}
               value={qtyDisplay}
               onChange={e => {
-                const raw = e.target.value.replace(/[^0-9.]/g, '');
-                const parts = raw.split('.');
-                if (parts.length > 2) return;
-                if (parts[1]?.length > 3) return;
-                setQtyDisplay(raw);
+                if (allowDecimal(item.unit, item.saleType)) {
+                  const raw = e.target.value.replace(/[^0-9.]/g, '');
+                  const parts = raw.split('.');
+                  if (parts.length > 2) return;
+                  if (parts[1]?.length > 3) return;
+                  setQtyDisplay(raw);
+                } else {
+                  // Chỉ nhận số nguyên
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  setQtyDisplay(raw);
+                }
               }}
               onBlur={commitQty}
               onKeyDown={e => { if (e.key === 'Enter') commitQty(); if (e.key === 'Escape') setEditingQty(false); }}

@@ -1,13 +1,15 @@
 // src/pages/admin/SaleKpiPage.jsx
 import { useEffect, useState, useCallback } from 'react';
+import { TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   TrendingUp, DollarSign, ShoppingBag, Users, UserPlus, UserCheck,
   CreditCard, AlertCircle, Clock, RefreshCw, Trophy,
 } from 'lucide-react';
 import { adminSaleKpiApi } from '../../api/adminApi';
 import { useToast } from '../../components/common/Toast';
-import DateRangePicker, { presetToRange } from '../../components/admin/DateRangePicker';
-import { PageHeader, formatCurrency, formatNumber } from '../../components/admin/ui';
+import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
+import { PageHeader, formatCurrency, formatNumber } from '../../components/ui';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n) { return formatCurrency(Number(n) || 0); }
@@ -112,7 +114,7 @@ export default function SaleKpiPage() {
   const [preset, setPreset] = useState('month');
   const [range, setRange] = useState(() => presetToRange('month'));
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
 
   const load = useCallback(async (from, to) => {
     setLoading(true);

@@ -1,6 +1,8 @@
 // src/pages/seller/POSPage.jsx
 // FIX #6: Real-time cart hold — giữ slot số lượng nguyên liệu khi thêm vào giỏ
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Search, UserPlus, UserCheck, ShoppingBag, Trash2,
   ChevronDown, X, Receipt, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle,
@@ -83,6 +85,8 @@ function CartPanel({
   itemDiscountTotal, totalDiscount,
   total, submitting, priceChangedIds,
   selectedWarehouse,
+  discountFixedAmt, discountFixedDisplay, maxDiscountFixed,
+  onDiscountFixedOpen, onDiscountFixedChange, onDiscountFixedClear,
   onOpenCustomerModal, onClearCustomer, onClearCart, onNotesChange,
   onPaymentChange, onDiscountChange, onSurchargeChange, onUpdateQty,
   onRemoveItem, onPriceOverride, onItemDiscountChange, onSubmit,
@@ -207,16 +211,39 @@ function CartPanel({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#8E8878] shrink-0">Giảm giá:</span>
-            <div className="flex items-center gap-1">
-              {[0, 5, 10, 15, 20].map((d) => (
+            <div className="flex items-center gap-1 flex-wrap">
+              {[0, 5, 8, 10].map((d) => (
                 <button key={d} onClick={() => onDiscountChange(d)}
                   className={`text-[10px] px-2 py-1 rounded-md font-semibold transition-colors
-                    ${discount === d
+                    ${discount === d && discountFixedAmt === null
                       ? 'bg-[#C9A84C] text-white'
                       : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
                   {d}%
                 </button>
               ))}
+              {discountFixedAmt === null ? (
+                <button onClick={onDiscountFixedOpen}
+                  className="text-[10px] px-2 py-1 rounded-md font-semibold transition-colors bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]">
+                  Nhập tiền
+                </button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <div className="relative">
+                    <input
+                      type="text" inputMode="numeric"
+                      value={discountFixedDisplay}
+                      onChange={onDiscountFixedChange}
+                      placeholder={`tối đa ${new Intl.NumberFormat('vi-VN').format(maxDiscountFixed)}`}
+                      className="input-elegant w-28 rounded-md px-2 py-1 text-[10px] text-right pr-5 border border-[#C9A84C] bg-[#C9A84C]/5 font-semibold text-[#C9A84C]"
+                    />
+                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+                  </div>
+                  <button onClick={onDiscountFixedClear}
+                    className="text-[10px] px-1.5 py-1 rounded-md bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] font-semibold">
+                    ×
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -255,7 +282,9 @@ function CartPanel({
                 )}
                 {discountAmt > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-[10px] text-emerald-600">• Giảm bill ({discount}%)</span>
+                    <span className="text-[10px] text-emerald-600">
+                      {discountFixedAmt !== null ? '• Giảm trực tiếp' : `• Giảm bill (${discount}%)`}
+                    </span>
                     <span className="text-[10px] text-emerald-600">-{formatPrice(discountAmt)}</span>
                   </div>
                 )}
@@ -440,7 +469,7 @@ export default function POSPage() {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useMinLoading();
 
   const [inputSearch, setInputSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -453,6 +482,9 @@ export default function POSPage() {
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [discount, setDiscount] = useState(0);
+  // null = dùng %, số = nhập tiền trực tiếp
+  const [discountFixedAmt, setDiscountFixedAmt] = useState(null);
+  const [discountFixedDisplay, setDiscountFixedDisplay] = useState('');
 
   const [surcharge, setSurcharge] = useState(0);
   const [surchargeDisplay, setSurchargeDisplay] = useState('');
@@ -559,6 +591,25 @@ export default function POSPage() {
         if (list.length > 0) setSelectedWarehouse(list[0]);
       })
       .catch(() => toast('Không thể tải danh sách kho', 'error'));
+  }, []);
+
+  // Max discount = 10% subtotalAfterItemDiscount (tính tại thời điểm gọi)
+  const handleDiscountFixedOpen = useCallback(() => {
+    setDiscount(0);
+    setDiscountFixedAmt(0);
+    setDiscountFixedDisplay('');
+  }, []);
+
+  const handleDiscountFixedClear = useCallback(() => {
+    setDiscountFixedAmt(null);
+    setDiscountFixedDisplay('');
+  }, []);
+
+  const handleDiscountFixedChange = useCallback((e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    setDiscountFixedDisplay(raw);
+    const num = raw === '' ? 0 : parseInt(raw, 10);
+    setDiscountFixedAmt(num);
   }, []);
 
   const handleSurchargeChange = useCallback((e) => {
@@ -798,7 +849,11 @@ export default function POSPage() {
   }, 0);
 
   const subtotalAfterItemDiscount = subtotal - itemDiscountTotal;
-  const discountAmt = Math.round(subtotalAfterItemDiscount * discount / 100);
+  // Max giảm trực tiếp = 10% subtotalAfterItemDiscount
+  const maxDiscountFixed = Math.round(subtotalAfterItemDiscount * 0.1);
+  const discountAmt = discountFixedAmt !== null
+    ? Math.min(discountFixedAmt, maxDiscountFixed)   // giảm tiền: capped at 10%
+    : Math.round(subtotalAfterItemDiscount * discount / 100);  // giảm %
   const totalDiscount = itemDiscountTotal + discountAmt;
   const surchargeNum = Number(surcharge) || 0;
   const total = subtotal - totalDiscount + surchargeNum;
@@ -809,15 +864,18 @@ export default function POSPage() {
       const rate = i.vatRate ?? 0;
       const mode = i.vatMode ?? 'INCLUSIVE';
       if (rate === 0 || mode !== 'INCLUSIVE') continue;
+      const effDiscountRate = discountFixedAmt !== null
+          ? (subtotalAfterItemDiscount > 0 ? Math.min(discountFixedAmt, maxDiscountFixed) / subtotalAfterItemDiscount : 0)
+          : discount / 100;
       const lineGross = Number(i.unitPrice) * (1 - (i.itemDiscountRate ?? 0) / 100)
-        * Number(i.quantity) * (1 - discount / 100);
+        * Number(i.quantity) * (1 - effDiscountRate);
       const vatAmt = lineGross - lineGross / (1 + rate / 100);
       const key = `${rate}|${mode}`;
       if (!map[key]) map[key] = { rate, mode, vatAmt: 0 };
       map[key].vatAmt += vatAmt;
     }
     return Object.values(map).sort((a, b) => a.rate - b.rate);
-  }, [cartItems, discount]);
+  }, [cartItems, discount, discountFixedAmt, maxDiscountFixed, subtotalAfterItemDiscount]);
 
   const exclusiveVatTotal = 0;
 
@@ -881,7 +939,8 @@ export default function POSPage() {
         receiverPhone: customer.selectedReceiver?.receiverPhone || customer.phone,
         receiverAddress: customer.selectedReceiver?.receiverAddress || '',
         notes, paymentMethod,
-        discountRate: discount,
+        discountRate: discountFixedAmt !== null ? 0 : discount,
+        discountAmount: discountFixedAmt !== null ? Math.min(discountFixedAmt, maxDiscountFixed) : undefined,
         surcharge: surchargeNum,
         warehouseId: selectedWarehouse?.id,
         items: cartItems.map((i) => ({
@@ -930,7 +989,7 @@ export default function POSPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [customer, cartItems, notes, paymentMethod, discount, surchargeNum, selectedWarehouse, clearCart, fetchProducts, handlePriceChanged, toast]);
+  }, [customer, cartItems, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed, surchargeNum, selectedWarehouse, clearCart, fetchProducts, handlePriceChanged, toast]);
 
   const cartPanelProps = {
     cartItems, customer, notes, paymentMethod, discount,
@@ -938,13 +997,19 @@ export default function POSPage() {
     vatBreakdown, exclusiveVatTotal, itemDiscountTotal, totalDiscount,
     total, submitting, priceChangedIds,
     selectedWarehouse,
+    maxDiscountFixed,
     onOpenCustomerModal: () => setCustomerModalOpen(true),
     onClearCustomer: () => setCustomer(null),
     onClearCart: clearCart,
     onNotesChange: setNotes,
     onPaymentChange: setPaymentMethod,
-    onDiscountChange: setDiscount,
+    onDiscountChange: (d) => { setDiscount(d); setDiscountFixedAmt(null); setDiscountFixedDisplay(''); },
     onSurchargeChange: handleSurchargeChange,
+    discountFixedAmt,
+    discountFixedDisplay,
+    onDiscountFixedOpen: handleDiscountFixedOpen,
+    onDiscountFixedChange: handleDiscountFixedChange,
+    onDiscountFixedClear: handleDiscountFixedClear,
     onUpdateQty: updateQty,
     onRemoveItem: removeItem,
     onPriceOverride: overridePrice,

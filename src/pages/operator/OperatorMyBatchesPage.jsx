@@ -1,5 +1,7 @@
 // src/pages/operator/OperatorMyBatchesPage.jsx
 import { useState, useEffect } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { operatorApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
 import { ClipboardList, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
@@ -19,7 +21,7 @@ function formatDate(ts) {
 export default function OperatorMyBatchesPage() {
   const toast = useToast();
   const [batches, setBatches] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
 
   const fetch = () => {
     setLoading(true);

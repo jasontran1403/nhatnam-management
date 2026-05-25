@@ -1,5 +1,7 @@
 // src/pages/warehouse/OperationsPage.jsx
 import { useState, useEffect } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
@@ -16,7 +18,7 @@ const TABS = [
 export default function OperationsPage() {
   const [tab, setTab] = useState('import');
   return (
-    <div>
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="wh-page-title">Thao tác kho</h1>
       <div className="wh-tabs">
         {TABS.map(t => (
@@ -104,7 +106,7 @@ function ImportForm() {
   const [note, setNote]       = useState('');
   const [images, setImages]   = useState([]);
   const [rows, setRows]       = useState([emptyRow('import')]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
 
@@ -197,7 +199,7 @@ function ExportForm() {
   const [note, setNote]     = useState('');
   const [images, setImages] = useState([]);
   const [rows, setRows]     = useState([emptyRow('export')]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
 
@@ -272,7 +274,7 @@ function TransferForm() {
   const [note, setNote]     = useState('');
   const [images, setImages] = useState([]);
   const [rows, setRows]     = useState([emptyRow('transfer')]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
 
@@ -375,7 +377,7 @@ function AdjustForm() {
   const [note, setNote]     = useState('');
   const [images, setImages] = useState([]);
   const [rows, setRows]     = useState([emptyRow('adjust')]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
 

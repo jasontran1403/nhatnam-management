@@ -1,6 +1,6 @@
 // src/components/common/NotificationBell.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Bell, X, Check, CheckCheck, Clock, Package, CreditCard, Truck, FileText } from 'lucide-react';
+import { Bell, X, Check, CheckCheck, Clock, Package, CreditCard, Truck, FileText, Factory } from 'lucide-react';
 import { notificationApi } from '../../api/operatorApi';
 import useWebSocket from '../../hooks/useWebSocket';
 import { useToast } from './Toast';
@@ -14,6 +14,7 @@ const EVENT_ICONS = {
   BATCH_PENDING:      FileText,
   BATCH_APPROVED:     Check,
   BATCH_REJECTED:     X,
+  PRODUCTION_BATCH_SUBMITTED: Factory,
   DEFAULT:            Bell,
 };
 

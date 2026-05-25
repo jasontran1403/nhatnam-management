@@ -1,5 +1,7 @@
 // src/pages/operator/OperatorBatchesPage.jsx
 import { useState, useEffect } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { operatorApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { RefreshCw, ClipboardList, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
@@ -32,7 +34,7 @@ function StatusBadge({ status }) {
 export default function OperatorBatchesPage() {
   const toast = useToast();
   const [batches, setBatches] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
 
   const load = async () => {
     try {

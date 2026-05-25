@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { ingredientApi, uploadApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Edit2, Trash2, RefreshCw, Leaf, X, Check, Search, Camera, Image } from 'lucide-react';
@@ -30,7 +32,7 @@ const EMPTY_FORM = { name: '', unit: 'Kg', imageUrl: '' };
 // ─── Image picker ─────────────────────────────────────────────────────────────
 function ImagePicker({ value, onChange }) {
   const fileRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useMinLoading();
   const toast = useToast();
 
   const handleFile = async (file) => {
@@ -101,7 +103,7 @@ function ImagePicker({ value, onChange }) {
 export default function IngredientsPage() {
   const toast = useToast();
   const [ingredients, setIngredients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState({ open: false, item: null });
   const [form, setForm] = useState(EMPTY_FORM);

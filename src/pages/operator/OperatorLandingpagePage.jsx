@@ -1,5 +1,7 @@
 // src/pages/operator/OperatorLandingpagePage.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Pencil, Trash2, X, Upload, Globe, ChevronLeft, ChevronRight, Eye, EyeOff, Tag, ImageIcon, Calendar } from 'lucide-react';
@@ -252,7 +254,7 @@ function ProductForm({ initial, categories: categoriesProp, onSave, onCancel, sa
 function EventManager() {
   const toast = useToast();
   const [events, setEvents]     = useState([]);
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [form, setForm]         = useState(null); // null=closed, {}=create, obj=edit
@@ -538,7 +540,7 @@ export default function OperatorLandingpagePage() {
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'events'
   const [products,setProducts]   = useState([]);
   const [categories,setCategories] = useState([]);
-  const [loading,setLoading]     = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [page,setPage]           = useState(0);
   const [totalPages,setTotal]    = useState(0);
   const [totalItems,setTI]       = useState(0);

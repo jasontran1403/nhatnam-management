@@ -1,15 +1,17 @@
 // src/pages/admin/AdminIngredients.jsx
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Package, Search, AlertTriangle, AlertCircle,
   ChevronDown, ChevronRight, Warehouse as WhIcon,
 } from 'lucide-react';
 import { adminIngredientApi, adminWarehouseApi, getImageUrl } from '../../api/adminApi';
-import { ExpiryBadge } from '../../components/admin/Badge';
-import useDebounce from '../../utils/useDebounce';
+import { ExpiryBadge } from '../../components/ui/Badge';
+import useDebounce from '../../utils/useDebounce.js';
 import {
   PageHeader, LoadingSpinner, EmptyState, inputCls, formatNumber, formatDate,
-} from '../../components/admin/ui';
+} from '../../components/ui';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 function formatPrice(n) {
@@ -226,8 +228,8 @@ export default function AdminIngredients() {
   const [selectedWhId, setSelectedWhId] = useState(null);
   const [q,            setQ]            = useState('');
   const [rows,         setRows]         = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [loadingWh,    setLoadingWh]    = useState(true);
+  const [loading, setLoading] = useMinLoading();
+  const [loadingWh, setLoadingWh] = useMinLoading();
   const debouncedQ = useDebounce(q, 600);
 
   useEffect(() => {

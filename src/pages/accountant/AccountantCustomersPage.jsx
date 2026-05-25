@@ -1,5 +1,7 @@
 // src/pages/accountant/AccountantCustomersPage.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
@@ -25,7 +27,7 @@ export default function AccountantCustomersPage() {
   const [customers,  setCustomers]  = useState([]);
   const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(0);
-  const [loading,    setLoading]    = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [search,     setSearch]     = useState('');
   const [searchInput,setSearchInput]= useState('');
 

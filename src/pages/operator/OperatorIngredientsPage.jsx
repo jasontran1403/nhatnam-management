@@ -2,6 +2,8 @@
 // FIX #3: Import/Export
 // FIX #4: Category/SubCategory combobox với search + nút + tạo nhanh
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { operatorApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Edit2, Search, X, Leaf, ImagePlus, Download, Upload } from 'lucide-react';
@@ -134,7 +136,7 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
   const toast = useToast();
   const [name, setName] = useState(prefill);
   const [imageUrl, setImageUrl] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useMinLoading();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { if (open) setName(prefill); }, [open, prefill]);
@@ -242,14 +244,14 @@ export default function OperatorIngredientsPage() {
   const [ingredients, setIngredients] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]); // từ bảng sub_categories
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [filterCatId, setFilterCatId] = useState('');
   const [filterSubCatId, setFilterSubCatId] = useState('');
   const [modal, setModal] = useState({ open: false, item: null });
   const [form, setForm] = useState({ name: '', unit: 'kg', imageUrl: '', itemCode: '', categoryId: '', subCategoryId: '' });
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useMinLoading();
 
   // Quick create category modal state
   const [quickCreate, setQuickCreate] = useState({

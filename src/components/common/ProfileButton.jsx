@@ -124,6 +124,7 @@ export default function ProfileButton() {
         WAREHOUSE: 'Nhân viên kho', SUPER_WAREHOUSE: 'Trưởng kho',
         SELLER: 'Nhân viên kinh doanh', SUPER_SELLER: 'Trưởng phòng kinh doanh',
         OPERATOR: 'Nhân viên nhập liệu', SHIPPER: 'Giao hàng',
+        FACTORY_WORKER: 'Nhân viên Xưởng',
     };
 
     const displayRole = ROLE_LABEL[authUser?.role] || authUser?.role || '';

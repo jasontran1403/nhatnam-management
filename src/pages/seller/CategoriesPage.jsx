@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { categoryApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Edit2, Trash2, RefreshCw, Layers, X, Check } from 'lucide-react';
@@ -6,7 +8,7 @@ import { Plus, Edit2, Trash2, RefreshCw, Layers, X, Check } from 'lucide-react';
 export default function CategoriesPage() {
   const toast = useToast();
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [editModal, setEditModal] = useState({ open: false, cat: null });
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [saving, setSaving] = useState(false);

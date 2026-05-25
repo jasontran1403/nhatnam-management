@@ -1,5 +1,7 @@
 // src/pages/accountant/AccountantDashboardPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { ChartSkeleton, Sk, StatCardSkeleton, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { useNavigate } from 'react-router-dom';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
@@ -10,7 +12,7 @@ import {
   AlertTriangle, Clock, Medal, Crown, Users,
 } from 'lucide-react';
 import { accountantDashboardApi } from '../../api/accountantApi';
-import DateRangePicker, { presetToRange } from '../../components/admin/DateRangePicker';
+import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 function formatPrice(n) {
@@ -165,7 +167,7 @@ export default function AccountantDashboardPage() {
   const [topSellers,   setTopSellers]   = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
   const [debtStats,    setDebtStats]    = useState(null);
-  const [loading,      setLoading]      = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [error,        setError]        = useState(null);
 
   // Detect base path để navigate đúng cho từng role

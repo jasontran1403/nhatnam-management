@@ -1,6 +1,8 @@
 // src/pages/operator/OperatorCategoriesPage.jsx
 // FIX #4: Thêm subcategory (2 cấp) — danh mục gốc + danh mục con
 import { useState, useEffect, useMemo } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { operatorApi } from '../../api/operatorApi';
 import { uploadApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
@@ -11,13 +13,13 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 export default function OperatorCategoriesPage() {
   const toast = useToast();
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState({ open: false, cat: null });
   // parentId: null = tạo danh mục gốc, number = tạo sub cho parent đó
   const [form, setForm] = useState({ name: '', imageUrl: '', parentId: null });
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useMinLoading();
   const [expandedRoots, setExpandedRoots] = useState({});
 
   const [subCategories, setSubCategories] = useState([]);

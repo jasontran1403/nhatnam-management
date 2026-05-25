@@ -1,5 +1,7 @@
 // src/pages/warehouse/WarehouseOrdersPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -79,7 +81,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
   const showCreate = query.trim() && !results.some(r => r.name.toLowerCase() === query.trim().toLowerCase());
 
   return (
-    <div className="space-y-2">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-2">
       <p className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider">
         Tài xế giao hàng
       </p>
@@ -355,13 +357,13 @@ export default function WarehouseOrdersPage() {
   const { activeWarehouseId } = useWarehouse();
 
   const [orders,           setOrders]           = useState([]);
-  const [loading,          setLoading]          = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [selected,         setSelected]         = useState(null);
   const [delivering,       setDelivering]       = useState(false);
   const [search,           setSearch]           = useState('');
   const [invoiceLoadingId, setInvoiceLoadingId] = useState(null);
   const [cancelTarget,     setCancelTarget]     = useState(null);
-  const [cancelLoading,    setCancelLoading]    = useState(false);
+  const [cancelLoading, setCancelLoading] = useMinLoading();
 
   const handleInvoice = async (orderId, e) => {
     if (e) e.stopPropagation();

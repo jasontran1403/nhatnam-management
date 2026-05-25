@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { CardSkeleton, Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Warehouse as WarehouseIcon, Plus, Edit2, Power, Truck, Store, Package } from 'lucide-react';
 import { adminWarehouseApi } from '../../api/adminApi';
-import { Badge } from '../../components/admin/Badge';
-import Modal from '../../components/admin/Modal';
-import useDebounce from '../../utils/useDebounce';
+import { Badge } from '../../components/ui/Badge';
+import Modal from '../../components/ui/Modal';
+import useDebounce from '../../utils/useDebounce.js';
 import {
   PageHeader,
   LoadingSpinner,
@@ -15,14 +17,14 @@ import {
   Field,
   inputCls,
   formatDateTime,
-} from '../../components/admin/ui';
+} from '../../components/ui';
 
 export default function AdminWarehouses() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const rolePrefix = pathname.startsWith('/owner') ? '/owner' : '/admin';
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -63,7 +65,7 @@ export default function AdminWarehouses() {
       />
 
       {loading ? (
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm"><LoadingSpinner /></div>
+        <TableSkeleton cols={4} rows={6} />
       ) : items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm">
           <EmptyState icon={WarehouseIcon} title="Chưa có kho" description="Tạo kho đầu tiên để bắt đầu quản lý nguyên liệu" />

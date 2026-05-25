@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   ShoppingCart, Search, Eye, Ban, Package,
   Building2, Calendar, CreditCard, History,
@@ -8,16 +10,16 @@ import {
 } from 'lucide-react';
 import { adminOrderApi, getImageUrl } from '../../api/adminApi';
 import { downloadBlob } from '../../api/services';
-import { OrderStatusBadge } from '../../components/admin/Badge';
-import Modal from '../../components/admin/Modal';
-import Pagination from '../../components/admin/Pagination';
-import DateRangePicker from '../../components/common/DateRangePicker';
-import useDebounce from '../../utils/useDebounce';
+import { OrderStatusBadge } from '../../components/ui/Badge';
+import Modal from '../../components/ui/Modal';
+import Pagination from '../../components/ui/Pagination';
+import DateRangePicker from '../../components/ui/DateRangePicker';
+import useDebounce from '../../utils/useDebounce.js';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   SecondaryButton, DangerButton,
   Field, inputCls, formatCurrency, formatNumber, formatDateTime,
-} from '../../components/admin/ui';
+} from '../../components/ui';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
@@ -78,7 +80,7 @@ export default function AdminOrders() {
   const [filters, setFilters] = useState({ q: '', status: '' });
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailOrder, setDetailOrder] = useState(null);
@@ -191,7 +193,9 @@ export default function AdminOrders() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-        {loading ? <LoadingSpinner /> : data.content.length === 0 ? (
+        {loading ? (
+        <TableSkeleton cols={5} rows={8} />
+      ) : data.content.length === 0 ? (
           <EmptyState icon={ShoppingCart} title="Không có đơn hàng" description="Thử điều chỉnh bộ lọc" />
         ) : (
           <>

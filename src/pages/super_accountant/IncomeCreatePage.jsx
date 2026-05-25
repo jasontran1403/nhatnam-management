@@ -1,6 +1,8 @@
 // src/pages/shared/IncomeCreatePage.jsx
 // Dùng chung cho ACCOUNTANT và SUPER_ACCOUNTANT
 import { useState, useRef } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { incomeApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Trash2, Upload, X, TrendingUp, Send, User, Eye } from 'lucide-react';

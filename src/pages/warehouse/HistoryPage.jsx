@@ -1,6 +1,8 @@
 // src/pages/warehouse/HistoryPage.jsx
 // FIX #4: Chỉ hiển thị lịch sử của kho đang active (hỗ trợ đa kho)
 import { useState, useEffect, useCallback } from 'react';
+import { TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
@@ -33,7 +35,7 @@ export default function HistoryPage() {
   const [receipts, setReceipts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [expanded, setExpanded] = useState(null);
   const [lightbox, setLightbox] = useState(null);
   const [dateFrom, setDateFrom] = useState('');
@@ -94,7 +96,7 @@ export default function HistoryPage() {
   const totalPages = Math.ceil(total / 15);
 
   return (
-    <div>
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="wh-page-title">Lịch sử kho</h1>
 
       {/* FIX #4: Hiển thị tên kho, không cho chọn kho */}

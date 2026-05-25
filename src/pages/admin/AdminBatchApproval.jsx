@@ -1,5 +1,7 @@
 // src/pages/admin/AdminBatchApproval.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { adminBatchApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
 import {
@@ -31,9 +33,9 @@ export default function AdminBatchApproval() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('PENDING');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [detail, setDetail] = useState(null); // selected batch with items
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useMinLoading();
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [reviewNote, setReviewNote] = useState('');
   const [acting, setActing] = useState(false);

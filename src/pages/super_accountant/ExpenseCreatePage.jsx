@@ -1,5 +1,7 @@
 // src/pages/super_accountant/ExpenseCreatePage.jsx
 import { useState, useRef, useEffect } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { expenseApi } from '../../api/services';
 import { accountantSupplierApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
@@ -18,7 +20,7 @@ export default function ExpenseCreatePage() {
   const [vendorName, setVendorName]           = useState('');
   const [vendorSearchMode, setVendorSearchMode] = useState('select');
   const [suppliers, setSuppliers]             = useState([]);
-  const [supplierLoading, setSupplierLoading] = useState(false);
+  const [supplierLoading, setSupplierLoading] = useMinLoading();
   const [supplierDropOpen, setSupplierDropOpen] = useState(false);
   const [supplierSearch, setSupplierSearch]   = useState('');
 
@@ -28,7 +30,7 @@ export default function ExpenseCreatePage() {
   const [images, setImages]                   = useState([]);
   const [submitting, setSubmitting]           = useState(false);
   const [vouchers, setVouchers]               = useState([]);
-  const [loadingList, setLoadingList]         = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
   const [listLoaded, setListLoaded]           = useState(false);
   const fileRef = useRef();
 

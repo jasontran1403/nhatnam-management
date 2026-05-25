@@ -11,11 +11,13 @@
 // 9. <CancelOrderModal> ở cuối
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, incomeApi, getImageUrl, downloadBlob } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
-import DateRangePicker from '../../components/common/DateRangePicker';
+import DateRangePicker from '../../components/ui/DateRangePicker';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight, Filter,
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
@@ -130,7 +132,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const [transactionRef, setTransactionRef] = useState('');
   const [error, setError] = useState('');
   const [txHistory, setTxHistory] = useState([]);
-  const [txLoading, setTxLoading] = useState(true);
+  const [txLoading, setTxLoading] = useState(false);
   const [waiveConfirm, setWaiveConfirm] = useState(false);
 
   useEffect(() => {
@@ -399,7 +401,7 @@ export default function AccountantOrdersPage() {
   const [detailLoading, setDetailLoading] = useState(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { productApi, categoryApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Search, Edit2, Trash2, RefreshCw, Package } from 'lucide-react';
@@ -14,7 +16,7 @@ export default function ProductsPage() {
   const toast = useToast();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('ALL');
   const [formModal, setFormModal] = useState({ open: false, product: null });

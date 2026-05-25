@@ -1,12 +1,14 @@
 // src/pages/admin/IncomeVoucherPage.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { adminIncomeApi } from '../../api/adminApi';
 import { useToast } from '../../components/common/Toast';
 import { TrendingUp, Clock, DollarSign, FileText, BadgeCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Download, Upload } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState, formatCurrency, formatDateTime,
-} from '../../components/admin/ui';
-import DateRangePicker from '../../components/common/DateRangePicker';
+} from '../../components/ui';
+import DateRangePicker from '../../components/ui/DateRangePicker';
 import VoucherDetailModal from '../../components/common/VoucherDetailModal';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -146,7 +148,7 @@ function VoucherRow({ v, onOpenLightbox, onOpenDetail }) {
 export default function IncomeVoucherPage() {
   const toast = useToast();
   const [vouchers, setVouchers]       = useState([]);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [page, setPage]               = useState(0);
   const [totalPages, setTotalPages]   = useState(0);
   const [dateRange, setDateRange]     = useState({ from: null, to: null });
@@ -221,9 +223,9 @@ export default function IncomeVoucherPage() {
           </div>
         </div>
 
-        {loading
-          ? <LoadingSpinner />
-          : vouchers.length === 0
+        {loading ? (
+        <TableSkeleton cols={5} rows={8} />
+      ) : vouchers.length === 0
           ? <EmptyState icon={TrendingUp} title="Không có phiếu thu nào" />
           : (
             <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">

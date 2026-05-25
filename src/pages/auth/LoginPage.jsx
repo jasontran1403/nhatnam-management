@@ -4,6 +4,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/Toast';
 import { Eye, EyeOff, LogIn, ChevronRight } from 'lucide-react';
+import SplashScreen from '../../components/common/SplashScreen';
 
 const ROLE_LABELS = {
   ADMIN:            { label: 'Quản trị viên',      color: 'bg-red-100 text-red-700 border-red-200' },
@@ -16,6 +17,7 @@ const ROLE_LABELS = {
   SUPER_SELLER:     { label: 'Trưởng bán hàng',     color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   OPERATOR:         { label: 'Vận hành',            color: 'bg-teal-100 text-teal-700 border-teal-200' },
   SHIPPER:          { label: 'Giao hàng',           color: 'bg-sky-100 text-sky-700 border-sky-200' },
+  FACTORY_WORKER:   { label: 'Nhân viên nhà máy',     color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
 };
 
 function getRedirectPath(role) {
@@ -40,10 +42,17 @@ export default function LoginPage() {
   const [form, setForm]         = useState({ username: '', password: '' });
   const [showPw, setShowPw]     = useState(false);
   const [loading, setLoading]   = useState(false);
+  const [splash, setSplash]     = useState(null); // { user, redirectPath }
   // Multi-role state
-  const [availableRoles, setAvailableRoles] = useState(null); // null = not shown
+  const [availableRoles, setAvailableRoles] = useState(null);
   const [pendingCreds, setPendingCreds]     = useState(null);
   const [selectingRole, setSelectingRole]   = useState(false);
+
+  if (splash) {
+    return (
+      <SplashScreen onDone={() => navigate(splash.redirectPath)} />
+    );
+  }
 
   if (isAuthenticated) {
     return <Navigate to={getRedirectPath(role)} replace />;
@@ -59,11 +68,10 @@ export default function LoginPage() {
     try {
       const data = await login(form.username.trim(), form.password, null);
       if (data.requireRoleSelection && data.availableRoles?.length > 1) {
-        // Hiện popup chọn role
         setAvailableRoles(data.availableRoles);
         setPendingCreds({ username: form.username.trim(), password: form.password });
       } else {
-        navigate(getRedirectPath(data.role));
+        setSplash({ user: data, redirectPath: getRedirectPath(data.role) });
       }
     } catch (err) {
       const msg = err?.response?.data?.message || 'Sai tên đăng nhập hoặc mật khẩu';
@@ -80,7 +88,7 @@ export default function LoginPage() {
       const data = await login(pendingCreds.username, pendingCreds.password, selectedRole);
       setAvailableRoles(null);
       setPendingCreds(null);
-      navigate(getRedirectPath(data.role));
+      setSplash({ user: data, redirectPath: getRedirectPath(data.role) });
     } catch (err) {
       const msg = err?.response?.data?.message || 'Lỗi đăng nhập';
       toast(msg, 'error');

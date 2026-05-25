@@ -1,5 +1,7 @@
 // src/pages/admin/AdminDashboard.jsx
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { ChartSkeleton, Sk, StatCardSkeleton, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, DollarSign, ShoppingCart, Users, Package,
@@ -12,9 +14,9 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { adminDashboardApi, getImageUrl } from '../../api/adminApi';
-import StatCard from '../../components/admin/StatCard';
-import { PageHeader, LoadingSpinner, EmptyState, formatCurrency, formatNumber } from '../../components/admin/ui';
-import DateRangePicker, { presetToRange } from '../../components/admin/DateRangePicker';
+import StatCard from '../../components/ui/StatCard';
+import { PageHeader, EmptyState, formatCurrency, formatNumber } from '../../components/ui';
+import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
 
 // ── CountUp hook ──────────────────────────────────────────────────────────────
 function useCountUp(target, duration = 800) {
@@ -163,7 +165,7 @@ export default function AdminDashboard() {
   const [topProducts, setTopProducts] = useState([]);
   const [topSellers, setTopSellers] = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [productSort, setProductSort] = useState('revenue');
   const [sellerSort, setSellerSort] = useState('revenue');
   const [range, setRange] = useState(() => presetToRange('today'));

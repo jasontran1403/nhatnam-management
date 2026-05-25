@@ -2,6 +2,8 @@
 // FIX 1: Popup hạn sử dụng không tràn màn hình — luôn hiển thị vào trong
 // FIX 2: Hiển thị category/subcategory dạng cây, collapse/expand
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { Sk, StatCardSkeleton, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
@@ -280,7 +282,7 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '1fr auto auto auto',
+      gridTemplateColumns: 'minmax(0,1fr) auto auto auto',
       alignItems: 'center', gap: 12,
       padding: `9px 14px 9px ${subIndent ? 52 : indent ? 36 : 14}px`,
       borderBottom: '1px solid var(--wh-border)',
@@ -298,7 +300,7 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
             : '🧂'
           }
         </div>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--wh-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--wh-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
           {s.ingredientName}
         </span>
       </div>
@@ -358,7 +360,7 @@ export default function ManagementPage() {
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [ingredientMeta, setIngredientMeta] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [warehouseInfo, setWarehouseInfo] = useState(null);
 
@@ -449,7 +451,7 @@ export default function ManagementPage() {
   const uncategorized = stocksByCat['__none__'] || [];
 
   return (
-    <div>
+    <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 className="wh-page-title" style={{ marginBottom: 4 }}>Quản lý kho nguyên liệu</h1>
@@ -464,7 +466,7 @@ export default function ManagementPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 14, marginBottom: 24 }}>
         <StatCard icon="📦" label="Nguyên liệu" value={filteredStocks.length} color="var(--wh-accent)" />
         <StatCard icon="⚠️" label="Sắp hết" value={lowStockCount} color="var(--wh-warn)" />
         <StatCard icon="🏭" label="Loại kho" value={warehouseInfo?.type === 'TRANSIT' ? 'Trung chuyển' : 'Bán hàng'} color="var(--wh-accent2)" />

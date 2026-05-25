@@ -1,5 +1,7 @@
 // src/pages/admin/AdminWarehouseStock.jsx
 import { useEffect, useState, useMemo } from 'react';
+import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminWarehouseApi, adminWarehouseStockApi } from '../../api/adminApi';
 import {
@@ -9,7 +11,7 @@ import {
 import {
   PageHeader, LoadingSpinner, EmptyState,
   formatCurrency, formatNumber,
-} from '../../components/admin/ui';
+} from '../../components/ui';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 function imgUrl(p) {
@@ -149,7 +151,7 @@ export default function AdminWarehouseStock() {
   const [warehouse,   setWarehouse]   = useState(null);
   const [items,       setItems]       = useState([]);
   const [grandTotal,  setGrandTotal]  = useState(0);
-  const [loading,     setLoading]     = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [q,           setQ]           = useState('');
 
   useEffect(() => {
@@ -190,7 +192,7 @@ export default function AdminWarehouseStock() {
   // Grand total of currently visible items
   const visibleTotal = filteredItems.reduce((s, i) => s + Number(i.totalCostValue || 0), 0);
 
-  if (loading) return <div className="p-8"><LoadingSpinner /></div>;
+  if (loading) return <div className="p-8 space-y-4"><TableSkeleton cols={4} rows={8} /></div>;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">

@@ -11,11 +11,13 @@
 // 9. <CancelOrderModal> ở cuối
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
-import DateRangePicker from '../../components/common/DateRangePicker';
+import DateRangePicker from '../../components/ui/DateRangePicker';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
@@ -109,7 +111,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const [amountInput, setAmountInput] = useState(''); const [hasDeadline, setHasDeadline] = useState(false);
   const [deadlineDays, setDeadlineDays] = useState(''); const [paymentMethod, setPaymentMethod] = useState(order?.paymentMethod || 'CASH');
   const [bankName, setBankName] = useState(''); const [transactionRef, setTransactionRef] = useState('');
-  const [error, setError] = useState(''); const [txHistory, setTxHistory] = useState([]); const [txLoading, setTxLoading] = useState(true);
+  const [error, setError] = useState(''); const [txHistory, setTxHistory] = useState([]); const [txLoading, setTxLoading] = useMinLoading();
   const [waiveConfirm, setWaiveConfirm] = useState(false);
 
   useEffect(() => { paymentApi.getTransactions(order.id).then(r => setTxHistory(r.data?.data || [])).catch(() => { }).finally(() => setTxLoading(false)); }, [order.id]);
@@ -261,17 +263,17 @@ export default function OrdersPage() {
   const toast = useToast();
   const [orders, setOrders] = useState([]); const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(null); const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0); const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0); const [loading, setLoading] = useMinLoading();
   const [searchInput, setSearchInput] = useState(''); const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [actionLoading, setActionLoading] = useState(null); const [exporting, setExporting] = useState(false);
   const [invoiceLoadingId, setInvoiceLoadingId] = useState(null);
-  const [partialOrder, setPartialOrder] = useState(null); const [partialLoading, setPartialLoading] = useState(false);
+  const [partialOrder, setPartialOrder] = useState(null); const [partialLoading, setPartialLoading] = useMinLoading();
   const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkConfirm, setBulkConfirm] = useState(null);
-  const [bulkLoading, setBulkLoading] = useState(false); const [pageSize, setPageSize] = useState(20);
+  const [bulkLoading, setBulkLoading] = useMinLoading(); const [pageSize, setPageSize] = useState(20);
 
   // ── THÊM ─────────────────────────────────────────────────────────────────
-  const [cancelTarget, setCancelTarget] = useState(null); const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null); const [cancelLoading, setCancelLoading] = useMinLoading();
 
   const totalPages = Math.ceil(total / pageSize);
 

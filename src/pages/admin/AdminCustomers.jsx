@@ -4,21 +4,23 @@
 // - Khách công ty: hiển thị nút gán, nếu chưa có NV → "Chưa có"
 // - Lọc theo NV KD: input search thay vì render hết buttons
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
 } from 'lucide-react';
 import { adminCustomerApi } from '../../api/adminApi';
-import useDebounce from '../../utils/useDebounce';
-import { Badge } from '../../components/admin/Badge';
-import Modal from '../../components/admin/Modal';
-import Pagination from '../../components/admin/Pagination';
+import useDebounce from '../../utils/useDebounce.js';
+import { Badge } from '../../components/ui/Badge';
+import Modal from '../../components/ui/Modal';
+import Pagination from '../../components/ui/Pagination';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   PrimaryButton, SecondaryButton, DangerButton,
   Field, inputCls, formatNumber,
-} from '../../components/admin/ui';
+} from '../../components/ui';
 
 function getDebtUrgency(customer) {
   const ms = customer.nearestDeadlineMillis;
@@ -34,7 +36,7 @@ function AssignSellerModal({ open, customer, onClose, onSaved }) {
   const [q, setQ] = useState('');
   const dq = useDebounce(q, 350);
   const [sellers, setSellers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [saving,  setSaving]  = useState(false);
 
   useEffect(() => {
@@ -141,7 +143,7 @@ function SellerFilterDropdown({ value, onChange }) {
   const [q, setQ] = useState('');
   const dq = useDebounce(q, 300);
   const [sellers, setSellers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useMinLoading();
   const [selectedName, setSelectedName] = useState('');
   const dropdownRef = useRef(null);
 
@@ -241,7 +243,7 @@ export default function AdminCustomers() {
   const debouncedQ  = useDebounce(filters.q, 600);
   const [page,        setPage]       = useState(0);
   const [data,        setData]       = useState({ content: [], totalPages: 0, totalElements: 0 });
-  const [loading,     setLoading]    = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [selectedIds, setSelectedIds]= useState(new Set());
   const [historyCustomerId, setHistoryCustomerId] = useState(null);
 
@@ -418,7 +420,9 @@ export default function AdminCustomers() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-        {loading ? <LoadingSpinner /> : data.content.length === 0 ? <EmptyState icon={Users} title="Không có khách hàng" /> : (
+        {loading ? (
+        <TableSkeleton cols={5} rows={8} />
+      ) : data.content.length === 0 ? <EmptyState icon={Users} title="Không có khách hàng" /> : (
           <>
             {/* Desktop */}
             <div className="hidden lg:block overflow-x-auto">

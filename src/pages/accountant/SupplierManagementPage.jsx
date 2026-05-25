@@ -1,16 +1,18 @@
 // src/pages/accountant/SupplierManagementPage.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
+import useMinLoading from '../../hooks/useMinLoading.js';
 import { Plus, Search, Edit2, Trash2, Building2, Phone, MapPin, Mail, User } from 'lucide-react';
 import { accountantSupplierApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
-import Modal from '../../components/common/Modal';
+import Modal from '../../components/ui/Modal';
 
 const EMPTY_FORM = { name: '', phone: '', address: '', email: '', contactPerson: '', note: '' };
 
 export default function SupplierManagementPage() {
   const toast = useToast();
   const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useMinLoading();
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
