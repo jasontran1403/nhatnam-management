@@ -143,7 +143,15 @@ function ReceiverCard({ receiver, index, isOnly, errors, required, onCopyFromAbo
         </div>
       </div>
       <div>
-        <input type="text" placeholder={required ? "Tên người nhận *" : "Tên người nhận (tuỳ chọn)"}
+        <input type="text" placeholder="Địa chỉ nhận hàng *"
+          value={receiver.receiverAddress}
+          onChange={e => onChange('receiverAddress', e.target.value)}
+          className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
+            ${errors?.receiverAddress ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
+        {errors?.receiverAddress && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverAddress}</p>}
+      </div>
+      <div>
+        <input type="text" placeholder="Tên người nhận (tuỳ chọn)"
           value={receiver.receiverName}
           onChange={e => onChange('receiverName', e.target.value)}
           className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
@@ -151,20 +159,12 @@ function ReceiverCard({ receiver, index, isOnly, errors, required, onCopyFromAbo
         {errors?.receiverName && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverName}</p>}
       </div>
       <div>
-        <input type="text" placeholder={required ? "Số điện thoại *" : "Số điện thoại (tuỳ chọn)"}
+        <input type="text" placeholder="Số điện thoại (tuỳ chọn)"
           value={receiver.receiverPhone}
           onChange={e => onChange('receiverPhone', e.target.value)}
           className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
             ${errors?.receiverPhone ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
         {errors?.receiverPhone && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverPhone}</p>}
-      </div>
-      <div>
-        <input type="text" placeholder={required ? "Địa chỉ nhận hàng *" : "Địa chỉ nhận hàng (tuỳ chọn)"}
-          value={receiver.receiverAddress}
-          onChange={e => onChange('receiverAddress', e.target.value)}
-          className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
-            ${errors?.receiverAddress ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
-        {errors?.receiverAddress && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverAddress}</p>}
       </div>
     </div>
   );
@@ -262,16 +262,16 @@ function PhoneCheckInput({ value, onChange, placeholder, className }) {
 function InlineForm({ form, onChange, onSave, onCancel, saving, phoneError }) {
   return (
     <div className="border border-[#C9A84C]/40 rounded-xl p-3 space-y-2 bg-[#FDF8ED]">
-      <input type="text" placeholder="Tên người nhận *" value={form.receiverName}
-        onChange={e => onChange('receiverName', e.target.value)}
-        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
-      <PhoneCheckInput value={form.receiverPhone} onChange={val => onChange('receiverPhone', val)}
-        placeholder="Số điện thoại *"
-        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
-      {phoneError && <p className="text-[10px] text-red-400 -mt-1">{phoneError}</p>}
       <input type="text" placeholder="Địa chỉ nhận hàng *" value={form.receiverAddress}
         onChange={e => onChange('receiverAddress', e.target.value)}
         className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
+      <input type="text" placeholder="Tên người nhận (tuỳ chọn)" value={form.receiverName}
+        onChange={e => onChange('receiverName', e.target.value)}
+        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
+      <PhoneCheckInput value={form.receiverPhone} onChange={val => onChange('receiverPhone', val)}
+        placeholder="Số điện thoại (tuỳ chọn)"
+        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
+      {phoneError && <p className="text-[10px] text-red-400 -mt-1">{phoneError}</p>}
       <div className="flex gap-2 pt-1">
         <button onClick={onCancel} className="flex-1 py-1.5 rounded-lg border border-[#E8DDD0] text-[#8E8878] text-xs font-medium">Huỷ</button>
         <button onClick={onSave} disabled={saving}
@@ -365,13 +365,11 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     // Validate receiver fields
     const rErrs = receivers.map(() => ({}));
 
-    // Với cả COMPANY và RETAIL: nếu có điền receiver thì phải đủ 3 field
+    // Chỉ địa chỉ là bắt buộc nếu có điền bất kỳ field nào
     receivers.forEach((r, i) => {
         const anyFilled = r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim();
         if (anyFilled) {
-          if (!r.receiverName.trim()) { rErrs[i].receiverName = 'Bắt buộc nếu đã điền'; ok = false; }
-          if (!r.receiverPhone.trim()) { rErrs[i].receiverPhone = 'Bắt buộc nếu đã điền'; ok = false; }
-          if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Bắt buộc nếu đã điền'; ok = false; }
+          if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Địa chỉ là bắt buộc'; ok = false; }
         }
       });
 
@@ -401,10 +399,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     }
     setSaving(true);
     try {
-      // Chỉ gửi receiver đã điền đủ
-      const validReceivers = receivers.filter(r =>
-        r.receiverName.trim() && r.receiverPhone.trim() && r.receiverAddress.trim()
-      );
+      // Chỉ gửi receiver đã điền ít nhất địa chỉ
+      const validReceivers = receivers.filter(r => r.receiverAddress.trim());
 
       const payload = {
         customerType,
@@ -637,22 +633,24 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
   };
 
   const handleAdd = async () => {
-    if (!form.receiverName.trim() || !form.receiverPhone.trim() || !form.receiverAddress.trim()) {
-      toast('Vui lòng điền đầy đủ thông tin người nhận', 'warning');
+    if (!form.receiverAddress.trim()) {
+      toast('Vui lòng nhập địa chỉ nhận hàng', 'warning');
       return;
     }
-    const isDuplicate = await checkPhoneDuplicate(form.receiverPhone);
-    if (isDuplicate) {
-      setPhoneError('SĐT này đã được đăng ký cho người nhận khác trong hệ thống');
-      toast('SĐT người nhận đã tồn tại', 'error');
-      return;
+    if (form.receiverPhone.trim()) {
+      const isDuplicate = await checkPhoneDuplicate(form.receiverPhone);
+      if (isDuplicate) {
+        setPhoneError('SĐT này đã được đăng ký cho người nhận khác trong hệ thống');
+        toast('SĐT người nhận đã tồn tại', 'error');
+        return;
+      }
     }
 
     setSaving(true);
     try {
       const res = await customerApi.addReceiverInfo(customer.id, {
-        receiverName: form.receiverName.trim(),
-        receiverPhone: form.receiverPhone.trim(),
+        receiverName: form.receiverName.trim() || null,
+        receiverPhone: form.receiverPhone.trim() || null,
         receiverAddress: form.receiverAddress.trim(),
       });
       const saved = res.data?.data;
@@ -666,13 +664,13 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
   };
 
   const handleEdit = async (id) => {
-    if (!form.receiverName.trim() || !form.receiverPhone.trim() || !form.receiverAddress.trim()) {
-      toast('Vui lòng điền đầy đủ thông tin', 'warning');
+    if (!form.receiverAddress.trim()) {
+      toast('Vui lòng nhập địa chỉ nhận hàng', 'warning');
       return;
     }
     const currentInfo = receiverInfos.find(r => r.id === id);
-    const phoneChanged = currentInfo?.receiverPhone?.trim() !== form.receiverPhone.trim();
-    if (phoneChanged) {
+    const phoneChanged = (currentInfo?.receiverPhone || '').trim() !== form.receiverPhone.trim();
+    if (phoneChanged && form.receiverPhone.trim()) {
       const isDuplicate = await checkPhoneDuplicate(form.receiverPhone);
       if (isDuplicate) {
         setPhoneError('SĐT này đã được đăng ký cho người nhận khác trong hệ thống');
@@ -683,8 +681,8 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
     setSaving(true);
     try {
       const res = await customerApi.updateReceiverInfo(customer.id, id, {
-        receiverName: form.receiverName.trim(),
-        receiverPhone: form.receiverPhone.trim(),
+        receiverName: form.receiverName.trim() || null,
+        receiverPhone: form.receiverPhone.trim() || null,
         receiverAddress: form.receiverAddress.trim(),
       });
       setReceiverInfos(prev => prev.map(r => r.id === id ? res.data?.data : r));
@@ -784,22 +782,23 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-semibold text-[#1C1C1E] truncate">{r.receiverName}</p>
+                        <p className="text-sm font-semibold text-[#1C1C1E] truncate">
+                          {r.receiverAddress || '—'}
+                        </p>
                         {r.isDefault && (
                           <span className="text-[9px] bg-[#C9A84C]/20 text-[#C9A84C] rounded-full px-1.5 py-0.5 font-semibold shrink-0">
                             Mặc định
                           </span>
                         )}
                       </div>
+                      {r.receiverName && (
+                        <p className="text-[11px] text-[#8E8878] flex items-center gap-1 mt-0.5">
+                          <User size={9} className="shrink-0" />{r.receiverName}
+                        </p>
+                      )}
                       {r.receiverPhone && (
                         <p className="text-[11px] text-[#8E8878] flex items-center gap-1 mt-0.5">
                           <Phone size={9} className="shrink-0" />{r.receiverPhone}
-                        </p>
-                      )}
-                      {r.receiverAddress && (
-                        <p className="text-[11px] text-[#8E8878] flex items-center gap-1 mt-0.5">
-                          <MapPin size={9} className="shrink-0" />
-                          <span className="truncate">{r.receiverAddress}</span>
                         </p>
                       )}
                     </div>

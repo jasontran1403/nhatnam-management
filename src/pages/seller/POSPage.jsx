@@ -141,7 +141,10 @@ function CartPanel({
                 <p className="text-[10px] text-[#8E8878]">{customer.customerCode} · {customer.phone}</p>
                 {customer.selectedReceiver && (
                   <p className="text-[10px] text-[#C9A84C] truncate">
-                    📦 {customer.selectedReceiver.receiverName} · {customer.selectedReceiver.receiverPhone}
+                    📦 {customer.selectedReceiver.receiverAddress || '—'}
+                    {(customer.selectedReceiver.receiverName || customer.selectedReceiver.receiverPhone) && (
+                      <span className="text-[#A08030]"> · {[customer.selectedReceiver.receiverName, customer.selectedReceiver.receiverPhone].filter(Boolean).join(' · ')}</span>
+                    )}
                   </p>
                 )}
               </div>
@@ -495,11 +498,12 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
 
   const [deliveryDate, setDeliveryDate] = useState(defaultDelivery);
   const [orderedBy, setOrderedBy] = useState('');
+  const [recipientName, setRecipientName] = useState('');
   const [showPrices, setShowPrices] = useState(true);
 
   const handleConfirm = () => {
     const ts = deliveryDate ? deliveryDate.getTime() : null;
-    onConfirm(ts, orderedBy.trim() || null, showPrices);
+    onConfirm(ts, orderedBy.trim() || null, showPrices, recipientName.trim() || null);
   };
 
   // Lazy-import DateTimePicker inline to avoid circular issues
@@ -533,6 +537,17 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
             <input type="text" value={orderedBy} onChange={e => setOrderedBy(e.target.value)}
               placeholder="Nhập tên người đặt (nếu có)..."
               className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
+          </div>
+
+          {/* Tên người nhận hàng */}
+          <div>
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+              📦 Tên người nhận hàng
+            </label>
+            <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)}
+              placeholder="Nhập tên người nhận (để trống nếu không có)..."
+              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
+            <p className="text-[10px] text-[#C4B9A8] mt-1">Để trống nếu không cần ghi tên người nhận trên phiếu</p>
           </div>
 
           {/* DateTime picker */}
@@ -1241,7 +1256,7 @@ export default function POSPage() {
   }, [customer, cartItems, toast]);
 
   /** Bước 2: thực sự gọi API tạo đơn sau khi có deliveryDatetime */
-  const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true) => {
+  const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true, recipientName = null) => {
     setDeliveryModalOpen(false);
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
     if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
@@ -1253,7 +1268,7 @@ export default function POSPage() {
         customerName: customer.contactName || customer.name,
         customerPhone: customer.selectedReceiver?.receiverPhone || customer.phone,
         shippingAddress: customer.selectedReceiver?.receiverAddress || '',
-        receiverName: customer.selectedReceiver?.receiverName || customer.contactName || customer.name,
+        receiverName: recipientName !== null ? recipientName : (customer.selectedReceiver?.receiverName || null),
         receiverPhone: customer.selectedReceiver?.receiverPhone || customer.phone,
         receiverAddress: customer.selectedReceiver?.receiverAddress || '',
         notes, paymentMethod,
@@ -1537,7 +1552,7 @@ export default function POSPage() {
       {/* Modal nhập thời gian giao hàng */}
       {deliveryModalOpen && (
         <DeliveryTimeModal
-          onConfirm={(ts, orderedByName, showPrices) => handleSubmit(ts, orderedByName, showPrices)}
+          onConfirm={(ts, orderedByName, showPrices, recipientName) => handleSubmit(ts, orderedByName, showPrices, recipientName)}
           onClose={() => setDeliveryModalOpen(false)}
         />
       )}

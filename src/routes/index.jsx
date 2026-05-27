@@ -105,6 +105,8 @@ export default function AppRoutes() {
         element={<PrivateRoute allowedRoles={['OWNER']}><AppLayout navItems={ownerNav} /></PrivateRoute>}>
         <Route index element={<Navigate to="/owner/dashboard" replace />} />
         <Route path="dashboard"            element={<AdminDashboard />} />
+        <Route path="pos"                  element={<POSPage />} />
+        <Route path="drafts"               element={<DraftOrdersPage />} />
         <Route path="orders"               element={<AdminOrders />} />
         <Route path="customers"            element={<AdminCustomers />} />
         <Route path="users"                element={<AdminUsers />} />

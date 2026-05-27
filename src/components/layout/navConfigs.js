@@ -24,7 +24,9 @@ export const adminNav = [
 
 export const ownerNav = [
   { to: '/owner/dashboard',   label: 'Dashboard',      icon: LayoutDashboard },
-  { to: '/owner/orders',      label: 'Đơn hàng',       icon: ShoppingCart },
+  { to: '/owner/pos',         label: 'Bán hàng',       icon: ShoppingCart },
+  { to: '/owner/drafts',      label: 'Đơn nháp',       icon: FileText },
+  { to: '/owner/orders',      label: 'Đơn hàng',       icon: ClipboardList },
   { to: '/owner/customers',   label: 'Khách hàng',     icon: Users },
   { to: '/owner/users',       label: 'Nhân viên',      icon: UserCog },
   { to: '/owner/employees',   label: 'Nhân sự / Lương',icon: UserCheck },

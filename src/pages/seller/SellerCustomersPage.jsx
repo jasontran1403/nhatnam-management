@@ -1,11 +1,12 @@
 // src/pages/seller/SellerCustomersPage.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import {
   Users, Search, X, RefreshCw, Building2, User as UserIcon,
-  Phone, Mail, Edit2, AlertCircle, Check,
+  Phone, Mail, Edit2, AlertCircle, Check, Upload, Download,
+  FileSpreadsheet, Plus, Trash2,
 } from 'lucide-react';
 
 const inputCls = 'w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]';
@@ -27,9 +28,9 @@ function formatDate(ts) {
 function toCamelCase(str) {
   if (!str) return str;
   const ABBREVS = new Set([
-    'TNHH','MTV','CP','TM','DV','XD','SX','VT','HH',
-    'KD','NN','KHCN','CNTT','IT','VN','DN','BV','TP','HN','HCM',
-    'Q','P','PGD','GD','KT','NV','VP','TW','TG',
+    'TNHH', 'MTV', 'CP', 'TM', 'DV', 'XD', 'SX', 'VT', 'HH',
+    'KD', 'NN', 'KHCN', 'CNTT', 'IT', 'VN', 'DN', 'BV', 'TP', 'HN', 'HCM',
+    'Q', 'P', 'PGD', 'GD', 'KT', 'NV', 'VP', 'TW', 'TG',
   ]);
   return str.split(' ').map(word => {
     if (!word) return word;
@@ -80,19 +81,21 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
         name: toCamelCase(form.name) || null,
         phone: form.phone || null,
         email: form.email || null,
+        taxCode: form.taxCode || null,
         ...(isCompany ? {
           companyName: toCamelCase(form.companyName),
-          taxCode: form.taxCode || null,
           companyPhone: form.companyPhone || null,
           companyAddress: toCamelCase(form.companyAddress),
           contactName: toCamelCase(form.contactName),
-        } : {
-          taxCode: form.taxCode || null,
-        }),
+        } : {}),
       };
-      await api.put(`/api/seller/customers/b2b/${customer.id}`, payload);
+      const res = await api.put(`/api/seller/customers/b2b/${customer.id}`, payload);
+      if (res.data?.code !== 900 && res.data?.code !== 200) {
+        toast(res.data?.message || 'Lỗi khi cập nhật', 'error');
+        return;
+      }
       toast('Cập nhật thành công', 'success');
-      onSaved();
+      onSaved(res.data?.data);
       onClose();
     } catch (e) {
       toast(e?.response?.data?.message || 'Lỗi khi cập nhật', 'error');
@@ -300,9 +303,11 @@ function CustomerRow({ c, onEdit }) {
 
       {/* Created by */}
       <div className="text-right shrink-0 hidden sm:block">
-        {c.createdBySellerName && !c.createdByAdmin && (
+        {c.createdByAdmin ? (
+          <p className="text-[11px] text-sky-500 font-medium">Admin/Owner</p>
+        ) : c.createdBySellerName ? (
           <p className="text-[11px] text-[#8E8878]">{c.createdBySellerName}</p>
-        )}
+        ) : null}
         <p className="text-[10px] text-[#C4B9A8]">{formatDate(c.createdAt)}</p>
       </div>
 
@@ -332,6 +337,9 @@ export default function SellerCustomersPage() {
   const debouncedSearch = useDebounce(search, 400);
 
   const [editTarget, setEditTarget] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [exportingTemplate, setExportingTemplate] = useState(false);
+  const fileInputRef = useRef(null);
 
   const load = useCallback(async (p = 0) => {
     setLoading(true);
@@ -355,10 +363,66 @@ export default function SellerCustomersPage() {
 
   useEffect(() => { load(0); }, [debouncedSearch, typeFilter]);
 
+  const handleDownloadTemplate = async () => {
+    setExportingTemplate(true);
+    try {
+      const res = await api.get('/api/seller/customers/import-template', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'customer-import-template.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('Không thể tải template', 'error');
+    } finally {
+      setExportingTemplate(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await api.get('/api/seller/customers/export', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `customers-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('Không thể xuất danh sách', 'error');
+    }
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/api/seller/customers/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const data = res.data?.data;
+      const msg = data
+        ? `Import thành công: ${data.imported || 0} mới, bỏ qua: ${data.skipped || 0} (trùng mã)`
+        : 'Import thành công';
+      toast(msg, 'success');
+      load(0);
+    } catch (err) {
+      toast(err?.response?.data?.message || 'Lỗi khi import', 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
+      <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportFile} />
       {/* Header */}
       <div className="bg-white border-b border-[#F0EBE3] px-5 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
@@ -373,10 +437,30 @@ export default function SellerCustomersPage() {
               </p>
             </div>
           </div>
-          <button onClick={() => load(page)} disabled={loading}
-            className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* Template */}
+            <button onClick={handleDownloadTemplate} disabled={exportingTemplate}
+              title="Tải template import"
+              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+              <FileSpreadsheet size={15} />
+            </button>
+            {/* Import */}
+            <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+              title="Import từ Excel"
+              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+              {importing ? <div className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                : <Upload size={15} />}
+            </button>
+            {/* Export */}
+            <button onClick={handleExport} title="Xuất danh sách"
+              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+              <Download size={15} />
+            </button>
+            <button onClick={() => load(page)} disabled={loading}
+              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
 
         {/* Search + Filter */}
@@ -414,7 +498,7 @@ export default function SellerCustomersPage() {
 
         {loading ? (
           <div className="space-y-3">
-            {[1,2,3,4,5].map(i => (
+            {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#F0EBE3] animate-pulse shrink-0" />
                 <div className="flex-1 space-y-2">
@@ -462,7 +546,13 @@ export default function SellerCustomersPage() {
         open={!!editTarget}
         customer={editTarget}
         onClose={() => setEditTarget(null)}
-        onSaved={() => load(page)}
+        onSaved={(updated) => {
+          if (updated) {
+            setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
+          } else {
+            load(page);
+          }
+        }}
       />
     </div>
   );
