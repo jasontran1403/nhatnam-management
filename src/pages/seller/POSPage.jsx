@@ -911,55 +911,24 @@ export default function POSPage() {
 
     setCartItems((prev) => {
       const tier = product.priceTiers?.find((t) => t.sortOrder === 0) || product.priceTiers?.[0];
-      // Key phân biệt BOX vs RETAIL của cùng 1 sản phẩm
-      const key = `${product.id}-nv-${tier?.id || 'np'}-${saleType}`;
       const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
       if (stock !== null && stock <= 0) return prev;
 
-      // Giá đơn vị: bán thùng = unitPrice × unitsPerBox, bán lẻ = unitPrice
       const unitPrice = tier?.price ?? product.basePrice ?? 0;
       const effectivePrice = unitsPerBox ? unitPrice * unitsPerBox : unitPrice;
-      // ĐVT hiển thị: thùng = "Thùng", lẻ = unit gốc
       const displayUnit = unitsPerBox ? 'Thùng' : (product.unit || '');
 
-      const existing = prev.find((i) => i.key === key);
       const addQty = (stock !== null && stock < 1)
         ? Math.round(stock * 1000) / 1000
         : 1;
 
-      if (existing) {
-        const step = (stock !== null && stock < 1) ? addQty : 1;
-        const maxQty = stock !== null
-          ? Math.round((stock + existing.quantity) * 1000) / 1000
-          : Infinity;
-        const newQty = Math.min(
-          Math.round((existing.quantity + step) * 1000) / 1000,
-          maxQty
-        );
-        if (newQty <= existing.quantity) return prev;
-
-        if (!existing.isManualPrice && !unitsPerBox) {
-          const allTiers = product.priceTiers || existing.priceTiers || [];
-          const r = resolveTierForQty(allTiers, newQty, existing.basePrice ?? existing.unitPrice);
-          if (r) {
-            // FIX #2b: Nếu item đang là BOX, giữ nguyên unitPrice (đã nhân sẵn unitsPerBox)
-            // chỉ update tier metadata nếu RETAIL
-            if (existing.saleType === 'BOX' && existing.unitsPerBox > 0) {
-              return prev.map(i => i.key === key ? { ...i, quantity: newQty } : i);
-            }
-            return prev.map(i => i.key === key ? {
-              ...i, quantity: newQty,
-              tierId: r.tierId, tierName: r.tierName,
-              unitPrice: r.unitPrice, originalUnitPrice: r.unitPrice,
-            } : i);
-          }
-        }
-        return prev.map(i => i.key === key ? { ...i, quantity: newQty } : i);
-      }
+      // Luôn thêm dòng mới — không gộp với dòng cùng sản phẩm đã có
+      // Mỗi dòng là 1 line item độc lập (hỗ trợ khuyến mãi mua 10 tặng 1 trên cùng SP)
+      const uniqueKey = `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
       return [...prev, {
         id: newCartId(),
-        key,
+        key: uniqueKey,
         productId: product.id,
         productName: product.name,
         variantId: null,

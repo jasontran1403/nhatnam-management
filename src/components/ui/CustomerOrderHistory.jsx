@@ -371,7 +371,7 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
               <table className="w-full text-sm">
                 <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                   <tr>
-                    {['Mã đơn', 'Thời gian', 'Người tạo', 'Tổng tiền', 'Thanh toán', 'Trạng thái', 'Hạn TT'].map(h => (
+                    {['Mã đơn', 'Thời gian', 'Người đặt', 'Tổng tiền', 'Thanh toán', 'Trạng thái', 'Hạn TT'].map(h => (
                       <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
                         {h}
                       </th>

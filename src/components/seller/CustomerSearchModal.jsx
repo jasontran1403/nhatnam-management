@@ -291,6 +291,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     name: '', phone: '', email: '',
     contactName: '',
     companyName: '', taxCode: '', companyPhone: '', companyAddress: '',
+    pricingType: 'RETAIL_PRICE',
   });
   const [receivers, setReceivers] = useState([
     { receiverName: '', receiverPhone: '', receiverAddress: '', isDefault: true }
@@ -349,25 +350,12 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     if (isCompany) {
       // COMPANY bắt buộc: tên công ty, MST, email
       if (!form.companyName.trim()) { errs.companyName = 'Bắt buộc'; ok = false; }
-      if (!form.taxCode.trim()) { errs.taxCode = 'Bắt buộc'; ok = false; }
-      if (!form.email.trim()) { errs.email = 'Bắt buộc'; ok = false; }
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
+      if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
 
-      // COMPANY phải có ít nhất 1 receiver hợp lệ
-      const hasValidReceiver = receivers.some(r =>
-        r.receiverName.trim() && r.receiverPhone.trim() && r.receiverAddress.trim()
-      );
-      if (!hasValidReceiver) {
-        toast('Khách công ty phải có ít nhất 1 địa chỉ giao hàng đầy đủ', 'warning');
-        ok = false;
-      }
+      // Receiver là tuỳ chọn cho cả khách lẻ và công ty
     } else {
       // RETAIL: bắt buộc phải có tên HOẶC SĐT
-      if (!form.name.trim() && !form.phone.trim()) {
-        errs.name = 'Nhập tên hoặc số điện thoại';
-        errs.phone = 'Nhập tên hoặc số điện thoại';
-        ok = false;
-      }
+      // RETAIL: tên và SĐT đều tuỳ chọn — để trống sẽ lưu là "Khách vãng lai"
       // Email optional — chỉ validate format nếu có nhập
       if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
     }
@@ -377,14 +365,13 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     // Validate receiver fields
     const rErrs = receivers.map(() => ({}));
 
-    if (isCompany) {
-      // COMPANY: validate từng receiver đã nhập (phải đủ 3 field)
-      receivers.forEach((r, i) => {
+    // Với cả COMPANY và RETAIL: nếu có điền receiver thì phải đủ 3 field
+    receivers.forEach((r, i) => {
         const anyFilled = r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim();
         if (anyFilled) {
-          if (!r.receiverName.trim()) { rErrs[i].receiverName = 'Bắt buộc'; ok = false; }
-          if (!r.receiverPhone.trim()) { rErrs[i].receiverPhone = 'Bắt buộc'; ok = false; }
-          if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Bắt buộc'; ok = false; }
+          if (!r.receiverName.trim()) { rErrs[i].receiverName = 'Bắt buộc nếu đã điền'; ok = false; }
+          if (!r.receiverPhone.trim()) { rErrs[i].receiverPhone = 'Bắt buộc nếu đã điền'; ok = false; }
+          if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Bắt buộc nếu đã điền'; ok = false; }
         }
       });
 
@@ -401,17 +388,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
           if (anyFilled) { rErrs[i] = { ...rErrs[i], ...dupErrors[fi] }; fi++; }
         });
       }
-    } else {
-      // RETAIL: receiver hoàn toàn optional — nếu có điền thì phải đủ cả 3
-      receivers.forEach((r, i) => {
-        const anyFilled = r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim();
-        if (anyFilled) {
-          if (!r.receiverName.trim()) { rErrs[i].receiverName = 'Bắt buộc nếu đã điền'; ok = false; }
-          if (!r.receiverPhone.trim()) { rErrs[i].receiverPhone = 'Bắt buộc nếu đã điền'; ok = false; }
-          if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Bắt buộc nếu đã điền'; ok = false; }
-        }
-      });
-    }
+
 
     setReceiverErrors(rErrs);
     return ok;
@@ -440,6 +417,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
         taxCode: form.taxCode.trim() || null,
         companyPhone: form.companyPhone.trim() || null,
         companyAddress: form.companyAddress.trim() || null,
+        pricingType: form.pricingType || 'RETAIL_PRICE',
         discountRate: 0,
         receiverInfos: validReceivers.map((r, i) => ({
           receiverName: r.receiverName.trim(),
@@ -469,7 +447,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
       <div className="px-4 py-3 border-b border-[#F0EBE3] shrink-0">
         <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
           {[
-            ['RETAIL', <User size={11} />, 'Khách lẻ'],
+            ['RETAIL', <User size={11} />, 'Cá nhân'],
             ['COMPANY', <Building2 size={11} />, 'Công ty'],
           ].map(([type, icon, label], i) => (
             <button key={type} type="button"
@@ -496,39 +474,79 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
             <Field label="Tên công ty" required error={errors.companyName}
               placeholder="Công ty TNHH ABC"
               value={form.companyName} onChange={e => setField('companyName', e.target.value)} />
-            <Field label="Mã số thuế" required error={errors.taxCode}
-              placeholder="0123456789"
-              value={form.taxCode} onChange={e => setField('taxCode', e.target.value)} />
-            <Field label="Địa chỉ công ty" error={errors.companyAddress}
-              placeholder="123 Nguyễn Văn A, Q.1, TP.HCM"
-              value={form.companyAddress} onChange={e => setField('companyAddress', e.target.value)} />
-            <Field label="Email" required error={errors.email}
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Mã số thuế" error={errors.taxCode}
+                placeholder="0123456789"
+                value={form.taxCode} onChange={e => setField('taxCode', e.target.value)} />
+              <Field label="Địa chỉ công ty" error={errors.companyAddress}
+                placeholder="123 Nguyễn Văn A, Q.1"
+                value={form.companyAddress} onChange={e => setField('companyAddress', e.target.value)} />
+            </div>
+            <Field label="Email" error={errors.email}
               placeholder="contact@company.com" type="email"
               value={form.email} onChange={e => setField('email', e.target.value)} />
-          </>
-        ) : (
+
+            {/* Loại giá */}
+            <div>
+              <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">Loại giá</label>
+              <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+                {[
+                  ['RETAIL_PRICE', 'Bán lẻ (giá gốc)'],
+                  ['WHOLESALE_PRICE', 'Bán sỉ (khung giá)'],
+                ].map(([val, label], i) => (
+                  <button key={val} type="button"
+                    onClick={() => setField('pricingType', val)}
+                    className={`flex-1 py-2 font-medium transition-colors
+                      ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
+                      ${form.pricingType === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>) : (
           <>
             <SectionLabel>Thông tin khách hàng</SectionLabel>
             <Field label="Họ tên" error={errors.name}
-              placeholder="Nguyễn Văn A"
+              placeholder="Nguyễn Văn A (tuỳ chọn)"
               value={form.name} onChange={e => setField('name', e.target.value)} />
             <Field label="Số điện thoại" error={errors.phone}
-              placeholder="0912345678"
+              placeholder="0912345678 (tuỳ chọn)"
               value={form.phone} onChange={e => setField('phone', e.target.value)} />
             <Field label="Email" error={errors.email}
               placeholder="email@example.com" type="email"
               value={form.email} onChange={e => setField('email', e.target.value)} />
+            <Field label="Mã số thuế" error={errors.taxCode}
+              placeholder="0123456789 (tuỳ chọn)"
+              value={form.taxCode} onChange={e => setField('taxCode', e.target.value)} />
+
+            {/* Loại giá */}
+            <div>
+              <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">Loại giá</label>
+              <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+                {[
+                  ['RETAIL_PRICE', 'Bán lẻ (giá gốc)'],
+                  ['WHOLESALE_PRICE', 'Bán sỉ (khung giá)'],
+                ].map(([val, label], i) => (
+                  <button key={val} type="button"
+                    onClick={() => setField('pricingType', val)}
+                    className={`flex-1 py-2 font-medium transition-colors
+                      ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
+                      ${form.pricingType === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </>
         )}
 
         {/* Địa chỉ giao hàng — bắt buộc với COMPANY, tuỳ chọn với RETAIL */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5">
+            {/* Địa chỉ giao hàng — tuỳ chọn cho mọi loại khách */}
             <SectionLabel>Địa chỉ giao hàng</SectionLabel>
-            {isCompany
-              ? <span className="text-[9px] text-red-400 font-bold">* bắt buộc ≥1</span>
-              : <span className="text-[9px] text-[#C4B9A8]">(tuỳ chọn)</span>
-            }
+            <span className="text-[9px] text-[#C4B9A8]">(tuỳ chọn)</span>
           </div>
           <button type="button" onClick={addReceiver}
             className="flex items-center gap-1 text-[#C9A84C] text-[11px] font-semibold hover:text-[#A07830] transition-colors">
@@ -544,7 +562,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
               index={idx}
               isOnly={receivers.length === 1}
               errors={receiverErrors[idx]}
-              required={isCompany}
+              required={false}
               onCopyFromAbove={() => copyFromAbove(idx)}
               onChange={(key, val) => updateReceiver(idx, key, val)}
               onRemove={() => removeReceiver(idx)}
@@ -555,7 +573,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
 
         {!isCompany && (
           <p className="text-[10px] text-[#C4B9A8] italic">
-            💡 Khách lẻ có thể bỏ qua địa chỉ giao hàng nếu mua tại công ty.
+            💡 Khách cá nhân có thể bỏ qua địa chỉ giao hàng nếu mua tại công ty.
           </p>
         )}
       </div>
@@ -718,7 +736,7 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
     onSelectReceiver(chosen || null);
   };
 
-  const canConfirm = !isCompany || receiverInfos.length > 0;
+  const canConfirm = true; // receiver tuỳ chọn cho mọi loại khách
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
@@ -742,7 +760,7 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
                 <p className="text-[#1C1C1E] font-medium">Chưa có thông tin người nhận</p>
                 <p className="text-[13px] text-[#8E8878] mt-1">
                   {isCompany
-                    ? "Khách công ty bắt buộc phải có ít nhất 1 người nhận"
+                    ? "Bạn có thể thêm hoặc xác nhận để tiếp tục"
                     : "Bạn có thể thêm hoặc xác nhận để tiếp tục"}
                 </p>
               </div>
@@ -958,12 +976,12 @@ export default function CustomerSearchModal({ open, onClose, onSelect, selected 
                           ${isLocked ? 'bg-red-50/30 hover:bg-red-50/50 border-l-2 border-red-400' : 'hover:bg-[#FAF8F3]'}`}>
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold
                           ${isLocked ? 'bg-red-100 text-red-400' : c.customerType === 'COMPANY' ? 'bg-blue-100 text-blue-500' : 'bg-[#FDF8ED] text-[#C9A84C]'}`}>
-                          {c.customerType === 'COMPANY' ? <Building2 size={16} /> : (c.contactName || c.name || '?')[0]?.toUpperCase()}
+                          {c.customerType === 'COMPANY' ? <Building2 size={16} /> : (c.contactName || c.name || 'K')[0]?.toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className={`text-sm font-semibold truncate ${isLocked ? 'text-red-500' : 'text-[#1C1C1E]'}`}>
-                              {c.contactName || c.name || c.companyName}
+                              {c.contactName || c.name || c.companyName || 'Khách vãng lai'}
                             </p>
                             {isLocked && (
                               <span className="text-[9px] bg-red-100 text-red-500 border border-red-200 rounded-full px-1.5 py-0.5 font-semibold shrink-0 whitespace-nowrap">

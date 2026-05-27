@@ -637,7 +637,7 @@ export default function AccountantOrdersPage() {
                   <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                     <tr>
                       <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.size===orders.length&&orders.length>0} onChange={e=>setSelectedIds(e.target.checked?new Set(orders.map(o=>o.id)):new Set())}/></th>
-                      {['Mã đơn','Thời gian','Khách hàng','Kho','Trạng thái','PT Thanh toán','Tổng tiền / Đã thu','Người tạo','Chứng từ','Hoá đơn','Thao tác'].map(h=>(
+                      {['Mã đơn','Thời gian','Khách hàng','Kho','Trạng thái','PT Thanh toán','Tổng tiền / Đã thu','Người đặt','Chứng từ','Hoá đơn','Thao tác'].map(h=>(
                         <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>

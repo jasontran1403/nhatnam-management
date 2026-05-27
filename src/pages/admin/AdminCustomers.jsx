@@ -383,8 +383,8 @@ export default function AdminCustomers() {
             onChange={e => { setFilters({ ...filters, type: e.target.value }); setPage(0); }}
             className={`${inputCls} sm:w-40`}>
             <option value="">Tất cả loại</option>
-            <option value="COMPANY">Doanh nghiệp</option>
-            <option value="RETAIL">Khách lẻ</option>
+            <option value="COMPANY">Công ty</option>
+            <option value="RETAIL">Cá nhân</option>
           </select>
           <select value={filters.isActive}
             onChange={e => { setFilters({ ...filters, isActive: e.target.value }); setPage(0); }}
@@ -482,7 +482,7 @@ export default function AdminCustomers() {
                         <td className="px-4 py-3"><p className="text-[#1C1C1E]">{c.phone}</p></td>
                         <td className="px-4 py-3">
                           <Badge className={isCompany ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}>
-                            {isCompany ? 'Doanh nghiệp' : 'Khách lẻ'}
+                            {isCompany ? 'Công ty' : 'Cá nhân'}
                           </Badge>
                           {c.pricingType === 'WHOLESALE_PRICE'
                             ? <Badge className="bg-purple-50 text-purple-700 ring-purple-200 mt-0.5">Sỉ</Badge>
@@ -751,8 +751,8 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         <div className="grid grid-cols-2 gap-2">
           <Field label="Loại khách hàng">
             <select value={form.customerType} onChange={e => set('customerType', e.target.value)} className={inputCls}>
-              <option value="RETAIL">Cá nhân / Lẻ</option>
-              <option value="COMPANY">Doanh nghiệp</option>
+              <option value="RETAIL">Cá nhân</option>
+              <option value="COMPANY">Công ty</option>
             </select>
           </Field>
           <Field label="Loại giá áp dụng">
@@ -770,7 +770,7 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
               <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} placeholder="Công ty TNHH..." />
             </Field>
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Mã số thuế">
+              <Field label="Mã số thuế (tuỳ chọn)">
                 <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
               </Field>
               <Field label="Người liên hệ">
@@ -802,6 +802,9 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
                 <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="email@..." />
               </Field>
             </div>
+            <Field label="Mã số thuế (tuỳ chọn)">
+              <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
+            </Field>
           </>
         )}
 

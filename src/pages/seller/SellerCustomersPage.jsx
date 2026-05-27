@@ -1,25 +1,18 @@
 // src/pages/seller/SellerCustomersPage.jsx
-// Quản lý khách hàng cho SELLER và SUPER_SELLER
-// SELLER: thấy khách lẻ (mọi người) + khách COMPANY được assign cho mình + khách admin tạo
-// SUPER_SELLER: thấy tất cả
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import {
   Users, Search, X, RefreshCw, Building2, User as UserIcon,
-  Phone, Mail, MapPin, Edit2, ChevronDown, ChevronUp,
-  Filter, Plus, Check, AlertCircle,
+  Phone, Mail, Edit2, AlertCircle, Check,
 } from 'lucide-react';
 
 const inputCls = 'w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]';
 
 function useDebounce(val, ms) {
   const [deb, setDeb] = useState(val);
-  useEffect(() => {
-    const t = setTimeout(() => setDeb(val), ms);
-    return () => clearTimeout(t);
-  }, [val, ms]);
+  useEffect(() => { const t = setTimeout(() => setDeb(val), ms); return () => clearTimeout(t); }, [val, ms]);
   return deb;
 }
 
@@ -28,16 +21,39 @@ function formatDate(ts) {
   return new Date(ts).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+// ─── Camel case helper ────────────────────────────────────────────────────────
+// Giữ nguyên các từ viết tắt toàn chữ hoa (TNHH, MTV, VN, ABC...)
+// Chuyển các từ thường thành Title Case
+function toCamelCase(str) {
+  if (!str) return str;
+  const ABBREVS = new Set([
+    'TNHH','MTV','CP','TM','DV','XD','SX','VT','HH',
+    'KD','NN','KHCN','CNTT','IT','VN','DN','BV','TP','HN','HCM',
+    'Q','P','PGD','GD','KT','NV','VP','TW','TG',
+  ]);
+  return str.split(' ').map(word => {
+    if (!word) return word;
+    const upper = word.toUpperCase();
+    // Nếu là chữ viết tắt đã biết → giữ nguyên chữ hoa
+    if (ABBREVS.has(upper)) return upper;
+    // Nếu toàn bộ là chữ hoa và dài > 3 ký tự → title case
+    if (word === word.toUpperCase() && word.length > 0) {
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }
+    return word;
+  }).join(' ');
+}
+
 // ─── Edit Customer Modal ──────────────────────────────────────────────────────
 function EditCustomerModal({ open, customer, onClose, onSaved }) {
   const toast = useToast();
-  const isCompany = customer?.customerType === 'COMPANY';
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open || !customer) return;
     setForm({
+      customerType: customer.customerType || 'RETAIL',
       name: customer.name || '',
       phone: customer.phone || '',
       email: customer.email || '',
@@ -46,29 +62,33 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
       companyPhone: customer.companyPhone || '',
       companyAddress: customer.companyAddress || '',
       contactName: customer.contactName || '',
-      discountRate: customer.discountRate ?? 0,
+      pricingType: customer.pricingType || 'RETAIL_PRICE',
     });
   }, [open, customer]);
 
   if (!open || !customer) return null;
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const isCompany = form.customerType === 'COMPANY';
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const payload = {
-        name: form.name || null,
+        customerType: form.customerType,
+        pricingType: form.pricingType,
+        name: toCamelCase(form.name) || null,
         phone: form.phone || null,
         email: form.email || null,
-        discountRate: Number(form.discountRate) || 0,
         ...(isCompany ? {
-          companyName: form.companyName,
-          taxCode: form.taxCode,
-          companyPhone: form.companyPhone,
-          companyAddress: form.companyAddress,
-          contactName: form.contactName,
-        } : {}),
+          companyName: toCamelCase(form.companyName),
+          taxCode: form.taxCode || null,
+          companyPhone: form.companyPhone || null,
+          companyAddress: toCamelCase(form.companyAddress),
+          contactName: toCamelCase(form.contactName),
+        } : {
+          taxCode: form.taxCode || null,
+        }),
       };
       await api.put(`/api/seller/customers/b2b/${customer.id}`, payload);
       toast('Cập nhật thành công', 'success');
@@ -84,10 +104,14 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+
+        {/* Header */}
         <div className="px-5 py-4 border-b border-[#F0EBE3] flex items-center justify-between shrink-0">
           <div>
             <h3 className="font-bold text-[#1C1C1E] text-base">Sửa thông tin khách hàng</h3>
-            <p className="text-xs text-[#8E8878] mt-0.5">{isCompany ? 'Khách doanh nghiệp' : 'Khách lẻ / cá nhân'}</p>
+            <p className="text-xs text-[#8E8878] mt-0.5">
+              {isCompany ? 'Khách công ty' : 'Khách cá nhân'}
+            </p>
           </div>
           <button onClick={onClose} className="text-[#8E8878] hover:text-red-400 transition-colors">
             <X size={18} />
@@ -95,55 +119,113 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {isCompany ? (<>
-            <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Tên công ty</label>
-              <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} placeholder="Công ty TNHH..." />
+
+          {/* Loại khách — toggle Cá nhân / Công ty */}
+          <div>
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Loại khách hàng</label>
+            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+              {[
+                ['RETAIL', <UserIcon size={11} />, 'Cá nhân'],
+                ['COMPANY', <Building2 size={11} />, 'Công ty'],
+              ].map(([val, icon, label], i) => (
+                <button key={val} type="button" onClick={() => set('customerType', val)}
+                  className={`flex-1 py-2 font-medium transition-colors flex items-center justify-center gap-1.5
+                    ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
+                    ${form.customerType === val ? 'bg-[#1A2744] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                  {icon}{label}
+                </button>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+          </div>
+
+          {/* Fields theo loại khách */}
+          {isCompany ? (
+            <>
+              <div>
+                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">
+                  Tên công ty <span className="text-red-400">*</span>
+                </label>
+                <input value={form.companyName} onChange={e => set('companyName', e.target.value)}
+                  className={inputCls} placeholder="Công ty TNHH ABC" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Mã số thuế</label>
+                  <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)}
+                    className={inputCls} placeholder="0123456789 (tuỳ chọn)" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Người liên hệ</label>
+                  <input value={form.contactName} onChange={e => set('contactName', e.target.value)}
+                    className={inputCls} placeholder="Nguyễn Văn A" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">SĐT công ty</label>
+                  <input value={form.companyPhone} onChange={e => set('companyPhone', e.target.value)}
+                    className={inputCls} placeholder="0901..." />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Email</label>
+                  <input value={form.email} onChange={e => set('email', e.target.value)}
+                    className={inputCls} placeholder="info@... (tuỳ chọn)" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Địa chỉ</label>
+                <input value={form.companyAddress} onChange={e => set('companyAddress', e.target.value)}
+                  className={inputCls} placeholder="123 Nguyễn Văn A, Q.1" />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Họ tên</label>
+                <input value={form.name} onChange={e => set('name', e.target.value)}
+                  className={inputCls} placeholder="Nguyễn Văn A" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Số điện thoại</label>
+                  <input value={form.phone} onChange={e => set('phone', e.target.value)}
+                    className={inputCls} placeholder="0901..." />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Email</label>
+                  <input value={form.email} onChange={e => set('email', e.target.value)}
+                    className={inputCls} placeholder="email@... (tuỳ chọn)" />
+                </div>
+              </div>
               <div>
                 <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Mã số thuế</label>
-                <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} />
+                <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)}
+                  className={inputCls} placeholder="0123456789 (tuỳ chọn)" />
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Người liên hệ</label>
-                <input value={form.contactName} onChange={e => set('contactName', e.target.value)} className={inputCls} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">SĐT công ty</label>
-                <input value={form.companyPhone} onChange={e => set('companyPhone', e.target.value)} className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Email</label>
-                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Địa chỉ</label>
-              <input value={form.companyAddress} onChange={e => set('companyAddress', e.target.value)} className={inputCls} />
-            </div>
-          </>) : (<>
-            <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Họ tên</label>
-              <input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Số điện thoại</label>
-                <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Email</label>
-                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} />
-              </div>
-            </div>
-          </>)}
+            </>
+          )}
+
+          {/* Loại giá — toggle ở dưới cùng form */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Chiết khấu (%)</label>
-            <input type="number" min={0} max={100} value={form.discountRate} onChange={e => set('discountRate', e.target.value)} className={inputCls} />
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Loại giá</label>
+            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+              {[
+                ['RETAIL_PRICE', 'Bán lẻ (giá gốc)'],
+                ['WHOLESALE_PRICE', 'Bán sỉ (khung giá)'],
+              ].map(([val, label], i) => (
+                <button key={val} type="button" onClick={() => set('pricingType', val)}
+                  className={`flex-1 py-2 font-medium transition-colors
+                    ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
+                    ${form.pricingType === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <p className="text-[10px] text-[#B0A090] bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#C9A84C]/15">
+            💡 Tên nhập IN HOA sẽ tự động chuyển thành chữ thường đúng chuẩn khi lưu.
+          </p>
         </div>
 
         <div className="px-5 pb-5 pt-3 border-t border-[#F0EBE3] flex gap-2 shrink-0">
@@ -153,7 +235,9 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
           </button>
           <button onClick={handleSave} disabled={saving}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-colors flex items-center justify-center gap-2">
-            {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
+            {saving
+              ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <Check size={14} />}
             Lưu thay đổi
           </button>
         </div>
@@ -178,14 +262,16 @@ function CustomerRow({ c, onEdit }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-semibold text-sm text-[#1C1C1E] truncate">
-            {isCompany ? (c.companyName || c.name) : (c.name || c.contactName || '—')}
+            {isCompany
+              ? (c.companyName || c.name || '—')
+              : (c.name || c.contactName || <span className="text-[#C4B9A8] italic font-normal">Khách vãng lai</span>)}
           </p>
           {/* Badges */}
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${isCompany ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-            {isCompany ? 'DN' : 'Lẻ'}
+            {isCompany ? 'Cty' : 'CN'}
           </span>
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${isWholesale ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
-            {isWholesale ? 'Sỉ' : 'Lẻ giá'}
+            {isWholesale ? 'Giá Sỉ' : 'Giá Lẻ'}
           </span>
           {c.createdByAdmin && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100">Admin</span>
@@ -309,8 +395,8 @@ export default function SellerCustomersPage() {
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
             className="rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm text-[#5C4E3D] focus:outline-none focus:border-[#C9A84C] bg-white">
             <option value="">Tất cả</option>
-            <option value="RETAIL">Khách lẻ</option>
-            <option value="COMPANY">Doanh nghiệp</option>
+            <option value="RETAIL">Cá nhân</option>
+            <option value="COMPANY">Công ty</option>
           </select>
         </div>
       </div>
@@ -321,7 +407,7 @@ export default function SellerCustomersPage() {
           <div className="mb-4 px-4 py-3 bg-sky-50 rounded-xl border border-sky-100 flex items-start gap-2">
             <AlertCircle size={14} className="text-sky-500 mt-0.5 shrink-0" />
             <p className="text-xs text-sky-700">
-              Hiển thị: khách lẻ (tất cả), khách doanh nghiệp được gán cho bạn, và khách do admin tạo.
+              Hiển thị: khách cá nhân (tất cả), khách công ty được gán cho bạn, và khách do admin tạo.
             </p>
           </div>
         )}
