@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Trash2, Pencil, Percent, Check } from 'lucide-react';
+import { Trash2, Pencil, Percent, Check, Gift } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -21,20 +21,25 @@ function allowDecimal(unit, saleType) {
   return DECIMAL_UNITS.includes((unit || '').toLowerCase().trim());
 }
 
-export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, onDiscountChange }) {
+export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, onDiscountChange, onPromoToggle }) {
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceDisplay, setPriceDisplay] = useState('');
   const [editingQty, setEditingQty] = useState(false);
   const [qtyDisplay, setQtyDisplay] = useState('');
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountInput, setDiscountInput] = useState('');
+  const [showPromoNote, setShowPromoNote] = useState(false);
+  const [promoNoteInput, setPromoNoteInput] = useState('');
   const inputRef = useRef(null);
   const qtyInputRef = useRef(null);
   const discountInputRef = useRef(null);
+  const promoNoteRef = useRef(null);
 
   const isPriceOverridden = item.isManualPrice === true;
   const itemDiscountPct   = item.itemDiscountRate ?? 0;
   const maxDiscount       = item.maxDiscountRate  ?? 0;
+  const isPromo           = item.isPromo === true;
+  const promoNote         = item.promoNote || '';
 
   // Giá hiển thị = giá tier gross (có VAT, chưa CK)
   const displayUnitPrice = item.unitPrice;
@@ -96,6 +101,27 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
     setShowDiscount(false);
   };
 
+  // ── Promo (Khuyến mãi) ────────────────────────────────────────────
+  const openPromoNote = () => {
+    setPromoNoteInput(promoNote);
+    setShowPromoNote(true);
+    setTimeout(() => { promoNoteRef.current?.focus(); }, 30);
+  };
+  const commitPromoNote = (note) => {
+    if (onPromoToggle) onPromoToggle(item.id, true, note ?? promoNoteInput);
+    setShowPromoNote(false);
+  };
+  const togglePromo = () => {
+    if (isPromo) {
+      // Tắt KM → khôi phục giá gốc
+      if (onPromoToggle) onPromoToggle(item.id, false, '');
+      setShowPromoNote(false);
+    } else {
+      // Bật KM → mở ô nhập note
+      openPromoNote();
+    }
+  };
+
   const imgUrl = item.imageUrl
     ? item.imageUrl.startsWith('http') ? item.imageUrl : `${BASE_URL}/api/auth${item.imageUrl}`
     : null;
@@ -142,7 +168,11 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
           <div className="flex flex-col">
             {/* Giá tier gốc — luôn hiển thị, không bị trừ CK */}
             {/* Giá hiển thị = giá tier (gross, có VAT) */}
-            {editingPrice ? (
+            {isPromo ? (
+              <span className="text-xs font-bold text-rose-500 flex items-center gap-1">
+                <Gift size={10} className="text-rose-400" /> 0 đ
+              </span>
+            ) : editingPrice ? (
               <div className="flex items-center gap-1">
                 <input
                   ref={inputRef}
@@ -166,24 +196,37 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
             )}
           </div>
 
-          {/* Discount badge */}
-          {hasDiscount ? (
-            <button onClick={openDiscount}
-              className="ml-auto flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                bg-orange-100 text-orange-600 border border-orange-200 font-semibold
-                hover:bg-orange-200 transition-colors flex-shrink-0">
-              <Percent size={8} />
-              -{itemDiscountPct}%
+          {/* Discount badge + Promo button */}
+          <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+            {/* Nút CK — ẩn khi đang là KM */}
+            {!isPromo && (hasDiscount ? (
+              <button onClick={openDiscount}
+                className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
+                  bg-orange-100 text-orange-600 border border-orange-200 font-semibold
+                  hover:bg-orange-200 transition-colors">
+                <Percent size={8} />
+                -{itemDiscountPct}%
+              </button>
+            ) : (
+              <button onClick={openDiscount}
+                className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
+                  bg-[#F5F0E8] text-[#C4B9A8] border border-[#E8DDD0]
+                  hover:bg-[#EDE8DF] hover:text-[#8E8878] transition-colors">
+                <Percent size={8} />
+                CK
+              </button>
+            ))}
+            {/* Nút KM */}
+            <button onClick={togglePromo}
+              className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
+                font-semibold border transition-colors
+                ${isPromo
+                  ? 'bg-rose-100 text-rose-600 border-rose-300 hover:bg-rose-200'
+                  : 'bg-[#F5F0E8] text-[#C4B9A8] border-[#E8DDD0] hover:bg-rose-50 hover:text-rose-400 hover:border-rose-200'}`}>
+              <Gift size={8} />
+              KM
             </button>
-          ) : (
-            <button onClick={openDiscount}
-              className="ml-auto flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                bg-[#F5F0E8] text-[#C4B9A8] border border-[#E8DDD0]
-                hover:bg-[#EDE8DF] hover:text-[#8E8878] transition-colors flex-shrink-0">
-              <Percent size={8} />
-              CK
-            </button>
-          )}
+          </div>
         </div>
 
         {/* Discount panel */}
@@ -221,10 +264,43 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
           </div>
         )}
 
-        {/* Subtotal = giá tier × qty (gross) */}
-        <p className="text-[10px] text-[#8E8878] mt-0.5">
-          = {formatPrice(lineTotal)}
-        </p>
+        {/* Promo note panel */}
+        {showPromoNote && (
+          <div className="mt-1.5 flex items-center gap-1.5 bg-rose-50 rounded-lg px-2 py-1.5 border border-rose-200">
+            <input
+              ref={promoNoteRef}
+              type="text"
+              value={promoNoteInput}
+              onChange={e => setPromoNoteInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitPromoNote();
+                if (e.key === 'Escape') setShowPromoNote(false);
+              }}
+              placeholder="Ghi chú KM (vd: Trả km tháng 4)..."
+              className="flex-1 text-[10px] border border-rose-200 rounded-lg px-2 py-1
+                focus:outline-none focus:border-rose-400 bg-white text-[#1C1C1E]"
+            />
+            <button onClick={() => commitPromoNote()}
+              className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center
+                hover:bg-rose-600 transition-colors flex-shrink-0">
+              <Check size={10} />
+            </button>
+          </div>
+        )}
+        {/* Promo note display */}
+        {isPromo && promoNote && !showPromoNote && (
+          <button onClick={openPromoNote}
+            className="mt-0.5 text-[9px] text-rose-500 italic truncate max-w-full text-left hover:text-rose-700">
+            📌 {promoNote}
+          </button>
+        )}
+
+        {/* Subtotal = giá tier × qty (gross) — ẩn khi KM */}
+        {!isPromo && (
+          <p className="text-[10px] text-[#8E8878] mt-0.5">
+            = {formatPrice(lineTotal)}
+          </p>
+        )}
       </div>
 
       {/* Qty + delete */}

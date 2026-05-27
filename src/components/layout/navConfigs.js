@@ -42,8 +42,10 @@ export const hrNav = [
 ];
 
 export const sellerNav = [
-  { to: '/seller/pos',    label: 'Bán hàng', icon: ShoppingCart },
-  { to: '/seller/orders', label: 'Đơn hàng', icon: ClipboardList },
+  { to: '/seller/pos',       label: 'Bán hàng',    icon: ShoppingCart },
+  { to: '/seller/orders',    label: 'Đơn hàng',    icon: ClipboardList },
+  { to: '/seller/drafts',    label: 'Đơn nháp',    icon: FileText },
+  { to: '/seller/customers', label: 'Khách hàng',  icon: Users },
 ];
 
 export const warehouseNav = [

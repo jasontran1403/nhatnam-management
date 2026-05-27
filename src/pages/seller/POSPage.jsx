@@ -1,13 +1,15 @@
 // src/pages/seller/POSPage.jsx
 // FIX #6: Real-time cart hold — giữ slot số lượng nguyên liệu khi thêm vào giỏ
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Search, UserPlus, UserCheck, ShoppingBag, Trash2,
   ChevronDown, X, Receipt, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle,
+  FileText, Save,
 } from 'lucide-react';
-import { productApi, categoryApi, orderApi, warehouseApi } from '../../api/services';
+import { productApi, categoryApi, orderApi, warehouseApi, draftApi } from '../../api/services';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -82,14 +84,15 @@ function VatBreakdownDisplay({ breakdown, infoOnly }) {
 function CartPanel({
   cartItems, customer, notes, paymentMethod, discount, surchargeDisplay,
   surcharge, subtotal, discountAmt, surchargeNum, vatBreakdown, exclusiveVatTotal,
-  itemDiscountTotal, totalDiscount,
+  itemDiscountTotal, totalDiscount, promoTotal,
   total, submitting, priceChangedIds,
   selectedWarehouse,
   discountFixedAmt, discountFixedDisplay, maxDiscountFixed,
   onDiscountFixedOpen, onDiscountFixedChange, onDiscountFixedClear,
   onOpenCustomerModal, onClearCustomer, onClearCart, onNotesChange,
   onPaymentChange, onDiscountChange, onSurchargeChange, onUpdateQty,
-  onRemoveItem, onPriceOverride, onItemDiscountChange, onSubmit,
+  onRemoveItem, onPriceOverride, onItemDiscountChange, onPromoToggle, onSubmit,
+  onSaveDraft, savingDraft,
 }) {
   return (
     <div className="flex flex-col h-full bg-white">
@@ -178,6 +181,7 @@ function CartPanel({
                   onRemove={onRemoveItem}
                   onPriceOverride={onPriceOverride}
                   onDiscountChange={onItemDiscountChange}
+                  onPromoToggle={onPromoToggle}
                 />
               </div>
             );
@@ -267,11 +271,11 @@ function CartPanel({
             <span>Tạm tính</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
-          {(itemDiscountTotal > 0 || discountAmt > 0) && (
+          {(itemDiscountTotal > 0 || discountAmt > 0 || promoTotal > 0) && (
             <div>
               <div className="flex justify-between text-xs text-emerald-600">
                 <span>Giảm</span>
-                <span>-{formatPrice(itemDiscountTotal + discountAmt)}</span>
+                <span>-{formatPrice(itemDiscountTotal + discountAmt + promoTotal)}</span>
               </div>
               <div className="pl-3 mt-0.5 space-y-0.5">
                 {itemDiscountTotal > 0 && (
@@ -286,6 +290,12 @@ function CartPanel({
                       {discountFixedAmt !== null ? '• Giảm trực tiếp' : `• Giảm bill (${discount}%)`}
                     </span>
                     <span className="text-[10px] text-emerald-600">-{formatPrice(discountAmt)}</span>
+                  </div>
+                )}
+                {promoTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-rose-500">• Khuyến mãi</span>
+                    <span className="text-[10px] text-rose-500">-{formatPrice(promoTotal)}</span>
                   </div>
                 )}
               </div>
@@ -307,6 +317,20 @@ function CartPanel({
             <span className="text-[#C9A84C]">{formatPrice(total)}</span>
           </div>
         </div>
+
+        {/* Nút lưu nháp */}
+        {cartItems.length > 0 && (
+          <button
+            onClick={onSaveDraft}
+            disabled={savingDraft || submitting}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2
+              border-2 border-[#C9A84C] text-[#C9A84C] hover:bg-[#FDF8ED] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mb-2"
+          >
+            {savingDraft
+              ? <><div className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" /> Đang lưu...</>
+              : <><Save size={14} /> Lưu nháp</>}
+          </button>
+        )}
 
         <button
           onClick={onSubmit}
@@ -461,84 +485,84 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DeliveryTimeModal — Nhập thời gian giao hàng trước khi tạo đơn
+// ─────────────────────────────────────────────────────────────────────────────
+// DeliveryTimeModal — Nhập thời gian giao hàng + tên người đặt trước khi tạo đơn
 // ─────────────────────────────────────────────────────────────────────────────
 function DeliveryTimeModal({ onConfirm, onClose }) {
-  const now = new Date();
-  // Default: làm tròn lên giờ chẵn tiếp theo + 1h
   const defaultDelivery = (() => {
-    const d = new Date(now);
-    d.setSeconds(0, 0);
-    if (now.getMinutes() > 0 || now.getSeconds() > 0) {
-      d.setMinutes(0);
-      d.setHours(d.getHours() + 1);
-    }
-    d.setHours(d.getHours() + 1);
-    return d;
+    const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
   })();
 
-  const pad = (n) => String(n).padStart(2, '0');
-
-  const toInputDatetime = (d) => {
-    const yyyy = d.getFullYear();
-    const mo = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const mm = pad(d.getMinutes());
-    return `${yyyy}-${mo}-${dd}T${hh}:${mm}`;
-  };
-
-  const [value, setValue] = useState(toInputDatetime(defaultDelivery));
-
-  const handleDefault = () => {
-    setValue(toInputDatetime(now));
-  };
+  const [deliveryDate, setDeliveryDate] = useState(defaultDelivery);
+  const [orderedBy, setOrderedBy] = useState('');
+  const [showPrices, setShowPrices] = useState(true);
 
   const handleConfirm = () => {
-    if (!value) return;
-    const ts = new Date(value).getTime();
-    onConfirm(ts);
+    const ts = deliveryDate ? deliveryDate.getTime() : null;
+    onConfirm(ts, orderedBy.trim() || null, showPrices);
   };
+
+  // Lazy-import DateTimePicker inline to avoid circular issues
+  const [DTPicker, setDTPicker] = useState(null);
+  useEffect(() => {
+    import('../../components/ui/DateTimePicker').then(m => setDTPicker(() => m.default));
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn overflow-hidden">
+
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
           <div>
-            <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xác nhận đơn hàng</p>
-            <h3 className="font-bold text-[#1C1C1E] text-base">Thời gian giao hàng</h3>
+            <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Xác nhận đơn hàng</p>
+            <h3 className="text-white font-bold text-base mt-0.5">Thông tin giao hàng</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
-            <X size={17} />
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+            <X size={15} />
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-4">
+        <div className="px-5 py-4 space-y-4">
+          {/* Tên người đặt hàng */}
           <div>
-            <label className="block text-xs font-semibold text-[#8E8878] mb-2">
-              🕐 Chọn ngày &amp; giờ giao hàng
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+              👤 Tên người đặt hàng
             </label>
-            <input
-              type="datetime-local"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-3 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors"
-            />
+            <input type="text" value={orderedBy} onChange={e => setOrderedBy(e.target.value)}
+              placeholder="Nhập tên người đặt (nếu có)..."
+              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
           </div>
 
-          <button
-            onClick={handleDefault}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-[#C9A84C] text-[#C9A84C] text-sm font-semibold hover:bg-[#C9A84C]/5 transition-colors"
-          >
-            ⚡ Mặc định (giao ngay — khách đến lấy)
-          </button>
-
-          <p className="text-[10px] text-[#8E8878] text-center">
-            Nút &quot;Mặc định&quot; dùng cho đơn khách đến mua tại cửa hàng/kho hàng.
-          </p>
+          {/* DateTime picker */}
+          <div>
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+              🕐 Ngày & giờ giao hàng
+            </label>
+            {DTPicker
+              ? <DTPicker value={deliveryDate} onChange={setDeliveryDate} minDate={new Date()} placeholder="Chọn ngày & giờ giao hàng" />
+              : <div className="h-11 rounded-xl border-2 border-[#E8DDD0] animate-pulse bg-[#FAFAF8]" />
+            }
+          </div>
         </div>
 
+        {/* Hiển thị chi tiết giá */}
+        <div className="px-5 pb-1">
+          <label className="flex items-center gap-2 cursor-pointer select-none group">
+            <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0
+              ${showPrices ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}
+              onClick={() => setShowPrices(p => !p)}>
+              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform
+                ${showPrices ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </div>
+            <span className="text-xs font-semibold text-[#1C1C1E]">
+              Hiển thị giá trên phiếu đặt hàng
+            </span>
+          </label>
+        </div>
+
+        {/* Footer */}
         <div className="px-5 pb-5 flex gap-3">
           <button
             onClick={onClose}
@@ -548,8 +572,10 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!value}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            disabled={!deliveryDate}
+            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold
+              hover:bg-[#b8963d] disabled:opacity-40 disabled:cursor-not-allowed
+              transition-colors flex items-center justify-center gap-2"
           >
             <Receipt size={15} /> Tạo đơn hàng
           </button>
@@ -563,6 +589,8 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
 export default function POSPage() {
   const toast = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -593,6 +621,9 @@ export default function POSPage() {
   const [priceChangedIds, setPriceChangedIds] = useState(new Set());
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState(null); // ID draft đang xử lý (để lưu đè)
+  const [holdExpiresAt, setHoldExpiresAt] = useState(null);   // Timestamp hết hạn hold tồn kho
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
 
@@ -610,8 +641,42 @@ export default function POSPage() {
     setSurcharge(0);
     setSurchargeDisplay('');
     setPriceChangedIds(new Set());
-    toast('Giỏ hàng đã hết hạn (3 phút không thanh toán). Vui lòng đặt lại.', 'warning');
-  }, [toast]);
+    setHoldExpiresAt(null);
+    // Nếu đang xử lý draft → về trang draft
+    if (currentDraftId) {
+      toast('Giỏ hàng đã hết hạn. Đơn nháp vẫn được lưu.', 'warning');
+      navigate('/seller/drafts');
+    } else {
+      toast('Giỏ hàng đã hết hạn (3 phút không thanh toán). Vui lòng đặt lại.', 'warning');
+    }
+  }, [toast, currentDraftId, navigate]);
+
+  // Hold countdown expiry (10 phút khi chuyển từ draft) → release + về drafts
+  useEffect(() => {
+    if (!holdExpiresAt) return;
+    const left = holdExpiresAt - Date.now();
+    if (left <= 0) {
+      cartHoldApi.release().catch(() => {});
+      setHoldExpiresAt(null);
+      toast('Hết giờ giữ tồn kho. Đơn nháp vẫn được lưu.', 'warning');
+      navigate('/seller/drafts');
+      return;
+    }
+    const id = setTimeout(async () => {
+      await cartHoldApi.release().catch(() => {});
+      setHoldExpiresAt(null);
+      setCartItems([]);
+      setCustomer(null);
+      setNotes('');
+      setDiscount(0);
+      setSurcharge(0);
+      setSurchargeDisplay('');
+      toast('Hết giờ giữ tồn kho (10 phút). Đơn nháp vẫn được lưu.', 'warning');
+      navigate('/seller/drafts');
+    }, left);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdExpiresAt]);
 
   // heldByAll: { [ingredientId]: totalHeldQty } — nhận realtime từ WS
   // Bao gồm cả hold của chính mình (server trả về tổng)
@@ -689,6 +754,73 @@ export default function POSPage() {
         if (list.length > 0) setSelectedWarehouse(list[0]);
       })
       .catch(() => toast('Không thể tải danh sách kho', 'error'));
+  }, []);
+
+  // ─── Load draft từ navigation state (khi chuyển từ trang đơn nháp) ──────
+  useEffect(() => {
+    const draft = location.state?.draft;
+    const fromDraftHold = location.state?.fromDraftHold;
+    const expiresAt = location.state?.expiresAt;
+    if (!draft) return;
+
+    // Đặt lại giỏ hàng từ draft
+    if (draft.items?.length > 0) {
+      const items = draft.items.map((i) => ({
+        id: ++cartIdCounter,
+        productId: i.productId,
+        productName: i.productName,
+        productImageUrl: i.productImageUrl,
+        variantId: i.variantId,
+        unit: i.unit,
+        quantity: Number(i.quantity),
+        unitPrice: Number(i.unitPrice),
+        basePrice: Number(i.basePrice || i.unitPrice),
+        priceMode: i.priceMode || 'BASE',
+        tierId: i.tierId,
+        tierName: i.tierName,
+        discountPercent: i.discountPercent,
+        isManualPrice: i.isManualPrice,
+        saleType: i.saleType || 'RETAIL',
+        unitsPerBox: i.unitsPerBox,
+        isPromo: i.isPromo,
+        promoNote: i.promoNote,
+        itemDiscountRate: i.itemDiscountRate || 0,
+        notes: i.notes,
+        subtotal: Number(i.subtotal || 0),
+        tiers: [],
+      }));
+      setCartItems(items);
+    }
+
+    // Đặt lại khách hàng
+    if (draft.customerId) {
+      setCustomer({
+        id: draft.customerId,
+        name: draft.customerName,
+        phone: draft.customerPhone,
+        email: draft.customerEmail,
+        contactName: draft.customerName,
+        customerCode: '',
+      });
+    }
+
+    if (draft.notes) setNotes(draft.notes);
+    if (draft.paymentMethod) setPaymentMethod(draft.paymentMethod);
+    if (draft.discountRate) setDiscount(draft.discountRate);
+    if (draft.discountAmount) {
+      setDiscountFixedAmt(Number(draft.discountAmount));
+      setDiscountFixedDisplay(new Intl.NumberFormat('vi-VN').format(Number(draft.discountAmount)));
+    }
+    if (draft.surcharge) setSurcharge(Number(draft.surcharge));
+
+    // Nếu đến từ hold → set countdown và chọn đúng warehouse
+    if (fromDraftHold && expiresAt) {
+      setHoldExpiresAt(expiresAt);
+    }
+
+    toast('Đã tải đơn nháp vào giỏ hàng', 'success');
+    setCurrentDraftId(draft.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Max discount = 10% subtotalAfterItemDiscount (tính tại thời điểm gọi)
@@ -914,6 +1046,29 @@ export default function POSPage() {
     }));
   }, []);
 
+  const togglePromo = useCallback((cartId, enable, note) => {
+    setCartItems((prev) => prev.map((i) => {
+      if (i.id !== cartId) return i;
+      if (enable) {
+        return {
+          ...i,
+          isPromo: true,
+          promoNote: note || '',
+          // Lưu giá gốc để khôi phục khi tắt KM
+          _priceBeforePromo: i._priceBeforePromo ?? i.unitPrice,
+        };
+      } else {
+        return {
+          ...i,
+          isPromo: false,
+          promoNote: '',
+          unitPrice: i._priceBeforePromo ?? i.unitPrice,
+          _priceBeforePromo: undefined,
+        };
+      }
+    }));
+  }, []);
+
   const removeItem = useCallback((cartId) => {
     setCartItems((prev) => {
       const item = prev.find(i => i.id === cartId);
@@ -937,10 +1092,22 @@ export default function POSPage() {
     cartHoldApi.release().catch(() => {});
   }, []);
 
-  const subtotal = cartItems.reduce((s, i) =>
-    s + Number(i.unitPrice) * Number(i.quantity), 0);
+  // Tổng thành tiền các món KM (giá = 0, nhưng cần tách ra để hiển thị "giảm KM")
+  const promoTotal = cartItems.reduce((s, i) => {
+    if (!i.isPromo) return s;
+    // Dùng _priceBeforePromo nếu có, không thì unitPrice hiện tại (đã là 0 khi KM bật)
+    const origPrice = Number(i._priceBeforePromo ?? i.unitPrice);
+    return s + origPrice * Number(i.quantity);
+  }, 0);
+
+  // Tạm tính = chỉ tính các món KHÔNG phải KM
+  const subtotal = cartItems.reduce((s, i) => {
+    if (i.isPromo) return s;
+    return s + Number(i.unitPrice) * Number(i.quantity);
+  }, 0);
 
   const itemDiscountTotal = cartItems.reduce((s, i) => {
+    if (i.isPromo) return s;
     const d = i.itemDiscountRate ?? 0;
     if (!d) return s;
     return s + Number(i.unitPrice) * (d / 100) * Number(i.quantity);
@@ -952,9 +1119,10 @@ export default function POSPage() {
   const discountAmt = discountFixedAmt !== null
     ? Math.min(discountFixedAmt, maxDiscountFixed)   // giảm tiền: capped at 10%
     : Math.round(subtotalAfterItemDiscount * discount / 100);  // giảm %
-  const totalDiscount = itemDiscountTotal + discountAmt;
+  // Tổng giảm = CK món + giảm bill + KM
+  const totalDiscount = itemDiscountTotal + discountAmt + promoTotal;
   const surchargeNum = Number(surcharge) || 0;
-  const total = subtotal - totalDiscount + surchargeNum;
+  const total = subtotal - itemDiscountTotal - discountAmt + surchargeNum;
 
   const vatBreakdown = useMemo(() => {
     const map = {};
@@ -1022,6 +1190,80 @@ export default function POSPage() {
     );
   }, [fetchProducts, toast]);
 
+  /** Lưu đơn nháp — không hold tồn kho */
+  const handleSaveDraft = useCallback(async () => {
+    if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
+    setSavingDraft(true);
+    try {
+      const payload = {
+        customerId: customer?.id || null,
+        customerName: customer?.contactName || customer?.name || null,
+        customerPhone: customer?.selectedReceiver?.receiverPhone || customer?.phone || null,
+        customerEmail: customer?.email || null,
+        shippingAddress: customer?.selectedReceiver?.receiverAddress || null,
+        notes,
+        paymentMethod,
+        discountRate: discountFixedAmt ? 0 : discount,
+        discountAmount: discountFixedAmt ? Math.min(discountFixedAmt, maxDiscountFixed) : null,
+        surcharge: surchargeNum,
+        warehouseId: selectedWarehouse?.id || null,
+        warehouseName: selectedWarehouse?.name || null,
+        receiverName: customer?.selectedReceiver?.receiverName || null,
+        receiverPhone: customer?.selectedReceiver?.receiverPhone || null,
+        receiverAddress: customer?.selectedReceiver?.receiverAddress || null,
+        receiverInfoId: customer?.selectedReceiver?.id || null,
+        items: cartItems.map(i => {
+          // Tính subtotal tại đây để chắc chắn đúng
+          const itemSubtotal = Number(i.unitPrice) * Number(i.quantity);
+          return {
+            productId: i.productId,
+            productName: i.productName,
+            productImageUrl: i.productImageUrl,
+            variantId: i.variantId,
+            unit: i.unit,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            basePrice: i.basePrice,
+            priceMode: i.priceMode || 'BASE',
+            tierId: i.isPromo ? null : i.tierId,
+            tierName: i.tierName,
+            discountPercent: i.discountPercent,
+            isManualPrice: i.isManualPrice,
+            saleType: i.saleType || 'RETAIL',
+            unitsPerBox: i.unitsPerBox,
+            isPromo: i.isPromo,
+            promoNote: i.promoNote,
+            itemDiscountRate: i.itemDiscountRate || 0,
+            notes: i.notes,
+            subtotal: itemSubtotal,
+          };
+        }),
+      };
+
+      // Release cart hold trước khi lưu nháp
+      await cartHoldApi.release().catch(() => {});
+
+      if (currentDraftId) {
+        // Lưu đè draft đang xử lý: xóa draft cũ rồi tạo lại với cùng data
+        // (API chỉ có POST, nên xóa + tạo mới — hoặc dùng PUT nếu backend hỗ trợ)
+        await draftApi.delete(currentDraftId).catch(() => {});
+      }
+
+      const res = await draftApi.save(payload);
+      const newDraftId = res?.data?.data?.id || res?.data?.id;
+      setCurrentDraftId(newDraftId || null);
+
+      toast('Đã lưu đơn nháp thành công', 'success');
+      clearCart();
+      setCurrentDraftId(null);
+    } catch (err) {
+      toast(err?.response?.data?.message || 'Lỗi khi lưu đơn nháp', 'error');
+    } finally {
+      setSavingDraft(false);
+    }
+  }, [cartItems, customer, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed,
+      surchargeNum, selectedWarehouse, clearCart, toast, currentDraftId]);
+
   /** Bước 1: validate & mở modal nhập thời gian giao hàng */
   const handleOpenDeliveryModal = useCallback(() => {
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
@@ -1030,7 +1272,7 @@ export default function POSPage() {
   }, [customer, cartItems, toast]);
 
   /** Bước 2: thực sự gọi API tạo đơn sau khi có deliveryDatetime */
-  const handleSubmit = useCallback(async (deliveryDatetime) => {
+  const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true) => {
     setDeliveryModalOpen(false);
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
     if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
@@ -1051,17 +1293,24 @@ export default function POSPage() {
         surcharge: surchargeNum,
         warehouseId: selectedWarehouse?.id,
         deliveryDatetime: deliveryDatetime ?? null,
+        orderedByName: orderedByName || undefined,
+        showPrices: showPrices,
         items: cartItems.map((i) => ({
           productId: i.productId,
-          tierId: i.tierId,
+          tierId: i.isPromo ? undefined : i.tierId,
           quantity: i.quantity,
-          sentUnitPrice: (i.saleType === 'BOX' && i.unitsPerBox > 0)
-            ? i.unitPrice / i.unitsPerBox
-            : i.unitPrice,
-          priceMode: (i.itemDiscountRate > 0) ? 'DISCOUNT_PERCENT' : 'TIER',
-          discountPercent: i.itemDiscountRate > 0 ? i.itemDiscountRate : undefined,
-          isManualPrice: i.isManualPrice === true,
+          sentUnitPrice: i.isPromo ? 0 : (
+            (i.saleType === 'BOX' && i.unitsPerBox > 0)
+              ? i.unitPrice / i.unitsPerBox
+              : i.unitPrice
+          ),
+          priceMode: i.isPromo ? 'BASE' : ((i.itemDiscountRate > 0) ? 'DISCOUNT_PERCENT' : 'TIER'),
+          discountPercent: (!i.isPromo && i.itemDiscountRate > 0) ? i.itemDiscountRate : undefined,
+          isManualPrice: i.isPromo ? true : (i.isManualPrice === true),
           saleType: i.saleType || 'RETAIL',
+          notes: i.isPromo
+            ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}`
+            : (i.notes || undefined),
         })),
       };
 
@@ -1101,7 +1350,7 @@ export default function POSPage() {
   const cartPanelProps = {
     cartItems, customer, notes, paymentMethod, discount,
     surchargeDisplay, surcharge, subtotal, discountAmt, surchargeNum,
-    vatBreakdown, exclusiveVatTotal, itemDiscountTotal, totalDiscount,
+    vatBreakdown, exclusiveVatTotal, itemDiscountTotal, totalDiscount, promoTotal,
     total, submitting, priceChangedIds,
     selectedWarehouse,
     maxDiscountFixed,
@@ -1128,12 +1377,39 @@ export default function POSPage() {
         return { ...i, itemDiscountRate: Math.max(0, Math.min(100, capped)) };
       }));
     },
+    onPromoToggle: togglePromo,
     onSubmit: handleOpenDeliveryModal,
+    onSaveDraft: handleSaveDraft,
+    savingDraft,
   };
+
+  // Countdown display for hold timer
+  const holdCountdown = (() => {
+    if (!holdExpiresAt) return null;
+    const left = Math.max(0, holdExpiresAt - Date.now());
+    const m = Math.floor(left / 60000);
+    const s = Math.floor((left % 60000) / 1000);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  })();
 
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-[#FAF7F2]">
 
+      {/* Hold countdown banner */}
+      {holdExpiresAt && (
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm font-semibold">
+          <span>⏱ Tồn kho được giữ: {holdCountdown}</span>
+          <button onClick={async () => { await cartHoldApi.release().catch(()=>{}); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
+            className="text-white/80 hover:text-white underline text-xs">Hủy</button>
+        </div>
+      )}
+      {holdExpiresAt && (
+        <div className="hidden lg:flex fixed top-0 left-1/2 -translate-x-1/2 z-30 bg-amber-500 text-white px-6 py-2 rounded-b-xl items-center gap-4 text-sm font-semibold shadow-lg">
+          <span>⏱ Tồn kho được giữ trong: {holdCountdown}</span>
+          <button onClick={async () => { await cartHoldApi.release().catch(()=>{}); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
+            className="text-white border border-white/40 rounded-lg px-2 py-0.5 text-xs hover:bg-white/10 transition-colors">Hủy giữ kho</button>
+        </div>
+      )}
       <div className="lg:hidden flex-shrink-0">
         <button
           onClick={() => setMobileCartOpen(!mobileCartOpen)}
@@ -1292,7 +1568,7 @@ export default function POSPage() {
       {/* Modal nhập thời gian giao hàng */}
       {deliveryModalOpen && (
         <DeliveryTimeModal
-          onConfirm={(ts) => handleSubmit(ts)}
+          onConfirm={(ts, orderedByName, showPrices) => handleSubmit(ts, orderedByName, showPrices)}
           onClose={() => setDeliveryModalOpen(false)}
         />
       )}

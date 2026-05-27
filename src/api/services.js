@@ -102,6 +102,18 @@ export const orderApi = {
     api.patch(`/api/seller/orders/${orderId}/pending-payment`),
   cancelOrder: (id, reason) =>
     api.patch(`/api/seller/orders/${id}/cancel`, { reason }),
+  // Sửa đơn hàng đang PREPARING
+  updateOrderItems: (id, data) =>
+    api.put(`/api/seller/orders/${id}/items`, data),
+};
+
+// ─── Draft Order API ──────────────────────────────────────────────────────────
+export const draftApi = {
+  save: (data) => api.post('/api/seller/drafts', data),
+  getAll: () => api.get('/api/seller/drafts'),
+  getById: (id) => api.get(`/api/seller/drafts/${id}`),
+  delete: (id) => api.delete(`/api/seller/drafts/${id}`),
+  checkStock: (id) => api.get(`/api/seller/drafts/${id}/stock-check`),
 };
 
 // ─── Inventory ───────────────────────────────────────────────────────────────

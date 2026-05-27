@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
-import { accountantApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
+import { accountantApi, orderApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
@@ -22,8 +22,9 @@ import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
   ChevronDown, DollarSign, X, AlertCircle, Calendar,
-  Download, FileText, List, Ban,
+  Download, FileText, List, Ban, Edit2,
 } from 'lucide-react';
+import EditOrderModal from '../../components/seller/EditOrderModal';
 
 const CANCELLABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERING']);
 
@@ -216,8 +217,8 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   );
 }
 
-// ── StatusActionButtons — THÊM onCancel ───────────────────────────────────────
-function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPayment, onCancel, loading }) {
+// ── StatusActionButtons — THÊM onCancel + onEdit ──────────────────────────────
+function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPayment, onCancel, onEdit, loading }) {
   const { status, paymentMethod } = order;
   const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
   if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
@@ -226,11 +227,13 @@ function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPay
   const canComplete = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
   const canPartial = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
   const canCancel = CANCELLABLE_STATUSES.has(status);
+  const canEdit = status === 'PREPARING';
 
-  if (!canPendingPayment && !canComplete && !canPartial && !canCancel) return null;
+  if (!canPendingPayment && !canComplete && !canPartial && !canCancel && !canEdit) return null;
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
+      {canEdit && <button onClick={e => { e.stopPropagation(); onEdit?.(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-indigo-400 !border-t-indigo-600" /> : <><Edit2 size={10} /> Sửa đơn</>}</button>}
       {canPendingPayment && <button onClick={e => { e.stopPropagation(); onPendingPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-orange-400 !border-t-orange-600" /> : <><CreditCard size={10} /> Chờ TT</>}</button>}
       {canPartial && <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-blue-400 !border-t-blue-600" /> : <><DollarSign size={10} /> Thu tiền</>}</button>}
       {canComplete && <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-emerald-400 !border-t-emerald-600" /> : <><CheckCircle size={10} /> Hoàn thành</>}</button>}
@@ -274,6 +277,7 @@ export default function OrdersPage() {
 
   // ── THÊM ─────────────────────────────────────────────────────────────────
   const [cancelTarget, setCancelTarget] = useState(null); const [cancelLoading, setCancelLoading] = useMinLoading();
+  const [editTarget, setEditTarget] = useState(null);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -284,7 +288,8 @@ export default function OrdersPage() {
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
       if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
-      const res = await accountantApi.getOrders(params);
+      // SELLER chỉ lấy đơn của chính mình
+      const res = await orderApi.getMyOrders(params);
       let content = res.data?.data?.content || [];
       if (search.trim()) { const q = search.toLowerCase(); content = content.filter(o => o.orderCode?.toLowerCase().includes(q) || o.customerName?.toLowerCase().includes(q) || o.customerPhone?.includes(q)); }
       setOrders(content); setTotal(res.data?.data?.totalItems || 0); setPage(p);
@@ -477,6 +482,7 @@ export default function OrdersPage() {
                                 onComplete={() => handleComplete(o.id)}
                                 onPartialPayment={() => setPartialOrder(o)}
                                 onCancel={() => setCancelTarget(o)}
+                                onEdit={() => setEditTarget(o)}
                                 loading={isActioning} />
                             </td>
                           </tr>
@@ -510,6 +516,7 @@ export default function OrdersPage() {
                             onComplete={() => handleComplete(o.id)}
                             onPartialPayment={() => setPartialOrder(o)}
                             onCancel={() => setCancelTarget(o)}
+                            onEdit={() => setEditTarget(o)}
                             loading={isActioning} />
                         </div>
                       </div>
@@ -567,6 +574,17 @@ export default function OrdersPage() {
           loading={cancelLoading}
         />
       )}
+
+      {/* THÊM: Modal sửa đơn hàng PREPARING */}
+      <EditOrderModal
+        open={!!editTarget}
+        order={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => {
+          setEditTarget(null);
+          fetchOrders();
+        }}
+      />
     </div>
   );
 }

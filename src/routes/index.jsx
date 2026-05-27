@@ -37,6 +37,8 @@ import HrSalaryStatusPage from '../pages/hr/HrSalaryStatusPage';
 // Seller
 import POSPage from '../pages/seller/POSPage';
 import OrdersPage from '../pages/seller/OrdersPage';
+import DraftOrdersPage from '../pages/seller/DraftOrdersPage';
+import SellerCustomersPage from '../pages/seller/SellerCustomersPage';
 import AccountantOrdersPage from '../pages/accountant/AccountantOrdersPage';
 
 // Warehouse
@@ -93,6 +95,8 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="/seller/pos" replace />} />
         <Route path="pos"           element={<POSPage />} />
         <Route path="orders"        element={<OrdersPage />} />
+        <Route path="drafts"        element={<DraftOrdersPage />} />
+        <Route path="customers"     element={<SellerCustomersPage />} />
         <Route path="orders-manage" element={<AccountantOrdersPage />} />
       </Route>
 

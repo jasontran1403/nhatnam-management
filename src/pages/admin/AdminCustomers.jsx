@@ -257,6 +257,10 @@ export default function AdminCustomers() {
   const [debtDaysTarget, setDebtDaysTarget] = useState(null);
   const [debtDaysValue,  setDebtDaysValue]  = useState(0);
 
+  // Tạo / sửa khách hàng (admin)
+  const [createOpen,    setCreateOpen]   = useState(false);
+  const [editCustomer,  setEditCustomer] = useState(null);
+
   const [assignOpen,   setAssignOpen]   = useState(false);
   const [assignTarget, setAssignTarget] = useState(null);
 
@@ -342,8 +346,12 @@ export default function AdminCustomers() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <div className="flex items-center justify-between">
         <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
-        {/* FIX #3: Import / Export Khách hàng */}
+        {/* Buttons: Tạo khách hàng + Import/Export */}
         <div className="flex items-center gap-2">
+          <PrimaryButton onClick={() => { setEditCustomer(null); setCreateOpen(true); }}
+            className="flex items-center gap-1.5 text-xs px-3 py-2">
+            <UserPlus size={13} /> Tạo khách hàng
+          </PrimaryButton>
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
@@ -476,6 +484,13 @@ export default function AdminCustomers() {
                           <Badge className={isCompany ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}>
                             {isCompany ? 'Doanh nghiệp' : 'Khách lẻ'}
                           </Badge>
+                          {c.pricingType === 'WHOLESALE_PRICE'
+                            ? <Badge className="bg-purple-50 text-purple-700 ring-purple-200 mt-0.5">Sỉ</Badge>
+                            : <Badge className="bg-green-50 text-green-700 ring-green-200 mt-0.5">Lẻ</Badge>
+                          }
+                          {c.createdByAdmin && (
+                            <Badge className="bg-sky-50 text-sky-700 ring-sky-200 mt-0.5">Admin</Badge>
+                          )}
                         </td>
                         {/* FIX #9: Cột NV KD — khách lẻ bỏ trống, công ty hiển thị hoặc "Chưa có" */}
                         <td className="px-4 py-3">
@@ -634,6 +649,175 @@ export default function AdminCustomers() {
           }
         </p>
       </Modal>
+
+      {/* Modal tạo / sửa khách hàng */}
+      <CreateEditCustomerModal
+        open={createOpen}
+        customer={editCustomer}
+        onClose={() => { setCreateOpen(false); setEditCustomer(null); }}
+        onSaved={() => { setCreateOpen(false); setEditCustomer(null); load(); }}
+      />
     </div>
+  );
+}
+
+// ─── Create / Edit Customer Modal ────────────────────────────────────────────
+function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
+  const isEdit = !!customer;
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', customerType: 'RETAIL',
+    pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
+    companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    if (customer) {
+      setForm({
+        name: customer.name || '',
+        phone: customer.phone || '',
+        email: customer.email || '',
+        customerType: customer.customerType || 'RETAIL',
+        pricingType: customer.pricingType || 'RETAIL_PRICE',
+        discountRate: customer.discountRate || 0,
+        debtDays: customer.debtDays || 0,
+        companyName: customer.companyName || '',
+        taxCode: customer.taxCode || '',
+        companyPhone: customer.companyPhone || '',
+        companyAddress: customer.companyAddress || '',
+        contactName: customer.contactName || '',
+      });
+    } else {
+      setForm({
+        name: '', phone: '', email: '', customerType: 'RETAIL',
+        pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
+        companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
+      });
+    }
+  }, [open, customer]);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const isCompany = form.customerType === 'COMPANY';
+
+  const handleSave = async () => {
+    if (!form.name.trim() && !form.companyName.trim()) {
+      alert('Vui lòng nhập tên khách hàng hoặc tên công ty'); return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name || null,
+        phone: form.phone || null,
+        email: form.email || null,        // nullable
+        customerType: form.customerType,
+        pricingType: form.pricingType,
+        discountRate: Number(form.discountRate) || 0,
+        debtDays: Number(form.debtDays) || 0,
+        companyName: isCompany ? form.companyName : null,
+        taxCode: isCompany ? form.taxCode : null,
+        companyPhone: isCompany ? form.companyPhone : null,
+        companyAddress: isCompany ? form.companyAddress : null,
+        contactName: isCompany ? form.contactName : null,
+      };
+      if (isEdit) {
+        await adminCustomerApi.update(customer.id, payload);
+      } else {
+        await adminCustomerApi.create(payload);
+      }
+      onSaved();
+    } catch (e) {
+      alert(e?.response?.data?.message || e.message || 'Lỗi lưu khách hàng');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose}
+      title={isEdit ? 'Sửa thông tin khách hàng' : 'Tạo khách hàng mới'}
+      size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
+          <PrimaryButton onClick={handleSave} loading={saving}>
+            {isEdit ? 'Lưu thay đổi' : 'Tạo khách hàng'}
+          </PrimaryButton>
+        </div>
+      }>
+      <div className="space-y-4">
+
+        {/* Loại khách */}
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Loại khách hàng">
+            <select value={form.customerType} onChange={e => set('customerType', e.target.value)} className={inputCls}>
+              <option value="RETAIL">Cá nhân / Lẻ</option>
+              <option value="COMPANY">Doanh nghiệp</option>
+            </select>
+          </Field>
+          <Field label="Loại giá áp dụng">
+            <select value={form.pricingType} onChange={e => set('pricingType', e.target.value)} className={inputCls}>
+              <option value="RETAIL_PRICE">Bán lẻ (giá gốc)</option>
+              <option value="WHOLESALE_PRICE">Bán sỉ (khung giá)</option>
+            </select>
+          </Field>
+        </div>
+
+        {/* Thông tin cơ bản */}
+        {isCompany ? (
+          <>
+            <Field label="Tên công ty" required>
+              <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} placeholder="Công ty TNHH..." />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Mã số thuế">
+                <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
+              </Field>
+              <Field label="Người liên hệ">
+                <input value={form.contactName} onChange={e => set('contactName', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="SĐT công ty">
+                <input value={form.companyPhone} onChange={e => set('companyPhone', e.target.value)} className={inputCls} placeholder="0901..." />
+              </Field>
+              <Field label="Email (tuỳ chọn)">
+                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="info@..." />
+              </Field>
+            </div>
+            <Field label="Địa chỉ công ty">
+              <input value={form.companyAddress} onChange={e => set('companyAddress', e.target.value)} className={inputCls} placeholder="123 đường..." />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Họ tên" required>
+              <input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Số điện thoại">
+                <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls} placeholder="0901..." />
+              </Field>
+              <Field label="Email (tuỳ chọn)">
+                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="email@..." />
+              </Field>
+            </div>
+          </>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Chiết khấu (%)">
+            <input type="number" min={0} max={100} value={form.discountRate} onChange={e => set('discountRate', e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Công nợ (ngày)">
+            <input type="number" min={0} max={365} value={form.debtDays} onChange={e => set('debtDays', e.target.value)} className={inputCls} />
+          </Field>
+        </div>
+
+        <p className="text-xs text-[#8E8878] bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#C9A84C]/20">
+          💡 Khách do admin/owner tạo: ai cũng có thể tạo đơn, KPI tính chung cho toàn phòng SALE.
+        </p>
+      </div>
+    </Modal>
   );
 }
