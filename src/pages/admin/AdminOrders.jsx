@@ -380,7 +380,7 @@ function OrderDetail({ order }) {
           <Line label="Seller" value={<SellerBadge name={order.fullName || order.userName} />} />
           <Line label="Kho" value={order.warehouseName || '—'} />
           <Line label="Địa chỉ nhận" value={order.shippingAddress || order.deliveryAddress || '—'} />
-          <Line label="Người đặt" value={order.orderedByName || '—'} />
+          <Line label="Người đặt hàng" value={order.orderedByName || '—'} />
           <Line label="Ngày tạo" value={formatDateTime(order.createdAt)} />
           <Line label="Cập nhật" value={formatDateTime(order.updatedAt)} />
         </InfoBlock>

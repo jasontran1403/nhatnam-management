@@ -37,12 +37,12 @@ function formatDate(ts) {
   if (diffMin < 1) return 'Vừa xong';
   if (diffMin < 60) return `${diffMin} phút trước`;
   if (diffH < 24) return `${diffH} giờ trước`;
-  return d.toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
-const pad = (n) => String(n).padStart(2,'0');
+const pad = (n) => String(n).padStart(2, '0');
 const toInputDatetime = (d) => {
-  const yyyy = d.getFullYear(), mo = pad(d.getMonth()+1), dd = pad(d.getDate()),
-        hh = pad(d.getHours()), mm = pad(d.getMinutes());
+  const yyyy = d.getFullYear(), mo = pad(d.getMonth() + 1), dd = pad(d.getDate()),
+    hh = pad(d.getHours()), mm = pad(d.getMinutes());
   return `${yyyy}-${mo}-${dd}T${hh}:${mm}`;
 };
 
@@ -124,15 +124,11 @@ function WarningModal({ open, type, items, onClose }) {
 
 // ─── Order info modal (with customer select) ──────────────────────────────────
 function OrderInfoModal({ open, draft, onClose, onConfirm }) {
-  const now = new Date();
-  const defaultDelivery = (() => {
-    const d = new Date(now); d.setSeconds(0,0); d.setHours(d.getHours()+1); d.setMinutes(0); return d;
-  })();
-
   const [deliveryDate, setDeliveryDate] = useState(() => {
-    const d = new Date(); d.setHours(d.getHours()+1, 0, 0, 0); return d;
+    const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
   });
   const [orderedBy, setOrderedBy] = useState('');
+  const [receiverName, setReceiverName] = useState(''); // ← THÊM
   const [showPrices, setShowPrices] = useState(true);
   const [customer, setCustomer] = useState(null);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
@@ -140,9 +136,10 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
   useEffect(() => {
     if (!open) return;
     setOrderedBy(draft?.orderedByName || '');
+    setReceiverName(draft?.receiverName || ''); // ← THÊM
     setDeliveryDate(draft?.deliveryDatetime
       ? new Date(draft.deliveryDatetime)
-      : (() => { const d = new Date(); d.setHours(d.getHours()+1, 0, 0, 0); return d; })());
+      : (() => { const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d; })());
     if (draft?.customerId) {
       setCustomer({ id: draft.customerId, name: draft.customerName, phone: draft.customerPhone, contactName: draft.customerName });
     } else {
@@ -154,7 +151,7 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
 
   const handleConfirm = () => {
     const ts = deliveryDate ? deliveryDate.getTime() : null;
-    onConfirm(ts, orderedBy.trim() || null, showPrices, customer);
+    onConfirm(ts, orderedBy.trim() || null, showPrices, customer, receiverName.trim() || null); // ← THÊM receiverName
   };
 
   return (
@@ -193,6 +190,7 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
               )}
             </div>
 
+            {/* Người đặt hàng */}
             <div>
               <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">✍️ Tên người đặt hàng</label>
               <input type="text" value={orderedBy} onChange={e => setOrderedBy(e.target.value)}
@@ -200,6 +198,15 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
                 className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
             </div>
 
+            {/* ── THÊM: Người nhận hàng ── */}
+            <div>
+              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">📦 Người nhận hàng</label>
+              <input type="text" value={receiverName} onChange={e => setReceiverName(e.target.value)}
+                placeholder="Nhập tên người nhận (nếu khác người đặt)..."
+                className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
+            </div>
+
+            {/* Ngày giờ giao hàng */}
             <div>
               <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">🕐 Ngày & giờ giao hàng</label>
               <DateTimePicker
@@ -210,6 +217,7 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
               />
             </div>
 
+            {/* Toggle hiện giá */}
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <div onClick={() => setShowPrices(v => !v)}
                 className={`w-9 h-5 rounded-full relative flex-shrink-0 transition-colors ${showPrices ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}>
@@ -296,13 +304,29 @@ function DraftRow({ draft, onDelete, onContinue, onOrder, processingId, ordering
 
         {/* Khách hàng */}
         <td className="px-4 py-3">
-          <div className="flex items-center gap-1.5">
-            <User size={13} className={hasCustomer ? 'text-[#C9A84C]' : 'text-[#C4B9A8]'} />
-            <span className={`text-sm truncate max-w-[140px] ${hasCustomer ? 'font-semibold text-[#1C1C1E]' : 'text-[#C4B9A8] italic text-xs'}`}>
-              {hasCustomer ? draft.customerName : 'Chưa chọn'}
-            </span>
-          </div>
-          {draft.customerPhone && <p className="text-[11px] text-[#8E8878] ml-5">{draft.customerPhone}</p>}
+          {draft.customerId ? (
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <User size={13} className="text-[#C9A84C] shrink-0" />
+                <span className="text-xs font-bold text-[#C9A84C] font-mono">
+                  {draft.customerCode || `#${draft.customerId}`}
+                </span>
+              </div>
+              {draft.customerName && (
+                <p className="text-xs font-semibold text-[#1C1C1E] ml-5 truncate max-w-[140px]">
+                  {draft.customerName}
+                </p>
+              )}
+              {draft.customerPhone && (
+                <p className="text-[11px] text-[#8E8878] ml-5">{draft.customerPhone}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <User size={13} className="text-[#C4B9A8]" />
+              <span className="text-[#C4B9A8] italic text-xs">Chưa chọn</span>
+            </div>
+          )}
         </td>
 
         {/* Kho */}
@@ -362,7 +386,7 @@ function DraftRow({ draft, onDelete, onContinue, onOrder, processingId, ordering
                     : <div className="w-7 h-7 rounded-lg bg-[#F0EBE3] shrink-0" />}
                   <span className="flex-1 font-medium truncate">{item.productName}</span>
                   <span className="text-[#8E8878]">SL: {item.quantity} {item.unit}</span>
-                  <span className="text-[#8E8878]">{new Intl.NumberFormat('vi-VN').format(Math.round(item.unitPrice||0))} đ/{item.unit}</span>
+                  <span className="text-[#8E8878]">{new Intl.NumberFormat('vi-VN').format(Math.round(item.unitPrice || 0))} đ/{item.unit}</span>
                   <span className="font-bold text-[#1C1C1E]">{formatPrice(item.subtotal)}</span>
                 </div>
               ))}
@@ -426,7 +450,7 @@ export default function DraftOrdersPage() {
   }, []);
 
   useEffect(() => {
-    return () => { try { wsRef.current?.disconnect?.(); } catch (_) {} };
+    return () => { try { wsRef.current?.disconnect?.(); } catch (_) { } };
   }, []);
 
   const handleDelete = async (draftId) => {
@@ -503,11 +527,11 @@ export default function DraftOrdersPage() {
     if (needsInfo || !draft.customerId) {
       setOrderInfoModal({ open: true, draft });
     } else {
-      await submitOrder(draft, draft.deliveryDatetime, draft.orderedByName, draft.showPrices ?? true, null);
+      await submitOrder(draft, draft.deliveryDatetime, draft.orderedByName, draft.showPrices ?? true, null, draft.receiverName || null);
     }
   };
 
-  const submitOrder = async (draft, deliveryDatetime, orderedByName, showPrices, selectedCustomer) => {
+  const submitOrder = async (draft, deliveryDatetime, orderedByName, showPrices, selectedCustomer, receiverName) => {
     setOrderingId(draft.id);
     try {
       // Re-check stock at time of order
@@ -526,7 +550,13 @@ export default function DraftOrdersPage() {
         customerName: effectiveCustomer?.contactName || effectiveCustomer?.name || draft.customerName || null,
         customerPhone: effectiveCustomer?.selectedReceiver?.receiverPhone || effectiveCustomer?.phone || draft.customerPhone || null,
         shippingAddress: effectiveCustomer?.selectedReceiver?.receiverAddress || draft.shippingAddress || draft.receiverAddress || '',
-        receiverName: effectiveCustomer?.selectedReceiver?.receiverName || effectiveCustomer?.contactName || effectiveCustomer?.name || draft.receiverName || draft.customerName || null,
+        receiverName: receiverName                                          // ← param từ modal/draft
+          || effectiveCustomer?.selectedReceiver?.receiverName
+          || effectiveCustomer?.contactName
+          || effectiveCustomer?.name
+          || draft.receiverName
+          || draft.customerName
+          || null,
         receiverPhone: effectiveCustomer?.selectedReceiver?.receiverPhone || effectiveCustomer?.phone || draft.receiverPhone || draft.customerPhone || null,
         receiverAddress: effectiveCustomer?.selectedReceiver?.receiverAddress || draft.receiverAddress || draft.shippingAddress || '',
         notes: draft.notes,
@@ -561,7 +591,7 @@ export default function DraftOrdersPage() {
       if (!body?.success) { toast(body?.message || 'Lỗi khi tạo đơn hàng', 'error'); return; }
 
       // Đặt thành công → xóa draft, WS sẽ broadcast stock update đến POSPage
-      await draftApi.delete(draft.id).catch(() => {});
+      await draftApi.delete(draft.id).catch(() => { });
       setDrafts(prev => prev.filter(d => d.id !== draft.id));
       toast(`Đặt hàng thành công: ${body?.data?.orderCode || ''}`, 'success');
       setOrderInfoModal({ open: false, draft: null });
@@ -579,13 +609,13 @@ export default function DraftOrdersPage() {
 
   const handleHoldExpired = async () => {
     if (!holdState) return;
-    await cartHoldApi.release().catch(() => {});
+    await cartHoldApi.release().catch(() => { });
     setHoldState(null);
     toast('Hết giờ giữ tồn kho. Đơn nháp vẫn được lưu.', 'warning');
   };
 
   const handleHoldCancel = async () => {
-    await cartHoldApi.release().catch(() => {});
+    await cartHoldApi.release().catch(() => { });
     setHoldState(null);
     toast('Đã hủy giữ tồn kho', 'info');
   };
@@ -616,7 +646,7 @@ export default function DraftOrdersPage() {
       <div className="p-4 sm:p-5">
         {loading ? (
           <div className="bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden">
-            {[1,2,3,4].map(i => (
+            {[1, 2, 3, 4].map(i => (
               <div key={i} className="px-4 py-3 border-b border-[#F8F4EE] last:border-0 flex gap-4">
                 <div className="h-4 w-24 bg-[#F0EBE3] rounded animate-pulse" />
                 <div className="h-4 w-32 bg-[#F0EBE3] rounded animate-pulse" />
@@ -681,8 +711,8 @@ export default function DraftOrdersPage() {
         open={orderInfoModal.open}
         draft={orderInfoModal.draft}
         onClose={() => setOrderInfoModal({ open: false, draft: null })}
-        onConfirm={(ts, name, show, customer) =>
-          submitOrder(orderInfoModal.draft, ts, name, show, customer)}
+        onConfirm={(ts, name, show, customer, receiverName) =>
+          submitOrder(orderInfoModal.draft, ts, name, show, customer, receiverName)}
       />
 
       {holdState && (

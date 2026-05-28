@@ -10,7 +10,7 @@
 // 8. Chứng từ seller: bỏ text "Chưa có" → span rỗng
 // 9. <CancelOrderModal> ở cuối
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, orderApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
@@ -218,37 +218,88 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
 }
 
 // ── StatusActionButtons — THÊM onCancel + onEdit ──────────────────────────────
-function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPayment, onCancel, onEdit, loading }) {
-  const { status, paymentMethod } = order;
+// function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPayment, onCancel, onEdit, loading }) {
+//   const { status, paymentMethod } = order;
+//   const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
+//   if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
+
+//   const canPendingPayment = status === 'DELIVERING' && paymentMethod === 'DEBT';
+//   const canComplete = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
+//   const canPartial = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
+//   const canCancel = CANCELLABLE_STATUSES.has(status);
+//   const canEdit = status === 'PREPARING';
+
+//   if (!canPendingPayment && !canComplete && !canPartial && !canCancel && !canEdit) return null;
+
+//   return (
+//     <div className="flex items-center gap-1.5 flex-wrap">
+//       {canEdit && <button onClick={e => { e.stopPropagation(); onEdit?.(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-indigo-400 !border-t-indigo-600" /> : <><Edit2 size={10} /> Sửa đơn</>}</button>}
+//       {canPendingPayment && <button onClick={e => { e.stopPropagation(); onPendingPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-orange-400 !border-t-orange-600" /> : <><CreditCard size={10} /> Chờ TT</>}</button>}
+//       {canPartial && <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-blue-400 !border-t-blue-600" /> : <><DollarSign size={10} /> Thu tiền</>}</button>}
+//       {canComplete && <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-emerald-400 !border-t-emerald-600" /> : <><CheckCircle size={10} /> Hoàn thành</>}</button>}
+//       {canCancel && <button onClick={e => { e.stopPropagation(); onCancel(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-red-400 !border-t-red-500" /> : <><Ban size={10} /> Hủy đơn</>}</button>}
+//     </div>
+//   );
+// }
+
+function StatusActionButtons({ order, onCancel, onEdit, loading, disabled }) {
+  const { status } = order;
   const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
   if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
 
-  const canPendingPayment = status === 'DELIVERING' && paymentMethod === 'DEBT';
-  const canComplete = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
-  const canPartial = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
-  const canCancel = CANCELLABLE_STATUSES.has(status);
   const canEdit = status === 'PREPARING';
+  const canCancel = CANCELLABLE_STATUSES.has(status);
 
-  if (!canPendingPayment && !canComplete && !canPartial && !canCancel && !canEdit) return null;
+  if (!canEdit && !canCancel) return null;
+
+  // Không có quyền thao tác → hiện badge xem thôi
+  if (disabled) return <span className="text-[10px] text-[#C4B9A8] italic">Chỉ xem</span>;
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      {canEdit && <button onClick={e => { e.stopPropagation(); onEdit?.(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-indigo-400 !border-t-indigo-600" /> : <><Edit2 size={10} /> Sửa đơn</>}</button>}
-      {canPendingPayment && <button onClick={e => { e.stopPropagation(); onPendingPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-orange-400 !border-t-orange-600" /> : <><CreditCard size={10} /> Chờ TT</>}</button>}
-      {canPartial && <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-blue-400 !border-t-blue-600" /> : <><DollarSign size={10} /> Thu tiền</>}</button>}
-      {canComplete && <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-emerald-400 !border-t-emerald-600" /> : <><CheckCircle size={10} /> Hoàn thành</>}</button>}
-      {canCancel && <button onClick={e => { e.stopPropagation(); onCancel(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-red-400 !border-t-red-500" /> : <><Ban size={10} /> Hủy đơn</>}</button>}
+      {canEdit && (
+        <button onClick={e => { e.stopPropagation(); onEdit?.(); }} disabled={loading}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
+          {loading ? <BtnSpinner size={10} colorClass="border-indigo-400 !border-t-indigo-600" /> : <><Edit2 size={10} /> Sửa đơn</>}
+        </button>
+      )}
+      {canCancel && (
+        <button onClick={e => { e.stopPropagation(); onCancel(); }} disabled={loading}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
+          {loading ? <BtnSpinner size={10} colorClass="border-red-400 !border-t-red-500" /> : <><Ban size={10} /> Hủy đơn</>}
+        </button>
+      )}
     </div>
   );
 }
 
 function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
-  const isThisLoading = invoiceLoadingId === order.id; const isOtherLoading = !!invoiceLoadingId && !isThisLoading;
+  const isCancelled = order.status === 'CANCELLED';
+  const isThisLoading = invoiceLoadingId === order.id;
+  const isOtherLoading = !!invoiceLoadingId && !isThisLoading;
+  const isDisabled = isCancelled || !!invoiceLoadingId;
+
   return (
-    <button onClick={e => { e.stopPropagation(); onInvoice(order.id, e); }} disabled={!!invoiceLoadingId}
-      className={`relative p-1.5 rounded-lg border transition-all duration-200 ${isThisLoading ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1' : isOtherLoading ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40' : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
-      {isThisLoading ? <BtnSpinner size={13} colorClass="border-[#C9A84C] !border-t-transparent" /> : <FileText size={13} />}
-      {isThisLoading && <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md pointer-events-none z-10">Đang tạo...</span>}
+    <button
+      onClick={e => { e.stopPropagation(); if (!isCancelled) onInvoice(order.id, e); }}
+      disabled={isDisabled}
+      title={isCancelled ? 'Đơn đã huỷ' : 'Xuất hoá đơn'}
+      className={`relative p-1.5 rounded-lg border transition-all duration-200
+        ${isCancelled
+          ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
+          : isThisLoading
+            ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1'
+            : isOtherLoading
+              ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
+              : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
+      {isThisLoading
+        ? <BtnSpinner size={13} colorClass="border-[#C9A84C] !border-t-transparent" />
+        : <FileText size={13} />}
+      {isThisLoading && (
+        <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md pointer-events-none z-10">
+          Đang tạo...
+        </span>
+      )}
     </button>
   );
 }
@@ -280,6 +331,18 @@ export default function OrdersPage() {
   const [editTarget, setEditTarget] = useState(null);
 
   const totalPages = Math.ceil(total / pageSize);
+
+  const currentUser = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+    catch { return {}; }
+  }, []);
+  const isSuperSeller = currentUser.role === 'SUPER_SELLER';
+
+  const canActOnOrder = useCallback((o) => {
+    if (isSuperSeller) return true;
+    return o.createdByUserId === currentUser.userId;
+  }, [isSuperSeller, currentUser.userId]);
+
 
   const fetchOrders = useCallback(async (p = 0) => {
     setLoading(true);
@@ -409,7 +472,11 @@ export default function OrdersPage() {
                     <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                       <tr>
                         <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.size === orders.length && orders.length > 0} onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} /></th>
-                        {['Mã đơn', 'Thời gian', 'Khách hàng', 'Kho', 'Trạng thái', 'PT Thanh toán', 'Tổng tiền / Đã thu', 'Người đặt', 'Chứng từ', 'Hoá đơn', 'Thao tác'].map(h => <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>)}
+                        {['Mã đơn', 'Thời gian', 'Khách hàng', 'Kho', 'Trạng thái', 'PT Thanh toán',
+                          'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hoá đơn', 'Thao tác']
+                          .map(h => (
+                            <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
+                          ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -423,7 +490,10 @@ export default function OrdersPage() {
                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.has(o.id)} onChange={e => { const next = new Set(selectedIds); e.target.checked ? next.add(o.id) : next.delete(o.id); setSelectedIds(next); }} /></td>
                             <td className="px-4 py-3 whitespace-nowrap"><div className="flex items-center gap-1.5"><span className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</span>{detailLoading === o.id && <div className="w-3 h-3 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" />}</div></td>
                             <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDate(o.createdAt)}</td>
-                            <td className="px-4 py-3"><p className="text-xs font-medium text-[#1C1C1E] whitespace-nowrap">{o.customerName}</p><p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p></td>
+                            <td className="px-4 py-3 max-w-[160px]">
+                              <p className="text-xs font-medium text-[#1C1C1E] break-words leading-snug">{o.customerName}</p>
+                              <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>
+                            </td>
                             <td className="px-4 py-3"><WarehouseBadge name={o.warehouseName} /></td>
                             <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                             <td className="px-4 py-3"><PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} /></td>
@@ -432,6 +502,9 @@ export default function OrdersPage() {
                               {o.status === 'COMPLETED' && o.paymentStatus === 'PAID' ? (paidAmount > 0 && paidAmount !== Number(o.finalAmount) && <p className="text-[10px] text-sky-600 font-medium whitespace-nowrap">TT Thực tế: {formatPrice(paidAmount)}</p>) : (<>{paidAmount > 0 && <p className="text-[10px] text-emerald-600 font-medium whitespace-nowrap">Đã thu: {formatPrice(paidAmount)}</p>}{paidAmount > 0 && paidAmount < Number(o.finalAmount) && <p className="text-[10px] text-orange-500 font-medium whitespace-nowrap">Còn: {formatPrice(Number(o.finalAmount) - paidAmount)}</p>}</>)}
                             </td>
                             <td className="px-4 py-3"><CreatedByBadge name={o.orderedByName} /></td>
+                            <td className="px-4 py-3">
+                              <CreatedByBadge name={o.createdByName} />
+                            </td>
                             {/* Seller: chỉ xem chứng từ, không upload, không hiện text "Chưa có" */}
                             <td className="px-4 py-3">
                               {o.receiptFileUrl ? (
@@ -477,13 +550,19 @@ export default function OrdersPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                              <StatusActionButtons order={o}
+                              {/* <StatusActionButtons order={o}
                                 onPendingPayment={() => handlePendingPayment(o.id)}
                                 onComplete={() => handleComplete(o.id)}
                                 onPartialPayment={() => setPartialOrder(o)}
                                 onCancel={() => setCancelTarget(o)}
                                 onEdit={() => setEditTarget(o)}
-                                loading={isActioning} />
+                                loading={isActioning} /> */}
+                              <StatusActionButtons
+                                order={o}
+                                onCancel={() => setCancelTarget(o)}
+                                onEdit={() => setEditTarget(o)}
+                                loading={isActioning}
+                                disabled={!canActOnOrder(o)} />
                             </td>
                           </tr>
                         );
@@ -511,13 +590,19 @@ export default function OrdersPage() {
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                           <PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
-                          <StatusActionButtons order={o}
+                          {/* <StatusActionButtons order={o}
                             onPendingPayment={() => handlePendingPayment(o.id)}
                             onComplete={() => handleComplete(o.id)}
                             onPartialPayment={() => setPartialOrder(o)}
                             onCancel={() => setCancelTarget(o)}
                             onEdit={() => setEditTarget(o)}
-                            loading={isActioning} />
+                            loading={isActioning} /> */}
+                          <StatusActionButtons
+                            order={o}
+                            onCancel={() => setCancelTarget(o)}
+                            onEdit={() => setEditTarget(o)}
+                            loading={isActioning}
+                            disabled={!canActOnOrder(o)} />
                         </div>
                       </div>
                     </div>

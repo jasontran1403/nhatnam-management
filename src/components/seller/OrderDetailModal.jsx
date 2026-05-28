@@ -490,7 +490,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                 </button>
               )}
 
-              {canPartialPay(o) && (
+              {/* {canPartialPay(o) && (
                 <button onClick={() => setShowPartialModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors text-xs font-semibold">
                   <Banknote size={13} /> Thu tiền
@@ -502,7 +502,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors text-xs font-semibold">
                   <CheckSquare size={13} /> Hoàn thành
                 </button>
-              )}
+              )} */}
             </div>
 
             <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">

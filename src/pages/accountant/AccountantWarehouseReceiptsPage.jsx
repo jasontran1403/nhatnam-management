@@ -144,7 +144,7 @@ export default function AccountantWarehouseReceiptsPage() {
                   </div>
                   <p className="text-[#1C1C1E] font-medium mt-1">{r.warehouseName}</p>
                   <p className="text-xs text-[#8E8878] mt-0.5">
-                    Người đặt: {r.createdByName} · {r.itemCount} mặt hàng
+                    Người đặt hàng: {r.createdByName} · {r.itemCount} mặt hàng
                     {r.referenceCode && ` · Mã NCC: ${r.referenceCode}`}
                   </p>
                 </div>
