@@ -86,9 +86,18 @@ function WarehouseBadge({ name }) {
   if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
   return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-sky-50 text-sky-700 border-sky-200 whitespace-nowrap">🏭 {name}</span>;
 }
+function SellerBadge({ name }) {
+  if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200 whitespace-nowrap">
+      🏪 {name}
+    </span>
+  );
+}
+
 function CreatedByBadge({ name }) {
   if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
-  return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0] whitespace-nowrap">🏪 {name}</span>;
+  return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0] whitespace-nowrap">👤 {name}</span>;
 }
 function PaymentMethodCell({ value, onSave, disabled }) {
   const [open, setOpen] = useState(false);
@@ -503,7 +512,7 @@ export default function OrdersPage() {
                             </td>
                             <td className="px-4 py-3"><CreatedByBadge name={o.orderedByName} /></td>
                             <td className="px-4 py-3">
-                              <CreatedByBadge name={o.createdByName} />
+                              <SellerBadge name={o.createdByName} />
                             </td>
                             {/* Seller: chỉ xem chứng từ, không upload, không hiện text "Chưa có" */}
                             <td className="px-4 py-3">
