@@ -2,10 +2,7 @@ import { X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote } from 'luc
 import { orderApi } from '../../api/services';
 import { useToast } from '../common/Toast';
 import { useState } from 'react';
-
-function formatPrice(p) {
-  return new Intl.NumberFormat('vi-VN').format(Math.round(p || 0)) + ' đ';
-}
+import { formatPrice } from '../../utils/formatPrice';
 
 function formatDate(ts) {
   if (!ts) return '—';

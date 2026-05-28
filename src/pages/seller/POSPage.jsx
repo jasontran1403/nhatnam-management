@@ -1,5 +1,3 @@
-// src/pages/seller/POSPage.jsx
-// FIX #6: Real-time cart hold — giữ slot số lượng nguyên liệu khi thêm vào giỏ
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
@@ -30,7 +28,11 @@ const cartHoldApi = {
 };
 
 function formatPrice(price) {
-  return new Intl.NumberFormat('vi-VN').format(Math.round(price || 0)) + ' đ';
+  const num = price || 0;
+  return new Intl.NumberFormat('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(num) + ' đ';
 }
 
 let cartIdCounter = 0;
@@ -49,6 +51,41 @@ function resolveTierForQty(tiers, qty, fallbackPrice) {
     else break;
   }
   return { tierId: matched.id, tierName: matched.tierName, unitPrice: Number(matched.price ?? fallbackPrice) };
+}
+
+// ── Helper: tính giá theo pricingType của khách hàng ─────────────────────────
+// Trả về { unitPrice, tierId, tierName } để dùng cho cả addToCart và updateQty
+// product: ProductResponse (có .basePrice, .priceTiers)
+// customer: CustomerResponse (có .pricingType) — null = chưa chọn khách
+// qty: số lượng lẻ (đã quy đổi từ thùng nếu cần)
+// saleType: 'BOX' | 'RETAIL'
+// unitsPerBox: số lẻ / thùng
+function resolveUnitPrice(product, customer, qty, saleType = 'RETAIL', unitsPerBox = null) {
+  const isWholesale = customer?.pricingType === 'WHOLESALE_PRICE';
+  const tiers = product.priceTiers || [];
+
+  // Quy đổi qty thùng → đơn vị lẻ để tra tier
+  const effectiveQty = (saleType === 'BOX' && unitsPerBox > 0)
+    ? qty * unitsPerBox
+    : qty;
+
+  if (isWholesale && tiers.length > 0) {
+    const r = resolveTierForQty(tiers, effectiveQty, product.basePrice ?? 0);
+    const tierPriceLe = r?.unitPrice ?? product.basePrice ?? 0;
+    return {
+      unitPrice: saleType === 'BOX' ? tierPriceLe * unitsPerBox : tierPriceLe,
+      tierId: r?.tierId ?? null,
+      tierName: r?.tierName ?? null,
+    };
+  }
+
+  // RETAIL_PRICE hoặc chưa có khách → basePrice
+  const basePrice = product.basePrice ?? 0;
+  return {
+    unitPrice: saleType === 'BOX' ? basePrice * unitsPerBox : basePrice,
+    tierId: null,
+    tierName: null,
+  };
 }
 
 function parseChangedProductName(message) {
@@ -139,6 +176,9 @@ function CartPanel({
               <div className="flex-1 text-left min-w-0">
                 <p className="font-semibold text-xs truncate">{customer.contactName || customer.name}</p>
                 <p className="text-[10px] text-[#8E8878]">{customer.customerCode} · {customer.phone}</p>
+                {customer.pricingType === 'WHOLESALE_PRICE' && (
+                  <p className="text-[10px] text-sky-600 font-semibold">🏷 Giá sỉ (khung giá)</p>
+                )}
                 {customer.selectedReceiver && (
                   <p className="text-[10px] text-[#C9A84C] truncate">
                     📦 {customer.selectedReceiver.receiverAddress || '—'}
@@ -321,7 +361,6 @@ function CartPanel({
           </div>
         </div>
 
-        {/* Nút lưu nháp */}
         {cartItems.length > 0 && (
           <button
             onClick={onSaveDraft}
@@ -359,9 +398,6 @@ function CartPanel({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useCartHold
-// heldByAll = tổng hold của TẤT CẢ sellers (kể cả chính mình) theo ingredientId
-// Frontend dùng: displayStock = actualStock - heldByAll[ingId]
-// calcEffectiveStock trừ thêm cartItems của chính mình từ displayStock đó
 // ─────────────────────────────────────────────────────────────────────────────
 function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
   const [heldByAll, setHeldByAll] = useState({});
@@ -372,7 +408,6 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
   const onCartExpiredRef = useRef(onCartExpired);
   useEffect(() => { onCartExpiredRef.current = onCartExpired; }, [onCartExpired]);
 
-  // Kết nối WebSocket
   useEffect(() => {
     if (!warehouseId) return;
 
@@ -386,7 +421,6 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
       client.connect({ Authorization: `Bearer ${token}` }, () => {
         wsRef.current = client;
 
-        // Subscribe stock update cho kho này
         const stockSub = client.subscribe(`/topic/stock/${warehouseId}`, (frame) => {
           try {
             const { ingredientId, heldQty } = JSON.parse(frame.body);
@@ -394,12 +428,9 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
               ...prev,
               [String(ingredientId)]: Number(heldQty) || 0,
             }));
-          } catch (_) {}
+          } catch (_) { }
         });
 
-        // Subscribe /topic/cart-events — topic chung cho tất cả POS client
-        // Payload: { event: "CART_EXPIRED", sellerId: 7 }
-        // Client so sánh sellerId với userId của mình, nếu trùng thì clear giỏ
         const storedUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
         const myUserId = storedUser?.userId;
 
@@ -409,7 +440,7 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
             if (event === 'CART_EXPIRED' && sellerId === myUserId) {
               onCartExpiredRef.current?.();
             }
-          } catch (_) {}
+          } catch (_) { }
         });
 
         subscriptionsRef.current = [stockSub, cartEventSub];
@@ -437,15 +468,14 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
     loadAndConnect();
 
     return () => {
-      subscriptionsRef.current.forEach(s => { try { s.unsubscribe?.(); } catch (_) {} });
+      subscriptionsRef.current.forEach(s => { try { s.unsubscribe?.(); } catch (_) { } });
       subscriptionsRef.current = [];
-      try { wsRef.current?.disconnect?.(); } catch (_) {}
+      try { wsRef.current?.disconnect?.(); } catch (_) { }
       wsRef.current = null;
       setHeldByAll({});
     };
   }, [warehouseId]);
 
-  // Sync cart lên server (debounced 300ms)
   useEffect(() => {
     if (!warehouseId) return;
     clearTimeout(debounceRef.current);
@@ -454,7 +484,6 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
       for (const item of cartItems) {
         const prod = products.find(p => p.id === item.productId);
         if (!prod?.ingredients?.length) continue;
-        // Nếu bán thùng: item.quantity = số thùng → quy ra đơn vị lẻ
         const effectiveQty = (item.saleType === 'BOX' && item.unitsPerBox > 0)
           ? item.quantity * item.unitsPerBox
           : item.quantity;
@@ -473,23 +502,21 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
         } else if (lastCartRef.current.length > 0) {
           await cartHoldApi.release();
         }
-      } catch (_) {}
+      } catch (_) { }
       lastCartRef.current = cartItems;
     }, 300);
     return () => clearTimeout(debounceRef.current);
   }, [warehouseId, cartItems, products]);
 
-  // Release khi unmount
   useEffect(() => {
-    return () => { cartHoldApi.release().catch(() => {}); };
+    return () => { cartHoldApi.release().catch(() => { }); };
   }, []);
 
   return { heldByAll };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// DeliveryTimeModal — Nhập thời gian giao hàng + tên người đặt trước khi tạo đơn
+// DeliveryTimeModal
 // ─────────────────────────────────────────────────────────────────────────────
 function DeliveryTimeModal({ onConfirm, onClose }) {
   const defaultDelivery = (() => {
@@ -506,7 +533,6 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
     onConfirm(ts, orderedBy.trim() || null, showPrices, recipientName.trim() || null);
   };
 
-  // Lazy-import DateTimePicker inline to avoid circular issues
   const [DTPicker, setDTPicker] = useState(null);
   useEffect(() => {
     import('../../components/ui/DateTimePicker').then(m => setDTPicker(() => m.default));
@@ -516,8 +542,6 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn overflow-hidden">
-
-        {/* Header */}
         <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
           <div>
             <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Xác nhận đơn hàng</p>
@@ -529,7 +553,6 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Tên người đặt hàng */}
           <div>
             <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
               👤 Tên người đặt hàng
@@ -539,7 +562,6 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
               className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
           </div>
 
-          {/* Tên người nhận hàng */}
           <div>
             <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
               📦 Tên người nhận hàng
@@ -550,7 +572,6 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
             <p className="text-[10px] text-[#C4B9A8] mt-1">Để trống nếu không cần ghi tên người nhận trên phiếu</p>
           </div>
 
-          {/* DateTime picker */}
           <div>
             <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
               🕐 Ngày & giờ giao hàng
@@ -562,7 +583,6 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
           </div>
         </div>
 
-        {/* Hiển thị chi tiết giá */}
         <div className="px-5 pb-1">
           <label className="flex items-center gap-2 cursor-pointer select-none group">
             <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0
@@ -577,21 +597,15 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
           </label>
         </div>
 
-        {/* Footer */}
         <div className="px-5 pb-5 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3] transition-colors"
-          >
+          <button onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3] transition-colors">
             Hủy
           </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!deliveryDate}
+          <button onClick={handleConfirm} disabled={!deliveryDate}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold
               hover:bg-[#b8963d] disabled:opacity-40 disabled:cursor-not-allowed
-              transition-colors flex items-center justify-center gap-2"
-          >
+              transition-colors flex items-center justify-center gap-2">
             <Receipt size={15} /> Tạo đơn hàng
           </button>
         </div>
@@ -618,11 +632,10 @@ export default function POSPage() {
   const [sortDir, setSortDir] = useState('asc');
 
   const [cartItems, setCartItems] = useState([]);
-  const [customer, setCustomer] = useState(null);
+  const [customer, setCustomerState] = useState(null);
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [discount, setDiscount] = useState(0);
-  // null = dùng %, số = nhập tiền trực tiếp
   const [discountFixedAmt, setDiscountFixedAmt] = useState(null);
   const [discountFixedDisplay, setDiscountFixedDisplay] = useState('');
 
@@ -637,27 +650,32 @@ export default function POSPage() {
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
-  const [currentDraftId, setCurrentDraftId] = useState(null); // ID draft đang xử lý (để lưu đè)
-  const [holdExpiresAt, setHoldExpiresAt] = useState(null);   // Timestamp hết hạn hold tồn kho
+  const [currentDraftId, setCurrentDraftId] = useState(null);
+  const [holdExpiresAt, setHoldExpiresAt] = useState(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+
+  // Ref để updateQty và các callback khác luôn đọc được customer mới nhất
+  const customerRef = useRef(null);
+  const productsRef = useRef([]);
+
+  useEffect(() => { customerRef.current = customer; }, [customer]);
+  useEffect(() => { productsRef.current = products; }, [products]);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(inputSearch), 600);
     return () => clearTimeout(t);
   }, [inputSearch]);
 
-  // Khi giỏ hàng hết hạn 3 phút — server broadcast CART_EXPIRED → clear giỏ + thông báo
   const handleCartExpired = useCallback(() => {
     setCartItems([]);
-    setCustomer(null);
+    setCustomerState(null);
     setNotes('');
     setDiscount(0);
     setSurcharge(0);
     setSurchargeDisplay('');
     setPriceChangedIds(new Set());
     setHoldExpiresAt(null);
-    // Nếu đang xử lý draft → về trang draft
     if (currentDraftId) {
       toast('Giỏ hàng đã hết hạn. Đơn nháp vẫn được lưu.', 'warning');
       navigate('/seller/drafts');
@@ -666,22 +684,21 @@ export default function POSPage() {
     }
   }, [toast, currentDraftId, navigate]);
 
-  // Hold countdown expiry (10 phút khi chuyển từ draft) → release + về drafts
   useEffect(() => {
     if (!holdExpiresAt) return;
     const left = holdExpiresAt - Date.now();
     if (left <= 0) {
-      cartHoldApi.release().catch(() => {});
+      cartHoldApi.release().catch(() => { });
       setHoldExpiresAt(null);
       toast('Hết giờ giữ tồn kho. Đơn nháp vẫn được lưu.', 'warning');
       navigate('/seller/drafts');
       return;
     }
     const id = setTimeout(async () => {
-      await cartHoldApi.release().catch(() => {});
+      await cartHoldApi.release().catch(() => { });
       setHoldExpiresAt(null);
       setCartItems([]);
-      setCustomer(null);
+      setCustomerState(null);
       setNotes('');
       setDiscount(0);
       setSurcharge(0);
@@ -690,12 +707,9 @@ export default function POSPage() {
       navigate('/seller/drafts');
     }, left);
     return () => clearTimeout(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdExpiresAt]);
 
-  // heldByAll: { [ingredientId]: totalHeldQty } — nhận realtime từ WS
-  // Bao gồm cả hold của chính mình (server trả về tổng)
-  // user.userId — theo LoginResponse DTO (không phải user.id)
   const { heldByAll } = useCartHold(
     selectedWarehouse?.id,
     cartItems,
@@ -704,8 +718,6 @@ export default function POSPage() {
     handleCartExpired,
   );
 
-  // ingStockMap: actualStock - heldByAll
-  // Đây là "stock thực còn lại trên thị trường", chưa trừ cartItems của mình
   const ingStockMap = useMemo(() => {
     const map = {};
     for (const p of products) {
@@ -722,8 +734,6 @@ export default function POSPage() {
     return map;
   }, [products, heldByAll]);
 
-  // calcEffectiveStock: từ ingStockMap trừ thêm cartItems của chính mình
-  // → "còn có thể thêm bao nhiêu sản phẩm này"
   const calcEffectiveStock = useCallback((product) => {
     if (product.stockQuantity == null) return null;
     if (!product.ingredients?.length) return Number(product.stockQuantity);
@@ -732,27 +742,6 @@ export default function POSPage() {
     for (const ing of product.ingredients) {
       const qtyPerProduct = Number(ing.quantity) || 1;
       const ingKey = String(ing.ingredientId);
-      // ingStockMap đã trừ hold của tất cả (kể cả mình)
-      // nhưng hold của mình = cartItems của mình → cần cộng lại để không trừ kép
-      const myHoldForThisIng = cartItems.reduce((sum, cartItem) => {
-        const cp = products.find(p => p.id === cartItem.productId);
-        if (!cp?.ingredients?.length) return sum;
-        const cpIng = cp.ingredients.find(i => String(i.ingredientId) === ingKey);
-        if (!cpIng) return sum;
-        // Quy đổi về đơn vị lẻ nếu bán thùng
-        const effectiveQty = (cartItem.saleType === 'BOX' && cartItem.unitsPerBox > 0)
-          ? cartItem.quantity * cartItem.unitsPerBox
-          : cartItem.quantity;
-        return sum + effectiveQty * (Number(cpIng.quantity) || 1);
-      }, 0);
-
-      // stock khả dụng = ingStockMap (actualStock - heldByAll) + myHold - myCartUsage
-      // = actualStock - heldByOthers - myCartUsage
-      const availableForMe = (ingStockMap[ingKey] ?? 0) + myHoldForThisIng - myHoldForThisIng;
-      // Đơn giản hơn: ingStockMap đã = actualStock - heldByAll (kể cả mình)
-      // mình đang dùng myHoldForThisIng trong cart
-      // → có thể thêm thêm: ingStockMap[key] (vì hold của mình đã được trừ)
-      // → canMake từ ingStock này
       const ingAvailable = ingStockMap[ingKey] ?? 0;
       const canMake = Math.floor((Math.max(0, ingAvailable) / qtyPerProduct) * 1000) / 1000;
       minCanMake = Math.min(minCanMake, canMake);
@@ -771,14 +760,13 @@ export default function POSPage() {
       .catch(() => toast('Không thể tải danh sách kho', 'error'));
   }, []);
 
-  // ─── Load draft từ navigation state (khi chuyển từ trang đơn nháp) ──────
+  // ─── Load draft từ navigation state ──────────────────────────────────────
   useEffect(() => {
     const draft = location.state?.draft;
     const fromDraftHold = location.state?.fromDraftHold;
     const expiresAt = location.state?.expiresAt;
     if (!draft) return;
 
-    // Đặt lại giỏ hàng từ draft
     if (draft.items?.length > 0) {
       const items = draft.items.map((i) => ({
         id: ++cartIdCounter,
@@ -807,9 +795,8 @@ export default function POSPage() {
       setCartItems(items);
     }
 
-    // Đặt lại khách hàng
     if (draft.customerId) {
-      setCustomer({
+      setCustomerState({
         id: draft.customerId,
         name: draft.customerName,
         phone: draft.customerPhone,
@@ -828,17 +815,46 @@ export default function POSPage() {
     }
     if (draft.surcharge) setSurcharge(Number(draft.surcharge));
 
-    // Nếu đến từ hold → set countdown và chọn đúng warehouse
     if (fromDraftHold && expiresAt) {
       setHoldExpiresAt(expiresAt);
     }
 
     toast('Đã tải đơn nháp vào giỏ hàng', 'success');
     setCurrentDraftId(draft.id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Max discount = 10% subtotalAfterItemDiscount (tính tại thời điểm gọi)
+  // ── Khi đổi khách hàng: tính lại giá toàn bộ giỏ hàng ───────────────────
+  // - isManualPrice = true → bỏ qua
+  // - isPromo = true → bỏ qua
+  // - Còn lại: tính lại theo pricingType của customer mới
+  const setCustomer = useCallback((newCustomer) => {
+    setCustomerState(newCustomer);
+    setCartItems(prev => prev.map(item => {
+      // Bỏ qua override và promo
+      if (item.isManualPrice || item.isPromo) return item;
+
+      const prod = productsRef.current.find(p => p.id === item.productId);
+      if (!prod) return item;
+
+      const { unitPrice, tierId, tierName } = resolveUnitPrice(
+        prod,
+        newCustomer,
+        item.quantity,
+        item.saleType,
+        item.unitsPerBox,
+      );
+
+      return {
+        ...item,
+        unitPrice,
+        originalUnitPrice: unitPrice,
+        tierId,
+        tierName,
+      };
+    }));
+  }, []);
+
   const handleDiscountFixedOpen = useCallback(() => {
     setDiscount(0);
     setDiscountFixedAmt(0);
@@ -851,10 +867,10 @@ export default function POSPage() {
   }, []);
 
   const handleDiscountFixedChange = useCallback((e) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
+    const raw = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
     setDiscountFixedDisplay(raw);
-    const num = raw === '' ? 0 : parseInt(raw, 10);
-    setDiscountFixedAmt(num);
+    const num = raw === '' ? 0 : parseFloat(raw);
+    setDiscountFixedAmt(isNaN(num) ? 0 : num);
   }, []);
 
   const handleSurchargeChange = useCallback((e) => {
@@ -890,7 +906,7 @@ export default function POSPage() {
   useEffect(() => {
     categoryApi.getAll()
       .then(res => setCategories(res.data?.data || res.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -918,6 +934,7 @@ export default function POSPage() {
     return list;
   }, [products, activeCategory, searchQuery, sortField, sortDir]);
 
+  // ── addToCart: tính giá theo customer ────────────────────────────────────
   const addToCart = useCallback((product, saleType = 'RETAIL') => {
     setPriceChangedIds(prev => { const n = new Set(prev); n.delete(product.id); return n; });
 
@@ -925,20 +942,23 @@ export default function POSPage() {
       ? product.unitsPerBox : null;
 
     setCartItems((prev) => {
-      const tier = product.priceTiers?.find((t) => t.sortOrder === 0) || product.priceTiers?.[0];
       const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
       if (stock !== null && stock <= 0) return prev;
-
-      const unitPrice = tier?.price ?? product.basePrice ?? 0;
-      const effectivePrice = unitsPerBox ? unitPrice * unitsPerBox : unitPrice;
-      const displayUnit = unitsPerBox ? 'Thùng' : (product.unit || '');
 
       const addQty = (stock !== null && stock < 1)
         ? Math.round(stock * 1000) / 1000
         : 1;
 
-      // Luôn thêm dòng mới — không gộp với dòng cùng sản phẩm đã có
-      // Mỗi dòng là 1 line item độc lập (hỗ trợ khuyến mãi mua 10 tặng 1 trên cùng SP)
+      // Tính giá theo customer hiện tại
+      const { unitPrice, tierId, tierName } = resolveUnitPrice(
+        product,
+        customerRef.current,
+        addQty,
+        saleType,
+        unitsPerBox,
+      );
+
+      const displayUnit = unitsPerBox ? 'Thùng' : (product.unit || '');
       const uniqueKey = `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
       return [...prev, {
@@ -948,10 +968,10 @@ export default function POSPage() {
         productName: product.name,
         variantId: null,
         variantName: null,
-        tierId: tier?.id || null,
-        tierName: tier?.tierName || null,
-        unitPrice: effectivePrice,
-        originalUnitPrice: effectivePrice,
+        tierId,
+        tierName,
+        unitPrice,
+        originalUnitPrice: unitPrice,
         quantity: addQty,
         unit: displayUnit,
         imageUrl: product.imageUrl || null,
@@ -960,18 +980,15 @@ export default function POSPage() {
         maxDiscountRate: product.maxDiscountRate ?? 0,
         itemDiscountRate: 0,
         priceTiers: product.priceTiers || [],
-        basePrice: product.basePrice ?? unitPrice,
+        basePrice: product.basePrice ?? 0,
         saleType,
         unitsPerBox,
       }];
     });
   }, []);
 
-  // Sản phẩm pending modal chọn quy cách
   const [pendingSaleProduct, setPendingSaleProduct] = useState(null);
 
-  // FIX #2: Truyền effectiveStock (đã trừ hold của tất cả sellers) vào product
-  // để addToCart dùng đúng maxQty, không dùng số gốc từ DB
   const handleAddProduct = useCallback((product) => {
     const effStock = calcEffectiveStock(product);
     const productWithEffectiveStock = effStock !== null
@@ -984,11 +1001,13 @@ export default function POSPage() {
     }
   }, [addToCart, calcEffectiveStock]);
 
+  // ── updateQty: tính lại giá tier nếu WHOLESALE_PRICE ─────────────────────
   const updateQty = useCallback((cartId, qty) => {
     if (qty <= 0) { setCartItems((prev) => prev.filter((i) => i.id !== cartId)); return; }
     setCartItems((prev) => prev.map((i) => {
       if (i.id !== cartId) return i;
-      const prod = products.find((p) => p.id === i.productId);
+
+      const prod = productsRef.current.find((p) => p.id === i.productId);
       let cappedQty = qty;
       if (prod) {
         const effStock = calcEffectiveStock(prod);
@@ -996,12 +1015,42 @@ export default function POSPage() {
           cappedQty = Math.min(qty, Math.round((effStock + i.quantity) * 1000) / 1000);
         }
       }
+
+      // Promo: không tính lại giá
+      if (i.isPromo) return { ...i, quantity: cappedQty };
+
+      // Manual price override: không tính lại giá
       if (i.isManualPrice) return { ...i, quantity: cappedQty };
-      // BOX: giá đã được nhân sẵn khi addToCart, không resolve tier lại
+
+      // BOX: giá đã nhân unitsPerBox khi addToCart
+      // Vẫn cần tính lại tier nếu WHOLESALE (dựa trên số lẻ tương đương)
       if (i.saleType === 'BOX' && i.unitsPerBox > 0) {
+        const currentCustomer = customerRef.current;
+        if (currentCustomer?.pricingType === 'WHOLESALE_PRICE' && prod) {
+          const { unitPrice, tierId, tierName } = resolveUnitPrice(
+            prod, currentCustomer, cappedQty, 'BOX', i.unitsPerBox,
+          );
+          return { ...i, quantity: cappedQty, unitPrice, originalUnitPrice: unitPrice, tierId, tierName };
+        }
         return { ...i, quantity: cappedQty };
       }
-      const allTiers = i.priceTiers || prod?.priceTiers || [];
+
+      // RETAIL saleType — tính lại theo customer
+      const currentCustomer = customerRef.current;
+      if (prod) {
+        const { unitPrice, tierId, tierName } = resolveUnitPrice(
+          prod, currentCustomer, cappedQty, i.saleType, i.unitsPerBox,
+        );
+        const changed = tierId !== i.tierId || unitPrice !== i.unitPrice;
+        return {
+          ...i,
+          quantity: cappedQty,
+          ...(changed ? { unitPrice, originalUnitPrice: unitPrice, tierId, tierName } : {}),
+        };
+      }
+
+      // Fallback: không có prod trong list → giữ nguyên
+      const allTiers = i.priceTiers || [];
       const r = resolveTierForQty(allTiers, cappedQty, i.basePrice ?? i.unitPrice);
       if (!r) return { ...i, quantity: cappedQty };
       const changed = r.tierId !== i.tierId || r.unitPrice !== i.unitPrice;
@@ -1016,7 +1065,7 @@ export default function POSPage() {
         } : {}),
       };
     }));
-  }, [products, calcEffectiveStock]);
+  }, [calcEffectiveStock]);
 
   const overridePrice = useCallback((cartId, newPrice, isManual = false) => {
     setCartItems((prev) => prev.map((i) => {
@@ -1038,7 +1087,6 @@ export default function POSPage() {
           ...i,
           isPromo: true,
           promoNote: note || '',
-          // Lưu giá gốc để khôi phục khi tắt KM
           _priceBeforePromo: i._priceBeforePromo ?? i.unitPrice,
         };
       } else {
@@ -1067,24 +1115,21 @@ export default function POSPage() {
 
   const clearCart = useCallback(() => {
     setCartItems([]);
-    setCustomer(null);
+    setCustomerState(null);
     setNotes('');
     setDiscount(0);
     setSurcharge(0);
     setSurchargeDisplay('');
     setPriceChangedIds(new Set());
-    cartHoldApi.release().catch(() => {});
+    cartHoldApi.release().catch(() => { });
   }, []);
 
-  // Tổng thành tiền các món KM (giá = 0, nhưng cần tách ra để hiển thị "giảm KM")
   const promoTotal = cartItems.reduce((s, i) => {
     if (!i.isPromo) return s;
-    // Dùng _priceBeforePromo nếu có, không thì unitPrice hiện tại (đã là 0 khi KM bật)
     const origPrice = Number(i._priceBeforePromo ?? i.unitPrice);
     return s + origPrice * Number(i.quantity);
   }, 0);
 
-  // Tạm tính = chỉ tính các món KHÔNG phải KM
   const subtotal = cartItems.reduce((s, i) => {
     if (i.isPromo) return s;
     return s + Number(i.unitPrice) * Number(i.quantity);
@@ -1098,12 +1143,11 @@ export default function POSPage() {
   }, 0);
 
   const subtotalAfterItemDiscount = subtotal - itemDiscountTotal;
-  // Max giảm trực tiếp = 10% subtotalAfterItemDiscount
   const maxDiscountFixed = Math.round(subtotalAfterItemDiscount * 0.1);
   const discountAmt = discountFixedAmt !== null
-    ? Math.min(discountFixedAmt, maxDiscountFixed)   // giảm tiền: capped at 10%
-    : Math.round(subtotalAfterItemDiscount * discount / 100);  // giảm %
-  // Tổng giảm = CK món + giảm bill + KM
+    ? Math.min(discountFixedAmt, maxDiscountFixed)
+    : Math.round(subtotalAfterItemDiscount * discount) / 100;
+
   const totalDiscount = itemDiscountTotal + discountAmt + promoTotal;
   const surchargeNum = Number(surcharge) || 0;
   const total = subtotal - itemDiscountTotal - discountAmt + surchargeNum;
@@ -1115,8 +1159,8 @@ export default function POSPage() {
       const mode = i.vatMode ?? 'INCLUSIVE';
       if (rate === 0 || mode !== 'INCLUSIVE') continue;
       const effDiscountRate = discountFixedAmt !== null
-          ? (subtotalAfterItemDiscount > 0 ? Math.min(discountFixedAmt, maxDiscountFixed) / subtotalAfterItemDiscount : 0)
-          : discount / 100;
+        ? (subtotalAfterItemDiscount > 0 ? Math.min(discountFixedAmt, maxDiscountFixed) / subtotalAfterItemDiscount : 0)
+        : discount / 100;
       const lineGross = Number(i.unitPrice) * (1 - (i.itemDiscountRate ?? 0) / 100)
         * Number(i.quantity) * (1 - effDiscountRate);
       const vatAmt = lineGross - lineGross / (1 + rate / 100);
@@ -1139,7 +1183,6 @@ export default function POSPage() {
 
     setCartItems(prev => prev.map(item => {
       if (item.isManualPrice) return item;
-      // BOX: giá đã nhân unitsPerBox, không override lại theo tier lẻ
       if (item.saleType === 'BOX' && item.unitsPerBox > 0) return item;
       const freshProduct = fresh.find(p => p.id === item.productId);
       if (!freshProduct) return item;
@@ -1174,7 +1217,6 @@ export default function POSPage() {
     );
   }, [fetchProducts, toast]);
 
-  /** Lưu đơn nháp — không hold tồn kho */
   const handleSaveDraft = useCallback(async () => {
     if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
     setSavingDraft(true);
@@ -1197,7 +1239,6 @@ export default function POSPage() {
         receiverAddress: customer?.selectedReceiver?.receiverAddress || null,
         receiverInfoId: customer?.selectedReceiver?.id || null,
         items: cartItems.map(i => {
-          // Tính subtotal tại đây để chắc chắn đúng
           const itemSubtotal = Number(i.unitPrice) * Number(i.quantity);
           return {
             productId: i.productId,
@@ -1224,13 +1265,10 @@ export default function POSPage() {
         }),
       };
 
-      // Release cart hold trước khi lưu nháp
-      await cartHoldApi.release().catch(() => {});
+      await cartHoldApi.release().catch(() => { });
 
       if (currentDraftId) {
-        // Lưu đè draft đang xử lý: xóa draft cũ rồi tạo lại với cùng data
-        // (API chỉ có POST, nên xóa + tạo mới — hoặc dùng PUT nếu backend hỗ trợ)
-        await draftApi.delete(currentDraftId).catch(() => {});
+        await draftApi.delete(currentDraftId).catch(() => { });
       }
 
       const res = await draftApi.save(payload);
@@ -1246,16 +1284,14 @@ export default function POSPage() {
       setSavingDraft(false);
     }
   }, [cartItems, customer, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed,
-      surchargeNum, selectedWarehouse, clearCart, toast, currentDraftId]);
+    surchargeNum, selectedWarehouse, clearCart, toast, currentDraftId]);
 
-  /** Bước 1: validate & mở modal nhập thời gian giao hàng */
   const handleOpenDeliveryModal = useCallback(() => {
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
     if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
     setDeliveryModalOpen(true);
   }, [customer, cartItems, toast]);
 
-  /** Bước 2: thực sự gọi API tạo đơn sau khi có deliveryDatetime */
   const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true, recipientName = null) => {
     setDeliveryModalOpen(false);
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
@@ -1310,7 +1346,7 @@ export default function POSPage() {
         return;
       }
 
-      await cartHoldApi.release().catch(() => {});
+      await cartHoldApi.release().catch(() => { });
 
       const orderCode = body?.data?.orderCode;
       toast(`Tạo đơn hàng thành công${orderCode ? ': ' + orderCode : ''}`, 'success');
@@ -1367,33 +1403,32 @@ export default function POSPage() {
     savingDraft,
   };
 
-  // Countdown display for hold timer
   const holdCountdown = (() => {
     if (!holdExpiresAt) return null;
     const left = Math.max(0, holdExpiresAt - Date.now());
     const m = Math.floor(left / 60000);
     const s = Math.floor((left % 60000) / 1000);
-    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   })();
 
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-[#FAF7F2]">
 
-      {/* Hold countdown banner */}
       {holdExpiresAt && (
         <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm font-semibold">
           <span>⏱ Tồn kho được giữ: {holdCountdown}</span>
-          <button onClick={async () => { await cartHoldApi.release().catch(()=>{}); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
+          <button onClick={async () => { await cartHoldApi.release().catch(() => { }); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
             className="text-white/80 hover:text-white underline text-xs">Hủy</button>
         </div>
       )}
       {holdExpiresAt && (
         <div className="hidden lg:flex fixed top-0 left-1/2 -translate-x-1/2 z-30 bg-amber-500 text-white px-6 py-2 rounded-b-xl items-center gap-4 text-sm font-semibold shadow-lg">
           <span>⏱ Tồn kho được giữ trong: {holdCountdown}</span>
-          <button onClick={async () => { await cartHoldApi.release().catch(()=>{}); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
+          <button onClick={async () => { await cartHoldApi.release().catch(() => { }); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
             className="text-white border border-white/40 rounded-lg px-2 py-0.5 text-xs hover:bg-white/10 transition-colors">Hủy giữ kho</button>
         </div>
       )}
+
       <div className="lg:hidden flex-shrink-0">
         <button
           onClick={() => setMobileCartOpen(!mobileCartOpen)}
@@ -1437,7 +1472,7 @@ export default function POSPage() {
                       setSelectedWarehouse(w);
                       setCartItems([]);
                       setPriceChangedIds(new Set());
-                      cartHoldApi.release().catch(() => {});
+                      cartHoldApi.release().catch(() => { });
                     }}
                     className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                       ${selectedWarehouse?.id === w.id
@@ -1537,10 +1572,10 @@ export default function POSPage() {
         selected={customer}
       />
 
-      {/* Modal chọn quy cách: Thùng / Lẻ */}
       {pendingSaleProduct && (
         <SaleTypeModal
           product={pendingSaleProduct}
+          customer={customer}
           onConfirm={({ saleType }) => {
             addToCart(pendingSaleProduct, saleType);
             setPendingSaleProduct(null);
@@ -1549,7 +1584,6 @@ export default function POSPage() {
         />
       )}
 
-      {/* Modal nhập thời gian giao hàng */}
       {deliveryModalOpen && (
         <DeliveryTimeModal
           onConfirm={(ts, orderedByName, showPrices, recipientName) => handleSubmit(ts, orderedByName, showPrices, recipientName)}

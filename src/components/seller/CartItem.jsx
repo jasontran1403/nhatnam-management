@@ -3,8 +3,12 @@ import { Trash2, Pencil, Percent, Check, Gift } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
+// Hiển thị tối đa 2 chữ số thập phân, bỏ số 0 thừa
 function formatPrice(price) {
-  return new Intl.NumberFormat('vi-VN').format(Math.round(price || 0)) + ' đ';
+  return new Intl.NumberFormat('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price || 0) + ' đ';
 }
 
 function calcNetPrice(grossPrice, vatRate, vatMode) {
@@ -41,15 +45,10 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
   const isPromo           = item.isPromo === true;
   const promoNote         = item.promoNote || '';
 
-  // Giá hiển thị = giá tier gross (có VAT, chưa CK)
   const displayUnitPrice = item.unitPrice;
-
-  // Giá sau CK (gross) — để tính subtotal dòng
   const effectiveUnitPrice = itemDiscountPct > 0
     ? item.unitPrice * (1 - itemDiscountPct / 100)
     : item.unitPrice;
-
-  // Subtotal dòng = giá tier × qty (gross, chưa CK)
   const lineTotal = displayUnitPrice * item.quantity;
 
   // ── Qty ───────────────────────────────────────────────────────
@@ -61,21 +60,22 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
   const commitQty = () => {
     let val = parseFloat(qtyDisplay);
     if (!isNaN(val) && val > 0) {
-      // Làm tròn về số nguyên nếu đơn vị không phải kg/lít hoặc bán thùng
       if (!allowDecimal(item.unit, item.saleType)) val = Math.max(1, Math.round(val));
       onUpdate(item.id, val);
     }
     setEditingQty(false);
   };
 
-  // ── Price override ────────────────────────────────────────────
+  // ── Price override — hỗ trợ số lẻ tối đa 2 chữ số thập phân ─
   const handlePriceClick = () => {
-    setPriceDisplay(String(Math.round(item.unitPrice)));
+    // Giữ nguyên giá trị hiện tại kể cả số lẻ, không Math.round
+    setPriceDisplay(String(item.unitPrice));
     setEditingPrice(true);
     setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
   };
   const commitPrice = () => {
-    const val = parseInt(priceDisplay, 10);
+    // parseFloat để giữ số lẻ; thay dấu phẩy thành chấm phòng người dùng nhập sai
+    const val = parseFloat(priceDisplay.replace(',', '.'));
     const maxPrice = (item.originalUnitPrice ?? item.unitPrice) * 5;
     if (!isNaN(val) && val >= 0) onPriceOverride(item.id, Math.min(val, maxPrice), true);
     setEditingPrice(false);
@@ -101,7 +101,7 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
     setShowDiscount(false);
   };
 
-  // ── Promo (Khuyến mãi) ────────────────────────────────────────────
+  // ── Promo ─────────────────────────────────────────────────────
   const openPromoNote = () => {
     setPromoNoteInput(promoNote);
     setShowPromoNote(true);
@@ -113,11 +113,9 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
   };
   const togglePromo = () => {
     if (isPromo) {
-      // Tắt KM → khôi phục giá gốc
       if (onPromoToggle) onPromoToggle(item.id, false, '');
       setShowPromoNote(false);
     } else {
-      // Bật KM → mở ô nhập note
       openPromoNote();
     }
   };
@@ -144,7 +142,6 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-[#1C1C1E] truncate">{item.productName}</p>
 
-        {/* Quy cách badge */}
         {item.saleType === 'BOX' ? (
           <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
             📦 Thùng ({item.unitsPerBox} {item.unit === 'Thùng' ? (item.baseUnit || '') : item.unit}/thùng)
@@ -155,7 +152,6 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
           </span>
         ) : null}
 
-        {/* VAT badge */}
         {showVatBadge && (
           <span className={`text-[9px] rounded px-1 py-0.5 font-medium
             ${vatMode === 'EXCLUSIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
@@ -166,8 +162,6 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
         {/* Price row */}
         <div className="flex items-center gap-1.5 mt-1">
           <div className="flex flex-col">
-            {/* Giá tier gốc — luôn hiển thị, không bị trừ CK */}
-            {/* Giá hiển thị = giá tier (gross, có VAT) */}
             {isPromo ? (
               <span className="text-xs font-bold text-rose-500 flex items-center gap-1">
                 <Gift size={10} className="text-rose-400" /> 0 đ
@@ -176,11 +170,22 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
               <div className="flex items-center gap-1">
                 <input
                   ref={inputRef}
-                  type="text" inputMode="numeric"
+                  type="text"
+                  inputMode="decimal"
                   value={priceDisplay}
-                  onChange={e => setPriceDisplay(e.target.value.replace(/[^0-9]/g, ''))}
+                  onChange={e => {
+                    // Cho phép số nguyên hoặc số lẻ tối đa 2 chữ số thập phân
+                    const raw = e.target.value.replace(/[^0-9.]/g, '');
+                    const parts = raw.split('.');
+                    if (parts.length > 2) return;           // không cho 2 dấu chấm
+                    if (parts[1]?.length > 2) return;       // tối đa 2 chữ số thập phân
+                    setPriceDisplay(raw);
+                  }}
                   onBlur={commitPrice}
-                  onKeyDown={e => { if (e.key === 'Enter') commitPrice(); if (e.key === 'Escape') setEditingPrice(false); }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') commitPrice();
+                    if (e.key === 'Escape') setEditingPrice(false);
+                  }}
                   className="w-24 text-xs border-2 border-[#C9A84C] rounded-lg px-2 py-1 focus:outline-none font-semibold text-[#1C1C1E]"
                 />
                 <span className="text-[10px] text-[#8E8878]">đ</span>
@@ -198,7 +203,6 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
 
           {/* Discount badge + Promo button */}
           <div className="ml-auto flex items-center gap-1 flex-shrink-0">
-            {/* Nút CK — ẩn khi đang là KM */}
             {!isPromo && (hasDiscount ? (
               <button onClick={openDiscount}
                 className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
@@ -216,7 +220,6 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
                 CK
               </button>
             ))}
-            {/* Nút KM */}
             <button onClick={togglePromo}
               className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
                 font-semibold border transition-colors
@@ -287,7 +290,6 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
             </button>
           </div>
         )}
-        {/* Promo note display */}
         {isPromo && promoNote && !showPromoNote && (
           <button onClick={openPromoNote}
             className="mt-0.5 text-[9px] text-rose-500 italic truncate max-w-full text-left hover:text-rose-700">
@@ -295,7 +297,6 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
           </button>
         )}
 
-        {/* Subtotal = giá tier × qty (gross) — ẩn khi KM */}
         {!isPromo && (
           <p className="text-[10px] text-[#8E8878] mt-0.5">
             = {formatPrice(lineTotal)}
@@ -327,9 +328,7 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
                   if (parts[1]?.length > 3) return;
                   setQtyDisplay(raw);
                 } else {
-                  // Chỉ nhận số nguyên
-                  const raw = e.target.value.replace(/[^0-9]/g, '');
-                  setQtyDisplay(raw);
+                  setQtyDisplay(e.target.value.replace(/[^0-9]/g, ''));
                 }
               }}
               onBlur={commitQty}
