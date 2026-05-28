@@ -1,14 +1,11 @@
 // src/pages/admin/AdminCustomers.jsx
-// FIX #9:
-// - Khách lẻ: không hiển thị nút gán NV, cột NV KD bỏ trống
-// - Khách công ty: hiển thị nút gán, nếu chưa có NV → "Chưa có"
-// - Lọc theo NV KD: input search thay vì render hết buttons
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
+  Edit2, MapPin, Star, Plus, Trash2,
 } from 'lucide-react';
 import { adminCustomerApi } from '../../api/adminApi';
 import useDebounce from '../../utils/useDebounce.js';
@@ -21,6 +18,8 @@ import {
   PrimaryButton, SecondaryButton, DangerButton,
   Field, inputCls, formatNumber,
 } from '../../components/ui';
+import api from '../../api/axios';
+import { useToast } from '../../components/common/Toast';
 
 function getDebtUrgency(customer) {
   const ms = customer.nearestDeadlineMillis;
@@ -31,18 +30,220 @@ function getDebtUrgency(customer) {
   return null;
 }
 
+// ─── Receiver Infos Section (dùng chung cho cả admin và seller) ──────────────
+function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
+  const toast = useToast();
+  const [receivers, setReceivers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!customerId) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`${apiPrefix}/customers/${customerId}/receiver-infos`);
+      setReceivers(res.data?.data || []);
+    } catch { toast('Không thể tải địa chỉ nhận hàng', 'error'); }
+    finally { setLoading(false); }
+  }, [customerId, apiPrefix]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const resetForm = () => setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+
+  const handleAdd = async () => {
+    if (!form.receiverAddress.trim()) { toast('Vui lòng nhập địa chỉ nhận hàng', 'error'); return; }
+    setSaving(true);
+    try {
+      await api.post(`${apiPrefix}/customers/${customerId}/receiver-infos`, form);
+      toast('Đã thêm địa chỉ nhận hàng', 'success');
+      setAdding(false); resetForm(); load();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi thêm', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const handleUpdate = async (id) => {
+    if (!form.receiverAddress.trim()) { toast('Vui lòng nhập địa chỉ nhận hàng', 'error'); return; }
+    setSaving(true);
+    try {
+      await api.put(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}`, form);
+      toast('Đã cập nhật', 'success');
+      setEditingId(null); resetForm(); load();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi cập nhật', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Xóa địa chỉ này?')) return;
+    try {
+      await api.delete(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}`);
+      toast('Đã xóa', 'success'); load();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi xóa', 'error'); }
+  };
+
+  const handleSetDefault = async (id) => {
+    try {
+      await api.patch(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}/set-default`);
+      toast('Đã đặt làm mặc định', 'success'); load();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+  };
+
+  const startEdit = (r) => {
+    setEditingId(r.id);
+    setAdding(false);
+    setForm({
+      receiverName: r.receiverName || '',
+      receiverPhone: r.receiverPhone || '',
+      receiverAddress: r.receiverAddress || '',
+    });
+  };
+
+  const ReceiverForm = ({ onSave, onCancel }) => (
+    <div className="space-y-2">
+      <input
+        value={form.receiverAddress}
+        onChange={e => setForm(f => ({ ...f, receiverAddress: e.target.value }))}
+        className={inputCls}
+        placeholder="Địa chỉ nhận hàng *"
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          value={form.receiverName}
+          onChange={e => setForm(f => ({ ...f, receiverName: e.target.value }))}
+          className={inputCls}
+          placeholder="Tên người nhận"
+        />
+        <input
+          value={form.receiverPhone}
+          onChange={e => setForm(f => ({ ...f, receiverPhone: e.target.value }))}
+          className={inputCls}
+          placeholder="SĐT người nhận"
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-1.5 rounded-lg border border-[#E8DDD0] text-xs text-[#8E8878] hover:bg-[#FAF7F2] transition-colors">
+          Hủy
+        </button>
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex-1 py-1.5 rounded-lg bg-[#C9A84C] text-white text-xs font-semibold hover:bg-[#b8973d] disabled:opacity-50 transition-colors">
+          {saving ? 'Đang lưu...' : 'Lưu'}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-bold text-[#5C5C5C]">
+          Địa chỉ nhận hàng {receivers.length > 0 && `(${receivers.length})`}
+        </label>
+        {!adding && editingId === null && (
+          <button
+            onClick={() => { setAdding(true); setEditingId(null); resetForm(); }}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] font-semibold hover:bg-[#C9A84C]/20 transition-colors">
+            <Plus size={11} /> Thêm địa chỉ
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="border border-[#C9A84C]/30 rounded-xl p-3 bg-[#FDF8ED] space-y-2">
+          <p className="text-[11px] font-semibold text-[#C9A84C]">Thêm địa chỉ mới</p>
+          <ReceiverForm
+            onSave={handleAdd}
+            onCancel={() => { setAdding(false); resetForm(); }}
+          />
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-xs text-[#8E8878] text-center py-2">Đang tải...</div>
+      ) : receivers.length === 0 && !adding ? (
+        <div className="text-xs text-[#C4B9A8] text-center py-2 italic border border-dashed border-[#E8DDD0] rounded-xl">
+          Chưa có địa chỉ nhận hàng
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+          {receivers.map(r => (
+            <div
+              key={r.id}
+              className={`rounded-xl border p-2.5 transition-colors
+                ${r.isDefault ? 'border-[#C9A84C]/40 bg-[#FDF8ED]' : 'border-[#F0EBE3] bg-white'}`}>
+
+              {editingId === r.id ? (
+                <div className="space-y-2">
+                  <ReceiverForm
+                    onSave={() => handleUpdate(r.id)}
+                    onCancel={() => { setEditingId(null); resetForm(); }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                      {r.isDefault && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#C9A84C]">
+                          <Star size={9} fill="currentColor" /> Mặc định
+                        </span>
+                      )}
+                      {r.receiverName && (
+                        <span className="text-xs font-semibold text-[#1C1C1E]">{r.receiverName}</span>
+                      )}
+                      {r.receiverPhone && (
+                        <span className="text-[11px] text-[#8E8878]">{r.receiverPhone}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#5C4E3D] flex items-start gap-1">
+                      <MapPin size={10} className="mt-0.5 shrink-0 text-[#8E8878]" />
+                      <span>{r.receiverAddress}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {!r.isDefault && (
+                      <button onClick={() => handleSetDefault(r.id)}
+                        title="Đặt làm mặc định"
+                        className="p-1 rounded text-[#C4B9A8] hover:text-[#C9A84C] transition-colors">
+                        <Star size={12} />
+                      </button>
+                    )}
+                    <button onClick={() => startEdit(r)}
+                      className="p-1 rounded text-[#8E8878] hover:text-[#C9A84C] transition-colors">
+                      <Edit2 size={12} />
+                    </button>
+                    <button onClick={() => handleDelete(r.id)}
+                      className="p-1 rounded text-[#8E8878] hover:text-red-400 transition-colors">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Assign Seller Modal ──────────────────────────────────────────────────────
 function AssignSellerModal({ open, customer, onClose, onSaved }) {
   const [q, setQ] = useState('');
   const dq = useDebounce(q, 350);
   const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useMinLoading();
-  const [saving,  setSaving]  = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setQ('');
-    setSellers([]);
+    setQ(''); setSellers([]);
   }, [open]);
 
   useEffect(() => {
@@ -56,22 +257,16 @@ function AssignSellerModal({ open, customer, onClose, onSaved }) {
 
   const assign = async (sellerId) => {
     setSaving(true);
-    try {
-      await adminCustomerApi.assignSeller(customer.id, sellerId);
-      onSaved();
-    } catch(e) {
-      alert(e?.response?.data?.message || 'Lỗi khi gán seller');
-    } finally { setSaving(false); }
+    try { await adminCustomerApi.assignSeller(customer.id, sellerId); onSaved(); }
+    catch (e) { alert(e?.response?.data?.message || 'Lỗi khi gán seller'); }
+    finally { setSaving(false); }
   };
 
   const unassign = async () => {
     setSaving(true);
-    try {
-      await adminCustomerApi.assignSeller(customer.id, null);
-      onSaved();
-    } catch(e) {
-      alert(e?.response?.data?.message || 'Lỗi khi bỏ gán');
-    } finally { setSaving(false); }
+    try { await adminCustomerApi.assignSeller(customer.id, null); onSaved(); }
+    catch (e) { alert(e?.response?.data?.message || 'Lỗi khi bỏ gán'); }
+    finally { setSaving(false); }
   };
 
   const displayName = customer
@@ -137,7 +332,7 @@ function AssignSellerModal({ open, customer, onClose, onSaved }) {
   );
 }
 
-// ── FIX #9: Seller Filter Dropdown ───────────────────────────────────────────
+// ── Seller Filter Dropdown ────────────────────────────────────────────────────
 function SellerFilterDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -156,29 +351,18 @@ function SellerFilterDropdown({ value, onChange }) {
       .finally(() => setLoading(false));
   }, [dq, open]);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const select = (seller) => {
-    onChange(String(seller.id));
-    setSelectedName(seller.fullName);
-    setOpen(false);
-    setQ('');
+    onChange(String(seller.id)); setSelectedName(seller.fullName); setOpen(false); setQ('');
   };
-
-  const clear = () => {
-    onChange('');
-    setSelectedName('');
-    setOpen(false);
-  };
+  const clear = () => { onChange(''); setSelectedName(''); setOpen(false); };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -186,15 +370,13 @@ function SellerFilterDropdown({ value, onChange }) {
         type="button"
         onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors min-w-[180px]
-          ${value && value !== '0' ? 'border-[#C9A84C] bg-[#C9A84C]/5 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878]'}`}
-      >
+          ${value && value !== '0' ? 'border-[#C9A84C] bg-[#C9A84C]/5 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878]'}`}>
         <Search size={13} />
         <span className="flex-1 text-left truncate text-sm">
           {value === '0' ? 'Chưa gán' : (selectedName || 'Lọc theo NV KD...')}
         </span>
         {value ? (
-          <button onClick={(e) => { e.stopPropagation(); clear(); }}
-            className="text-[#8E8878] hover:text-red-400 shrink-0">
+          <button onClick={(e) => { e.stopPropagation(); clear(); }} className="text-[#8E8878] hover:text-red-400 shrink-0">
             <X size={13} />
           </button>
         ) : (
@@ -206,9 +388,7 @@ function SellerFilterDropdown({ value, onChange }) {
         <div className="absolute top-full left-0 mt-1 z-50 w-64 bg-white rounded-xl border border-black/10 shadow-xl overflow-hidden">
           <div className="p-2 border-b border-[#F0EBE3]">
             <input
-              autoFocus
-              value={q}
-              onChange={e => setQ(e.target.value)}
+              autoFocus value={q} onChange={e => setQ(e.target.value)}
               placeholder="Tìm nhân viên..."
               className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]"
             />
@@ -222,8 +402,7 @@ function SellerFilterDropdown({ value, onChange }) {
             {loading ? (
               <p className="text-xs text-center text-[#8E8878] py-3">Đang tìm...</p>
             ) : sellers.map(s => (
-              <button key={s.id}
-                onClick={() => select(s)}
+              <button key={s.id} onClick={() => select(s)}
                 className={`w-full px-3 py-2 text-left hover:bg-[#FAF7F2] transition-colors
                   ${value === String(s.id) ? 'bg-[#C9A84C]/10 text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
                 <p className="text-sm font-medium truncate">{s.fullName}</p>
@@ -237,44 +416,213 @@ function SellerFilterDropdown({ value, onChange }) {
   );
 }
 
+// ── Create / Edit Customer Modal ──────────────────────────────────────────────
+function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
+  const isEdit = !!customer;
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', customerType: 'RETAIL',
+    pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
+    companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    if (customer) {
+      setForm({
+        name: customer.name || '',
+        phone: customer.phone || '',
+        email: customer.email || '',
+        customerType: customer.customerType || 'RETAIL',
+        pricingType: customer.pricingType || 'RETAIL_PRICE',
+        discountRate: customer.discountRate || 0,
+        debtDays: customer.debtDays || 0,
+        companyName: customer.companyName || '',
+        taxCode: customer.taxCode || '',
+        companyPhone: customer.companyPhone || '',
+        companyAddress: customer.companyAddress || '',
+        contactName: customer.contactName || '',
+      });
+    } else {
+      setForm({
+        name: '', phone: '', email: '', customerType: 'RETAIL',
+        pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
+        companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
+      });
+    }
+  }, [open, customer]);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const isCompany = form.customerType === 'COMPANY';
+
+  const handleSave = async () => {
+    if (!form.name.trim() && !form.companyName.trim()) {
+      alert('Vui lòng nhập tên khách hàng hoặc tên công ty'); return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        customerType: form.customerType,
+        pricingType: form.pricingType,
+        discountRate: Number(form.discountRate) || 0,
+        debtDays: Number(form.debtDays) || 0,
+        // RETAIL
+        name: form.name || null,
+        phone: form.phone || null,
+        email: form.email || null,
+        taxCode: isCompany ? (form.taxCode || null) : null,
+        // COMPANY — send null when switching to RETAIL to clear
+        companyName: isCompany ? (form.companyName || null) : null,
+        companyPhone: isCompany ? (form.companyPhone || null) : null,
+        companyAddress: isCompany ? (form.companyAddress || null) : null,
+        contactName: isCompany ? (form.contactName || null) : null,
+      };
+      if (isEdit) {
+        await adminCustomerApi.update(customer.id, payload);
+      } else {
+        await adminCustomerApi.create(payload);
+      }
+      onSaved();
+    } catch (e) {
+      alert(e?.response?.data?.message || e.message || 'Lỗi lưu khách hàng');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose}
+      title={isEdit ? 'Sửa thông tin khách hàng' : 'Tạo khách hàng mới'}
+      size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
+          <PrimaryButton onClick={handleSave} loading={saving}>
+            {isEdit ? 'Lưu thay đổi' : 'Tạo khách hàng'}
+          </PrimaryButton>
+        </div>
+      }>
+      <div className="space-y-4">
+
+        {/* Loại khách */}
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Loại khách hàng">
+            <select value={form.customerType} onChange={e => set('customerType', e.target.value)} className={inputCls}>
+              <option value="RETAIL">Cá nhân</option>
+              <option value="COMPANY">Công ty</option>
+            </select>
+          </Field>
+          <Field label="Loại giá áp dụng">
+            <select value={form.pricingType} onChange={e => set('pricingType', e.target.value)} className={inputCls}>
+              <option value="RETAIL_PRICE">Bán lẻ (giá gốc)</option>
+              <option value="WHOLESALE_PRICE">Bán sỉ (khung giá)</option>
+            </select>
+          </Field>
+        </div>
+
+        {isCompany ? (
+          <>
+            <Field label="Tên công ty" required>
+              <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} placeholder="Công ty TNHH..." />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Mã số thuế (tuỳ chọn)">
+                <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
+              </Field>
+              <Field label="Người liên hệ">
+                <input value={form.contactName} onChange={e => set('contactName', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="SĐT công ty">
+                <input value={form.companyPhone} onChange={e => set('companyPhone', e.target.value)} className={inputCls} placeholder="0901..." />
+              </Field>
+              <Field label="Email (tuỳ chọn)">
+                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="info@..." />
+              </Field>
+            </div>
+            <Field label="Địa chỉ công ty">
+              <input value={form.companyAddress} onChange={e => set('companyAddress', e.target.value)} className={inputCls} placeholder="123 đường..." />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Họ tên" required>
+              <input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Số điện thoại">
+                <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls} placeholder="0901..." />
+              </Field>
+              <Field label="Email (tuỳ chọn)">
+                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="email@..." />
+              </Field>
+            </div>
+            <Field label="Mã số thuế (tuỳ chọn)">
+              <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
+            </Field>
+          </>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Chiết khấu (%)">
+            <input type="number" min={0} max={100} value={form.discountRate} onChange={e => set('discountRate', e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Công nợ (ngày)">
+            <input type="number" min={0} max={365} value={form.debtDays} onChange={e => set('debtDays', e.target.value)} className={inputCls} />
+          </Field>
+        </div>
+
+        {/* Địa chỉ nhận hàng — chỉ hiện khi edit */}
+        {isEdit && customer?.id && (
+          <div className="border-t border-[#F0EBE3] pt-4">
+            <ReceiverInfosSection customerId={customer.id} apiPrefix="/api/seller" />
+          </div>
+        )}
+
+        <p className="text-xs text-[#8E8878] bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#C9A84C]/20">
+          💡 Khách do admin/owner tạo: ai cũng có thể tạo đơn, KPI tính chung cho toàn phòng SALE.
+        </p>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AdminCustomers() {
-  const [filters,     setFilters]    = useState({ q: '', type: '', isActive: '', sellerId: '' });
-  const debouncedQ  = useDebounce(filters.q, 600);
-  const [page,        setPage]       = useState(0);
-  const [data,        setData]       = useState({ content: [], totalPages: 0, totalElements: 0 });
+  const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
+  const debouncedQ = useDebounce(filters.q, 600);
+  const [page, setPage] = useState(0);
+  const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
-  const [selectedIds, setSelectedIds]= useState(new Set());
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [historyCustomerId, setHistoryCustomerId] = useState(null);
 
-  const [discountOpen,   setDiscountOpen]   = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(false);
   const [discountTarget, setDiscountTarget] = useState(null);
-  const [discountValue,  setDiscountValue]  = useState(0);
-  const [saving,         setSaving]         = useState(false);
-  const [activeConfirm,  setActiveConfirm]  = useState(null);
+  const [discountValue, setDiscountValue] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [activeConfirm, setActiveConfirm] = useState(null);
 
-  const [debtDaysOpen,   setDebtDaysOpen]   = useState(false);
+  const [debtDaysOpen, setDebtDaysOpen] = useState(false);
   const [debtDaysTarget, setDebtDaysTarget] = useState(null);
-  const [debtDaysValue,  setDebtDaysValue]  = useState(0);
+  const [debtDaysValue, setDebtDaysValue] = useState(0);
 
-  // Tạo / sửa khách hàng (admin)
-  const [createOpen,    setCreateOpen]   = useState(false);
-  const [editCustomer,  setEditCustomer] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editCustomer, setEditCustomer] = useState(null);
 
-  const [assignOpen,   setAssignOpen]   = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, size: 20, sort: 'id,desc' };
-      if (debouncedQ)             params.q        = debouncedQ;
-      if (filters.type)           params.type     = filters.type;
+      if (debouncedQ)              params.q        = debouncedQ;
+      if (filters.type)            params.type     = filters.type;
       if (filters.isActive !== '') params.isActive = filters.isActive;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       const res = await adminCustomerApi.list(params);
       setData(res);
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [page, debouncedQ, filters.type, filters.isActive, filters.sellerId]);
 
@@ -298,15 +646,11 @@ export default function AdminCustomers() {
 
   const openDiscountSingle = (c) => { setDiscountTarget(c); setDiscountValue(c.discountRate || 0); setDiscountOpen(true); };
   const openDiscountBulk   = () => { if (!anyChecked) return; setDiscountTarget(null); setDiscountValue(0); setDiscountOpen(true); };
-
   const openDebtDays = (c, e) => { e.stopPropagation(); setDebtDaysTarget(c); setDebtDaysValue(c.debtDays || 0); setDebtDaysOpen(true); };
-
-  // FIX #9: Chỉ mở assign modal cho khách COMPANY
   const openAssign = (c, e) => {
     e.stopPropagation();
-    if (c.customerType !== 'COMPANY') return; // Khách lẻ không gán
-    setAssignTarget(c);
-    setAssignOpen(true);
+    if (c.customerType !== 'COMPANY') return;
+    setAssignTarget(c); setAssignOpen(true);
   };
 
   const saveDiscount = async () => {
@@ -315,7 +659,7 @@ export default function AdminCustomers() {
       if (discountTarget) await adminCustomerApi.updateDiscount(discountTarget.id, Number(discountValue));
       else { await adminCustomerApi.bulkDiscount([...selectedIds], Number(discountValue)); setSelectedIds(new Set()); }
       setDiscountOpen(false); load();
-    } catch(e) { alert(e?.response?.data?.message || e.message); }
+    } catch (e) { alert(e?.response?.data?.message || e.message); }
     finally { setSaving(false); }
   };
 
@@ -326,7 +670,7 @@ export default function AdminCustomers() {
     try {
       await adminCustomerApi.updateDebtDays(debtDaysTarget.id, days);
       setDebtDaysOpen(false); load();
-    } catch(e) { alert(e?.response?.data?.message || e.message); }
+    } catch (e) { alert(e?.response?.data?.message || e.message); }
     finally { setSaving(false); }
   };
 
@@ -338,7 +682,7 @@ export default function AdminCustomers() {
       if (activeConfirm.mode === 'single') await adminCustomerApi.setActive(activeConfirm.customer.id, isActive);
       else { await adminCustomerApi.bulkSetActive([...selectedIds], isActive); setSelectedIds(new Set()); }
       setActiveConfirm(null); load();
-    } catch(e) { alert(e?.response?.data?.message || e.message); }
+    } catch (e) { alert(e?.response?.data?.message || e.message); }
     finally { setSaving(false); }
   };
 
@@ -346,7 +690,6 @@ export default function AdminCustomers() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <div className="flex items-center justify-between">
         <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
-        {/* Buttons: Tạo khách hàng + Import/Export */}
         <div className="flex items-center gap-2">
           <PrimaryButton onClick={() => { setEditCustomer(null); setCreateOpen(true); }}
             className="flex items-center gap-1.5 text-xs px-3 py-2">
@@ -395,7 +738,6 @@ export default function AdminCustomers() {
           </select>
         </div>
 
-        {/* FIX #9: Seller filter — dùng input search thay vì render hết buttons */}
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs text-[#8E8878] font-medium shrink-0">Lọc theo NV KD:</span>
           <button
@@ -406,7 +748,6 @@ export default function AdminCustomers() {
                 : 'border-[#E8DDD0] text-[#5C4E3D] hover:bg-[#F0EBE3]'}`}>
             Tất cả
           </button>
-          {/* FIX #9: Dropdown search thay vì render từng button */}
           <SellerFilterDropdown
             value={filters.sellerId}
             onChange={(v) => { setFilters(f => ({ ...f, sellerId: v })); setPage(0); }}
@@ -429,8 +770,8 @@ export default function AdminCustomers() {
       {/* Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
         {loading ? (
-        <TableSkeleton cols={5} rows={8} />
-      ) : data.content.length === 0 ? <EmptyState icon={Users} title="Không có khách hàng" /> : (
+          <TableSkeleton cols={5} rows={8} />
+        ) : data.content.length === 0 ? <EmptyState icon={Users} title="Không có khách hàng" /> : (
           <>
             {/* Desktop */}
             <div className="hidden lg:block overflow-x-auto">
@@ -492,7 +833,6 @@ export default function AdminCustomers() {
                             <Badge className="bg-sky-50 text-sky-700 ring-sky-200 mt-0.5">Admin</Badge>
                           )}
                         </td>
-                        {/* FIX #9: Cột NV KD — khách lẻ bỏ trống, công ty hiển thị hoặc "Chưa có" */}
                         <td className="px-4 py-3">
                           {isCompany ? (
                             c.sellerName ? (
@@ -504,7 +844,6 @@ export default function AdminCustomers() {
                               <span className="text-xs text-[#C4B9A8] italic">Chưa có</span>
                             )
                           ) : (
-                            // FIX #9: Khách lẻ → bỏ trống NV KD
                             <span className="text-xs text-[#E8DDD0]">—</span>
                           )}
                         </td>
@@ -524,7 +863,6 @@ export default function AdminCustomers() {
                         </td>
                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
-                            {/* FIX #9: Chỉ hiện nút gán NV cho khách COMPANY */}
                             {isCompany && (
                               <button onClick={e => openAssign(c, e)}
                                 className="p-2 rounded-lg text-[#8E8878] hover:bg-sky-50 hover:text-sky-600 transition-colors"
@@ -532,6 +870,12 @@ export default function AdminCustomers() {
                                 <UserPlus size={15} />
                               </button>
                             )}
+                            <button
+                              onClick={e => { e.stopPropagation(); setEditCustomer(c); setCreateOpen(true); }}
+                              className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FDF8ED] hover:text-[#C9A84C] transition-colors"
+                              title="Sửa thông tin">
+                              <Edit2 size={15} />
+                            </button>
                             <button onClick={() => openDiscountSingle(c)}
                               className="p-2 rounded-lg text-[#8E8878] hover:bg-[#C9A84C]/10 hover:text-[#C9A84C] transition-colors"
                               title="Chiết khấu">
@@ -578,7 +922,6 @@ export default function AdminCustomers() {
                         </p>
                         <p className="text-xs text-[#8E8878]">{c.phone} · CK {c.discountRate || 0}%</p>
                         {c.debtDays > 0 && <p className="text-[10px] text-orange-500">📋 Công nợ {c.debtDays} ngày</p>}
-                        {/* FIX #9: Chỉ hiển thị NV KD cho khách công ty */}
                         {isCompany && (
                           c.sellerName
                             ? <p className="text-[10px] text-sky-600 mt-0.5">👤 {c.sellerName}</p>
@@ -587,12 +930,13 @@ export default function AdminCustomers() {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
-                      {/* FIX #9: Chỉ nút gán cho công ty */}
                       {isCompany && (
                         <button onClick={e => openAssign(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-sky-50 text-sky-600">Gán NV</button>
                       )}
-                      <button onClick={() => openDiscountSingle(c)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E]">Chiết khấu</button>
-                      <button onClick={e => openDebtDays(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-50 text-orange-600">Công nợ</button>
+                      <button onClick={e => { e.stopPropagation(); setEditCustomer(c); setCreateOpen(true); }}
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FDF8ED] text-[#C9A84C]">Sửa</button>
+                      <button onClick={() => openDiscountSingle(c)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E]">CK</button>
+                      <button onClick={e => openDebtDays(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-50 text-orange-600">CN</button>
                       <button onClick={() => setActiveConfirm({ mode: 'single', lock: c.isActive, customer: c })}
                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${c.isActive ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                         {c.isActive ? 'Khóa' : 'Mở'}
@@ -607,14 +951,13 @@ export default function AdminCustomers() {
         {!loading && data.content.length > 0 && <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />}
       </div>
 
-      {/* Assign Seller modal — FIX #9: chỉ dùng cho COMPANY */}
+      {/* Modals */}
       <AssignSellerModal
         open={assignOpen}
         customer={assignTarget}
         onClose={() => setAssignOpen(false)}
         onSaved={() => { setAssignOpen(false); load(); }} />
 
-      {/* Discount modal */}
       <Modal open={discountOpen} onClose={() => !saving && setDiscountOpen(false)}
         title={discountTarget ? 'Đặt chiết khấu' : 'Đặt chiết khấu hàng loạt'} size="sm"
         footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={() => setDiscountOpen(false)} disabled={saving}>Hủy</SecondaryButton><PrimaryButton onClick={saveDiscount} loading={saving}>Áp dụng</PrimaryButton></div>}>
@@ -627,7 +970,6 @@ export default function AdminCustomers() {
         </Field>
       </Modal>
 
-      {/* Debt days modal */}
       <Modal open={debtDaysOpen} onClose={() => !saving && setDebtDaysOpen(false)}
         title="Số ngày công nợ" size="sm"
         footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={() => setDebtDaysOpen(false)} disabled={saving}>Hủy</SecondaryButton><PrimaryButton onClick={saveDebtDays} loading={saving}>Áp dụng</PrimaryButton></div>}>
@@ -638,7 +980,6 @@ export default function AdminCustomers() {
         <p className="text-xs text-[#8E8878] mt-1.5">Từ 1–365 ngày. Đặt 0 để tắt công nợ.</p>
       </Modal>
 
-      {/* Lock/Unlock confirm */}
       <Modal open={!!activeConfirm} onClose={() => !saving && setActiveConfirm(null)}
         title={activeConfirm?.lock ? 'Khóa bán khách hàng' : 'Mở bán khách hàng'} size="sm"
         footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={() => setActiveConfirm(null)} disabled={saving}>Hủy</SecondaryButton>{activeConfirm?.lock ? <DangerButton onClick={confirmActive} loading={saving}>Xác nhận khóa</DangerButton> : <PrimaryButton onClick={confirmActive} loading={saving}>Xác nhận mở</PrimaryButton>}</div>}>
@@ -650,7 +991,6 @@ export default function AdminCustomers() {
         </p>
       </Modal>
 
-      {/* Modal tạo / sửa khách hàng */}
       <CreateEditCustomerModal
         open={createOpen}
         customer={editCustomer}
@@ -658,169 +998,5 @@ export default function AdminCustomers() {
         onSaved={() => { setCreateOpen(false); setEditCustomer(null); load(); }}
       />
     </div>
-  );
-}
-
-// ─── Create / Edit Customer Modal ────────────────────────────────────────────
-function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
-  const isEdit = !!customer;
-  const [form, setForm] = useState({
-    name: '', phone: '', email: '', customerType: 'RETAIL',
-    pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
-    companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    if (customer) {
-      setForm({
-        name: customer.name || '',
-        phone: customer.phone || '',
-        email: customer.email || '',
-        customerType: customer.customerType || 'RETAIL',
-        pricingType: customer.pricingType || 'RETAIL_PRICE',
-        discountRate: customer.discountRate || 0,
-        debtDays: customer.debtDays || 0,
-        companyName: customer.companyName || '',
-        taxCode: customer.taxCode || '',
-        companyPhone: customer.companyPhone || '',
-        companyAddress: customer.companyAddress || '',
-        contactName: customer.contactName || '',
-      });
-    } else {
-      setForm({
-        name: '', phone: '', email: '', customerType: 'RETAIL',
-        pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
-        companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
-      });
-    }
-  }, [open, customer]);
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const isCompany = form.customerType === 'COMPANY';
-
-  const handleSave = async () => {
-    if (!form.name.trim() && !form.companyName.trim()) {
-      alert('Vui lòng nhập tên khách hàng hoặc tên công ty'); return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        name: form.name || null,
-        phone: form.phone || null,
-        email: form.email || null,        // nullable
-        customerType: form.customerType,
-        pricingType: form.pricingType,
-        discountRate: Number(form.discountRate) || 0,
-        debtDays: Number(form.debtDays) || 0,
-        companyName: isCompany ? form.companyName : null,
-        taxCode: isCompany ? form.taxCode : null,
-        companyPhone: isCompany ? form.companyPhone : null,
-        companyAddress: isCompany ? form.companyAddress : null,
-        contactName: isCompany ? form.contactName : null,
-      };
-      if (isEdit) {
-        await adminCustomerApi.update(customer.id, payload);
-      } else {
-        await adminCustomerApi.create(payload);
-      }
-      onSaved();
-    } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Lỗi lưu khách hàng');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal open={open} onClose={onClose}
-      title={isEdit ? 'Sửa thông tin khách hàng' : 'Tạo khách hàng mới'}
-      size="md"
-      footer={
-        <div className="flex justify-end gap-2">
-          <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
-          <PrimaryButton onClick={handleSave} loading={saving}>
-            {isEdit ? 'Lưu thay đổi' : 'Tạo khách hàng'}
-          </PrimaryButton>
-        </div>
-      }>
-      <div className="space-y-4">
-
-        {/* Loại khách */}
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Loại khách hàng">
-            <select value={form.customerType} onChange={e => set('customerType', e.target.value)} className={inputCls}>
-              <option value="RETAIL">Cá nhân</option>
-              <option value="COMPANY">Công ty</option>
-            </select>
-          </Field>
-          <Field label="Loại giá áp dụng">
-            <select value={form.pricingType} onChange={e => set('pricingType', e.target.value)} className={inputCls}>
-              <option value="RETAIL_PRICE">Bán lẻ (giá gốc)</option>
-              <option value="WHOLESALE_PRICE">Bán sỉ (khung giá)</option>
-            </select>
-          </Field>
-        </div>
-
-        {/* Thông tin cơ bản */}
-        {isCompany ? (
-          <>
-            <Field label="Tên công ty" required>
-              <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} placeholder="Công ty TNHH..." />
-            </Field>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Mã số thuế (tuỳ chọn)">
-                <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
-              </Field>
-              <Field label="Người liên hệ">
-                <input value={form.contactName} onChange={e => set('contactName', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="SĐT công ty">
-                <input value={form.companyPhone} onChange={e => set('companyPhone', e.target.value)} className={inputCls} placeholder="0901..." />
-              </Field>
-              <Field label="Email (tuỳ chọn)">
-                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="info@..." />
-              </Field>
-            </div>
-            <Field label="Địa chỉ công ty">
-              <input value={form.companyAddress} onChange={e => set('companyAddress', e.target.value)} className={inputCls} placeholder="123 đường..." />
-            </Field>
-          </>
-        ) : (
-          <>
-            <Field label="Họ tên" required>
-              <input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
-            </Field>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Số điện thoại">
-                <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls} placeholder="0901..." />
-              </Field>
-              <Field label="Email (tuỳ chọn)">
-                <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="email@..." />
-              </Field>
-            </div>
-            <Field label="Mã số thuế (tuỳ chọn)">
-              <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
-            </Field>
-          </>
-        )}
-
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Chiết khấu (%)">
-            <input type="number" min={0} max={100} value={form.discountRate} onChange={e => set('discountRate', e.target.value)} className={inputCls} />
-          </Field>
-          <Field label="Công nợ (ngày)">
-            <input type="number" min={0} max={365} value={form.debtDays} onChange={e => set('debtDays', e.target.value)} className={inputCls} />
-          </Field>
-        </div>
-
-        <p className="text-xs text-[#8E8878] bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#C9A84C]/20">
-          💡 Khách do admin/owner tạo: ai cũng có thể tạo đơn, KPI tính chung cho toàn phòng SALE.
-        </p>
-      </div>
-    </Modal>
   );
 }
