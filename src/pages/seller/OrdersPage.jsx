@@ -88,7 +88,7 @@ function WarehouseBadge({ name }) {
 }
 function CreatedByBadge({ name }) {
   if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
-  return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0] whitespace-nowrap">👤 {name}</span>;
+  return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0] whitespace-nowrap">🏪 {name}</span>;
 }
 function PaymentMethodCell({ value, onSave, disabled }) {
   const [open, setOpen] = useState(false);
