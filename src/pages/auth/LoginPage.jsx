@@ -37,7 +37,7 @@ function getRedirectPath(role) {
     case 'SUPER_WAREHOUSE':  return '/super-warehouse/management';
     case 'ACCOUNTANT':       return '/accountant/dashboard';
     case 'SUPER_ACCOUNTANT': return '/super-accountant/dashboard';
-    case 'OPERATOR':         return '/operator/categories';
+    case 'OPERATOR':         return '/operator/products';
     case 'SHIPPER':          return '/shipper/dashboard';
     case 'HR':               return '/hr/manage';
     default:                 return '/seller/pos';

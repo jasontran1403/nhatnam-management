@@ -86,9 +86,9 @@ export const superAccountantNavRaw = [
 ];
 
 export const operatorNavRaw = [
-  { to: '/operator/categories',  labelKey: 'categories',  icon: Tags },
-  { to: '/operator/ingredients', labelKey: 'ingredients', icon: FlaskConical },
   { to: '/operator/products',    labelKey: 'products',    icon: Package },
+  { to: '/operator/ingredients', labelKey: 'ingredients', icon: FlaskConical },
+  // { to: '/operator/categories',  labelKey: 'categories',  icon: Tags },
   { to: '/operator/batches',     labelKey: 'batches',     icon: Layers },
   { to: '/operator/landingpage', labelKey: 'landing_page', icon: Globe },
 ];
@@ -128,7 +128,7 @@ export const ROLE_DEFAULT_PATH = {
   SUPER_WAREHOUSE:  '/super-warehouse/management',
   ACCOUNTANT:       '/accountant/dashboard',
   SUPER_ACCOUNTANT: '/super-accountant/dashboard',
-  OPERATOR:         '/operator/categories',
+  OPERATOR:         '/operator/products',
   SHIPPER:          '/shipper/dashboard',
   FACTORY_WORKER:   '/factory/dashboard',
   SELLER:           '/seller/pos',

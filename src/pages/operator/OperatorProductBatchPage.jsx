@@ -44,6 +44,12 @@ const emptyTier = () => ({
   price: '',
 });
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const fmtNum = (v) => {
+  const n = parseInt(String(v ?? '').replace(/[^0-9]/g, ''), 10);
+  return isNaN(n) ? '' : n.toLocaleString('vi-VN');
+};
+
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -118,18 +124,18 @@ export default function OperatorProductBatchPage() {
       unitsPerBox: p.unitsPerBox ? String(p.unitsPerBox) : '',
       tiers: (p.tiers && p.tiers.length > 0)
         ? p.tiers.map(t => ({
-          _id: `tier-${Date.now()}-${Math.random()}`,
-          fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
-          price: t.price != null ? String(t.price) : '',
-        }))
+            _id: `tier-${Date.now()}-${Math.random()}`,
+            fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
+            price: t.price != null ? String(t.price) : '',
+          }))
         : [{ _id: `tier-${Date.now()}`, fromQty: 0, price: String(p.basePrice || '') }],
       ingredients: (p.ingredients && p.ingredients.length > 0)
         ? p.ingredients.map(ing => ({
-          _id: Date.now() + Math.random(),
-          ingredientId: String(ing.ingredientId || ''),
-          quantity: ing.quantity != null ? ing.quantity : 1,
-          canOverride: ing.canOverride || false,
-        }))
+            _id: Date.now() + Math.random(),
+            ingredientId: String(ing.ingredientId || ''),
+            quantity: ing.quantity != null ? ing.quantity : 1,
+            canOverride: ing.canOverride || false,
+          }))
         : [emptyIngredient()],
     });
 
@@ -162,6 +168,8 @@ export default function OperatorProductBatchPage() {
       if (!it.unit.trim()) return toast(`Đơn vị tính của "${it.name}" không được trống`, 'error');
       const price = Number(String(it.basePrice).replace(/[^0-9]/g, ''));
       if (!price || price <= 0) return toast(`Giá bán lẻ "${it.name}" không hợp lệ`, 'error');
+      if (it.unitsPerBox && parseInt(it.unitsPerBox) < 1)
+        return toast(`Số đơn vị/thùng của "${it.name}" không hợp lệ`, 'error');
     }
 
     setSubmitting(true);
@@ -225,8 +233,9 @@ export default function OperatorProductBatchPage() {
       <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-[#EDE8E0]">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-lg font-bold text-[#1C1C1E]">Tạo phiếu sản phẩm</h1>
-            <p className="text-xs text-[#8E8878] mt-0.5">Gửi cho Admin duyệt trước khi áp dụng</p>
+            {/* <h1 className="text-lg font-bold text-[#1C1C1E]">Tạo phiếu sản phẩm</h1> */}
+            <h1 className="text-lg font-bold text-[#1C1C1E]">Tạo sản phẩm</h1>
+            {/* <p className="text-xs text-[#8E8878] mt-0.5">Gửi cho Admin duyệt trước khi áp dụng</p> */}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden bg-[#FAF7F2]">
@@ -240,15 +249,15 @@ export default function OperatorProductBatchPage() {
             <button onClick={handleSubmit} disabled={submitting}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#A07830] text-white text-xs font-semibold disabled:opacity-50 transition-colors">
               <Send size={13} />
-              {submitting ? 'Đang gửi...' : 'Gửi phiếu'}
+              {submitting ? 'Đang submit...' : 'Submit'}
             </button>
           </div>
         </div>
-        <div className="mt-3">
+        {/* <div className="mt-3">
           <input value={note} onChange={e => setNote(e.target.value)}
             placeholder="Ghi chú cho phiếu (tuỳ chọn)..."
             className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C]" />
-        </div>
+        </div> */}
       </div>
 
       <div className="flex-1 overflow-auto p-5 space-y-4">
@@ -269,10 +278,10 @@ export default function OperatorProductBatchPage() {
             onSelectProduct={() => openProductModal(item._id)}
           />
         ))}
-        <button onClick={addItem}
+        {/* <button onClick={addItem}
           className="w-full py-3 rounded-2xl border-2 border-dashed border-[#D8D0C4] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all flex items-center justify-center gap-2 text-sm font-medium bg-white">
           <Plus size={15} /> Thêm sản phẩm
-        </button>
+        </button> */}
       </div>
 
       <ProductSearchModal
@@ -348,7 +357,7 @@ function ProductSearchModal({ open, onClose, products, search, onSearchChange, o
   );
 }
 
-// ── ProductItemCard (giữ nguyên logic khung giá độc lập) ─────────────────────
+// ── ProductItemCard ───────────────────────────────────────────────────────────
 function ProductItemCard({ item, idx, batchType, categories, ingredients, products,
   imgSrc, onUpdate, onRemove, onToggle, onUpload, onSelectProduct }) {
 
@@ -361,6 +370,12 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
   const setIng = (iid, patch) =>
     onUpdate({ ingredients: item.ingredients.map(i => i._id === iid ? { ...i, ...patch } : i) });
 
+  // Tính giá thùng preview
+  const basePrice0 = Number(String(item.tiers[0]?.price ?? item.basePrice ?? '').replace(/[^0-9]/g, ''));
+  const unitsPerBoxNum = parseInt(item.unitsPerBox, 10);
+  const boxPrice = !isNaN(unitsPerBoxNum) && unitsPerBoxNum > 0 && basePrice0 > 0
+    ? basePrice0 * unitsPerBoxNum : null;
+
   return (
     <div className="bg-white rounded-2xl border border-[#EDE8E0] shadow-sm overflow-hidden">
       {/* Header */}
@@ -371,6 +386,12 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
         <span className="flex-1 text-sm font-semibold text-[#1C1C1E] truncate">
           {item.name || <span className="text-[#B0A898] font-normal">Sản phẩm mới</span>}
         </span>
+        {/* Badge thùng */}
+        {item.unitsPerBox && parseInt(item.unitsPerBox) > 0 && (
+          <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 font-medium flex items-center gap-1">
+            <Box size={9} /> {item.unitsPerBox} {item.unit || 'đvt'}/thùng
+          </span>
+        )}
         <button onClick={onToggle} className="p-1 text-[#B0A898] hover:text-[#1C1C1E]">
           {item._expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </button>
@@ -381,7 +402,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
 
       {item._expanded && (
         <div className="p-5 space-y-5">
-          {/* Modal Trigger */}
+          {/* Chọn sản phẩm cập nhật */}
           {batchType === 'UPDATE' && (
             <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
               <label className="block text-xs font-semibold text-blue-700 mb-2">Chọn sản phẩm cần cập nhật</label>
@@ -391,7 +412,8 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
               >
                 <span>
                   {item.existingProductId
-                    ? products.find(p => p.id === item.existingProductId)?.name || 'Đã chọn' : 'Chọn sản phẩm từ danh sách...'}
+                    ? products.find(p => p.id === item.existingProductId)?.name || 'Đã chọn'
+                    : 'Chọn sản phẩm từ danh sách...'}
                 </span>
                 <Search size={16} className="text-[#C9A84C]" />
               </button>
@@ -436,7 +458,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Đơn vị tính <span className="text-red-400">*</span></label>
-                  <select value={item.unit} onChange={e => onUpdate({ unit: e.target.value })}
+                  <select value={item.unit} onChange={e => onUpdate({ unit: e.target.value, unitsPerBox: '' })}
                     className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
                     <option value="">— Chọn —</option>
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -473,6 +495,66 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                 <option value="EXCLUSIVE">VAT tính thêm</option>
               </select>
             </div>
+          </div>
+
+          {/* ── Quy cách thùng ── */}
+          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+            {/* Toggle header */}
+            <button
+              type="button"
+              onClick={() => onUpdate({ unitsPerBox: item.unitsPerBox ? '' : '1' })}
+              className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Box size={14} className="text-[#C9A84C]" />
+                <span className="text-xs font-semibold text-[#1C1C1E]">Bán theo thùng / quy cách</span>
+                <span className="text-[10px] text-[#B0A898]">(tuỳ chọn)</span>
+              </div>
+              {/* Toggle pill */}
+              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0
+                ${item.unitsPerBox ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all
+                  ${item.unitsPerBox ? 'left-4' : 'left-0.5'}`} />
+              </div>
+            </button>
+
+            {/* Expanded: nhập số lượng/thùng */}
+            {item.unitsPerBox !== '' && (
+              <div className="px-4 py-3 bg-white border-t border-[#F0EBE3] space-y-3">
+                <p className="text-[11px] text-[#8E8878]">
+                  Cho phép bán nguyên thùng. Khi đặt 1 thùng, hệ thống tự nhân giá và trừ kho tương ứng.
+                </p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#5C5C5C] whitespace-nowrap font-medium">1 thùng =</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={item.unitsPerBox}
+                      onFocus={(e) => requestAnimationFrame(() => e.target.select())}
+                      onMouseUp={(e) => e.preventDefault()}
+                      onChange={e => onUpdate({ unitsPerBox: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="12"
+                      className="w-20 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-[#C9A84C] focus:outline-none text-[#1C1C1E] bg-[#FFFDF7]"
+                    />
+                    <span className="text-xs text-[#5C5C5C] font-medium">
+                      {item.unit || 'đơn vị'}
+                    </span>
+                  </div>
+
+                  {/* Preview giá thùng */}
+                  {boxPrice && (
+                    <div className="flex items-center gap-2 bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#EDD98A]">
+                      <Box size={13} className="text-[#C9A84C]" />
+                      <span className="text-xs text-[#8E8878]">Giá 1 thùng:</span>
+                      <span className="text-sm font-bold text-[#C9A84C]">
+                        {fmtNum(boxPrice)} đ
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Khung giá sỉ */}

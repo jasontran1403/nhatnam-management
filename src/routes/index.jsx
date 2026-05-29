@@ -204,7 +204,7 @@ export default function AppRoutes() {
       {/* ── OPERATOR */}
       <Route path="/operator"
         element={<TranslatedLayout rawNav={operatorNavRaw} allowedRoles={['OPERATOR','ADMIN','OWNER']} />}>
-        <Route index element={<Navigate to="/operator/categories" replace />} />
+        <Route index element={<Navigate to="/operator/products" replace />} />
         <Route path="categories"  element={<OperatorCategoriesPage />} />
         <Route path="ingredients" element={<OperatorIngredientsPage />} />
         <Route path="products"    element={<OperatorProductBatchPage />} />
