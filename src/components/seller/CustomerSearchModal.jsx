@@ -287,6 +287,7 @@ function InlineForm({ form, onChange, onSave, onCancel, saving, phoneError }) {
 
 // ── Create Customer Step ──────────────────────────────────────────
 function CreateCustomerStep({ onBack, onCreated, toast }) {
+  const { t } = useLang();
   const [customerType, setCustomerType] = useState('RETAIL');
   const [form, setForm] = useState({
     customerCode: '',
