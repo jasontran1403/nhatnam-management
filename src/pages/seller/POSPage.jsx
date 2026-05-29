@@ -1,12 +1,11 @@
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Search, UserPlus, UserCheck, ShoppingBag, Trash2,
   ChevronDown, X, Receipt, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle,
-  FileText, Save,
+  Save,
 } from 'lucide-react';
 import { productApi, categoryApi, orderApi, warehouseApi, draftApi } from '../../api/services';
 import api from '../../api/axios';
@@ -54,18 +53,10 @@ function resolveTierForQty(tiers, qty, fallbackPrice) {
   return { tierId: matched.id, tierName: matched.tierName, unitPrice: Number(matched.price ?? fallbackPrice) };
 }
 
-// ── Helper: tính giá theo pricingType của khách hàng ─────────────────────────
-// Trả về { unitPrice, tierId, tierName } để dùng cho cả addToCart và updateQty
-// product: ProductResponse (có .basePrice, .priceTiers)
-// customer: CustomerResponse (có .pricingType) — null = chưa chọn khách
-// qty: số lượng lẻ (đã quy đổi từ thùng nếu cần)
-// saleType: 'BOX' | 'RETAIL'
-// unitsPerBox: số lẻ / thùng
 function resolveUnitPrice(product, customer, qty, saleType = 'RETAIL', unitsPerBox = null) {
   const isWholesale = customer?.pricingType === 'WHOLESALE_PRICE';
   const tiers = product.priceTiers || [];
 
-  // Quy đổi qty thùng → đơn vị lẻ để tra tier
   const effectiveQty = (saleType === 'BOX' && unitsPerBox > 0)
     ? qty * unitsPerBox
     : qty;
@@ -80,7 +71,6 @@ function resolveUnitPrice(product, customer, qty, saleType = 'RETAIL', unitsPerB
     };
   }
 
-  // RETAIL_PRICE hoặc chưa có khách → basePrice
   const basePrice = product.basePrice ?? 0;
   return {
     unitPrice: saleType === 'BOX' ? basePrice * unitsPerBox : basePrice,
@@ -131,9 +121,15 @@ function CartPanel({
   onOpenCustomerModal, onClearCustomer, onClearCart, onNotesChange,
   onPaymentChange, onDiscountChange, onSurchargeChange, onUpdateQty,
   onRemoveItem, onPriceOverride, onItemDiscountChange, onPromoToggle, onSubmit,
-  onSaveDraft, savingDraft,
+  onSaveDraft, savingDraft, countdownSeconds,
 }) {
   const { t } = useLang();
+  const formatCountdown = (seconds) => {
+    if (seconds <= 0) return 'Hết hạn';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="px-4 py-3 border-b border-[#F0EBE3] flex items-center justify-between">
@@ -146,11 +142,18 @@ function CartPanel({
             </span>
           )}
         </div>
-        {cartItems.length > 0 && (
-          <button onClick={onClearCart} className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-600">
-            <Trash2 size={11} /> {t('common','delete')}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {countdownSeconds > 0 && (
+            <div className="text-xs font-mono bg-amber-50 px-2 py-1 rounded-full text-amber-700">
+              ⏱️ {formatCountdown(countdownSeconds)}
+            </div>
+          )}
+          {cartItems.length > 0 && (
+            <button onClick={onClearCart} className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-600">
+              <Trash2 size={11} /> {t('common','delete')}
+            </button>
+          )}
+        </div>
       </div>
 
       {priceChangedIds.size > 0 && (
@@ -262,7 +265,7 @@ function CartPanel({
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#8E8878] shrink-0">Giảm giá:</span>
             <div className="flex items-center gap-1 flex-wrap">
-              {[0, 5, 8, 10].map((d) => (
+              {[0, 3, 5, 8, 10].map((d) => (
                 <button key={d} onClick={() => onDiscountChange(d)}
                   className={`text-[10px] px-2 py-1 rounded-md font-semibold transition-colors
                     ${discount === d && discountFixedAmt === null
@@ -399,9 +402,6 @@ function CartPanel({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useCartHold
-// ─────────────────────────────────────────────────────────────────────────────
 function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
   const [heldByAll, setHeldByAll] = useState({});
   const wsRef = useRef(null);
@@ -518,9 +518,6 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
   return { heldByAll };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DeliveryTimeModal
-// ─────────────────────────────────────────────────────────────────────────────
 function DeliveryTimeModal({ onConfirm, onClose }) {
   const defaultDelivery = (() => {
     const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
@@ -617,7 +614,6 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
   );
 }
 
-
 export default function POSPage() {
   const { t } = useLang();
   const toast = useToast();
@@ -655,21 +651,61 @@ export default function POSPage() {
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState(null);
-  const [holdExpiresAt, setHoldExpiresAt] = useState(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(0);
+  const timerRef = useRef(null);
+  const CART_HOLD_DURATION = 10 * 60; // 10 minutes
 
-  // Ref để updateQty và các callback khác luôn đọc được customer mới nhất
   const customerRef = useRef(null);
   const productsRef = useRef([]);
 
   useEffect(() => { customerRef.current = customer; }, [customer]);
   useEffect(() => { productsRef.current = products; }, [products]);
 
+  // Timer effect - starts when cart has items, stops when cart is empty
   useEffect(() => {
-    const t = setTimeout(() => setSearchQuery(inputSearch), 600);
-    return () => clearTimeout(t);
-  }, [inputSearch]);
+    if (cartItems.length > 0 && countdownSeconds === 0) {
+      // Start timer when first item is added
+      setCountdownSeconds(CART_HOLD_DURATION);
+    }
+    
+    if (cartItems.length === 0 && countdownSeconds !== 0) {
+      // Clear timer when cart becomes empty
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      setCountdownSeconds(0);
+    }
+  }, [cartItems.length]);
+
+  // Countdown logic
+  useEffect(() => {
+    if (countdownSeconds > 0 && cartItems.length > 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      
+      timerRef.current = setInterval(() => {
+        setCountdownSeconds(prev => {
+          if (prev <= 1) {
+            // Timer expired
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+            handleCartExpired();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [countdownSeconds, cartItems.length]);
 
   const handleCartExpired = useCallback(() => {
     setCartItems([]);
@@ -679,40 +715,14 @@ export default function POSPage() {
     setSurcharge(0);
     setSurchargeDisplay('');
     setPriceChangedIds(new Set());
-    setHoldExpiresAt(null);
+    setCountdownSeconds(0);
     if (currentDraftId) {
-      toast('Giỏ hàng đã hết hạn. Đơn nháp vẫn được lưu.', 'warning');
+      toast('Giỏ hàng đã hết hạn (10 phút không thanh toán). Đơn nháp vẫn được lưu.', 'warning');
       navigate('/seller/drafts');
     } else {
-      toast('Giỏ hàng đã hết hạn (3 phút không thanh toán). Vui lòng đặt lại.', 'warning');
+      toast('Giỏ hàng đã hết hạn (10 phút không thanh toán). Vui lòng đặt lại.', 'warning');
     }
   }, [toast, currentDraftId, navigate]);
-
-  useEffect(() => {
-    if (!holdExpiresAt) return;
-    const left = holdExpiresAt - Date.now();
-    if (left <= 0) {
-      cartHoldApi.release().catch(() => { });
-      setHoldExpiresAt(null);
-      toast('Hết giờ giữ tồn kho. Đơn nháp vẫn được lưu.', 'warning');
-      navigate('/seller/drafts');
-      return;
-    }
-    const id = setTimeout(async () => {
-      await cartHoldApi.release().catch(() => { });
-      setHoldExpiresAt(null);
-      setCartItems([]);
-      setCustomerState(null);
-      setNotes('');
-      setDiscount(0);
-      setSurcharge(0);
-      setSurchargeDisplay('');
-      toast('Hết giờ giữ tồn kho (10 phút). Đơn nháp vẫn được lưu.', 'warning');
-      navigate('/seller/drafts');
-    }, left);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdExpiresAt]);
 
   const { heldByAll } = useCartHold(
     selectedWarehouse?.id,
@@ -752,7 +762,7 @@ export default function POSPage() {
     }
 
     return minCanMake === Infinity ? Number(product.stockQuantity) : minCanMake;
-  }, [products, cartItems, ingStockMap]);
+  }, [ingStockMap]);
 
   useEffect(() => {
     warehouseApi.getAll()
@@ -762,9 +772,8 @@ export default function POSPage() {
         if (list.length > 0) setSelectedWarehouse(list[0]);
       })
       .catch(() => toast('Không thể tải danh sách kho', 'error'));
-  }, []);
+  }, [toast]);
 
-  // ─── Load draft từ navigation state ──────────────────────────────────────
   useEffect(() => {
     const draft = location.state?.draft;
     const fromDraftHold = location.state?.fromDraftHold;
@@ -820,33 +829,23 @@ export default function POSPage() {
     if (draft.surcharge) setSurcharge(Number(draft.surcharge));
 
     if (fromDraftHold && expiresAt) {
-      setHoldExpiresAt(expiresAt);
+      const remainingSeconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      setCountdownSeconds(remainingSeconds);
     }
 
     toast('Đã tải đơn nháp vào giỏ hàng', 'success');
     setCurrentDraftId(draft.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.state, toast]);
 
-  // ── Khi đổi khách hàng: tính lại giá toàn bộ giỏ hàng ───────────────────
-  // - isManualPrice = true → bỏ qua
-  // - isPromo = true → bỏ qua
-  // - Còn lại: tính lại theo pricingType của customer mới
   const setCustomer = useCallback((newCustomer) => {
     setCustomerState(newCustomer);
     setCartItems(prev => prev.map(item => {
-      // Bỏ qua override và promo
       if (item.isManualPrice || item.isPromo) return item;
-
       const prod = productsRef.current.find(p => p.id === item.productId);
       if (!prod) return item;
 
       const { unitPrice, tierId, tierName } = resolveUnitPrice(
-        prod,
-        newCustomer,
-        item.quantity,
-        item.saleType,
-        item.unitsPerBox,
+        prod, newCustomer, item.quantity, item.saleType, item.unitsPerBox
       );
 
       return {
@@ -888,16 +887,6 @@ export default function POSPage() {
     }, 600);
   }, []);
 
-  const fetchProducts = useCallback(async () => {
-    if (!selectedWarehouse?.id) return null;
-    try {
-      const res = await productApi.getAll({ page: 0, size: 200, warehouseId: selectedWarehouse.id });
-      return res.data?.data?.content || [];
-    } catch {
-      return null;
-    }
-  }, [selectedWarehouse]);
-
   useEffect(() => {
     if (!selectedWarehouse) return;
     setLoadingProducts(true);
@@ -905,7 +894,7 @@ export default function POSPage() {
       .then(res => setProducts(res.data?.data?.content || []))
       .catch(() => toast('Không thể tải sản phẩm', 'error'))
       .finally(() => setLoadingProducts(false));
-  }, [selectedWarehouse]);
+  }, [selectedWarehouse, toast, setLoadingProducts]);
 
   useEffect(() => {
     categoryApi.getAll()
@@ -938,7 +927,6 @@ export default function POSPage() {
     return list;
   }, [products, activeCategory, searchQuery, sortField, sortDir]);
 
-  // ── addToCart: tính giá theo customer ────────────────────────────────────
   const addToCart = useCallback((product, saleType = 'RETAIL') => {
     setPriceChangedIds(prev => { const n = new Set(prev); n.delete(product.id); return n; });
 
@@ -953,13 +941,8 @@ export default function POSPage() {
         ? Math.round(stock * 1000) / 1000
         : 1;
 
-      // Tính giá theo customer hiện tại
       const { unitPrice, tierId, tierName } = resolveUnitPrice(
-        product,
-        customerRef.current,
-        addQty,
-        saleType,
-        unitsPerBox,
+        product, customerRef.current, addQty, saleType, unitsPerBox
       );
 
       const displayUnit = unitsPerBox ? 'Thùng' : (product.unit || '');
@@ -1005,7 +988,6 @@ export default function POSPage() {
     }
   }, [addToCart, calcEffectiveStock]);
 
-  // ── updateQty: tính lại giá tier nếu WHOLESALE_PRICE ─────────────────────
   const updateQty = useCallback((cartId, qty) => {
     if (qty <= 0) { setCartItems((prev) => prev.filter((i) => i.id !== cartId)); return; }
     setCartItems((prev) => prev.map((i) => {
@@ -1020,30 +1002,24 @@ export default function POSPage() {
         }
       }
 
-      // Promo: không tính lại giá
       if (i.isPromo) return { ...i, quantity: cappedQty };
-
-      // Manual price override: không tính lại giá
       if (i.isManualPrice) return { ...i, quantity: cappedQty };
 
-      // BOX: giá đã nhân unitsPerBox khi addToCart
-      // Vẫn cần tính lại tier nếu WHOLESALE (dựa trên số lẻ tương đương)
       if (i.saleType === 'BOX' && i.unitsPerBox > 0) {
         const currentCustomer = customerRef.current;
         if (currentCustomer?.pricingType === 'WHOLESALE_PRICE' && prod) {
           const { unitPrice, tierId, tierName } = resolveUnitPrice(
-            prod, currentCustomer, cappedQty, 'BOX', i.unitsPerBox,
+            prod, currentCustomer, cappedQty, 'BOX', i.unitsPerBox
           );
           return { ...i, quantity: cappedQty, unitPrice, originalUnitPrice: unitPrice, tierId, tierName };
         }
         return { ...i, quantity: cappedQty };
       }
 
-      // RETAIL saleType — tính lại theo customer
       const currentCustomer = customerRef.current;
       if (prod) {
         const { unitPrice, tierId, tierName } = resolveUnitPrice(
-          prod, currentCustomer, cappedQty, i.saleType, i.unitsPerBox,
+          prod, currentCustomer, cappedQty, i.saleType, i.unitsPerBox
         );
         const changed = tierId !== i.tierId || unitPrice !== i.unitPrice;
         return {
@@ -1053,21 +1029,7 @@ export default function POSPage() {
         };
       }
 
-      // Fallback: không có prod trong list → giữ nguyên
-      const allTiers = i.priceTiers || [];
-      const r = resolveTierForQty(allTiers, cappedQty, i.basePrice ?? i.unitPrice);
-      if (!r) return { ...i, quantity: cappedQty };
-      const changed = r.tierId !== i.tierId || r.unitPrice !== i.unitPrice;
-      return {
-        ...i,
-        quantity: cappedQty,
-        ...(changed ? {
-          tierId: r.tierId,
-          tierName: r.tierName,
-          unitPrice: r.unitPrice,
-          originalUnitPrice: r.unitPrice,
-        } : {}),
-      };
+      return { ...i, quantity: cappedQty };
     }));
   }, [calcEffectiveStock]);
 
@@ -1125,6 +1087,7 @@ export default function POSPage() {
     setSurcharge(0);
     setSurchargeDisplay('');
     setPriceChangedIds(new Set());
+    setCountdownSeconds(0);
     cartHoldApi.release().catch(() => { });
   }, []);
 
@@ -1152,7 +1115,6 @@ export default function POSPage() {
     ? Math.min(discountFixedAmt, maxDiscountFixed)
     : Math.round(subtotalAfterItemDiscount * discount) / 100;
 
-  const totalDiscount = itemDiscountTotal + discountAmt + promoTotal;
   const surchargeNum = Number(surcharge) || 0;
   const total = subtotal - itemDiscountTotal - discountAmt + surchargeNum;
 
@@ -1175,24 +1137,24 @@ export default function POSPage() {
     return Object.values(map).sort((a, b) => a.rate - b.rate);
   }, [cartItems, discount, discountFixedAmt, maxDiscountFixed, subtotalAfterItemDiscount]);
 
-  const exclusiveVatTotal = 0;
-
   const handlePriceChanged = useCallback(async (message) => {
     const changedName = parseChangedProductName(message);
-    const fresh = await fetchProducts();
-    if (!fresh) return;
+    const fresh = await productApi.getAll({ page: 0, size: 200, warehouseId: selectedWarehouse?.id });
+    if (!fresh?.data?.data?.content) return;
 
-    setProducts(fresh);
+    const freshProducts = fresh.data.data.content;
+    setProducts(freshProducts);
+
     const newChangedIds = new Set();
 
     setCartItems(prev => prev.map(item => {
       if (item.isManualPrice) return item;
       if (item.saleType === 'BOX' && item.unitsPerBox > 0) return item;
-      const freshProduct = fresh.find(p => p.id === item.productId);
+
+      const freshProduct = freshProducts.find(p => p.id === item.productId);
       if (!freshProduct) return item;
 
       const freshTier = freshProduct.priceTiers?.find(t => t.id === item.tierId)
-        || freshProduct.priceTiers?.find(t => t.sortOrder === 0)
         || freshProduct.priceTiers?.[0];
       const freshPrice = Number(freshTier?.price ?? freshProduct.basePrice ?? item.unitPrice);
 
@@ -1213,13 +1175,8 @@ export default function POSPage() {
     }));
 
     if (newChangedIds.size > 0) setPriceChangedIds(prev => new Set([...prev, ...newChangedIds]));
-    toast(
-      changedName
-        ? `Giá "${changedName}" đã được cập nhật trong giỏ hàng. Vui lòng kiểm tra lại.`
-        : 'Một số giá đã thay đổi và được cập nhật trong giỏ hàng.',
-      'warning',
-    );
-  }, [fetchProducts, toast]);
+    toast(changedName ? `Giá "${changedName}" đã được cập nhật.` : 'Một số giá đã thay đổi.', 'warning');
+  }, [selectedWarehouse, toast]);
 
   const handleSaveDraft = useCallback(async () => {
     if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
@@ -1242,38 +1199,32 @@ export default function POSPage() {
         receiverPhone: customer?.selectedReceiver?.receiverPhone || null,
         receiverAddress: customer?.selectedReceiver?.receiverAddress || null,
         receiverInfoId: customer?.selectedReceiver?.id || null,
-        items: cartItems.map(i => {
-          const itemSubtotal = Number(i.unitPrice) * Number(i.quantity);
-          return {
-            productId: i.productId,
-            productName: i.productName,
-            productImageUrl: i.productImageUrl,
-            variantId: i.variantId,
-            unit: i.unit,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            basePrice: i.basePrice,
-            priceMode: i.priceMode || 'BASE',
-            tierId: i.isPromo ? null : i.tierId,
-            tierName: i.tierName,
-            discountPercent: i.discountPercent,
-            isManualPrice: i.isManualPrice,
-            saleType: i.saleType || 'RETAIL',
-            unitsPerBox: i.unitsPerBox,
-            isPromo: i.isPromo,
-            promoNote: i.promoNote,
-            itemDiscountRate: i.itemDiscountRate || 0,
-            notes: i.notes,
-            subtotal: itemSubtotal,
-          };
-        }),
+        items: cartItems.map(i => ({
+          productId: i.productId,
+          productName: i.productName,
+          productImageUrl: i.productImageUrl,
+          variantId: i.variantId,
+          unit: i.unit,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          basePrice: i.basePrice,
+          priceMode: i.priceMode || 'BASE',
+          tierId: i.isPromo ? null : i.tierId,
+          tierName: i.tierName,
+          discountPercent: i.discountPercent,
+          isManualPrice: i.isManualPrice,
+          saleType: i.saleType || 'RETAIL',
+          unitsPerBox: i.unitsPerBox,
+          isPromo: i.isPromo,
+          promoNote: i.promoNote,
+          itemDiscountRate: i.itemDiscountRate || 0,
+          notes: i.notes,
+          subtotal: Number(i.unitPrice) * Number(i.quantity),
+        })),
       };
 
       await cartHoldApi.release().catch(() => { });
-
-      if (currentDraftId) {
-        await draftApi.delete(currentDraftId).catch(() => { });
-      }
+      if (currentDraftId) await draftApi.delete(currentDraftId).catch(() => { });
 
       const res = await draftApi.save(payload);
       const newDraftId = res?.data?.data?.id || res?.data?.id;
@@ -1287,8 +1238,7 @@ export default function POSPage() {
     } finally {
       setSavingDraft(false);
     }
-  }, [cartItems, customer, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed,
-    surchargeNum, selectedWarehouse, clearCart, toast, currentDraftId]);
+  }, [cartItems, customer, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed, surchargeNum, selectedWarehouse, clearCart, toast, currentDraftId]);
 
   const handleOpenDeliveryModal = useCallback(() => {
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
@@ -1298,8 +1248,7 @@ export default function POSPage() {
 
   const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true, recipientName = null) => {
     setDeliveryModalOpen(false);
-    if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
-    if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
+    if (!customer || cartItems.length === 0) return;
 
     setSubmitting(true);
     try {
@@ -1324,17 +1273,13 @@ export default function POSPage() {
           tierId: i.isPromo ? undefined : i.tierId,
           quantity: i.quantity,
           sentUnitPrice: i.isPromo ? 0 : (
-            (i.saleType === 'BOX' && i.unitsPerBox > 0)
-              ? i.unitPrice / i.unitsPerBox
-              : i.unitPrice
+            (i.saleType === 'BOX' && i.unitsPerBox > 0) ? i.unitPrice / i.unitsPerBox : i.unitPrice
           ),
           priceMode: i.isPromo ? 'BASE' : ((i.itemDiscountRate > 0) ? 'DISCOUNT_PERCENT' : 'TIER'),
           discountPercent: (!i.isPromo && i.itemDiscountRate > 0) ? i.itemDiscountRate : undefined,
           isManualPrice: i.isPromo ? true : (i.isManualPrice === true),
           saleType: i.saleType || 'RETAIL',
-          notes: i.isPromo
-            ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}`
-            : (i.notes || undefined),
+          notes: i.isPromo ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
         })),
       };
 
@@ -1351,13 +1296,12 @@ export default function POSPage() {
       }
 
       await cartHoldApi.release().catch(() => { });
-
       const orderCode = body?.data?.orderCode;
       toast(`Tạo đơn hàng thành công${orderCode ? ': ' + orderCode : ''}`, 'success');
       clearCart();
       setMobileCartOpen(false);
-      const fresh = await fetchProducts();
-      if (fresh) setProducts(fresh);
+      const fresh = await productApi.getAll({ page: 0, size: 200, warehouseId: selectedWarehouse?.id });
+      if (fresh?.data?.data?.content) setProducts(fresh.data.data.content);
 
     } catch (err) {
       const body = err?.response?.data;
@@ -1365,21 +1309,21 @@ export default function POSPage() {
         await handlePriceChanged(body.message);
         return;
       }
-      toast(body?.message || err?.message || 'Lỗi khi tạo đơn hàng', 'error');
+      toast(body?.message || 'Lỗi khi tạo đơn hàng', 'error');
     } finally {
       setSubmitting(false);
     }
-  }, [customer, cartItems, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed, surchargeNum, selectedWarehouse, clearCart, fetchProducts, handlePriceChanged, toast]);
+  }, [customer, cartItems, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed, surchargeNum, selectedWarehouse, clearCart, handlePriceChanged, toast]);
 
   const cartPanelProps = {
     cartItems, customer, notes, paymentMethod, discount,
     surchargeDisplay, surcharge, subtotal, discountAmt, surchargeNum,
-    vatBreakdown, exclusiveVatTotal, itemDiscountTotal, totalDiscount, promoTotal,
+    vatBreakdown, exclusiveVatTotal: 0, itemDiscountTotal, totalDiscount: 0, promoTotal,
     total, submitting, priceChangedIds,
     selectedWarehouse,
     maxDiscountFixed,
     onOpenCustomerModal: () => setCustomerModalOpen(true),
-    onClearCustomer: () => setCustomer(null),
+    onClearCustomer: () => setCustomerState(null),
     onClearCart: clearCart,
     onNotesChange: setNotes,
     onPaymentChange: setPaymentMethod,
@@ -1405,34 +1349,13 @@ export default function POSPage() {
     onSubmit: handleOpenDeliveryModal,
     onSaveDraft: handleSaveDraft,
     savingDraft,
+    countdownSeconds,
   };
-
-  const holdCountdown = (() => {
-    if (!holdExpiresAt) return null;
-    const left = Math.max(0, holdExpiresAt - Date.now());
-    const m = Math.floor(left / 60000);
-    const s = Math.floor((left % 60000) / 1000);
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  })();
 
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-[#FAF7F2]">
 
-      {holdExpiresAt && (
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm font-semibold">
-          <span>⏱ Tồn kho được giữ: {holdCountdown}</span>
-          <button onClick={async () => { await cartHoldApi.release().catch(() => { }); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
-            className="text-white/80 hover:text-white underline text-xs">Hủy</button>
-        </div>
-      )}
-      {holdExpiresAt && (
-        <div className="hidden lg:flex fixed top-0 left-1/2 -translate-x-1/2 z-30 bg-amber-500 text-white px-6 py-2 rounded-b-xl items-center gap-4 text-sm font-semibold shadow-lg">
-          <span>⏱ Tồn kho được giữ trong: {holdCountdown}</span>
-          <button onClick={async () => { await cartHoldApi.release().catch(() => { }); setHoldExpiresAt(null); navigate('/seller/drafts'); }}
-            className="text-white border border-white/40 rounded-lg px-2 py-0.5 text-xs hover:bg-white/10 transition-colors">Hủy giữ kho</button>
-        </div>
-      )}
-
+      {/* ==================== MOBILE CART ==================== */}
       <div className="lg:hidden flex-shrink-0">
         <button
           onClick={() => setMobileCartOpen(!mobileCartOpen)}
@@ -1450,21 +1373,35 @@ export default function POSPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {countdownSeconds > 0 && (
+              <div className="text-xs font-mono bg-amber-50 px-2 py-1 rounded-full text-amber-700">
+                ⏱️ {Math.floor(countdownSeconds / 60)}:{Math.floor(countdownSeconds % 60).toString().padStart(2, '0')}
+              </div>
+            )}
             {priceChangedIds.size > 0 && <AlertTriangle size={14} className="text-amber-400" />}
             <span className="text-[#C9A84C] text-sm font-bold">{formatPrice(total)}</span>
             <ChevronDown size={16} className={`text-[#8E8878] transition-transform ${mobileCartOpen ? 'rotate-180' : ''}`} />
           </div>
         </button>
+
         {mobileCartOpen && (
-          <div className="h-[60vh] border-b border-[#E8DDD0] shadow-lg">
-            <CartPanel {...cartPanelProps} />
+          <div className="fixed inset-x-0 bottom-0 top-[57px] z-50 bg-white flex flex-col shadow-lg overflow-hidden animate-slideUp">
+            <div className="flex-1 overflow-y-auto">
+              <CartPanel {...cartPanelProps} />
+            </div>
+            <button
+              onClick={() => setMobileCartOpen(false)}
+              className="sticky bottom-0 w-full py-3.5 bg-[#C9A84C] text-white text-sm font-semibold border-t border-[#b8963d] shadow-lg"
+            >
+              ✕ Đóng giỏ hàng
+            </button>
           </div>
         )}
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ==================== PRODUCT LIST ==================== */}
+      <div className={`flex-1 flex flex-col overflow-hidden ${mobileCartOpen ? 'hidden lg:flex' : 'flex'}`}>
         <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-white border-b border-[#F0EBE3] space-y-2">
-
           {warehouses.length > 1 && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-[#8E8878] shrink-0">🏭 Kho:</span>
@@ -1476,12 +1413,11 @@ export default function POSPage() {
                       setSelectedWarehouse(w);
                       setCartItems([]);
                       setPriceChangedIds(new Set());
+                      setCountdownSeconds(0);
                       cartHoldApi.release().catch(() => { });
                     }}
                     className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                      ${selectedWarehouse?.id === w.id
-                        ? 'bg-[#C9A84C] text-white'
-                        : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}
+                      ${selectedWarehouse?.id === w.id ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}
                   >
                     {w.name}
                   </button>
@@ -1509,14 +1445,13 @@ export default function POSPage() {
                   else { setSortField(null); setSortDir('asc'); }
                 }}
                   className={`shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl border text-xs font-medium transition-colors
-                    ${active
-                      ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
-                      : 'border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C]'}`}>
+                    ${active ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C]'}`}>
                   <Icon size={13} />{label}
                 </button>
               );
             })}
           </div>
+
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
             <button onClick={() => setActiveCategory('ALL')}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
@@ -1544,7 +1479,7 @@ export default function POSPage() {
               <p className="text-sm">Không tìm thấy sản phẩm</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
               {filteredProducts.map((p) => {
                 const cartQty = cartItems
                   .filter((i) => i.productId === p.id)
@@ -1565,6 +1500,7 @@ export default function POSPage() {
         </div>
       </div>
 
+      {/* Desktop Cart */}
       <div className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-[#E8DDD0] h-full">
         <CartPanel {...cartPanelProps} />
       </div>
