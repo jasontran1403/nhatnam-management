@@ -23,12 +23,12 @@ const emptyIngredient = () => ({
 const emptyItem = () => ({
   _id: Date.now() + Math.random(),
   existingProductId: null,
-  name: '', 
-  categoryName: '', 
+  name: '',
+  categoryName: '',
   unit: '',
-  basePrice: '', 
+  basePrice: '',
   maxDiscountRate: 0,
-  vatRate: 8, 
+  vatRate: 8,
   vatMode: 'INCLUSIVE',
   imageUrl: '',
   unitsPerBox: '',
@@ -116,20 +116,20 @@ export default function OperatorProductBatchPage() {
       vatMode: p.vatMode || 'INCLUSIVE',
       imageUrl: p.imageUrl || '',
       unitsPerBox: p.unitsPerBox ? String(p.unitsPerBox) : '',
-      tiers: (p.tiers && p.tiers.length > 0) 
+      tiers: (p.tiers && p.tiers.length > 0)
         ? p.tiers.map(t => ({
-            _id: `tier-${Date.now()}-${Math.random()}`,
-            fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
-            price: t.price != null ? String(t.price) : '',
-          }))
+          _id: `tier-${Date.now()}-${Math.random()}`,
+          fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
+          price: t.price != null ? String(t.price) : '',
+        }))
         : [{ _id: `tier-${Date.now()}`, fromQty: 0, price: String(p.basePrice || '') }],
       ingredients: (p.ingredients && p.ingredients.length > 0)
         ? p.ingredients.map(ing => ({
-            _id: Date.now() + Math.random(),
-            ingredientId: String(ing.ingredientId || ''),
-            quantity: ing.quantity != null ? ing.quantity : 1,
-            canOverride: ing.canOverride || false,
-          }))
+          _id: Date.now() + Math.random(),
+          ingredientId: String(ing.ingredientId || ''),
+          quantity: ing.quantity != null ? ing.quantity : 1,
+          canOverride: ing.canOverride || false,
+        }))
         : [emptyIngredient()],
     });
 
@@ -151,14 +151,14 @@ export default function OperatorProductBatchPage() {
       const json = await res.json();
       setItem(itemId, { imageUrl: json?.data?.imageUrl || '', _uploading: false });
     } catch {
-      toast(t('common','error'), 'error');
+      toast(t('common', 'error'), 'error');
       setItem(itemId, { _uploading: false });
     }
   };
 
   const handleSubmit = async () => {
     for (const it of items) {
-      if (!it.name.trim()) return toast(t('product','product_name_required'), 'error');
+      if (!it.name.trim()) return toast(t('product', 'product_name_required'), 'error');
       if (!it.unit.trim()) return toast(`Đơn vị tính của "${it.name}" không được trống`, 'error');
       const price = Number(String(it.basePrice).replace(/[^0-9]/g, ''));
       if (!price || price <= 0) return toast(`Giá bán lẻ "${it.name}" không hợp lệ`, 'error');
@@ -230,10 +230,10 @@ export default function OperatorProductBatchPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden bg-[#FAF7F2]">
-              {['CREATE', 'UPDATE'].map(t => (
-                <button key={t} onClick={() => { setBatchType(t); setItems([emptyItem()]); setNote(''); }}
-                  className={`px-4 py-2 text-xs font-semibold transition-colors ${batchType === t ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
-                  {t === 'CREATE' ? 'Tạo mới' : t('common','update')}
+              {['CREATE', 'UPDATE'].map(type => (
+                <button key={type} onClick={() => { setBatchType(type); setItems([emptyItem()]); setNote(''); }}
+                  className={`px-4 py-2 text-xs font-semibold transition-colors ${batchType === type ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
+                  {type === 'CREATE' ? 'Tạo mới' : t('common', 'update')}
                 </button>
               ))}
             </div>
@@ -390,8 +390,8 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                 className="w-full px-4 py-3 bg-white border border-[#E8DDD0] hover:border-[#C9A84C] rounded-xl text-left flex items-center justify-between transition-colors"
               >
                 <span>
-                  {item.existingProductId 
-                    ? products.find(p => p.id === item.existingProductId)?.name || 'Đã chọn': 'Chọn sản phẩm từ danh sách...'}
+                  {item.existingProductId
+                    ? products.find(p => p.id === item.existingProductId)?.name || 'Đã chọn' : 'Chọn sản phẩm từ danh sách...'}
                 </span>
                 <Search size={16} className="text-[#C9A84C]" />
               </button>

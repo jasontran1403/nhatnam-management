@@ -42,7 +42,7 @@ export default function OperatorMyBatchesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>Phiếu của tôi</h1>
-            <p className="text-xs text-[#8E8878]">t('operator','batches_sent').replace('{n}',batches.length)</p>
+            <p className="text-xs text-[#8E8878]">{t('operator','batches_sent').replace('{n}', batches.length)}</p>
           </div>
           <button onClick={fetch} className="p-2 rounded-xl text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-all">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
