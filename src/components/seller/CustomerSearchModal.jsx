@@ -41,6 +41,7 @@ function SectionLabel({ children }) {
 
 // ── CustomerCode Input ────────────────────────────────────────────
 function CustomerCodeInput({ value, onChange, error }) {
+  const { t } = useLang();
   const [checking, setChecking] = useState(false);
   const [available, setAvailable] = useState(null);
   const debounceRef = useRef(null);
