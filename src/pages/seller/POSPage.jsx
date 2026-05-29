@@ -83,11 +83,9 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
           >
             <div className="text-left">
               <p className="text-sm font-semibold text-[#1C1C1E]">Giá lẻ</p>
-              <p className="text-[10px] text-[#8E8878]">Giá bán lẻ tiêu chuẩn</p>
             </div>
             <div className="text-right">
               <p className="text-sm font-bold text-sky-600">{formatPrice(product.basePrice)}</p>
-              {currentPriceSource === 'BASE' && <Check size={14} className="text-sky-500 ml-auto mt-0.5" />}
             </div>
           </button>
 
@@ -106,10 +104,6 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
               >
                 <div className="text-left">
                   <p className="text-sm font-semibold text-[#1C1C1E]">{tier.tierName || `Sỉ ${idx + 1}`}</p>
-                  <p className="text-[10px] text-[#8E8878]">
-                    {tier.minQuantity != null ? `Từ ${Number(tier.minQuantity).toLocaleString('vi-VN')}` : ''}
-                    {tier.maxQuantity != null ? ` – ${Number(tier.maxQuantity).toLocaleString('vi-VN')}` : '+'}
-                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-orange-600">{formatPrice(tier.price)}</p>
