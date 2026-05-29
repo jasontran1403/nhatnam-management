@@ -17,11 +17,31 @@ import {
   DangerButton, Field, inputCls, formatNumber, formatDateTime,
 } from '../../components/ui';
 
+// ── TOP-LEVEL constants ───────────────────────────────────────────────────────
 
-/**
- * Trả về role xung đột với `adding` trong danh sách `current`,
- * hoặc null nếu không có xung đột.
- */
+const getRoleConfig = (t) => [
+  { value: 'OWNER',            label: t('admin', 'owner_role') },
+  { value: 'ADMIN',            label: t('admin', 'admin_role') },
+  { value: 'SUPER_ACCOUNTANT', label: t('admin', 'super_accountant_role') },
+  { value: 'ACCOUNTANT',       label: t('admin', 'accountant_role') },
+  { value: 'SUPER_SELLER',     label: 'Trưởng phòng kinh doanh' },
+  { value: 'SELLER',           label: 'Nhân viên kinh doanh' },
+  { value: 'SUPER_WAREHOUSE',  label: 'Trưởng xưởng' },
+  { value: 'WAREHOUSE',        label: 'Nhân viên kho' },
+  { value: 'OPERATOR',         label: 'Nhân viên nhập liệu' },
+  { value: 'FACTORY_WORKER',   label: 'Nhân viên xưởng SX' },
+  { value: 'HR',               label: 'Nhân viên nhân sự' },
+];
+
+const CONFLICT_GROUPS = [
+  ['ACCOUNTANT', 'SUPER_ACCOUNTANT'],
+  ['WAREHOUSE',  'SUPER_WAREHOUSE'],
+  ['SELLER',     'SUPER_SELLER'],
+  ['OWNER',      'ADMIN'],
+];
+
+// ── Helpers (dùng ROLE_LABEL động) ───────────────────────────────────────────
+
 function findConflict(current, adding) {
   for (const group of CONFLICT_GROUPS) {
     if (!group.includes(adding)) continue;
@@ -31,11 +51,7 @@ function findConflict(current, adding) {
   return null;
 }
 
-/**
- * Trả về tên của nhóm xung đột mà `role` thuộc về (để hiển thị hint),
- * hoặc null nếu không bị disabled.
- */
-function getDisabledReason(selected, candidate) {
+function getDisabledReason(selected, candidate, ROLE_LABEL) {
   for (const group of CONFLICT_GROUPS) {
     if (!group.includes(candidate)) continue;
     const blocking = group.find(r => r !== candidate && selected.includes(r));
@@ -51,18 +67,15 @@ function canManageUser(currentUserRole, targetUser) {
 }
 
 // ── Multi-role picker ─────────────────────────────────────────────────────────
-function RolePicker({ selected, onChange, availableRoles }) {
+function RolePicker({ selected, onChange, availableRoles, ROLE_LABEL }) {
   const [conflictMsg, setConflictMsg] = useState('');
 
   const toggle = (val) => {
     setConflictMsg('');
-
     if (selected.includes(val)) {
-      // Bỏ role — không cho bỏ nếu chỉ còn 1
       if (selected.length === 1) return;
       onChange(selected.filter(r => r !== val));
     } else {
-      // Thêm role — kiểm tra xung đột
       const conflict = findConflict(selected, val);
       if (conflict) {
         setConflictMsg(
@@ -79,7 +92,7 @@ function RolePicker({ selected, onChange, availableRoles }) {
       <div className="flex flex-wrap gap-2">
         {availableRoles.map(r => {
           const active = selected.includes(r.value);
-          const disabledReason = !active ? getDisabledReason(selected, r.value) : null;
+          const disabledReason = !active ? getDisabledReason(selected, r.value, ROLE_LABEL) : null;
           const isDisabled = !!disabledReason;
 
           return (
@@ -104,7 +117,6 @@ function RolePicker({ selected, onChange, availableRoles }) {
         })}
       </div>
 
-      {/* Conflict error message */}
       {conflictMsg && (
         <div className="flex items-start gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
           <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
@@ -112,7 +124,6 @@ function RolePicker({ selected, onChange, availableRoles }) {
         </div>
       )}
 
-      {/* Info khi chọn nhiều role */}
       {selected.length > 1 && !conflictMsg && (
         <p className="text-xs text-[#8E8878]">
           Khi đăng nhập, user sẽ được chọn role muốn sử dụng trong phiên đó.
@@ -126,51 +137,31 @@ function RolePicker({ selected, onChange, availableRoles }) {
 export default function AdminUsers() {
   const { t } = useLang();
   const { user: currentUser } = useAuth();
+
+  const ROLE_CONFIG = getRoleConfig(t);
+  const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
+  const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+
   const [filters, setFilters] = useState({ q: '', role: '', locked: '' });
   const debouncedQ = useDebounce(filters.q, 600);
-
-  const ROLE_CONFIG = [
-    { value: 'OWNER', label: t('admin', 'owner_role') },
-    { value: 'ADMIN', label: t('admin', 'admin_role') },
-    { value: 'SUPER_ACCOUNTANT', label: t('admin', 'super_accountant_role') },
-    { value: 'ACCOUNTANT', label: t('admin', 'accountant_role') },
-    { value: 'SUPER_SELLER', label: 'Trưởng phòng kinh doanh' },
-    { value: 'SELLER', label: 'Nhân viên kinh doanh' },
-    { value: 'SUPER_WAREHOUSE', label: 'Trưởng xưởng' },
-    { value: 'WAREHOUSE', label: 'Nhân viên kho' },
-    { value: 'OPERATOR', label: 'Nhân viên nhập liệu' },
-    { value: 'FACTORY_WORKER', label: 'Nhân viên xưởng SX' },
-    { value: 'HR', label: 'Nhân viên nhân sự' },
-  ];
-  const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
-  const ROLE_LABEL = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
-
-  // ── Các cặp role XUNG ĐỘT — không được tồn tại cùng nhau ─────────────────────
-  // Mỗi phần tử là 1 nhóm loại trừ lẫn nhau
-  const CONFLICT_GROUPS = [
-    ['ACCOUNTANT', 'SUPER_ACCOUNTANT'],
-    ['WAREHOUSE', 'SUPER_WAREHOUSE'],
-    ['SELLER', 'SUPER_SELLER'],
-    ['OWNER', 'ADMIN'],
-  ];
 
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen]     = useState(false);
+  const [editing, setEditing]       = useState(null);
+  const [saving, setSaving]         = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null);
-  const [pwdTarget, setPwdTarget] = useState(null);
-  const [newPwd, setNewPwd] = useState('');
+  const [pwdTarget, setPwdTarget]   = useState(null);
+  const [newPwd, setNewPwd]         = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, size: 20, sort: 'id,desc' };
-      if (debouncedQ) params.q = debouncedQ;
-      if (filters.role) params.role = filters.role;
+      if (debouncedQ)       params.q      = debouncedQ;
+      if (filters.role)     params.role   = filters.role;
       if (filters.locked !== '') params.locked = filters.locked;
       const res = await adminUserApi.list(params);
       setData(res);
@@ -181,7 +172,7 @@ export default function AdminUsers() {
   useEffect(() => { load(); }, [load]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
-  const openEdit = (u) => { setEditing(u); setFormOpen(true); };
+  const openEdit   = (u) => { setEditing(u);   setFormOpen(true); };
 
   const toggleLock = async () => {
     if (!lockConfirm) return;
@@ -298,7 +289,6 @@ export default function AdminUsers() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {renderRoleBadges(u)}
-                          {/* Hiển thị tất cả kho được phân công */}
                           {u.warehouses?.length > 0
                             ? u.warehouses.map(w => (
                               <Badge key={w.id} className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
@@ -393,6 +383,7 @@ export default function AdminUsers() {
           open={formOpen}
           editing={editing}
           currentUserRole={currentUser?.role}
+          t={t}
           onClose={() => setFormOpen(false)}
           onSaved={() => { setFormOpen(false); load(); }}
         />
@@ -434,7 +425,11 @@ export default function AdminUsers() {
 }
 
 // ── UserFormModal ─────────────────────────────────────────────────────────────
-function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
+function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) {
+  const ROLE_CONFIG = getRoleConfig(t);
+  const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
+  const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+
   const availableRoles = currentUserRole === 'OWNER' ? ROLE_CONFIG : ADMIN_ROLES;
 
   const initRoles = () => {
@@ -447,19 +442,19 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
 
   const [selectedRoles, setSelectedRoles] = useState(initRoles);
   const [form, setForm] = useState({
-    username: editing?.username || '',
-    password: '',
-    fullName: editing?.fullName || '',
-    email: editing?.email || '',
+    username:    editing?.username    || '',
+    password:    '',
+    fullName:    editing?.fullName    || '',
+    email:       editing?.email       || '',
     phoneNumber: editing?.phoneNumber || '',
     warehouseId: editing?.warehouseId ? String(editing.warehouseId) : '',
   });
-  // Multi-warehouse selection
+
   const initWarehouseIds = editing?.warehouses?.map(w => String(w.id)) ||
     (editing?.warehouseId ? [String(editing.warehouseId)] : []);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState(initWarehouseIds);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
+  const [saving, setSaving]     = useState(false);
+  const [err, setErr]           = useState('');
   const [warehouses, setWarehouses] = useState([]);
 
   useEffect(() => {
@@ -478,7 +473,6 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
     );
   };
 
-  // Validate toàn bộ danh sách roles trước khi submit
   const validateRoles = (roles) => {
     for (const group of CONFLICT_GROUPS) {
       const hits = group.filter(r => roles.includes(r));
@@ -510,9 +504,9 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
     try {
       const payload = {
         ...form,
-        roles: selectedRoles,
-        role: selectedRoles[0],
-        warehouseId: selectedWarehouseIds.length > 0 ? Number(selectedWarehouseIds[0]) : null,
+        roles:        selectedRoles,
+        role:         selectedRoles[0],
+        warehouseId:  selectedWarehouseIds.length > 0 ? Number(selectedWarehouseIds[0]) : null,
         warehouseIds: selectedWarehouseIds.map(Number),
       };
       if (editing) {
@@ -573,6 +567,7 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
             selected={selectedRoles}
             onChange={setSelectedRoles}
             availableRoles={availableRoles}
+            ROLE_LABEL={ROLE_LABEL}
           />
         </Field>
 
