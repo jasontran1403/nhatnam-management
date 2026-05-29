@@ -1,33 +1,74 @@
 import { useLang } from '../../context/LangContext';
 import { useState, useRef } from 'react';
-import { Trash2, Pencil, Percent, Check, Gift } from 'lucide-react';
+import { Trash2, Pencil, Percent, Check, Gift, ChevronDown } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-// Hiển thị tối đa 2 chữ số thập phân, bỏ số 0 thừa
-function formatPrice(price) {
+// Format số tiền, tối đa 2 chữ số thập phân
+function fmt(price) {
   return new Intl.NumberFormat('vi-VN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(price || 0) + ' đ';
 }
 
-function calcNetPrice(grossPrice, vatRate, vatMode) {
+// Tính đơn giá chưa thuế từ giá gốc
+// INCLUSIVE: netPrice = price / (1 + rate/100)
+// EXCLUSIVE: netPrice = price (thuế tính thêm)
+function calcNetPrice(price, vatRate, vatMode) {
   const rate = vatRate ?? 0;
   const mode = vatMode ?? 'INCLUSIVE';
-  if (rate === 0 || mode !== 'INCLUSIVE') return grossPrice;
-  return grossPrice / (1 + rate / 100);
+  if (rate === 0) return price;
+  if (mode === 'INCLUSIVE') {
+    return price / (1 + rate / 100);
+  }
+  // EXCLUSIVE: giá gốc chưa thuế
+  return price;
 }
 
-// Chỉ kg/lít (và không phải bán thùng) mới được nhập số lẻ
 const DECIMAL_UNITS = ['kg', 'kgs', 'lít', 'lit', 'l', 'liter', 'litre'];
 function allowDecimal(unit, saleType) {
   if (saleType === 'BOX') return false;
   return DECIMAL_UNITS.includes((unit || '').toLowerCase().trim());
 }
 
-export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, onDiscountChange, onPromoToggle }) {
-  const { t } = useLang();  
+// VAT rates cho EXCLUSIVE
+const EXCLUSIVE_VAT_OPTIONS = [0, 5, 8, 10, 12];
+
+// Badge màu theo priceSource
+function PriceBadge({ priceSource, tierName }) {
+  if (priceSource === 'MANUAL') {
+    return (
+      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold
+        bg-purple-100 text-purple-700 border border-purple-200 whitespace-nowrap">
+        Thủ công
+      </span>
+    );
+  }
+  if (priceSource === 'TIER') {
+    return (
+      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold
+        bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap">
+        {tierName || 'Giá sỉ'}
+      </span>
+    );
+  }
+  // BASE
+  return (
+    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold
+      bg-sky-100 text-sky-700 border border-sky-200 whitespace-nowrap">
+      Giá lẻ
+    </span>
+  );
+}
+
+export default function CartItem({
+  item, onUpdate, onRemove, onPriceOverride, onDiscountChange, onPromoToggle,
+  onVatRateChange,   // (cartId, newRate) — chỉ cho EXCLUSIVE
+  onTierSelect,      // () → mở TierSelectModal từ cha
+}) {
+  const { t } = useLang();
+
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceDisplay, setPriceDisplay] = useState('');
   const [editingQty, setEditingQty] = useState(false);
@@ -36,24 +77,30 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
   const [discountInput, setDiscountInput] = useState('');
   const [showPromoNote, setShowPromoNote] = useState(false);
   const [promoNoteInput, setPromoNoteInput] = useState('');
+  const [showVatPicker, setShowVatPicker] = useState(false);
+
   const inputRef = useRef(null);
   const qtyInputRef = useRef(null);
   const discountInputRef = useRef(null);
   const promoNoteRef = useRef(null);
 
-  const isPriceOverridden = item.isManualPrice === true;
+  const isPriceOverridden = item.priceSource === 'MANUAL';
   const itemDiscountPct   = item.itemDiscountRate ?? 0;
-  const maxDiscount       = item.maxDiscountRate  ?? 0;
+  const maxDiscount       = item.maxDiscountRate ?? 0;
   const isPromo           = item.isPromo === true;
   const promoNote         = item.promoNote || '';
 
-  const displayUnitPrice = item.unitPrice;
-  const effectiveUnitPrice = itemDiscountPct > 0
-    ? item.unitPrice * (1 - itemDiscountPct / 100)
-    : item.unitPrice;
-  const lineTotal = displayUnitPrice * item.quantity;
+  const vatRate = item.vatRate ?? 0;
+  const vatMode = item.vatMode ?? 'INCLUSIVE';
+  const isInclusive = vatMode === 'INCLUSIVE';
+  const isExclusive = vatMode === 'EXCLUSIVE';
 
-  // ── Qty ───────────────────────────────────────────────────────
+  // Đơn giá chưa thuế để hiển thị
+  const netUnitPrice = calcNetPrice(item.unitPrice, vatRate, vatMode);
+  // Thành tiền dòng = netUnitPrice × qty
+  const lineNetTotal = netUnitPrice * item.quantity;
+
+  // ── Qty ───────────────────────────────────────────────────────────
   const handleQtyClick = () => {
     setQtyDisplay(String(item.quantity));
     setEditingQty(true);
@@ -68,22 +115,23 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
     setEditingQty(false);
   };
 
-  // ── Price override — hỗ trợ số lẻ tối đa 2 chữ số thập phân ─
+  // ── Price override → set priceSource = MANUAL ────────────────────
   const handlePriceClick = () => {
-    // Giữ nguyên giá trị hiện tại kể cả số lẻ, không Math.round
+    // Hiển thị giá gốc (trước khi trừ VAT) để user nhập
     setPriceDisplay(String(item.unitPrice));
     setEditingPrice(true);
     setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
   };
   const commitPrice = () => {
-    // parseFloat để giữ số lẻ; thay dấu phẩy thành chấm phòng người dùng nhập sai
     const val = parseFloat(priceDisplay.replace(',', '.'));
     const maxPrice = (item.originalUnitPrice ?? item.unitPrice) * 5;
-    if (!isNaN(val) && val >= 0) onPriceOverride(item.id, Math.min(val, maxPrice), true);
+    if (!isNaN(val) && val >= 0) {
+      onPriceOverride(item.id, Math.min(val, maxPrice), true);
+    }
     setEditingPrice(false);
   };
 
-  // ── Discount ──────────────────────────────────────────────────
+  // ── Discount ──────────────────────────────────────────────────────
   const openDiscount = () => {
     setDiscountInput(itemDiscountPct > 0 ? String(itemDiscountPct) : '');
     setShowDiscount(true);
@@ -103,7 +151,7 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
     setShowDiscount(false);
   };
 
-  // ── Promo ─────────────────────────────────────────────────────
+  // ── Promo ─────────────────────────────────────────────────────────
   const openPromoNote = () => {
     setPromoNoteInput(promoNote);
     setShowPromoNote(true);
@@ -122,12 +170,20 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
     }
   };
 
+  // ── VAT picker (chỉ EXCLUSIVE) ────────────────────────────────────
+  const handleVatBadgeClick = () => {
+    if (isInclusive) return; // không cho đổi
+    setShowVatPicker(p => !p);
+  };
+  const selectVatRate = (rate) => {
+    if (onVatRateChange) onVatRateChange(item.id, rate);
+    setShowVatPicker(false);
+  };
+
   const imgUrl = item.imageUrl
     ? item.imageUrl.startsWith('http') ? item.imageUrl : `${BASE_URL}/api/auth${item.imageUrl}`
     : null;
 
-  const showVatBadge = (item.vatRate ?? 0) > 0;
-  const vatMode = item.vatMode ?? 'INCLUSIVE';
   const hasDiscount = itemDiscountPct > 0;
 
   return (
@@ -144,21 +200,73 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-[#1C1C1E] truncate">{item.productName}</p>
 
-        {item.saleType === 'BOX' ? (
-          <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-            📦 {t('product','box')} ({item.unitsPerBox} {item.unit === t('product','box') ? (item.baseUnit || '') : item.unit}/thùng)
-          </span>
-        ) : item.saleType === 'RETAIL' ? (
-          <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-sky-50 text-sky-600 border border-sky-200">
-            Lẻ
-          </span>
-        ) : null}
+        {/* Badges hàng 1: sale type + price source + VAT */}
+        <div className="flex items-center gap-1 flex-wrap mt-0.5">
+          {item.saleType === 'BOX' ? (
+            <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              📦 Thùng ({item.unitsPerBox} {item.unit}/thùng)
+            </span>
+          ) : (
+            <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-sky-50 text-sky-600 border border-sky-200">
+              Lẻ
+            </span>
+          )}
 
-        {showVatBadge && (
-          <span className={`text-[9px] rounded px-1 py-0.5 font-medium
-            ${vatMode === 'EXCLUSIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-            VAT {item.vatRate}%·{vatMode === 'EXCLUSIVE' ? 'ngoài' : 'trong'}
-          </span>
+          {/* Badge trạng thái giá — click mở lại tier selector */}
+          <button
+            onClick={() => { if (onTierSelect) onTierSelect(item.id); }}
+            className="flex items-center gap-0.5 hover:opacity-80 transition-opacity"
+            title="Đổi khung giá"
+          >
+            <PriceBadge priceSource={item.priceSource} tierName={item.tierName} />
+          </button>
+
+          {/* VAT badge */}
+          <button
+            onClick={handleVatBadgeClick}
+            className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold border transition-colors
+              ${vatRate > 0
+                ? isInclusive
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 cursor-default'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 cursor-pointer'
+                : isExclusive
+                  ? 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 cursor-pointer'
+                  : 'bg-gray-50 text-gray-400 border-gray-200 cursor-default'
+              }`}
+            title={isInclusive ? 'VAT đã bao gồm trong giá, không thể đổi' : 'Chọn thuế VAT cộng thêm'}
+          >
+            {vatRate > 0
+              ? `VAT ${vatRate}% ${isInclusive ? '(trong)' : '(ngoài)'}`
+              : isExclusive ? 'Chọn VAT' : 'Không VAT'
+            }
+            {isExclusive && <ChevronDown size={8} />}
+          </button>
+        </div>
+
+        {/* VAT picker dropdown (EXCLUSIVE only) */}
+        {showVatPicker && isExclusive && (
+          <div className="mt-1.5 flex items-center gap-1 flex-wrap bg-emerald-50 rounded-lg px-2 py-1.5 border border-emerald-200">
+            <span className="text-[9px] text-emerald-700 font-semibold mr-1">Thuế %:</span>
+            {EXCLUSIVE_VAT_OPTIONS.map(r => (
+              <button
+                key={r}
+                onClick={() => selectVatRate(r)}
+                className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition-colors
+                  ${vatRate === r
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-100'}`}
+              >
+                {r}%
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* VAT inclusive info */}
+        {isInclusive && vatRate > 0 && (
+          <p className="text-[9px] text-amber-600 mt-0.5">
+            Đơn giá đã trừ ngược VAT {vatRate}%
+          </p>
         )}
 
         {/* Price row */}
@@ -176,11 +284,10 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
                   inputMode="decimal"
                   value={priceDisplay}
                   onChange={e => {
-                    // Cho phép số nguyên hoặc số lẻ tối đa 2 chữ số thập phân
                     const raw = e.target.value.replace(/[^0-9.]/g, '');
                     const parts = raw.split('.');
-                    if (parts.length > 2) return;           // không cho 2 dấu chấm
-                    if (parts[1]?.length > 2) return;       // tối đa 2 chữ số thập phân
+                    if (parts.length > 2) return;
+                    if (parts[1]?.length > 2) return;
                     setPriceDisplay(raw);
                   }}
                   onBlur={commitPrice}
@@ -194,30 +301,29 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
               </div>
             ) : (
               <button onClick={handlePriceClick} className="flex items-center gap-1 group">
+                {/* Hiển thị đơn giá CHƯA thuế */}
                 <span className={`text-xs font-bold transition-colors
-                  ${isPriceOverridden ? 'text-orange-500' : 'text-[#C9A84C] group-hover:text-[#A07830]'}`}>
-                  {formatPrice(displayUnitPrice)}
+                  ${isPriceOverridden ? 'text-purple-600' : 'text-[#C9A84C] group-hover:text-[#A07830]'}`}>
+                  {fmt(netUnitPrice)}
                 </span>
                 <Pencil size={9} className="text-[#C4B9A8] group-hover:text-[#C9A84C] transition-colors" />
               </button>
             )}
           </div>
 
-          {/* Discount badge + Promo button */}
+          {/* Discount + Promo buttons */}
           <div className="ml-auto flex items-center gap-1 flex-shrink-0">
             {!isPromo && (hasDiscount ? (
               <button onClick={openDiscount}
                 className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                  bg-orange-100 text-orange-600 border border-orange-200 font-semibold
-                  hover:bg-orange-200 transition-colors">
+                  bg-orange-100 text-orange-600 border border-orange-200 font-semibold hover:bg-orange-200 transition-colors">
                 <Percent size={8} />
                 -{itemDiscountPct}%
               </button>
             ) : (
               <button onClick={openDiscount}
                 className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                  bg-[#F5F0E8] text-[#C4B9A8] border border-[#E8DDD0]
-                  hover:bg-[#EDE8DF] hover:text-[#8E8878] transition-colors">
+                  bg-[#F5F0E8] text-[#C4B9A8] border border-[#E8DDD0] hover:bg-[#EDE8DF] hover:text-[#8E8878] transition-colors">
                 <Percent size={8} />
                 CK
               </button>
@@ -256,13 +362,11 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
               <span className="text-[9px] text-[#C4B9A8] flex-1">tối đa {maxDiscount}%</span>
             )}
             <button onClick={commitDiscount}
-              className="w-5 h-5 rounded-full bg-[#C9A84C] text-white flex items-center justify-center
-                hover:bg-[#A07830] transition-colors flex-shrink-0">
+              className="w-5 h-5 rounded-full bg-[#C9A84C] text-white flex items-center justify-center hover:bg-[#A07830] transition-colors flex-shrink-0">
               <Check size={10} />
             </button>
             {hasDiscount && (
-              <button onClick={clearDiscount}
-                className="text-[9px] text-red-400 hover:text-red-600 flex-shrink-0">
+              <button onClick={clearDiscount} className="text-[9px] text-red-400 hover:text-red-600 flex-shrink-0">
                 xóa
               </button>
             )}
@@ -281,13 +385,12 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
                 if (e.key === 'Enter') commitPromoNote();
                 if (e.key === 'Escape') setShowPromoNote(false);
               }}
-              placeholder="Ghi chú KM (vd: Trả km tháng 4)..."
+              placeholder="Ghi chú KM..."
               className="flex-1 text-[10px] border border-rose-200 rounded-lg px-2 py-1
                 focus:outline-none focus:border-rose-400 bg-white text-[#1C1C1E]"
             />
             <button onClick={() => commitPromoNote()}
-              className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center
-                hover:bg-rose-600 transition-colors flex-shrink-0">
+              className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 transition-colors flex-shrink-0">
               <Check size={10} />
             </button>
           </div>
@@ -299,9 +402,15 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
           </button>
         )}
 
+        {/* Thành tiền dòng (giá chưa thuế) */}
         {!isPromo && (
           <p className="text-[10px] text-[#8E8878] mt-0.5">
-            = {formatPrice(lineTotal)}
+            = {fmt(lineNetTotal)}
+            {hasDiscount && (
+              <span className="text-emerald-600 ml-1">
+                → {fmt(lineNetTotal * (1 - itemDiscountPct / 100))}
+              </span>
+            )}
           </p>
         )}
       </div>
@@ -320,7 +429,8 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
           {editingQty ? (
             <input
               ref={qtyInputRef}
-              type="text" inputMode={allowDecimal(item.unit, item.saleType) ? "decimal" : "numeric"}
+              type="text"
+              inputMode={allowDecimal(item.unit, item.saleType) ? 'decimal' : 'numeric'}
               value={qtyDisplay}
               onChange={e => {
                 if (allowDecimal(item.unit, item.saleType)) {

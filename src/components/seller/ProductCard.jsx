@@ -4,14 +4,19 @@ import { PackageX } from 'lucide-react';
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 function formatPrice(price) {
-  if (!price) return '0 đ';
-  return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
+  if (price == null) return '0 đ';
+  return new Intl.NumberFormat('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price) + ' đ';
 }
 
 export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap = {} }) {
   const { t } = useLang();
-  const defaultTier = product.priceTiers?.find((t) => t.sortOrder === 0) || product.priceTiers?.[0];
-  const priceVal = defaultTier?.price ?? product.basePrice ?? 0;
+
+  // Luôn hiển thị basePrice — không dùng tier[0]
+  const priceVal = product.basePrice ?? 0;
+  const hasTiers = product.priceTiers && product.priceTiers.length > 0;
 
   const imageUrl = product.imageUrl
     ? product.imageUrl.startsWith('http')
@@ -19,14 +24,11 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
       : `${BASE_URL}/api/auth${product.imageUrl}`
     : null;
 
-  // stockQuantity đã được POSPage tính sẵn qua calcEffectiveStock
   const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
   const isOutOfStock = stock !== null && stock <= 0;
   const isDisabled = isOutOfStock;
   const remaining = stock !== null ? Math.max(0, stock) : null;
 
-  // Lấy stock nguyên liệu từ ingStockMap (đã trừ hold realtime)
-  // Fallback về ing.stockQuantity nếu chưa có trong map
   const getIngStock = (ing) => {
     const key = String(ing.ingredientId);
     const fromMap = ingStockMap[key];
@@ -42,7 +44,6 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
         active:scale-95 transition-transform"
     >
       <div className="relative aspect-square bg-[#F0EBE3] overflow-hidden w-full">
-
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -80,17 +81,25 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
           </p>
 
           <div className="flex items-center justify-between gap-1 mt-0.5">
-            <span className="text-[#FFD97D] text-[11px] sm:text-xs font-bold drop-shadow">
-              {formatPrice(priceVal)}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              {/* Luôn hiển thị basePrice */}
+              <span className="text-[#FFD97D] text-[11px] sm:text-xs font-bold drop-shadow">
+                {formatPrice(priceVal)}
+              </span>
+              {/* Badge sỉ nếu có tier */}
+              {hasTiers && (
+                <span className="text-[9px] bg-orange-400/80 text-white rounded px-1 py-0.5 font-semibold w-fit">
+                  Có giá sỉ
+                </span>
+              )}
+            </div>
 
             {product.ingredients && product.ingredients.length > 0
               ? (
                 <div className="flex flex-col gap-0.5 max-h-10 overflow-hidden">
                   {product.ingredients.slice(0, 2).map(ing => {
-                    // Dùng ingStockMap thay vì ing.stockQuantity — phản ánh hold realtime
-                    const qty  = getIngStock(ing);
-                    const low  = qty !== null && qty > 0 && qty <= 5;
+                    const qty = getIngStock(ing);
+                    const low = qty !== null && qty > 0 && qty <= 5;
                     const none = qty !== null && qty <= 0;
                     const qtyStr = qty != null
                       ? parseFloat(qty.toFixed(2)).toLocaleString('vi-VN')
@@ -111,7 +120,9 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
                   text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold whitespace-nowrap
                   ${isOutOfStock ? 'text-red-200 bg-red-800/60' : remaining <= 5 ? 'text-yellow-200 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
                 `}>
-                  {isOutOfStock ? t('status', 'out_of_stock'): `${t('product','remaining_stock')} ${parseFloat(Number(remaining).toFixed(3)).toLocaleString('vi-VN')}`}
+                  {isOutOfStock
+                    ? t('status', 'out_of_stock')
+                    : `${t('product', 'remaining_stock')} ${parseFloat(Number(remaining).toFixed(3)).toLocaleString('vi-VN')}`}
                 </span>
               )
             }

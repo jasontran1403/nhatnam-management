@@ -1,17 +1,23 @@
-// src/pages/operator/OperatorProductBatchPage.jsx
 import { useLang } from '../../context/LangContext';
 import ReactDOM from 'react-dom';
 import { useState, useEffect, useRef } from 'react';
 import { operatorApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
 import {
-  Plus, Trash2, X, Package, ChevronDown, ChevronUp,
-  ImagePlus, Send, Info, Box, Search,
+  Plus, Trash2, X, ChevronDown, ChevronUp,
+  ImagePlus, Send, Box, Search, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
 const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần'];
+
+// 3 khung giá cố định mặc định
+const DEFAULT_TIERS = [
+  { _id: 'tier-1', tierName: 'Sỉ 1', minQty: 0,  maxQty: 5,    price: '' },
+  { _id: 'tier-2', tierName: 'Sỉ 2', minQty: 5,  maxQty: 20,   price: '' },
+  { _id: 'tier-3', tierName: 'Sỉ 3', minQty: 20, maxQty: null, price: '' },
+];
 
 const emptyIngredient = () => ({
   _id: Date.now() + Math.random(),
@@ -32,19 +38,14 @@ const emptyItem = () => ({
   vatMode: 'INCLUSIVE',
   imageUrl: '',
   unitsPerBox: '',
-  tiers: [{ _id: `tier-${Date.now()}`, fromQty: 0, price: '' }],
+  hasWholesale: false,  // toggle bật/tắt giá sỉ
+  tiers: DEFAULT_TIERS.map(t => ({ ...t, _id: `${t._id}-${Date.now()}` })),
   ingredients: [emptyIngredient()],
   _expanded: true,
   _uploading: false,
 });
 
-const emptyTier = () => ({
-  _id: `tier-${Date.now()}-${Math.random()}`,
-  fromQty: '',
-  price: '',
-});
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// Format số nguyên với dấu phẩy
 const fmtNum = (v) => {
   const n = parseInt(String(v ?? '').replace(/[^0-9]/g, ''), 10);
   return isNaN(n) ? '' : n.toLocaleString('vi-VN');
@@ -59,7 +60,6 @@ function useDebounce(value, delay) {
   return debouncedValue;
 }
 
-// ── Main Page ────────────────────────────────────────────────────────────────
 export default function OperatorProductBatchPage() {
   const { t } = useLang();
   const toast = useToast();
@@ -69,12 +69,10 @@ export default function OperatorProductBatchPage() {
   const [categories, setCategories] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [products, setProducts] = useState([]);
-
   const [showProductModal, setShowProductModal] = useState(false);
   const [modalItemId, setModalItemId] = useState(null);
   const [productSearch, setProductSearch] = useState('');
   const debouncedProductSearch = useDebounce(productSearch, 600);
-
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -96,7 +94,6 @@ export default function OperatorProductBatchPage() {
     setItems(prev => prev.length <= 1 ? prev : prev.filter(it => it._id !== id));
   };
 
-  const addItem = () => setItems(prev => [...prev, emptyItem()]);
   const toggleExpand = (id) =>
     setItem(id, { _expanded: !items.find(i => i._id === id)?._expanded });
 
@@ -110,7 +107,7 @@ export default function OperatorProductBatchPage() {
     if (!productId) return;
     const p = products.find(p => String(p.id) === String(productId));
     if (!p) return;
-
+    const hasTiers = p.tiers && p.tiers.length > 0;
     setItem(itemId, {
       existingProductId: p.id,
       name: p.name || '',
@@ -122,13 +119,16 @@ export default function OperatorProductBatchPage() {
       vatMode: p.vatMode || 'INCLUSIVE',
       imageUrl: p.imageUrl || '',
       unitsPerBox: p.unitsPerBox ? String(p.unitsPerBox) : '',
-      tiers: (p.tiers && p.tiers.length > 0)
-        ? p.tiers.map(t => ({
-            _id: `tier-${Date.now()}-${Math.random()}`,
-            fromQty: t.minQuantity != null ? String(t.minQuantity) : '0',
+      hasWholesale: hasTiers,
+      tiers: hasTiers
+        ? p.tiers.map((t, idx) => ({
+            _id: `tier-${idx}-${Date.now()}`,
+            tierName: t.tierName || `Sỉ ${idx + 1}`,
+            minQty: t.minQuantity ?? DEFAULT_TIERS[idx]?.minQty ?? 0,
+            maxQty: t.maxQuantity ?? DEFAULT_TIERS[idx]?.maxQty ?? null,
             price: t.price != null ? String(t.price) : '',
           }))
-        : [{ _id: `tier-${Date.now()}`, fromQty: 0, price: String(p.basePrice || '') }],
+        : DEFAULT_TIERS.map(t => ({ ...t, _id: `${t._id}-${Date.now()}`, price: '' })),
       ingredients: (p.ingredients && p.ingredients.length > 0)
         ? p.ingredients.map(ing => ({
             _id: Date.now() + Math.random(),
@@ -138,7 +138,6 @@ export default function OperatorProductBatchPage() {
           }))
         : [emptyIngredient()],
     });
-
     setShowProductModal(false);
     setProductSearch('');
   };
@@ -164,12 +163,28 @@ export default function OperatorProductBatchPage() {
 
   const handleSubmit = async () => {
     for (const it of items) {
+      // Validate tên
       if (!it.name.trim()) return toast(t('product', 'product_name_required'), 'error');
+      // Validate đơn vị
       if (!it.unit.trim()) return toast(`Đơn vị tính của "${it.name}" không được trống`, 'error');
+      // Validate basePrice
       const price = Number(String(it.basePrice).replace(/[^0-9]/g, ''));
       if (!price || price <= 0) return toast(`Giá bán lẻ "${it.name}" không hợp lệ`, 'error');
+      // Validate unitsPerBox
       if (it.unitsPerBox && parseInt(it.unitsPerBox) < 1)
         return toast(`Số đơn vị/thùng của "${it.name}" không hợp lệ`, 'error');
+      // Validate tiers nếu bật giá sỉ
+      if (it.hasWholesale) {
+        const p1 = Number(String(it.tiers[0].price).replace(/[^0-9]/g, ''));
+        const p2 = Number(String(it.tiers[1].price).replace(/[^0-9]/g, ''));
+        const p3 = Number(String(it.tiers[2].price).replace(/[^0-9]/g, ''));
+        if (!p1 || !p2 || !p3)
+          return toast(`"${it.name}": Vui lòng nhập đủ giá cho cả 3 khung sỉ`, 'error');
+        if (!(p1 > p2))
+          return toast(`"${it.name}": Giá khung 1 phải lớn hơn giá khung 2`, 'error');
+        if (!(p2 > p3))
+          return toast(`"${it.name}": Giá khung 2 phải lớn hơn giá khung 3`, 'error');
+      }
     }
 
     setSubmitting(true);
@@ -188,15 +203,16 @@ export default function OperatorProductBatchPage() {
           vatMode: it.vatMode || 'INCLUSIVE',
           imageUrl: it.imageUrl,
           unitsPerBox: it.unitsPerBox ? parseInt(it.unitsPerBox, 10) : null,
-          tiers: it.tiers
-            .filter(t => Number(String(t.price).replace(/[^0-9]/g, '')) > 0)
-            .map((t, idx, arr) => ({
-              tierName: `Khung giá ${idx + 1}`,
-              minQuantity: idx === 0 ? 0 : Number(t.fromQty) || 0,
-              maxQuantity: idx < arr.length - 1 ? Number(arr[idx + 1].fromQty) - 0.01 : null,
-              price: Number(String(t.price).replace(/[^0-9]/g, '')) || 0,
-              sortOrder: idx,
-            })),
+          // Chỉ gửi tiers nếu bật giá sỉ
+          tiers: it.hasWholesale
+            ? it.tiers.map((tier, idx) => ({
+                tierName: tier.tierName,
+                minQuantity: tier.minQty,
+                maxQuantity: tier.maxQty,
+                price: Number(String(tier.price).replace(/[^0-9]/g, '')),
+                sortOrder: idx,
+              }))
+            : [],
           ingredients: it.ingredients
             .filter(ing => ing.ingredientId)
             .map(ing => ({
@@ -233,9 +249,7 @@ export default function OperatorProductBatchPage() {
       <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-[#EDE8E0]">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            {/* <h1 className="text-lg font-bold text-[#1C1C1E]">Tạo phiếu sản phẩm</h1> */}
             <h1 className="text-lg font-bold text-[#1C1C1E]">Tạo sản phẩm</h1>
-            {/* <p className="text-xs text-[#8E8878] mt-0.5">Gửi cho Admin duyệt trước khi áp dụng</p> */}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden bg-[#FAF7F2]">
@@ -253,11 +267,6 @@ export default function OperatorProductBatchPage() {
             </button>
           </div>
         </div>
-        {/* <div className="mt-3">
-          <input value={note} onChange={e => setNote(e.target.value)}
-            placeholder="Ghi chú cho phiếu (tuỳ chọn)..."
-            className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C]" />
-        </div> */}
       </div>
 
       <div className="flex-1 overflow-auto p-5 space-y-4">
@@ -278,10 +287,6 @@ export default function OperatorProductBatchPage() {
             onSelectProduct={() => openProductModal(item._id)}
           />
         ))}
-        {/* <button onClick={addItem}
-          className="w-full py-3 rounded-2xl border-2 border-dashed border-[#D8D0C4] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all flex items-center justify-center gap-2 text-sm font-medium bg-white">
-          <Plus size={15} /> Thêm sản phẩm
-        </button> */}
       </div>
 
       <ProductSearchModal
@@ -297,54 +302,39 @@ export default function OperatorProductBatchPage() {
   );
 }
 
-// ── Product Search Modal ─────────────────────────────────────────────────────
+// ── ProductSearchModal ────────────────────────────────────────────────────
 function ProductSearchModal({ open, onClose, products, search, onSearchChange, onSelect, imgSrc }) {
   if (!open) return null;
-
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
         <div className="px-5 py-4 border-b flex items-center justify-between">
           <h3 className="font-semibold text-lg">Chọn sản phẩm cần cập nhật</h3>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-red-500">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="text-[#8E8878] hover:text-red-500"><X size={20} /></button>
         </div>
-
         <div className="p-4 border-b">
           <div className="relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C4B9A8]" />
-            <input
-              value={search}
-              onChange={e => onSearchChange(e.target.value)}
+            <input value={search} onChange={e => onSearchChange(e.target.value)}
               placeholder="Tìm theo tên sản phẩm..."
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E8DDD0] focus:border-[#C9A84C] focus:outline-none text-sm"
-              autoFocus
-            />
+              autoFocus />
           </div>
         </div>
-
         <div className="flex-1 overflow-auto p-2">
           {products.length === 0 ? (
             <div className="text-center py-12 text-[#8E8878] italic">Không tìm thấy sản phẩm nào</div>
           ) : (
             products.map(p => (
-              <div
-                key={p.id}
-                onClick={() => onSelect(p.id)}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAF7F2] rounded-xl cursor-pointer transition-colors"
-              >
+              <div key={p.id} onClick={() => onSelect(p.id)}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAF7F2] rounded-xl cursor-pointer transition-colors">
                 {p.imageUrl && (
-                  <img
-                    src={imgSrc(p.imageUrl)}
-                    alt={p.name}
-                    className="w-10 h-10 object-cover rounded-lg"
-                  />
+                  <img src={imgSrc(p.imageUrl)} alt={p.name} className="w-10 h-10 object-cover rounded-lg" />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[#1C1C1E] truncate">{p.name}</p>
                   <p className="text-xs text-[#8E8878]">
-                    {p.category} • {p.unit} • {Number(p.basePrice || 0).toLocaleString('vi-VN')}đ
+                    {p.category} · {p.unit} · {Number(p.basePrice || 0).toLocaleString('vi-VN')}đ
                   </p>
                 </div>
               </div>
@@ -357,11 +347,10 @@ function ProductSearchModal({ open, onClose, products, search, onSearchChange, o
   );
 }
 
-// ── ProductItemCard ───────────────────────────────────────────────────────────
+// ── ProductItemCard ───────────────────────────────────────────────────────
 function ProductItemCard({ item, idx, batchType, categories, ingredients, products,
   imgSrc, onUpdate, onRemove, onToggle, onUpload, onSelectProduct }) {
 
-  const addTier = () => onUpdate({ tiers: [...item.tiers, emptyTier()] });
   const addIngredient = () => onUpdate({ ingredients: [...item.ingredients, emptyIngredient()] });
   const removeIngredient = (iid) => {
     if (item.ingredients.length <= 1) return;
@@ -370,15 +359,35 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
   const setIng = (iid, patch) =>
     onUpdate({ ingredients: item.ingredients.map(i => i._id === iid ? { ...i, ...patch } : i) });
 
-  // Tính giá thùng preview
-  const basePrice0 = Number(String(item.tiers[0]?.price ?? item.basePrice ?? '').replace(/[^0-9]/g, ''));
+  // Toggle giá sỉ
+  const toggleWholesale = () => {
+    onUpdate({
+      hasWholesale: !item.hasWholesale,
+      // Reset tiers về mặc định khi bật
+      tiers: !item.hasWholesale
+        ? DEFAULT_TIERS.map(t => ({ ...t, _id: `${t._id}-${Date.now()}`, price: '' }))
+        : item.tiers,
+    });
+  };
+
+  // Cập nhật giá 1 tier (chỉ giá, không đổi qty range)
+  const setTierPrice = (tierId, newPrice) => {
+    onUpdate({
+      tiers: item.tiers.map(t => t._id === tierId ? { ...t, price: newPrice } : t),
+    });
+  };
+
+  // Tính giá thùng preview (theo tier 1 nếu có sỉ, không thì basePrice)
+  const basePrice0 = Number(String(
+    item.hasWholesale ? (item.tiers[0]?.price ?? item.basePrice) : item.basePrice
+  ).replace(/[^0-9]/g, ''));
   const unitsPerBoxNum = parseInt(item.unitsPerBox, 10);
   const boxPrice = !isNaN(unitsPerBoxNum) && unitsPerBoxNum > 0 && basePrice0 > 0
     ? basePrice0 * unitsPerBoxNum : null;
 
   return (
     <div className="bg-white rounded-2xl border border-[#EDE8E0] shadow-sm overflow-hidden">
-      {/* Header */}
+      {/* Card Header */}
       <div className="flex items-center gap-3 px-5 py-3 bg-[#FDFAF6] border-b border-[#F0EBE3]">
         <div className="w-6 h-6 rounded-full bg-[#C9A84C]/20 flex items-center justify-center flex-shrink-0">
           <span className="text-[11px] font-bold text-[#C9A84C]">{idx + 1}</span>
@@ -386,7 +395,11 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
         <span className="flex-1 text-sm font-semibold text-[#1C1C1E] truncate">
           {item.name || <span className="text-[#B0A898] font-normal">Sản phẩm mới</span>}
         </span>
-        {/* Badge thùng */}
+        {item.hasWholesale && (
+          <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-200 rounded-full px-2 py-0.5 font-medium">
+            Có giá sỉ
+          </span>
+        )}
         {item.unitsPerBox && parseInt(item.unitsPerBox) > 0 && (
           <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 font-medium flex items-center gap-1">
             <Box size={9} /> {item.unitsPerBox} {item.unit || 'đvt'}/thùng
@@ -402,14 +415,12 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
 
       {item._expanded && (
         <div className="p-5 space-y-5">
-          {/* Chọn sản phẩm cập nhật */}
+          {/* Chọn sản phẩm cập nhật (UPDATE mode) */}
           {batchType === 'UPDATE' && (
             <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
               <label className="block text-xs font-semibold text-blue-700 mb-2">Chọn sản phẩm cần cập nhật</label>
-              <button
-                onClick={onSelectProduct}
-                className="w-full px-4 py-3 bg-white border border-[#E8DDD0] hover:border-[#C9A84C] rounded-xl text-left flex items-center justify-between transition-colors"
-              >
+              <button onClick={onSelectProduct}
+                className="w-full px-4 py-3 bg-white border border-[#E8DDD0] hover:border-[#C9A84C] rounded-xl text-left flex items-center justify-between transition-colors">
                 <span>
                   {item.existingProductId
                     ? products.find(p => p.id === item.existingProductId)?.name || 'Đã chọn'
@@ -425,7 +436,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
             <div className="flex-shrink-0">
               <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">Ảnh</label>
               <label className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#E8DDD0] bg-[#FAF7F2]
-                flex items-center justify-center cursor-pointer hover:border-[#C9A84C] transition-all overflow-hidden group">
+                flex items-center justify-center cursor-pointer hover:border-[#C9A84C] transition-all overflow-hidden">
                 {imgSrc(item.imageUrl) ? (
                   <img src={imgSrc(item.imageUrl)} alt="" className="w-full h-full object-cover" />
                 ) : item._uploading ? (
@@ -442,7 +453,9 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
 
             <div className="flex-1 grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Tên sản phẩm <span className="text-red-400">*</span></label>
+                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                  Tên sản phẩm <span className="text-red-400">*</span>
+                </label>
                 <input value={item.name} onChange={e => onUpdate({ name: e.target.value })}
                   placeholder="Ví dụ: Sốt dừa Nhất Nam"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white" />
@@ -457,7 +470,9 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Đơn vị tính <span className="text-red-400">*</span></label>
+                  <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                    Đơn vị tính <span className="text-red-400">*</span>
+                  </label>
                   <select value={item.unit} onChange={e => onUpdate({ unit: e.target.value, unitsPerBox: '' })}
                     className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
                     <option value="">— Chọn —</option>
@@ -471,7 +486,9 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
           {/* Giá bán lẻ + CK + VAT */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Giá bán lẻ (đ) <span className="text-red-400">*</span></label>
+              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                Giá bán lẻ (đ) <span className="text-red-400">*</span>
+              </label>
               <PriceInput value={item.basePrice} onChange={val => onUpdate({ basePrice: val })} />
             </div>
             <div>
@@ -499,57 +516,35 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
 
           {/* ── Quy cách thùng ── */}
           <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
-            {/* Toggle header */}
-            <button
-              type="button"
-              onClick={() => onUpdate({ unitsPerBox: item.unitsPerBox ? '' : '1' })}
-              className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors"
-            >
+            <button type="button" onClick={() => onUpdate({ unitsPerBox: item.unitsPerBox ? '' : '1' })}
+              className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors">
               <div className="flex items-center gap-2">
                 <Box size={14} className="text-[#C9A84C]" />
                 <span className="text-xs font-semibold text-[#1C1C1E]">Bán theo thùng / quy cách</span>
                 <span className="text-[10px] text-[#B0A898]">(tuỳ chọn)</span>
               </div>
-              {/* Toggle pill */}
-              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0
-                ${item.unitsPerBox ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all
-                  ${item.unitsPerBox ? 'left-4' : 'left-0.5'}`} />
+              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${item.unitsPerBox ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${item.unitsPerBox ? 'left-4' : 'left-0.5'}`} />
               </div>
             </button>
-
-            {/* Expanded: nhập số lượng/thùng */}
             {item.unitsPerBox !== '' && (
               <div className="px-4 py-3 bg-white border-t border-[#F0EBE3] space-y-3">
-                <p className="text-[11px] text-[#8E8878]">
-                  Cho phép bán nguyên thùng. Khi đặt 1 thùng, hệ thống tự nhân giá và trừ kho tương ứng.
-                </p>
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-[#5C5C5C] whitespace-nowrap font-medium">1 thùng =</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={item.unitsPerBox}
+                    <input type="text" inputMode="numeric" value={item.unitsPerBox}
                       onFocus={(e) => requestAnimationFrame(() => e.target.select())}
                       onMouseUp={(e) => e.preventDefault()}
                       onChange={e => onUpdate({ unitsPerBox: e.target.value.replace(/[^0-9]/g, '') })}
                       placeholder="12"
-                      className="w-20 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-[#C9A84C] focus:outline-none text-[#1C1C1E] bg-[#FFFDF7]"
-                    />
-                    <span className="text-xs text-[#5C5C5C] font-medium">
-                      {item.unit || 'đơn vị'}
-                    </span>
+                      className="w-20 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-[#C9A84C] focus:outline-none bg-[#FFFDF7]" />
+                    <span className="text-xs text-[#5C5C5C] font-medium">{item.unit || 'đơn vị'}</span>
                   </div>
-
-                  {/* Preview giá thùng */}
                   {boxPrice && (
                     <div className="flex items-center gap-2 bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#EDD98A]">
                       <Box size={13} className="text-[#C9A84C]" />
                       <span className="text-xs text-[#8E8878]">Giá 1 thùng:</span>
-                      <span className="text-sm font-bold text-[#C9A84C]">
-                        {fmtNum(boxPrice)} đ
-                      </span>
+                      <span className="text-sm font-bold text-[#C9A84C]">{fmtNum(boxPrice)} đ</span>
                     </div>
                   )}
                 </div>
@@ -557,50 +552,72 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
             )}
           </div>
 
-          {/* Khung giá sỉ */}
+          {/* ── Giá sỉ (toggle + 3 khung cố định) ── */}
           <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-[#FAF7F2]">
-              <span className="text-xs font-semibold text-[#5C5C5C]">Khung giá sỉ ({item.tiers.length} khung)</span>
-              <button onClick={addTier} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:text-[#A07830] font-semibold">
-                <Plus size={12} /> Thêm khung
-              </button>
-            </div>
-            <div className="px-4 py-3 space-y-2">
-              {item.tiers.map((tier, ti) => {
-                const nextTier = item.tiers[ti + 1];
-                const toQtyDisplay = nextTier ? `< ${Number(nextTier.fromQty || 0).toLocaleString('vi-VN')}` : 'Max';
-                return (
-                  <div key={tier._id} className="grid gap-2 items-center bg-[#FDFAF6] rounded-xl px-3 py-2.5 border border-[#F0EBE3]"
-                    style={{ gridTemplateColumns: '1fr 80px 80px 1fr 28px' }}>
-                    <div className="text-xs font-medium text-[#5C5C5C]">Khung {ti + 1}</div>
-                    {ti === 0 ? (
-                      <div className="text-xs text-center text-[#B0A898] bg-[#F5F0E8] rounded-lg py-1.5">0</div>
-                    ) : (
-                      <input
-                        type="number"
-                        value={tier.fromQty}
-                        onChange={e => onUpdate({
-                          tiers: item.tiers.map(t => t._id === tier._id ? { ...t, fromQty: e.target.value } : t)
-                        })}
-                        className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C]"
-                      />
-                    )}
-                    <div className="text-xs text-center text-[#B0A898] bg-[#F5F0E8] rounded-lg py-1.5">{toQtyDisplay}</div>
-                    <PriceInput
-                      value={tier.price}
-                      onChange={val => onUpdate({
-                        tiers: item.tiers.map(t => t._id === tier._id ? { ...t, price: val } : t)
-                      })}
-                    />
-                    {ti > 0 && (
-                      <button onClick={() => onUpdate({ tiers: item.tiers.filter(t => t._id !== tier._id) })}>
-                        <Trash2 size={13} className="text-red-400" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {/* Toggle header */}
+            <button type="button" onClick={toggleWholesale}
+              className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#1C1C1E]">Có giá sỉ (khung giá)</span>
+                <span className="text-[10px] text-[#B0A898]">(tuỳ chọn)</span>
+              </div>
+              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${item.hasWholesale ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${item.hasWholesale ? 'left-4' : 'left-0.5'}`} />
+              </div>
+            </button>
+
+            {item.hasWholesale && (
+              <div className="px-4 py-3 bg-white border-t border-[#F0EBE3]">
+                <p className="text-[11px] text-[#8E8878] mb-3">
+                  3 khung giá cố định. Giá khung 1 &gt; khung 2 &gt; khung 3.
+                </p>
+                <div className="space-y-2">
+                  {item.tiers.map((tier, ti) => (
+                    <div key={tier._id}
+                      className="grid items-center gap-3 bg-[#FDFAF6] rounded-xl px-3 py-2.5 border border-[#F0EBE3]"
+                      style={{ gridTemplateColumns: '80px 1fr 1fr 1fr' }}>
+                      {/* Tên khung */}
+                      <span className="text-xs font-semibold text-[#5C5C5C]">{tier.tierName}</span>
+                      {/* Từ qty */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-[#B0A898]">Từ</span>
+                        <span className="text-xs font-medium text-[#1C1C1E] bg-[#F5F0E8] rounded-lg px-2 py-1">
+                          {tier.minQty}
+                        </span>
+                      </div>
+                      {/* Đến qty */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-[#B0A898]">Đến</span>
+                        <span className="text-xs font-medium text-[#1C1C1E] bg-[#F5F0E8] rounded-lg px-2 py-1">
+                          {tier.maxQty != null ? tier.maxQty : '∞'}
+                        </span>
+                      </div>
+                      {/* Giá */}
+                      <div>
+                        <PriceInput
+                          value={tier.price}
+                          onChange={val => setTierPrice(tier._id, val)}
+                          placeholder={`Giá ${tier.tierName}`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Validate preview */}
+                {item.hasWholesale && (() => {
+                  const p1 = Number(String(item.tiers[0]?.price ?? '').replace(/[^0-9]/g, ''));
+                  const p2 = Number(String(item.tiers[1]?.price ?? '').replace(/[^0-9]/g, ''));
+                  const p3 = Number(String(item.tiers[2]?.price ?? '').replace(/[^0-9]/g, ''));
+                  if (p1 && p2 && p3) {
+                    if (!(p1 > p2)) return <p className="text-[11px] text-red-500 mt-2">⚠ Giá Sỉ 1 phải lớn hơn Sỉ 2</p>;
+                    if (!(p2 > p3)) return <p className="text-[11px] text-red-500 mt-2">⚠ Giá Sỉ 2 phải lớn hơn Sỉ 3</p>;
+                    return <p className="text-[11px] text-emerald-600 mt-2">✓ Giá hợp lệ: {p1.toLocaleString('vi-VN')} &gt; {p2.toLocaleString('vi-VN')} &gt; {p3.toLocaleString('vi-VN')}</p>;
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Nguyên liệu */}
@@ -611,7 +628,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                 <Plus size={12} /> Thêm
               </button>
             </div>
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 space-y-2">
               {item.ingredients.map((ing) => (
                 <div key={ing._id} className="grid gap-2 items-center bg-[#FDFAF6] rounded-xl px-3 py-2 border border-[#F0EBE3]"
                   style={{ gridTemplateColumns: '1fr 80px auto 28px' }}>
@@ -620,13 +637,9 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
                     value={ing.ingredientId}
                     onChange={val => setIng(ing._id, { ingredientId: val })}
                   />
-                  <input
-                    type="number"
-                    step="0.001"
-                    value={ing.quantity}
+                  <input type="number" step="0.001" value={ing.quantity}
                     onChange={e => setIng(ing._id, { quantity: e.target.value })}
-                    className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C]"
-                  />
+                    className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C]" />
                   <label className="flex justify-center">
                     <input type="checkbox" checked={ing.canOverride}
                       onChange={e => setIng(ing._id, { canOverride: e.target.checked })}
@@ -645,12 +658,11 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
   );
 }
 
-// ── PriceInput ────────────────────────────────────────────────────────────────
-function PriceInput({ value, onChange }) {
+// ── PriceInput ─────────────────────────────────────────────────────────────
+function PriceInput({ value, onChange, placeholder }) {
   const [focused, setFocused] = useState(false);
   const rawNum = String(value ?? '').replace(/[^0-9]/g, '');
   const display = focused ? rawNum : (rawNum ? Number(rawNum).toLocaleString('vi-VN') : '');
-
   return (
     <input
       type="text"
@@ -658,19 +670,20 @@ function PriceInput({ value, onChange }) {
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onChange={e => onChange(e.target.value.replace(/[^0-9]/g, ''))}
+      placeholder={placeholder}
       className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C] text-right"
     />
   );
 }
 
-// ── IngredientSelect ─────────────────────────────────────────────────────────
+// ── IngredientSelect ──────────────────────────────────────────────────────
 function IngredientSelect({ ingredients, value, onChange }) {
   const [open, setOpen] = useState(false);
   const selected = ingredients.find(i => String(i.id) === String(value));
-
   return (
     <div className="relative">
-      <div onClick={() => setOpen(!open)} className="border border-[#E8DDD0] rounded-lg px-3 py-1.5 text-xs cursor-pointer hover:border-[#C9A84C]">
+      <div onClick={() => setOpen(!open)}
+        className="border border-[#E8DDD0] rounded-lg px-3 py-1.5 text-xs cursor-pointer hover:border-[#C9A84C]">
         {selected ? selected.name : 'Chọn nguyên liệu...'}
       </div>
       {open && ReactDOM.createPortal(
