@@ -6,6 +6,7 @@ import { CheckCircle } from 'lucide-react';
 import { factoryWorkerApi } from '../../api/productionApi';
 
 import { Field, inputCls, LoadingSpinner, PrimaryButton } from '../../components/ui';
+import { useLang } from '../../context/LangContext';
 
 // CSS ẩn spinner mũi tên input number
 const noSpinner = {
@@ -39,14 +40,15 @@ function handleNumberInput(value, unit) {
 
 // ── Bước 1: Chọn công thức ────────────────────────────────────────────────────
 function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, selectedRecipe, onProductChange, onRecipeChange }) {
+  const { t } = useLang();
   return (
     <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col min-h-[420px]">
       <div className="px-5 py-4 border-b border-black/5 bg-[#FAF7F2] flex items-center gap-2">
         <div className="w-6 h-6 rounded-full bg-[#C9A84C] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</div>
-        <h2 className="font-semibold text-[#1C1C1E] text-sm">Chọn công thức</h2>
+        <h2 className="font-semibold text-[#1C1C1E] text-sm">{t('batch','select_formula')}</h2>
       </div>
       <div className="p-5 space-y-4 flex-1">
-        <Field label="Thành phẩm" required>
+        <Field label={t('batch','finished_goods_label')} required>
           <select className={inputCls} value={selectedProduct} onChange={e => onProductChange(e.target.value)}>
             <option value="">-- Chọn thành phẩm --</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.unit})</option>)}
@@ -54,12 +56,12 @@ function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, select
         </Field>
 
         {selectedProduct && (
-          <Field label="Công thức định lượng" required>
+          <Field label={t('batch','formula_definition')} required>
             {loadingRecipes
-              ? <p className="text-sm text-[#8E8878] py-2 animate-pulse">Đang tải...</p>
+              ? <p className="text-sm text-[#8E8878] py-2 animate-pulse">{t('common','loading')}</p>
               : (
                 <select className={inputCls} value={selectedRecipe?.id || ''} onChange={e => onRecipeChange(e.target.value)}>
-                  <option value="">-- Chọn công thức --</option>
+                  <option value="">{t('batch','select_formula')}</option>
                   {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               )}
@@ -183,6 +185,7 @@ function StepOutput({ selectedRecipe, actualOutput, setActualOutput, notes, setN
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function FactoryCreateBatchPage() {
+  const { t } = useLang();
   const navigate = useNavigate();
   const [products, setProducts]             = useState([]);
   const [recipes, setRecipes]               = useState([]);

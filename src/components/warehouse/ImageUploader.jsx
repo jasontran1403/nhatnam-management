@@ -1,7 +1,9 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useRef, useCallback } from 'react';
 import { uploadInventoryImage, getImageUrl } from '../../api/warehouseApi';
 
 export default function ImageUploader({ value = [], onChange }) {
+  const { t } = useLang();
   const [uploading, setUploading]   = useState(false);
   const [lightbox, setLightbox]     = useState(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -27,7 +29,7 @@ export default function ImageUploader({ value = [], onChange }) {
       );
       onChange([...value, ...uploaded]);
     } catch (e) {
-      showToast('Upload ảnh thất bại: ' + (e?.response?.data?.message || e?.message || e));
+      showToast(t('product','image_upload_error') + ': ' + (e?.response?.data?.message || e?.message || e));
     } finally {
       setUploading(false);
     }
@@ -45,10 +47,10 @@ export default function ImageUploader({ value = [], onChange }) {
       setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = s; }, 50);
     } catch (e) {
       const msg = e?.name === 'NotFoundError' || e?.name === 'DevicesNotFoundError'
-        ? 'Thiết bị không có camera.'
+        ? t('common','error')
         : e?.name === 'NotAllowedError'
-        ? 'Bạn chưa cấp quyền truy cập camera.'
-        : 'Không thể mở camera: ' + (e?.message || e);
+        ? t('common','error')
+        : t('common','error') + ': ' + (e?.message || e);
       showToast(msg);
     }
   };
@@ -108,12 +110,12 @@ export default function ImageUploader({ value = [], onChange }) {
 
         <button className="wh-btn wh-btn-secondary" style={btnStyle} onClick={() => fileRef.current.click()} disabled={uploading}>
           <span style={{ fontSize: 20 }}>{uploading ? '⏳' : '🖼️'}</span>
-          <span>{uploading ? 'Đang tải' : 'Thư viện'}</span>
+          <span>{uploading ? t('common','loading'): t('common','select')}</span>
         </button>
 
         <button className="wh-btn wh-btn-secondary" style={btnStyle} onClick={openCamera} disabled={uploading}>
           <span style={{ fontSize: 20 }}>📷</span>
-          <span>Chụp ảnh</span>
+          <span>{t('common','select')}</span>
         </button>
       </div>
 
@@ -125,7 +127,7 @@ export default function ImageUploader({ value = [], onChange }) {
           <video ref={videoRef} autoPlay playsInline style={{ maxWidth:'90vw',maxHeight:'65vh',borderRadius:12,background:'#000' }} />
           <div style={{ display:'flex',gap:12 }}>
             <button onClick={capture} style={{ padding:'10px 28px',borderRadius:99,background:'#fff',color:'#111',fontWeight:700,fontSize:15,border:'none',cursor:'pointer' }}>
-              📸 Chụp
+              📸
             </button>
             <button onClick={closeCamera} style={{ padding:'10px 20px',borderRadius:99,background:'rgba(255,255,255,.15)',color:'#fff',fontWeight:600,fontSize:14,border:'none',cursor:'pointer' }}>
               Huỷ

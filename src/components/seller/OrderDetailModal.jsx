@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote } from 'lucide-react';
 import { orderApi } from '../../api/services';
 import { useToast } from '../common/Toast';
@@ -38,51 +39,7 @@ function formatDeliveryTime(o) {
   return formatDate(rounded.getTime());
 }
 
-const STATUS_LABEL = {
-  PENDING: 'Chờ xử lý',
-  CONFIRMED: 'Đã xác nhận',
-  PREPARING: 'Đang chuẩn bị',
-  READY: 'Sẵn sàng giao',
-  DELIVERING: 'Đang giao hàng',
-  PENDING_PAYMENT: 'Hoàn thành (Đã giao hàng)',
-  COMPLETED: 'Hoàn thành',
-  CANCELLED: 'Đã huỷ',
-};
 
-// ── Order log labels & styles ─────────────────────────────────────────────────
-const ACTION_LABEL = {
-  CREATED: 'Tạo đơn hàng',
-  PREPARING: 'Bắt đầu chuẩn bị',
-  DELIVERING: 'Bắt đầu giao hàng',
-  PENDING_PAYMENT: 'Chờ thanh toán',
-  COMPLETED: 'Hoàn thành đơn',
-  CANCELLED: 'Huỷ đơn',
-  PARTIAL_PAYMENT: 'Thu tiền 1 phần',
-  FULLY_PAID: 'Thanh toán đủ',
-  PAYMENT_METHOD_UPDATED: 'Đổi phương thức TT',
-  DEADLINE_EXTENDED: 'Gia hạn công nợ',
-  FAILED: 'Thất bại',
-};
-
-const ACTION_STYLE = {
-  CREATED: 'bg-sky-50 text-sky-700 border-sky-200',
-  PREPARING: 'bg-blue-50 text-blue-700 border-blue-200',
-  DELIVERING: 'bg-purple-50 text-purple-700 border-purple-200',
-  PENDING_PAYMENT: 'bg-orange-50 text-orange-700 border-orange-200',
-  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  CANCELLED: 'bg-red-50 text-red-600 border-red-200',
-  PARTIAL_PAYMENT: 'bg-amber-50 text-amber-700 border-amber-200',
-  FULLY_PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  PAYMENT_METHOD_UPDATED: 'bg-gray-50 text-gray-600 border-gray-200',
-};
-
-const ROLE_LABEL = {
-  SELLER: 'Bán hàng',
-  WAREHOUSE: 'Kho',
-  ACCOUNTANT: 'Kế toán',
-  ADMIN: 'Admin',
-  OWNER: 'Owner',
-};
 
 function formatLogDate(ts) {
   if (!ts) return '—';
@@ -90,11 +47,6 @@ function formatLogDate(ts) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
-const PAYMENT_METHOD_OPTIONS = [
-  { value: 'CASH', label: '💵 Tiền mặt' },
-  { value: 'BANK_TRANSFER', label: '🏦 Chuyển khoản' },
-  { value: 'DEBT', label: '📋 Công nợ' },
-];
 
 // ── Business logic helpers ────────────────────────────────────────────────────
 function canComplete(order) {
@@ -436,10 +388,64 @@ function PartialPaymentModal({ order, onClose, onSuccess }) {
 
 // ── Main modal ────────────────────────────────────────────────────────────────
 export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
+  const { t } = useLang();
   const toast = useToast();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showPartialModal, setShowPartialModal] = useState(false);
+
+
+
+  const STATUS_LABEL = {
+    PENDING: t('status', 'pending'),
+    CONFIRMED: t('status', 'confirmed'),
+    PREPARING: t('status', 'preparing'),
+    READY: t('status', 'ready_to_ship'),
+    DELIVERING: t('status', 'delivering'),
+    PENDING_PAYMENT: t('status', 'completed_delivered'),
+    COMPLETED: t('status', 'completed'),
+    CANCELLED: t('status', 'cancelled'),
+  };
+
+  // ── Order log labels & styles ─────────────────────────────────────────────────
+  const ACTION_LABEL = {
+    CREATED: t('order', 'create_order'),
+    PREPARING: 'Bắt đầu chuẩn bị',
+    DELIVERING: 'Bắt đầu giao hàng',
+    PENDING_PAYMENT: t('status', 'pending_payment'),
+    COMPLETED: 'Hoàn thành đơn',
+    CANCELLED: 'Huỷ đơn',
+    PARTIAL_PAYMENT: 'Thu tiền 1 phần',
+    FULLY_PAID: 'Thanh toán đủ',
+    PAYMENT_METHOD_UPDATED: 'Đổi phương thức TT',
+    DEADLINE_EXTENDED: 'Gia hạn công nợ',
+    FAILED: 'Thất bại',
+  };
+
+  const ACTION_STYLE = {
+    CREATED: 'bg-sky-50 text-sky-700 border-sky-200',
+    PREPARING: 'bg-blue-50 text-blue-700 border-blue-200',
+    DELIVERING: 'bg-purple-50 text-purple-700 border-purple-200',
+    PENDING_PAYMENT: 'bg-orange-50 text-orange-700 border-orange-200',
+    COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    CANCELLED: 'bg-red-50 text-red-600 border-red-200',
+    PARTIAL_PAYMENT: 'bg-amber-50 text-amber-700 border-amber-200',
+    FULLY_PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    PAYMENT_METHOD_UPDATED: 'bg-gray-50 text-gray-600 border-gray-200',
+  };
+
+  const ROLE_LABEL = {
+    SELLER: 'Bán hàng',
+    WAREHOUSE: 'Kho',
+    ACCOUNTANT: 'Kế toán',
+    ADMIN: 'Admin',
+    OWNER: 'Owner',
+  };
+  const PAYMENT_METHOD_OPTIONS = [
+    { value: 'CASH', label: t('payment', 'cash_icon') },
+    { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon') },
+    { value: 'DEBT', label: t('payment', 'debt_icon') },
+  ];
 
   const handleInvoice = async () => {
     try {
@@ -550,7 +556,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                 <div className="block md:hidden h-px bg-[#E8E0D6] my-2" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] text-[#8E8878] uppercase tracking-wide mb-1">Trạng thái thanh toán</p>
-                  <p className="text-sm font-semibold text-[#1C1C1E]">{formatPaymentDisplay(o)}</p>
+                  <p className="text-sm font-semibold text-[#1C1C1E]">{formatPaymentDisplay(o, t)}</p>
                 </div>
                 {o.notes && (
                   <>
@@ -731,7 +737,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-[#EDE8E0]">
-                        {['Thao tác', 'Người thực hiện', 'Vai trò', 'Ghi chú', 'Thời gian'].map(h => (
+                        {[t('common', 'actions'), 'Người thực hiện', t('common', 'role'), t('common', 'note'), 'Thời gian'].map(h => (
                           <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-3 py-2 whitespace-nowrap">
                             {h}
                           </th>
@@ -767,6 +773,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
           order={o}
           onClose={() => setShowPaymentModal(false)}
           onSuccess={handleActionSuccess}
+          options={PAYMENT_METHOD_OPTIONS}
         />
       )}
 
@@ -808,12 +815,12 @@ function TotalRow({ label, value }) {
   );
 }
 
-function formatPaymentDisplay(order) {
+function formatPaymentDisplay(order, t) {
   const { paymentMethod, paymentStatus, paymentDeadline, paidAmount, finalAmount } = order;
   const methodLabel = {
-    CASH: 'Tiền mặt', BANK_TRANSFER: 'Chuyển khoản',
-    TRANSFER: 'Chuyển khoản', BANK: 'Chuyển khoản',
-    DEBT: 'Công nợ', OTHER: 'Công nợ', COD: 'Tiền mặt',
+    CASH: t('payment', 'cash'), BANK_TRANSFER: t('payment', 'bank_transfer'),
+    TRANSFER: t('payment', 'bank_transfer'), BANK: t('payment', 'bank_transfer'),
+    DEBT: t('payment', 'debt'), OTHER: t('payment', 'debt'), COD: t('payment', 'cash'),
   }[paymentMethod] || paymentMethod || '—';
 
   if (paymentStatus === 'PAID') return `${methodLabel} / Đã thanh toán`;

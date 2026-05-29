@@ -1,4 +1,5 @@
 // src/pages/admin/AdminUsers.jsx
+import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -16,30 +17,6 @@ import {
   DangerButton, Field, inputCls, formatNumber, formatDateTime,
 } from '../../components/ui';
 
-const ROLE_CONFIG = [
-  { value: 'OWNER',           label: 'Chủ tịch' },
-  { value: 'ADMIN',           label: 'Giám đốc' },
-  { value: 'SUPER_ACCOUNTANT',label: 'Kế toán trưởng' },
-  { value: 'ACCOUNTANT',      label: 'Kế toán' },
-  { value: 'SUPER_SELLER',    label: 'Trưởng phòng kinh doanh' },
-  { value: 'SELLER',          label: 'Nhân viên kinh doanh' },
-  { value: 'SUPER_WAREHOUSE', label: 'Trưởng xưởng' },
-  { value: 'WAREHOUSE',       label: 'Nhân viên kho' },
-  { value: 'OPERATOR',        label: 'Nhân viên nhập liệu' },
-  { value: 'FACTORY_WORKER',  label: 'Nhân viên xưởng SX' },
-  { value: 'HR',              label: 'Nhân viên nhân sự' },
-];
-const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
-const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
-
-// ── Các cặp role XUNG ĐỘT — không được tồn tại cùng nhau ─────────────────────
-// Mỗi phần tử là 1 nhóm loại trừ lẫn nhau
-const CONFLICT_GROUPS = [
-  ['ACCOUNTANT',      'SUPER_ACCOUNTANT'],
-  ['WAREHOUSE',       'SUPER_WAREHOUSE'],
-  ['SELLER',          'SUPER_SELLER'],
-  ['OWNER',           'ADMIN'],
-];
 
 /**
  * Trả về role xung đột với `adding` trong danh sách `current`,
@@ -101,9 +78,9 @@ function RolePicker({ selected, onChange, availableRoles }) {
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
         {availableRoles.map(r => {
-          const active        = selected.includes(r.value);
+          const active = selected.includes(r.value);
           const disabledReason = !active ? getDisabledReason(selected, r.value) : null;
-          const isDisabled    = !!disabledReason;
+          const isDisabled = !!disabledReason;
 
           return (
             <button
@@ -147,27 +124,53 @@ function RolePicker({ selected, onChange, availableRoles }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminUsers() {
+  const { t } = useLang();
   const { user: currentUser } = useAuth();
-  const [filters, setFilters]  = useState({ q: '', role: '', locked: '' });
+  const [filters, setFilters] = useState({ q: '', role: '', locked: '' });
   const debouncedQ = useDebounce(filters.q, 600);
 
-  const [page, setPage]     = useState(0);
-  const [data, setData]     = useState({ content: [], totalPages: 0, totalElements: 0 });
+  const ROLE_CONFIG = [
+    { value: 'OWNER', label: t('admin', 'owner_role') },
+    { value: 'ADMIN', label: t('admin', 'admin_role') },
+    { value: 'SUPER_ACCOUNTANT', label: t('admin', 'super_accountant_role') },
+    { value: 'ACCOUNTANT', label: t('admin', 'accountant_role') },
+    { value: 'SUPER_SELLER', label: 'Trưởng phòng kinh doanh' },
+    { value: 'SELLER', label: 'Nhân viên kinh doanh' },
+    { value: 'SUPER_WAREHOUSE', label: 'Trưởng xưởng' },
+    { value: 'WAREHOUSE', label: 'Nhân viên kho' },
+    { value: 'OPERATOR', label: 'Nhân viên nhập liệu' },
+    { value: 'FACTORY_WORKER', label: 'Nhân viên xưởng SX' },
+    { value: 'HR', label: 'Nhân viên nhân sự' },
+  ];
+  const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
+  const ROLE_LABEL = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+
+  // ── Các cặp role XUNG ĐỘT — không được tồn tại cùng nhau ─────────────────────
+  // Mỗi phần tử là 1 nhóm loại trừ lẫn nhau
+  const CONFLICT_GROUPS = [
+    ['ACCOUNTANT', 'SUPER_ACCOUNTANT'],
+    ['WAREHOUSE', 'SUPER_WAREHOUSE'],
+    ['SELLER', 'SUPER_SELLER'],
+    ['OWNER', 'ADMIN'],
+  ];
+
+  const [page, setPage] = useState(0);
+  const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
 
-  const [formOpen, setFormOpen]     = useState(false);
-  const [editing, setEditing]       = useState(null);
-  const [saving, setSaving]         = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null);
-  const [pwdTarget, setPwdTarget]   = useState(null);
-  const [newPwd, setNewPwd]         = useState('');
+  const [pwdTarget, setPwdTarget] = useState(null);
+  const [newPwd, setNewPwd] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, size: 20, sort: 'id,desc' };
-      if (debouncedQ)        params.q      = debouncedQ;
-      if (filters.role)      params.role   = filters.role;
+      if (debouncedQ) params.q = debouncedQ;
+      if (filters.role) params.role = filters.role;
       if (filters.locked !== '') params.locked = filters.locked;
       const res = await adminUserApi.list(params);
       setData(res);
@@ -178,7 +181,7 @@ export default function AdminUsers() {
   useEffect(() => { load(); }, [load]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
-  const openEdit   = (u) => { setEditing(u);   setFormOpen(true); };
+  const openEdit = (u) => { setEditing(u); setFormOpen(true); };
 
   const toggleLock = async () => {
     if (!lockConfirm) return;
@@ -256,8 +259,8 @@ export default function AdminUsers() {
       {/* Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
         {loading ? (
-        <TableSkeleton cols={5} rows={8} />
-      ) : data.content.length === 0 ? (
+          <TableSkeleton cols={5} rows={8} />
+        ) : data.content.length === 0 ? (
           <EmptyState icon={UserCog} title="Không có user nào" />
         ) : (
           <>
@@ -298,15 +301,15 @@ export default function AdminUsers() {
                           {/* Hiển thị tất cả kho được phân công */}
                           {u.warehouses?.length > 0
                             ? u.warehouses.map(w => (
-                                <Badge key={w.id} className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
-                                  🏭 {w.name}
-                                </Badge>
-                              ))
+                              <Badge key={w.id} className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
+                                🏭 {w.name}
+                              </Badge>
+                            ))
                             : u.warehouseName && (
-                                <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
-                                  🏭 {u.warehouseName}
-                                </Badge>
-                              )}
+                              <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
+                                🏭 {u.warehouseName}
+                              </Badge>
+                            )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -327,7 +330,7 @@ export default function AdminUsers() {
                               </button>
                               <button onClick={() => setLockConfirm(u)}
                                 className={`p-2 rounded-lg transition-colors ${u.isLockAccount ? 'text-[#8E8878] hover:bg-emerald-50 hover:text-emerald-600' : 'text-[#8E8878] hover:bg-red-50 hover:text-red-600'}`}
-                                title={u.isLockAccount ? 'Mở khóa' : 'Khóa'}>
+                                title={u.isLockAccount ? 'Mở khóa' : t('status', 'locked')}>
                                 {u.isLockAccount ? <Unlock size={15} /> : <Lock size={15} />}
                               </button>
                             </>
@@ -368,7 +371,7 @@ export default function AdminUsers() {
                         <button onClick={() => setPwdTarget(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#C9A84C]/10 text-[#C9A84C]">Mật khẩu</button>
                         <button onClick={() => setLockConfirm(u)}
                           className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${u.isLockAccount ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                          {u.isLockAccount ? 'Mở khóa' : 'Khóa'}
+                          {u.isLockAccount ? 'Mở khóa' : t('status', 'locked')}
                         </button>
                       </>
                     ) : (
@@ -444,24 +447,24 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
 
   const [selectedRoles, setSelectedRoles] = useState(initRoles);
   const [form, setForm] = useState({
-    username:    editing?.username    || '',
-    password:    '',
-    fullName:    editing?.fullName    || '',
-    email:       editing?.email       || '',
+    username: editing?.username || '',
+    password: '',
+    fullName: editing?.fullName || '',
+    email: editing?.email || '',
     phoneNumber: editing?.phoneNumber || '',
     warehouseId: editing?.warehouseId ? String(editing.warehouseId) : '',
   });
   // Multi-warehouse selection
-  const initWarehouseIds = editing?.warehouses?.map(w => String(w.id)) || 
-                           (editing?.warehouseId ? [String(editing.warehouseId)] : []);
+  const initWarehouseIds = editing?.warehouses?.map(w => String(w.id)) ||
+    (editing?.warehouseId ? [String(editing.warehouseId)] : []);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState(initWarehouseIds);
-  const [saving, setSaving]     = useState(false);
-  const [err, setErr]           = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
   const [warehouses, setWarehouses] = useState([]);
 
   useEffect(() => {
     import('../../api/adminApi').then(({ adminWarehouseApi }) => {
-      adminWarehouseApi.list().then(whs => setWarehouses(whs || [])).catch(() => {});
+      adminWarehouseApi.list().then(whs => setWarehouses(whs || [])).catch(() => { });
     });
   }, []);
 
@@ -507,9 +510,9 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole }) {
     try {
       const payload = {
         ...form,
-        roles:        selectedRoles,
-        role:         selectedRoles[0],
-        warehouseId:  selectedWarehouseIds.length > 0 ? Number(selectedWarehouseIds[0]) : null,
+        roles: selectedRoles,
+        role: selectedRoles[0],
+        warehouseId: selectedWarehouseIds.length > 0 ? Number(selectedWarehouseIds[0]) : null,
         warehouseIds: selectedWarehouseIds.map(Number),
       };
       if (editing) {

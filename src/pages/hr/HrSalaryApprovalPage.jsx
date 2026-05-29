@@ -1,5 +1,6 @@
 // src/pages/hr/HrSalaryApprovalPage.jsx
 // Danh sách phiếu lương đã/chưa xử lý (dành cho HR xem)
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Receipt, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { hrSalaryApi } from '../../api/hrApi';
@@ -11,14 +12,15 @@ import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 
 const STATUS_MAP = {
-  PENDING:  { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-700 border-amber-200',      icon: Clock },
-  APPROVED: { label: 'Đã duyệt',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-  REJECTED: { label: 'Từ chối',   cls: 'bg-red-50 text-red-600 border-red-200',             icon: XCircle },
+  PENDING:  { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200',      icon: Clock },
+  APPROVED: { label: t('status', 'approved'),  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+  REJECTED: { label: t('status', 'rejected_short'),   cls: 'bg-red-50 text-red-600 border-red-200',             icon: XCircle },
 };
 
 const fmtCur = (v) => v == null ? '—' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
 
 export default function HrSalaryApprovalPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -38,7 +40,7 @@ export default function HrSalaryApprovalPage() {
       setItems(res.content || []);
       setTotalPages(res.totalPages || 0);
       setPage(p);
-    } catch { toast('Không thể tải danh sách', 'error'); }
+    } catch { toast(t('common','error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [statusFilter]);
 
@@ -46,11 +48,11 @@ export default function HrSalaryApprovalPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      <PageHeader icon={Receipt} title="Phiếu lương đã xử lý"
-        subtitle="Danh sách yêu cầu cập nhật lương" />
+      <PageHeader icon={Receipt} title=t('hr','salary_slips_processed')
+        subtitle=t('hr','salary_request_list') />
 
       <div className="flex gap-2">
-        {[['','Tất cả'], ['PENDING','Chờ duyệt'], ['APPROVED','Đã duyệt'], ['REJECTED','Từ chối']].map(([val, label]) => (
+        {[['',t('batch','status_filter_all')], ['PENDING',t('status','pending')], ['APPROVED',t('status','approved')], ['REJECTED',t('status','rejected_short')]].map(([val, label]) => (
           <button key={val} onClick={() => { setStatusFilter(val); setPage(0); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
               ${statusFilter === val
@@ -62,13 +64,13 @@ export default function HrSalaryApprovalPage() {
       </div>
 
       {loading ? <TableSkeleton cols={6} rows={10} /> : items.length === 0 ? (
-        <EmptyState icon={Receipt} title="Không có phiếu nào" />
+        <EmptyState icon={Receipt} title=t('common','no_data') />
       ) : (
         <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">
           <table className="w-full text-sm min-w-[800px]">
             <thead>
               <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
-                {['Nhân viên','Bộ phận','Lương CB','Bonus','Phụ cấp','Trạng thái','Ngày tạo',''].map(h => (
+                {[t('employee','employee'),t('employee','department'),'Lương CB','Bonus','Phụ cấp',t('common','status'),'Ngày tạo',''].map(h => (
                   <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase">{h}</th>
                 ))}
               </tr>
@@ -124,8 +126,8 @@ function SalaryDetail({ s }) {
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
         {[
-          ['Nhân viên', s.userFullName],
-          ['Bộ phận', s.department],
+          [t('employee','employee'), s.userFullName],
+          [t('employee','department'), s.department],
           ['Chức vụ', s.position || '—'],
           ['Lương cơ bản', fmtCur(s.baseSalary)],
           ['Tỷ lệ BHXH', s.socialInsuranceRate + '%'],

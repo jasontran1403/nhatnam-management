@@ -1,4 +1,5 @@
 // src/pages/operator/OperatorLandingpagePage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -31,10 +32,10 @@ function RichEditor({ value, onChange, placeholder = '' }) {
         placeholder,
         toolbar: { items: ['heading','|','fontFamily','fontSize','fontColor','fontBackgroundColor','|','bold','italic','underline','strikethrough','|','bulletedList','numberedList','todoList','|','alignment','|','link','blockQuote','insertTable','|','horizontalLine','|','undo','redo'], shouldNotGroupWhenFull: false },
         heading: { options: [
-          { model: 'paragraph', title: 'Đoạn văn', class: 'ck-heading_paragraph' },
-          { model: 'heading1', view: 'h1', title: 'Tiêu đề 1', class: 'ck-heading_heading1' },
-          { model: 'heading2', view: 'h2', title: 'Tiêu đề 2', class: 'ck-heading_heading2' },
-          { model: 'heading3', view: 'h3', title: 'Tiêu đề 3', class: 'ck-heading_heading3' },
+          { model: 'paragraph', title: t('misc','paragraph'), class: 'ck-heading_paragraph' },
+          { model: 'heading1', view: 'h1', title: t('misc','heading1'), class: 'ck-heading_heading1' },
+          { model: 'heading2', view: 'h2', title: t('misc','heading2'), class: 'ck-heading_heading2' },
+          { model: 'heading3', view: 'h3', title: t('misc','heading3'), class: 'ck-heading_heading3' },
         ]},
         fontSize: { options: [10,12,14,'default',18,20,24,28,32,36], supportAllValues: true },
         fontFamily: { options: ['default','Arial, Helvetica, sans-serif','Georgia, serif','Times New Roman, serif','Verdana, Geneva, sans-serif','Courier New, Courier, monospace'], supportAllValues: true },
@@ -525,7 +526,7 @@ function EventManager() {
                   ? 'Đang lưu...'
                   : isCreate
                     ? `Thêm ${imgFiles.length > 0 ? imgFiles.length + ' ảnh' : 'ảnh'}`
-                    : 'Cập nhật'}
+                    : t('common','update')}
               </button>
             </div>
           </div>
@@ -536,6 +537,7 @@ function EventManager() {
 }
 
 export default function OperatorLandingpagePage() {
+  const { t } = useLang();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'events'
   const [products,setProducts]   = useState([]);
@@ -633,7 +635,7 @@ export default function OperatorLandingpagePage() {
 
       {/* Category filter */}
       <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
-        {[{id:'',name:'Tất cả'},...categories].map(c=>(
+        {[{id:'',name:t('common','all')},...categories].map(c=>(
           <button key={c.id} onClick={()=>{setFilterCat(c.id);load(0,c.id);}} style={{padding:'6px 16px',borderRadius:99,border:'1px solid',fontSize:12,fontWeight:600,cursor:'pointer',transition:'all .15s',
             borderColor: filterCat===c.id?'#C9A84C':'#E8DDD0',
             background: filterCat===c.id?'rgba(201,168,76,.1)':'#fff',

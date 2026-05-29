@@ -1,4 +1,5 @@
 // src/pages/operator/OperatorMyBatchesPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -6,12 +7,7 @@ import { operatorApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
 import { ClipboardList, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
-const STATUS_CFG = {
-  PENDING:             { label: 'Chờ duyệt',       bg: 'bg-amber-50 text-amber-700 border-amber-200',   icon: Clock },
-  PARTIALLY_APPROVED:  { label: 'Duyệt 1 phần',    bg: 'bg-blue-50 text-blue-700 border-blue-200',      icon: AlertCircle },
-  APPROVED:            { label: 'Đã duyệt',         bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-  REJECTED:            { label: 'Bị từ chối',       bg: 'bg-red-50 text-red-700 border-red-200',         icon: XCircle },
-};
+
 
 function formatDate(ts) {
   if (!ts) return '—';
@@ -19,15 +15,23 @@ function formatDate(ts) {
 }
 
 export default function OperatorMyBatchesPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useMinLoading();
+
+  const STATUS_CFG = {
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
+    PARTIALLY_APPROVED: { label: t('batch', 'partial_approved'), bg: 'bg-blue-50 text-blue-700 border-blue-200', icon: AlertCircle },
+    APPROVED: { label: t('status', 'approved'), bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+    REJECTED: { label: t('status', 'rejected'), bg: 'bg-red-50 text-red-700 border-red-200', icon: XCircle },
+  };
 
   const fetch = () => {
     setLoading(true);
     operatorApi.getMyBatches()
       .then(r => setBatches(r.data?.data || []))
-      .catch(() => toast('Lỗi tải danh sách phiếu', 'error'))
+      .catch(() => toast(t('common', 'error_retry'), 'error'))
       .finally(() => setLoading(false));
   };
   useEffect(() => { fetch(); }, []);
@@ -38,7 +42,7 @@ export default function OperatorMyBatchesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>Phiếu của tôi</h1>
-            <p className="text-xs text-[#8E8878]">{batches.length} phiếu đã gửi</p>
+            <p className="text-xs text-[#8E8878]">t('operator','batches_sent').replace('{n}',batches.length)</p>
           </div>
           <button onClick={fetch} className="p-2 rounded-xl text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-all">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -71,7 +75,7 @@ export default function OperatorMyBatchesPage() {
                           <Icon size={9} /> {cfg.label}
                         </span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border ${b.type === 'CREATE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                          {b.type === 'CREATE' ? 'Tạo mới' : 'Cập nhật'}
+                          {b.type === 'CREATE' ? t('common', 'create_new') : t('common', 'update')}
                         </span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#8E8878]">

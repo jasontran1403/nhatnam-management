@@ -1,6 +1,7 @@
 // src/pages/shared/DebtOrdersPage.jsx
 // Dùng chung cho ACCOUNTANT, SUPER_ACCOUNTANT, ADMIN, OWNER
 // Nhận prop `type` = 'NEARING' | 'OVERDUE' từ route state hoặc searchParam
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -224,6 +225,7 @@ function SelectionSummary({ orders, selectedIds, onClear }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DebtOrdersPage() {
+  const { t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -378,7 +380,7 @@ export default function DebtOrdersPage() {
               ? <AlertTriangle size={40} className="text-red-300" />
               : <Clock size={40} className="text-amber-300" />}
             <p className="font-semibold">
-              {search ? 'Không tìm thấy kết quả' : (isOverdue ? 'Không có đơn quá hạn' : 'Không có đơn sắp đến hạn')}
+              {search ? 'Không tìm thấy kết quả': (isOverdue ? 'Không có đơn quá hạn' : 'Không có đơn sắp đến hạn')}
             </p>
           </div>
         ) : (

@@ -1,4 +1,5 @@
 // src/components/accountant/PaymentModal.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import {
   X, DollarSign, CreditCard, Banknote, ClipboardList,
@@ -26,20 +27,27 @@ function parseVND(str) {
   return Number(String(str).replace(/[^0-9]/g, '')) || 0;
 }
 
-const PAYMENT_METHODS = [
-  { value: 'CASH',          label: '💵 Tiền mặt',       needsBank: false },
-  { value: 'BANK_TRANSFER', label: '🏦 Chuyển khoản',   needsBank: true  },
-  { value: 'DEBT',          label: '📋 Công nợ',         needsBank: false },
-];
+function getPaymentMethods(t) {
+  return [
+    { value: 'CASH',          label: t('payment', 'cash_icon'),          needsBank: false },
+    { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon'), needsBank: true  },
+    { value: 'DEBT',          label: t('payment', 'debt_icon'),           needsBank: false },
+  ];
+}
 
-const TX_METHOD_LABEL = {
-  CASH:          '💵 Tiền mặt',
-  BANK_TRANSFER: '🏦 Chuyển khoản',
-  DEBT:          '📋 Công nợ',
-};
+function getTxMethodLabel(t) {
+  return {
+    CASH:          t('payment', 'cash_icon'),
+    BANK_TRANSFER: t('payment', 'bank_transfer_icon'),
+    DEBT:          t('payment', 'debt_icon'),
+  };
+}
 
 export default function PaymentModal({ order, onClose, onSuccess }) {
+  const { t } = useLang();
   const toast = useToast();
+  const PAYMENT_METHODS = getPaymentMethods(t);
+  const TX_METHOD_LABEL = getTxMethodLabel(t);
   const [amount, setAmount] = useState('');
   const [amountDisplay, setAmountDisplay] = useState('');
   const [method, setMethod] = useState('CASH');
@@ -83,13 +91,13 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
 
   const handleSubmit = async () => {
     const paidAmount = parseVND(amount);
-    if (!paidAmount || paidAmount <= 0) { toast('Nhập số tiền thanh toán', 'warning'); return; }
+    if (!paidAmount || paidAmount <= 0) { toast(t('payment', 'enter_paid_amount_required'), 'warning'); return; }
     if (paidAmount > remaining + 1) {
-      toast(`Số tiền vượt quá số dư cần thu (${formatPrice(remaining)})`, 'warning');
+      toast(`${t('payment', 'enter_amount_collected')}: ${formatPrice(remaining)}`, 'warning');
       return;
     }
     if (needsBank && !bankName.trim()) {
-      toast('Nhập tên ngân hàng cho thanh toán chuyển khoản', 'warning');
+      toast(t('payment', 'bank_name_required'), 'warning');
       return;
     }
 
@@ -103,11 +111,11 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
         needsBank ? bankName.trim() : undefined,
         needsBank ? txRef.trim() : undefined,
       );
-      toast('Ghi nhận thanh toán thành công!', 'success');
+      toast(t('payment','record_success'), 'success');
       if (onSuccess) onSuccess();
       onClose();
     } catch (e) {
-      toast(e.response?.data?.message || 'Lỗi ghi nhận thanh toán', 'error');
+      toast(e.response?.data?.message || t('payment','record_error'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +128,7 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
           <div className="flex items-center gap-2">
             <DollarSign size={16} className="text-[#C9A84C]" />
-            <h2 className="text-sm font-bold text-[#1C1C1E]">Ghi nhận thanh toán</h2>
+            <h2 className="text-sm font-bold text-[#1C1C1E]">{t('payment','record_payment')}</h2>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-xl flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3]">
             <X size={15} />
@@ -131,19 +139,19 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
           {/* Order summary */}
           <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 grid grid-cols-2 gap-2 text-xs">
             <div>
-              <p className="text-[#8E8878]">Đơn hàng</p>
+              <p className="text-[#8E8878]">{t('order','order')}</p>
               <p className="font-bold text-[#1C1C1E]">{order?.orderCode}</p>
             </div>
             <div>
-              <p className="text-[#8E8878]">Tổng đơn</p>
+              <p className="text-[#8E8878]">{t('order', 'total_amount')}</p>
               <p className="font-bold text-[#1C1C1E]">{formatPrice(order?.finalAmount)}</p>
             </div>
             <div>
-              <p className="text-[#8E8878]">Đã thu</p>
+              <p className="text-[#8E8878]">{t('payment', 'collected')}</p>
               <p className="font-semibold text-emerald-600">{formatPrice(order?.paidAmount || 0)}</p>
             </div>
             <div>
-              <p className="text-[#8E8878]">Còn lại</p>
+              <p className="text-[#8E8878]">{t('payment', 'remaining')}</p>
               <p className="font-bold text-orange-600">{formatPrice(remaining)}</p>
             </div>
           </div>
@@ -151,7 +159,7 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
           {/* Amount input */}
           <div>
             <label className="text-xs font-semibold text-[#1C1C1E] mb-1.5 block">
-              Số tiền thu lần này *
+              {t('payment', 'enter_amount_collected')} *
             </label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
@@ -288,12 +296,12 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
         <div className="flex gap-2 px-5 pb-5">
           <button onClick={onClose}
             className="flex-1 py-2.5 border-2 border-[#E8DDD0] rounded-xl text-sm font-medium text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
-            Huỷ
+            {t('common', 'cancel')}
           </button>
           <button onClick={handleSubmit} disabled={submitting || !amount}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#C9A84C] text-white rounded-xl text-sm font-semibold hover:bg-[#A07830] transition-colors disabled:opacity-50">
             {submitting ? <Loader2 size={14} className="animate-spin" /> : <Banknote size={14} />}
-            {submitting ? 'Đang xử lý...' : 'Xác nhận'}
+{submitting ? t('common', 'processing') : t('common', 'confirm')}
           </button>
         </div>
       </div>

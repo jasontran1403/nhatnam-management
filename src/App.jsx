@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { WarehouseProvider } from './context/WarehouseContext';
 import { ToastProvider, useToast } from './components/common/Toast';
+import { LangProvider } from './context/LangContext';
 import AppRoutes from './routes';
 
 function SessionExpiredListener() {
@@ -18,15 +19,17 @@ function SessionExpiredListener() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <WarehouseProvider>
-        <ToastProvider>
-          <SessionExpiredListener />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </ToastProvider>
-      </WarehouseProvider>
-    </AuthProvider>
+    <LangProvider>
+      <AuthProvider>
+        <WarehouseProvider>
+          <ToastProvider>
+            <SessionExpiredListener />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </ToastProvider>
+        </WarehouseProvider>
+      </AuthProvider>
+    </LangProvider>
   );
 }

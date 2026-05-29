@@ -3,6 +3,7 @@ import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { productApi, categoryApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
+import { useLang } from '../../context/LangContext';
 import { Plus, Search, Edit2, Trash2, RefreshCw, Package } from 'lucide-react';
 import ProductFormModal from '../../components/seller/ProductFormModal';
 
@@ -14,6 +15,7 @@ function formatPrice(price) {
 
 export default function ProductsPage() {
   const toast = useToast();
+  const { t } = useLang();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -32,21 +34,21 @@ export default function ProductsPage() {
         setProducts(pRes.data?.data?.content || []);
         setCategories(cRes.data?.data || []);
       })
-      .catch(() => toast('Không thể tải dữ liệu', 'error'))
+      .catch(() => toast(t('common', 'error_retry'), 'error'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchAll(); }, []);
 
   const handleDelete = async (p) => {
-    if (!window.confirm(`Xoá sản phẩm "${p.name}"?`)) return;
+    if (!window.confirm(`${t('common', 'delete')} "${p.name}"?`)) return;
     setDeletingId(p.id);
     try {
       await productApi.delete(p.id);
-      toast('Đã xoá sản phẩm', 'success');
+      toast(t('common', 'success'), 'success');
       fetchAll();
     } catch (err) {
-      toast(err?.response?.data?.message || 'Lỗi khi xoá', 'error');
+      toast(err?.response?.data?.message || t('common', 'error'), 'error');
     } finally { setDeletingId(null); }
   };
 
@@ -70,16 +72,16 @@ export default function ProductsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div>
             <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
-              Sản phẩm
+              {t('product','product_name_label')}
             </h1>
-            <p className="text-xs text-[#8E8878]">{products.length} sản phẩm</p>
+            <p className="text-xs text-[#8E8878]">t('product','product_count').replace('{n}',products.length)</p>
           </div>
           <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
               <input
                 type="text"
-                placeholder="Tìm sản phẩm..."
+                {...{placeholder: t("product","search_placeholder")}}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="input-elegant rounded-xl pl-9 pr-4 py-2 text-sm w-48"
@@ -133,7 +135,7 @@ export default function ProductsPage() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2">
             <Package size={36} strokeWidth={1} />
-            <p className="text-sm">Không có sản phẩm nào</p>
+            <p className="text-sm">{t('common','no_data')}</p>
             <button
               onClick={() => setFormModal({ open: true, product: null })}
               className="btn-gold rounded-xl px-4 py-2 text-sm mt-2"
@@ -200,7 +202,7 @@ export default function ProductsPage() {
                           ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
                           : <Trash2 size={12} />
                         }
-                        Xoá
+                        {t('common', 'delete')}
                       </button>
                     </div>
                   </div>

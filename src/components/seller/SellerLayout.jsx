@@ -1,22 +1,24 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useLang } from '../../context/LangContext';
 import NotificationBell from '../common/NotificationBell';
 import {
-  ShoppingCart, ClipboardList, FileSpreadsheet,
+  ShoppingCart, ClipboardList,
   LogOut, Menu, X, ChevronRight,
 } from 'lucide-react';
 import ProfileButton from '../common/ProfileButton';
 
-const navItems = [
-  { to: '/seller/pos', label: 'Bán Hàng', icon: ShoppingCart },
-  { to: '/seller/orders', label: 'Đơn Hàng', icon: ClipboardList },
-];
-
 export default function SellerLayout() {
   const { user, token, logout } = useAuth();
+  const { t } = useLang();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navItems = [
+    { to: '/seller/pos', label: t('nav', 'pos'), icon: ShoppingCart },
+    { to: '/seller/orders', label: t('nav', 'orders'), icon: ClipboardList },
+  ];
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -65,7 +67,7 @@ export default function SellerLayout() {
           <button onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-[#8E8878] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200">
             <LogOut size={17} />
-            <span className="text-sm font-medium">Đăng xuất</span>
+            <span className="text-sm font-medium">{t('profile', 'logout')}</span>
           </button>
         </div>
       </aside>

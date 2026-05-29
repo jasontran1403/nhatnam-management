@@ -1,4 +1,5 @@
 // src/pages/hr/HrPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users, FileText, Clock, Plus, Search, ChevronDown, ChevronUp,
@@ -16,7 +17,6 @@ import Modal from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/common/Toast';
 
-const LEAVE_TYPE_LABEL = { PAID: 'Có lương', UNPAID: 'Không lương' };
 
 // ── Salary Modal (single) ─────────────────────────────────────────────────────
 function SalaryModal({ user, onClose, onSaved }) {
@@ -42,7 +42,7 @@ function SalaryModal({ user, onClose, onSaved }) {
         mealAllowance: num(form.mealAllowance),
         transportAllowance: num(form.transportAllowance),
       });
-      toast('Đã gửi phiếu lương chờ owner duyệt', 'success');
+      toast(t('hr', 'salary_pending_owner'), 'success');
       onSaved();
       onClose();
     } catch (e) {
@@ -51,7 +51,7 @@ function SalaryModal({ user, onClose, onSaved }) {
   };
 
   return (
-    <Modal open onClose={onClose} title={`Cập nhật lương — ${user.fullName}`}>
+    <Modal open onClose={onClose} title={`${t('hr', 'update_salary')} — ${user.fullName}`}>
       <div className="space-y-3 py-1">
         <Field label="Lương cơ bản (VNĐ)" required>
           <input className={inputCls} type="number" value={form.baseSalary}
@@ -179,7 +179,7 @@ function InfoModal({ user, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (e) {
-      toast(e.message || 'Lỗi', 'error');
+      toast(e.message || t('common', 'error'), 'error');
     } finally { setSaving(false); }
   };
 
@@ -234,7 +234,7 @@ function CreateLeaveModal({ users, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (e) {
-      toast(e.message || 'Lỗi', 'error');
+      toast(e.message || t('common', 'error'), 'error');
     } finally { setSaving(false); }
   };
 
@@ -323,7 +323,7 @@ function CreateOtModal({ users, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (e) {
-      toast(e.message || 'Lỗi', 'error');
+      toast(e.message || t('common', 'error'), 'error');
     } finally { setSaving(false); }
   };
 
@@ -382,15 +382,15 @@ function CreateOtModal({ users, onClose, onSaved }) {
 // ── Employees Tab ─────────────────────────────────────────────────────────────
 function EmployeesTab() {
   const toast = useToast();
-  const [users, setUsers]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [q, setQ]                 = useState('');
-  const [selected, setSelected]   = useState([]);
-  const [page, setPage]           = useState(0);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+  const [selected, setSelected] = useState([]);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [salaryModal, setSalaryModal] = useState(null);
-  const [batchModal, setBatchModal]   = useState(false);
-  const [infoModal, setInfoModal]     = useState(null);
+  const [batchModal, setBatchModal] = useState(false);
+  const [infoModal, setInfoModal] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -486,12 +486,12 @@ function EmployeesTab() {
 // ── Leaves Tab ────────────────────────────────────────────────────────────────
 function LeavesTab() {
   const toast = useToast();
-  const [leaves, setLeaves]       = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [page, setPage]           = useState(0);
+  const [leaves, setLeaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
-  const [users, setUsers]         = useState([]);
+  const [users, setUsers] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -506,7 +506,7 @@ function LeavesTab() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    adminUserApi.list({ size: 200 }).then(d => setUsers(d.content ?? d)).catch(() => {});
+    adminUserApi.list({ size: 200 }).then(d => setUsers(d.content ?? d)).catch(() => { });
   }, []);
 
   return (
@@ -570,12 +570,12 @@ function LeavesTab() {
 // ── OT Tab ────────────────────────────────────────────────────────────────────
 function OtTab() {
   const toast = useToast();
-  const [ots, setOts]             = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [page, setPage]           = useState(0);
+  const [ots, setOts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
-  const [users, setUsers]         = useState([]);
+  const [users, setUsers] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -589,7 +589,7 @@ function OtTab() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    adminUserApi.list({ size: 200 }).then(d => setUsers(d.content ?? d)).catch(() => {});
+    adminUserApi.list({ size: 200 }).then(d => setUsers(d.content ?? d)).catch(() => { });
   }, []);
 
   return (
@@ -645,23 +645,29 @@ function OtTab() {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-const TABS = [
-  { id: 'employees', label: 'Quản lý nhân viên', icon: Users },
-  { id: 'leaves',    label: 'Phiếu nghỉ',        icon: Calendar },
-  { id: 'ot',        label: 'Phiếu OT',           icon: Clock },
-];
 
 export default function HrPage() {
+  const { t } = useLang();
   const [tab, setTab] = useState('employees');
+
+  const LEAVE_TYPE_LABEL = { PAID: t('hr', 'leave_paid'), UNPAID: t('hr', 'leave_unpaid') };
+
+
+  // ── Main Page ─────────────────────────────────────────────────────────────────
+  const TABS = [
+    { id: 'employees', label: 'Quản lý nhân viên', icon: Users },
+    { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
+    { id: 'ot', label: 'Phiếu OT', icon: Clock },
+  ];
+
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
       <PageHeader icon={UserCog} title="Nhân sự" subtitle="Quản lý lương, nghỉ phép, tăng ca" />
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'employees' && <EmployeesTab />}
-      {tab === 'leaves'    && <LeavesTab />}
-      {tab === 'ot'        && <OtTab />}
+      {tab === 'leaves' && <LeavesTab />}
+      {tab === 'ot' && <OtTab />}
     </div>
   );
 }

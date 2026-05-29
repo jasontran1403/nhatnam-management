@@ -1,4 +1,5 @@
 // src/pages/operator/OperatorProductBatchPage.jsx
+import { useLang } from '../../context/LangContext';
 import ReactDOM from 'react-dom';
 import { useState, useEffect, useRef } from 'react';
 import { operatorApi } from '../../api/operatorApi';
@@ -54,6 +55,7 @@ function useDebounce(value, delay) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function OperatorProductBatchPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [batchType, setBatchType] = useState('CREATE');
   const [note, setNote] = useState('');
@@ -149,14 +151,14 @@ export default function OperatorProductBatchPage() {
       const json = await res.json();
       setItem(itemId, { imageUrl: json?.data?.imageUrl || '', _uploading: false });
     } catch {
-      toast('Lỗi upload ảnh', 'error');
+      toast(t('common','error'), 'error');
       setItem(itemId, { _uploading: false });
     }
   };
 
   const handleSubmit = async () => {
     for (const it of items) {
-      if (!it.name.trim()) return toast('Tên sản phẩm không được trống', 'error');
+      if (!it.name.trim()) return toast(t('product','product_name_required'), 'error');
       if (!it.unit.trim()) return toast(`Đơn vị tính của "${it.name}" không được trống`, 'error');
       const price = Number(String(it.basePrice).replace(/[^0-9]/g, ''));
       if (!price || price <= 0) return toast(`Giá bán lẻ "${it.name}" không hợp lệ`, 'error');
@@ -231,7 +233,7 @@ export default function OperatorProductBatchPage() {
               {['CREATE', 'UPDATE'].map(t => (
                 <button key={t} onClick={() => { setBatchType(t); setItems([emptyItem()]); setNote(''); }}
                   className={`px-4 py-2 text-xs font-semibold transition-colors ${batchType === t ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
-                  {t === 'CREATE' ? 'Tạo mới' : 'Cập nhật'}
+                  {t === 'CREATE' ? 'Tạo mới' : t('common','update')}
                 </button>
               ))}
             </div>
@@ -389,8 +391,7 @@ function ProductItemCard({ item, idx, batchType, categories, ingredients, produc
               >
                 <span>
                   {item.existingProductId 
-                    ? products.find(p => p.id === item.existingProductId)?.name || 'Đã chọn' 
-                    : 'Chọn sản phẩm từ danh sách...'}
+                    ? products.find(p => p.id === item.existingProductId)?.name || 'Đã chọn': 'Chọn sản phẩm từ danh sách...'}
                 </span>
                 <Search size={16} className="text-[#C9A84C]" />
               </button>

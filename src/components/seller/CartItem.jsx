@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useRef } from 'react';
 import { Trash2, Pencil, Percent, Check, Gift } from 'lucide-react';
 
@@ -26,6 +27,7 @@ function allowDecimal(unit, saleType) {
 }
 
 export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, onDiscountChange, onPromoToggle }) {
+  const { t } = useLang();  
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceDisplay, setPriceDisplay] = useState('');
   const [editingQty, setEditingQty] = useState(false);
@@ -144,7 +146,7 @@ export default function CartItem({ item, onUpdate, onRemove, onPriceOverride, on
 
         {item.saleType === 'BOX' ? (
           <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-            📦 Thùng ({item.unitsPerBox} {item.unit === 'Thùng' ? (item.baseUnit || '') : item.unit}/thùng)
+            📦 {t('product','box')} ({item.unitsPerBox} {item.unit === t('product','box') ? (item.baseUnit || '') : item.unit}/thùng)
           </span>
         ) : item.saleType === 'RETAIL' ? (
           <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-sky-50 text-sky-600 border border-sky-200">

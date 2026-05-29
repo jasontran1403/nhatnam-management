@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Warehouse, Check } from 'lucide-react';
 import { useWarehouse } from '../../context/WarehouseContext';
+import { useLang } from '../../context/LangContext';
 
 export default function WarehouseSelector({ compact = false }) {
+  const { t } = useLang();
   const {
     assignedWarehouses,
     activeWarehouseName,
@@ -16,7 +18,6 @@ export default function WarehouseSelector({ compact = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Đóng khi click ngoài
   useEffect(() => {
     if (!open) return;
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -25,11 +26,10 @@ export default function WarehouseSelector({ compact = false }) {
   }, [open]);
 
   if (!hasMultipleWarehouses) {
-    // Chỉ 1 kho: hiện tên tĩnh, không dropdown
     return (
       <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-xs font-semibold">
         <Warehouse size={13} />
-        <span className="truncate max-w-[120px]">{activeWarehouseName || 'Kho'}</span>
+        <span className="truncate max-w-[120px]">{activeWarehouseName || t('warehouse', 'warehouse')}</span>
       </div>
     );
   }
@@ -45,7 +45,7 @@ export default function WarehouseSelector({ compact = false }) {
           ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
       >
         <Warehouse size={13} />
-        <span className="truncate max-w-[120px]">{activeWarehouseName || 'Chọn kho'}</span>
+        <span className="truncate max-w-[120px]">{activeWarehouseName || t('warehouse', 'select_warehouse')}</span>
         <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -53,7 +53,7 @@ export default function WarehouseSelector({ compact = false }) {
         <div className="absolute left-0 top-full mt-1 z-50 min-w-[180px] bg-white rounded-xl shadow-xl
           border border-[#E8DDD0] py-1 overflow-hidden">
           <p className="text-[10px] uppercase font-semibold text-[#8E8878] tracking-wider px-3 py-1.5">
-            Chọn kho
+            {t('warehouse', 'select_warehouse')}
           </p>
           {assignedWarehouses.map(w => (
             <button

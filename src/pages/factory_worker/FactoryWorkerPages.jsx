@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ClipboardList, Plus, TrendingUp, TrendingDown, Package } from 'lucide-react';
 import { factoryWorkerApi } from '../../api/productionApi';
+import { useLang } from '../../context/LangContext';
 
 const fmtDate = (ms) => ms
   ? new Date(ms).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -25,6 +26,7 @@ function VarianceBadge({ pct }) {
 }
 
 export function FactoryDashboardPage() {
+  const { t } = useLang();
   const { user } = useAuth();
   const navigate  = useNavigate();
   const [batches, setBatches] = useState([]);
@@ -59,7 +61,7 @@ export function FactoryDashboardPage() {
             <Plus size={18} className="text-white" />
           </div>
           <div className="text-left">
-            <p className="font-semibold text-gray-900">Nhập mẻ sản xuất mới</p>
+            <p className="font-semibold text-gray-900">{t('factory','enter_new_batch')}</p>
             <p className="text-xs text-gray-400">Ghi nhận nguyên liệu và thành phẩm</p>
           </div>
         </div>

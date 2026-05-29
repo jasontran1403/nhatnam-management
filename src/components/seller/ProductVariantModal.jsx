@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { X, Check } from 'lucide-react';
+import { useLang } from '../../context/LangContext';
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(price || 0) + ' đ';
 }
 
 export default function ProductVariantModal({ product, onClose, onAdd }) {
+  const { t } = useLang();
   const hasVariants = product.variants?.length > 0;
   const [selectedVariant, setSelectedVariant] = useState(
     hasVariants ? product.variants.find((v) => v.isDefault) || product.variants[0] : null
@@ -29,7 +31,7 @@ export default function ProductVariantModal({ product, onClose, onAdd }) {
             <h2 className="font-semibold text-[#1C1C1E] text-sm" style={{ fontFamily: 'var(--font-display)' }}>
               {product.name}
             </h2>
-            <p className="text-xs text-[#8E8878]">Chọn phân loại & mức giá</p>
+            <p className="text-xs text-[#8E8878]">{t('product', 'select_variant_price')}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
             <X size={17} />
@@ -40,7 +42,7 @@ export default function ProductVariantModal({ product, onClose, onAdd }) {
           {/* Variants */}
           {hasVariants && (
             <div>
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Phân loại</p>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('product', 'variant_label')}</p>
               <div className="flex flex-wrap gap-2">
                 {product.variants.map((v) => (
                   <button
@@ -63,7 +65,7 @@ export default function ProductVariantModal({ product, onClose, onAdd }) {
           {/* Prices */}
           {product.prices?.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Mức giá</p>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('product', 'price_tier_label')}</p>
               <div className="space-y-1.5">
                 {product.prices.map((p) => (
                   <button
@@ -96,7 +98,7 @@ export default function ProductVariantModal({ product, onClose, onAdd }) {
             disabled={!selectedPrice}
             className="btn-gold w-full rounded-xl py-3 text-sm font-bold disabled:opacity-40"
           >
-            Thêm vào giỏ — {selectedPrice ? formatPrice(selectedPrice.price) : ''}
+            {t('product', 'add_to_cart_price')} {selectedPrice ? formatPrice(selectedPrice.price) : ''}
           </button>
         </div>
       </div>

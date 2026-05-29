@@ -1,4 +1,5 @@
 // src/pages/super_accountant/ExpenseCreatePage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useRef, useEffect } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -15,6 +16,7 @@ function parseVND(s) {
 }
 
 export default function ExpenseCreatePage() {
+  const { t } = useLang();
   const toast = useToast();
 
   const [vendorName, setVendorName]           = useState('');
@@ -73,14 +75,14 @@ export default function ExpenseCreatePage() {
         setImages(prev => prev.map(img => img.id === tmp.id ? { ...img, uploading: false, uploadedUrl: uploaded } : img));
       } catch (err) {
         setImages(prev => prev.filter(img => img.id !== tmp.id));
-        toast('Lỗi upload ảnh: ' + (err?.response?.data?.message || err?.message || 'Unknown'), 'error');
+        toast(t('common','error') + ': ' + (err?.response?.data?.message || err?.message || 'Unknown'), 'error');
       }
     }
     e.target.value = '';
   };
 
   const handleSubmit = async () => {
-    if (!reason.trim()) { toast('Lý do chi là bắt buộc', 'error'); return; }
+    if (!reason.trim()) { toast(t('voucher','expense_reason_required'), 'error'); return; }
     const validItems = items.filter(i => i.itemName.trim() && parseVND(i.amount) > 0);
     if (validItems.length === 0) { toast('Phải có ít nhất 1 khoản chi hợp lệ', 'error'); return; }
     const uploadingCount = images.filter(img => img.uploading).length;
@@ -161,7 +163,7 @@ export default function ExpenseCreatePage() {
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-black/10 bg-white cursor-pointer hover:border-[#C9A84C] transition"
                 >
                   <span className={vendorName ? 'text-[#1C1C1E] text-sm' : 'text-[#8E8878] text-sm'}>
-                    {vendorName || (supplierLoading ? 'Đang tải...' : suppliers.length === 0 ? 'Chưa có nhà cung cấp' : 'Chọn nhà cung cấp...')}
+                    {vendorName || (supplierLoading ? 'Đang tải...': suppliers.length === 0 ? 'Chưa có nhà cung cấp' : 'Chọn nhà cung cấp...')}
                   </span>
                   <ChevronDown size={16} className={`text-[#8E8878] transition-transform ${supplierDropOpen ? 'rotate-180' : ''}`} />
                 </div>
@@ -305,7 +307,7 @@ export default function ExpenseCreatePage() {
             <h2 className="font-bold text-[#1C1C1E]">Phiếu chi của tôi</h2>
             <button onClick={loadMyVouchers} disabled={loadingList}
               className="text-sm text-[#C9A84C] hover:underline disabled:opacity-50">
-              {loadingList ? 'Đang tải...' : 'Tải danh sách'}
+              {loadingList ? 'Đang tải...': 'Tải danh sách'}
             </button>
           </div>
 
@@ -329,7 +331,7 @@ export default function ExpenseCreatePage() {
                       v.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                       'bg-yellow-100 text-yellow-700'
                     }`}>
-                      {v.status === 'APPROVED' ? 'Đã duyệt' : v.status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
+                      {v.status === 'APPROVED' ? t('status','approved'): v.status === 'REJECTED' ? t('status','rejected_short'): t('status','pending')}
                     </span>
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useEffect, useState } from 'react';
 import { CardSkeleton, Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -20,6 +21,7 @@ import {
 } from '../../components/ui';
 
 export default function AdminWarehouses() {
+  const { t } = useLang();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const rolePrefix = pathname.startsWith('/owner') ? '/owner' : '/admin';
@@ -59,9 +61,9 @@ export default function AdminWarehouses() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader
         icon={WarehouseIcon}
-        title="Kho hàng"
-        subtitle={`${items.length} kho trong hệ thống`}
-        action={<PrimaryButton onClick={openCreate}><Plus size={15} /> Tạo kho</PrimaryButton>}
+        {...{title: t("warehouse","warehouses")}}
+        subtitle={t('admin','warehouse_count').replace('{n}',items.length)}
+        action={<PrimaryButton onClick={openCreate}><Plus size={15} />{t('warehouse','create_warehouse_new')}</PrimaryButton>}
       />
 
       {loading ? (
@@ -81,12 +83,12 @@ export default function AdminWarehouses() {
                   {w.type === 'TRANSIT' ? <Truck size={22} /> : <Store size={22} />}
                 </div>
                 <Badge className={w.active ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-50 text-slate-600 ring-slate-200'}>
-                  {w.active ? 'Hoạt động' : 'Đóng'}
+                  {w.active ? t('status','active'): t('common','close')}
                 </Badge>
               </div>
 
               <h3 className="font-bold text-[#1C1C1E] text-lg mt-3 truncate">{w.name}</h3>
-              <p className="text-xs text-[#8E8878] mt-0.5 truncate">{w.address || 'Chưa có địa chỉ'}</p>
+              <p className="text-xs text-[#8E8878] mt-0.5 truncate">{w.address || t('common','no_data')}</p>
 
               <div className="flex items-center gap-1.5 mt-3">
                 <Badge className={w.type === 'TRANSIT' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}>
@@ -175,7 +177,7 @@ function WarehouseFormModal({ open, editing, onClose, onSaved }) {
       footer={
         <div className="flex justify-end gap-2">
           <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
-          <PrimaryButton onClick={submit} loading={saving}>{editing ? 'Cập nhật' : 'Tạo kho'}</PrimaryButton>
+          <PrimaryButton onClick={submit} loading={saving}>{editing ? 'Cập nhật': 'Tạo kho'}</PrimaryButton>
         </div>
       }
     >
@@ -225,7 +227,7 @@ function WarehouseFormModal({ open, editing, onClose, onSaved }) {
             >
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${form.active ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
-            <span className="text-sm text-[#1C1C1E]">{form.active ? 'Hoạt động' : 'Đóng'}</span>
+            <span className="text-sm text-[#1C1C1E]">{form.active ? t('status','active'): t('common','close')}</span>
           </div>
         </Field>
       </div>

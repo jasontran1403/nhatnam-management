@@ -1,4 +1,5 @@
 // src/pages/admin/SaleKpiPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useCallback } from 'react';
 import { TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -109,6 +110,7 @@ function SellerRow({ seller, rank }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SaleKpiPage() {
+  const { t } = useLang();
   const toast = useToast();
 
   const [preset, setPreset] = useState('month');

@@ -2,6 +2,7 @@
 // FIX 1: Popup hạn sử dụng không tràn màn hình — luôn hiển thị vào trong
 // FIX 2: Hiển thị category/subcategory dạng cây, collapse/expand
 // ADDED: WarehouseSelector — chọn kho cho tài khoản quản lý nhiều kho
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Sk, StatCardSkeleton, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -23,6 +24,7 @@ function daysUntil(dateStr) {
 
 // ── ExpiryCell — FIX 1: popup luôn hiển thị vào trong màn hình ──────────────
 function ExpiryCell({ expiryList }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const popRef = useRef(null);
@@ -85,7 +87,7 @@ function ExpiryCell({ expiryList }) {
             borderRadius: 99, padding: '2px 8px',
             fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
           }}>
-            ⚠️ {soonCount} lô sắp hết hạn
+            {t('warehouse','lot_expiring_soon').replace('{n}',soonCount)}
           </span>
         )}
         <span style={{
@@ -94,7 +96,7 @@ function ExpiryCell({ expiryList }) {
           borderRadius: 99, padding: '2px 8px',
           fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
         }}>
-          {dated.length} lô ▾
+          {t('warehouse','lots_label').replace('{n}',dated.length)} ▾
         </span>
       </button>
 
@@ -115,7 +117,7 @@ function ExpiryCell({ expiryList }) {
             fontSize: 11, fontWeight: 700, color: 'var(--wh-muted)',
             textTransform: 'uppercase', letterSpacing: '.5px',
           }}>
-            Danh sách lô hàng
+            {t('warehouse','lot_list')}
           </div>
           {dated.map((e, i) => {
             const days = daysUntil(e.expiryDate);
@@ -138,7 +140,7 @@ function ExpiryCell({ expiryList }) {
                   )}
                   {isSoon && !isExpired && (
                     <span style={{ fontSize: 10, background: 'rgba(234,88,12,.1)', color: 'var(--wh-warn)', borderRadius: 4, padding: '1px 5px' }}>
-                      {days === 0 ? 'Hôm nay' : `${days} ngày`}
+                      {days === 0 ? t('common','today'): `${days} ${t('common','date').toLowerCase()}`}
                     </span>
                   )}
                 </div>
@@ -156,6 +158,7 @@ function ExpiryCell({ expiryList }) {
 
 // ── Category tree row ─────────────────────────────────────────────────────────
 function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
+  const { t } = useLang();
   const [expanded, setExpanded] = useState(true);
 
   const catIngredients = useMemo(() => {
@@ -197,7 +200,7 @@ function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
           background: 'rgba(201,168,76,.1)', borderRadius: 99,
           padding: '2px 8px', fontWeight: 600,
         }}>
-          {ingredients.length} nguyên liệu
+          {t('warehouse','ingredient_count').replace('{n}',ingredients.length)}
         </span>
         <span style={{ color: 'var(--wh-muted)', fontSize: 14 }}>
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -329,7 +332,7 @@ function UncategorizedSection({ ingredients }) {
         <span style={{ fontSize: 18 }}>📦</span>
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--wh-text)', flex: 1 }}>Chưa phân loại</span>
         <span style={{ fontSize: 11, color: 'var(--wh-muted)', background: 'rgba(0,0,0,.06)', borderRadius: 99, padding: '2px 8px', fontWeight: 600 }}>
-          {ingredients.length} nguyên liệu
+          {t('warehouse','ingredient_count').replace('{n}',ingredients.length)}
         </span>
         {expanded ? <ChevronDown size={16} style={{ color: 'var(--wh-muted)' }} /> : <ChevronRight size={16} style={{ color: 'var(--wh-muted)' }} />}
       </div>
@@ -344,6 +347,7 @@ function UncategorizedSection({ ingredients }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ManagementPage() {
+  const { t } = useLang();
   const { user } = useAuth();
   const { activeWarehouseId, activeWarehouseName, hasMultipleWarehouses } = useWarehouse();
   const [stocks, setStocks] = useState([]);

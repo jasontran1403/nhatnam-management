@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/common/Toast';
+import { useLang } from '../../context/LangContext';
 import { useAuth } from '../../context/AuthContext';
 import { draftApi, orderApi } from '../../api/services';
 import api from '../../api/axios';
@@ -30,13 +31,13 @@ function formatPrice(n) {
 function fmt(n) {
   return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)) + ' đ';
 }
-function formatDate(ts) {
+function formatDate(ts, t) {
   if (!ts) return '—';
   const d = new Date(ts), now = new Date();
   const diffMin = Math.floor((now - d) / 60000), diffH = Math.floor(diffMin / 60);
-  if (diffMin < 1) return 'Vừa xong';
-  if (diffMin < 60) return `${diffMin} phút trước`;
-  if (diffH < 24) return `${diffH} giờ trước`;
+  if (diffMin < 1) return t('common', 'just_now');
+  if (diffMin < 60) return `${diffMin}${t('common', 'minutes_ago')}`;
+  if (diffH < 24) return `${diffH}${t('common', 'hours_ago')}`;
   return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 const pad = (n) => String(n).padStart(2, '0');
@@ -78,10 +79,10 @@ function WarningModal({ open, type, items, onClose }) {
           </div>
           <div className="flex-1">
             <h3 className={`font-bold text-sm ${isStock ? 'text-red-700' : 'text-amber-700'}`}>
-              {isStock ? 'Không đủ tồn kho' : 'Giá sản phẩm thay đổi'}
+              {isStock ? t('warehouse','insufficient_stock') : t('order','price_changed')}
             </h3>
             <p className={`text-xs mt-0.5 ${isStock ? 'text-red-500' : 'text-amber-500'}`}>
-              {isStock ? 'Cần điều chỉnh đơn nháp' : 'Xem lại giá trước khi đặt'}
+              {isStock ? t('status','adjust_draft') : t('order','review_price')}
             </p>
           </div>
           <button onClick={onClose} className={`${isStock ? 'text-red-400 hover:text-red-600' : 'text-amber-400 hover:text-amber-600'} transition-colors`}>
@@ -281,6 +282,7 @@ function HoldOverlay({ draftId, expiresAt, onExpired, onCancel }) {
 
 // ─── Draft table row ──────────────────────────────────────────────────────────
 function DraftRow({ draft, onDelete, onContinue, onOrder, processingId, orderingId, expandedId, onToggle }) {
+  const { t } = useLang();
   const expanded = expandedId === draft.id;
   const items = draft.items || [];
   const totalSubtotal = items.reduce((s, i) => s + Number(i.subtotal || 0), 0);
@@ -297,7 +299,7 @@ function DraftRow({ draft, onDelete, onContinue, onOrder, processingId, ordering
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-bold text-[#C9A84C]">{draft.draftCode}</span>
             <span className="text-[10px] text-[#B0A090] flex items-center gap-0.5">
-              <Clock size={10} />{formatDate(draft.updatedAt)}
+              <Clock size={10} />{formatDate(draft.updatedAt, t)}
             </span>
           </div>
         </td>
@@ -402,6 +404,7 @@ function DraftRow({ draft, onDelete, onContinue, onOrder, processingId, ordering
 export default function DraftOrdersPage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const { t } = useLang();
   const { user } = useAuth();
 
   const [drafts, setDrafts] = useState([]);

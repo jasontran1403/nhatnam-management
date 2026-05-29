@@ -1,5 +1,6 @@
 // src/pages/hr/HrSalaryStatusPage.jsx
 // HR xem trạng thái các phiếu lương đã gửi
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { DollarSign, Clock, Check, X } from 'lucide-react';
 import { hrSalaryApi } from '../../api/hrApi';
@@ -11,19 +12,20 @@ import { Badge } from '../../components/ui/Badge';
 import Pagination from '../../components/ui/Pagination';
 import { useToast } from '../../components/common/Toast';
 
-const STATUS_CONFIG = {
-  PENDING:  { label: 'Chờ duyệt', variant: 'warning', icon: Clock },
-  APPROVED: { label: 'Đã duyệt',  variant: 'success', icon: Check },
-  REJECTED: { label: 'Từ chối',   variant: 'danger',  icon: X },
-};
-
 export default function HrSalaryStatusPage() {
+  const { t } = useLang();
   const toast = useToast();
-  const [rows, setRows]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [page, setPage]           = useState(0);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+
+  const STATUS_CONFIG = {
+    PENDING: { label: t('status', 'pending'), variant: 'warning', icon: Clock },
+    APPROVED: { label: t('status', 'approved'), variant: 'success', icon: Check },
+    REJECTED: { label: t('status', 'rejected_short'), variant: 'danger', icon: X },
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -31,7 +33,7 @@ export default function HrSalaryStatusPage() {
       const data = await hrSalaryApi.list({ status: statusFilter || undefined, page, size: 20 });
       setRows(data.content ?? data);
       setTotalPages(data.totalPages ?? 1);
-    } catch { toast('Không tải được dữ liệu', 'error'); }
+    } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [page, statusFilter]);
 
@@ -39,8 +41,8 @@ export default function HrSalaryStatusPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <PageHeader icon={DollarSign} title="Phiếu lương đã gửi"
-        subtitle="Theo dõi trạng thái phê duyệt" />
+      <PageHeader icon={DollarSign} title={t('hr', 'salary_slips_sent')}
+        subtitle={t('batch', 'review_status')} />
 
       {/* Filter */}
       <div className="flex gap-2">
@@ -48,14 +50,14 @@ export default function HrSalaryStatusPage() {
           <button key={s} onClick={() => { setStatusFilter(s); setPage(0); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
               ${statusFilter === s ? 'bg-[#1C1C1E] text-white' : 'bg-white border border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
-            {s === '' ? 'Tất cả' : STATUS_CONFIG[s]?.label}
+            {s === '' ? t('batch', 'status_filter_all') : STATUS_CONFIG[s]?.label}
           </button>
         ))}
       </div>
 
       <SectionCard>
         {loading ? <LoadingSpinner /> : rows.length === 0 ? (
-          <EmptyState icon={DollarSign} title="Chưa có phiếu lương nào" />
+          <EmptyState icon={DollarSign} title={t('common', 'no_data')} />
         ) : (
           <Table>
             <Thead>

@@ -1,6 +1,7 @@
 // src/components/seller/EditOrderModal.jsx
 // Modal sửa đơn hàng đang ở trạng thái PREPARING
 // Cho phép thay đổi: món, số lượng, giá override (như POS)
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Minus, Trash2, Save, AlertTriangle, Search } from 'lucide-react';
 import { orderApi, productApi } from '../../api/services';
@@ -104,7 +105,7 @@ function AddProductPanel({ warehouseId, onAdd }) {
 
   return (
     <div className="border-t border-[#F0EBE3] pt-3 mt-2">
-      <p className="text-xs font-semibold text-[#5C4E3D] mb-2">Thêm sản phẩm</p>
+      <p className="text-xs font-semibold text-[#5C4E3D] mb-2">{t('product','add_product')}</p>
       <div className="relative mb-2">
         <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
         <input value={q} onChange={e => setQ(e.target.value)}
@@ -134,7 +135,8 @@ function AddProductPanel({ warehouseId, onAdd }) {
 }
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
-export default function EditOrderModal({ open, order, onClose, onSaved }) {
+export default function EditOrderModal({open, order, onClose, onSaved }) {
+  const { t } = useLang(); 
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [saving, setSaving] = useState(false);

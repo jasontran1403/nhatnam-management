@@ -1,5 +1,6 @@
 // src/pages/warehouse/OperationsPage.jsx
 // ADDED: WarehouseSelector — chọn kho để thao tác (nhập/xuất/chuyển/điều chỉnh)
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -10,22 +11,23 @@ import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import ImageUploader from '../../components/warehouse/ImageUploader';
 import IngredientSelector from '../../components/warehouse/IngredientSelector';
 
-const TABS = [
-  { key: 'import',   label: '📥 Nhập kho' },
-  { key: 'export',   label: '📤 Xuất kho' },
-  { key: 'transfer', label: '🔄 Chuyển kho' },
-  { key: 'adjust',   label: '🔧 Điều chỉnh' },
-];
-
 export default function OperationsPage() {
+  const { t } = useLang();
   const [tab, setTab] = useState('import');
   const { activeWarehouseName, hasMultipleWarehouses } = useWarehouse();
+
+  const TABS = [
+    { key: 'import', label: t('warehouse', 'import_label') },
+    { key: 'export', label: t('warehouse', 'export_label') },
+    { key: 'transfer', label: t('warehouse', 'transfer_label') },
+    { key: 'adjust', label: t('warehouse', 'adjust_label') },
+  ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* ── Header với WarehouseSelector ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <h1 className="wh-page-title" style={{ margin: 0 }}>Thao tác kho</h1>
+        <h1 className="wh-page-title" style={{ margin: 0 }}>{t('nav', 'import_export')}</h1>
         <WarehouseSelector />
       </div>
 
@@ -36,10 +38,10 @@ export default function OperationsPage() {
           </button>
         ))}
       </div>
-      {tab === 'import'   && <ImportForm />}
-      {tab === 'export'   && <ExportForm />}
+      {tab === 'import' && <ImportForm />}
+      {tab === 'export' && <ExportForm />}
       {tab === 'transfer' && <TransferForm />}
-      {tab === 'adjust'   && <AdjustForm />}
+      {tab === 'adjust' && <AdjustForm />}
     </div>
   );
 }
@@ -47,9 +49,9 @@ export default function OperationsPage() {
 // ── Hook lấy kho đang active ──────────────────────────────────────────────────
 function useMyWarehouse() {
   const { activeWarehouseId } = useWarehouse();
-  const [myWarehouse, setMyWarehouse]     = useState(null);
+  const [myWarehouse, setMyWarehouse] = useState(null);
   const [allWarehouses, setAllWarehouses] = useState([]);
-  const [stocks, setStocks]               = useState([]);
+  const [stocks, setStocks] = useState([]);
 
   useEffect(() => {
     warehouseApi.getAll().then(res => {
@@ -80,6 +82,7 @@ function emptyRow(mode) {
 }
 
 function FormShell({ title, warehouseName, onSubmit, loading, error, success, children }) {
+  const { t } = useLang();
   return (
     <div className="wh-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
@@ -94,12 +97,12 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
           </span>
         )}
       </div>
-      {error   && <div className="wh-alert wh-alert-error">⚠️ {error}</div>}
+      {error && <div className="wh-alert wh-alert-error">⚠️ {error}</div>}
       {success && <div className="wh-alert wh-alert-success">✅ {success}</div>}
       {children}
       <hr className="wh-sep" />
       <button className="wh-btn wh-btn-primary" onClick={onSubmit} disabled={loading}>
-        {loading ? 'Đang xử lý...' : 'Xác nhận'}
+        {loading ? t('common', 'processing') : t('common', 'confirm')}
       </button>
     </div>
   );
@@ -109,15 +112,15 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
 function ImportForm() {
   const { myWarehouse, stocks } = useMyWarehouse();
   const [refCode, setRefCode] = useState('');
-  const [note, setNote]       = useState('');
-  const [images, setImages]   = useState([]);
-  const [rows, setRows]       = useState([emptyRow('import')]);
+  const [note, setNote] = useState('');
+  const [images, setImages] = useState([]);
+  const [rows, setRows] = useState([emptyRow('import')]);
   const [loading, setLoading] = useMinLoading();
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
-  const removeRow = (i)    => setRows(rows.filter((_, idx) => idx !== i));
+  const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
     setError(''); setSuccess('');
@@ -133,8 +136,8 @@ function ImportForm() {
         imageUrls: images,
         items: validRows.map(r => ({
           ingredientId: r.ingredientId,
-          quantity:     Number(r.quantity),
-          expiryDate:   r.expiryDate || null,
+          quantity: Number(r.quantity),
+          expiryDate: r.expiryDate || null,
         })),
       });
       setSuccess(`Phiếu nhập đã tạo! Mã phiếu: ${res.data.receiptCode} — Chờ kế toán trưởng nhập giá vốn để cộng tồn kho.`);
@@ -146,7 +149,7 @@ function ImportForm() {
 
   return (
     <FormShell title="📥 Phiếu nhập kho" warehouseName={myWarehouse?.name}
-               onSubmit={handleSubmit} loading={loading} error={error} success={success}>
+      onSubmit={handleSubmit} loading={loading} error={error} success={success}>
       <div style={{
         background: 'rgba(201,168,76,.08)', border: '1px solid rgba(201,168,76,.3)',
         borderRadius: 10, padding: '10px 14px', marginBottom: 16,
@@ -160,14 +163,14 @@ function ImportForm() {
         <div>
           <label className="wh-label">Mã phiếu NCC</label>
           <input className="wh-input" placeholder="VD: NCC-2024-001"
-                 value={refCode} onChange={e => setRefCode(e.target.value)} />
+            value={refCode} onChange={e => setRefCode(e.target.value)} />
         </div>
       </div>
       <div className="wh-form-row">
         <div>
           <label className="wh-label">Ghi chú</label>
           <textarea className="wh-textarea" rows={2} value={note}
-                    onChange={e => setNote(e.target.value)} placeholder="Ghi chú thêm..." />
+            onChange={e => setNote(e.target.value)} placeholder="Ghi chú thêm..." />
         </div>
       </div>
       <div style={{ marginBottom: 14 }}>
@@ -182,13 +185,13 @@ function ImportForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
-                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
-                              onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="import"
-                              canRemove={rows.length > 1} />
+            selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
+            onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="import"
+            canRemove={rows.length > 1} />
         ))}
       </div>
       <button className="wh-btn wh-btn-secondary wh-btn-sm" onClick={() => setRows([...rows, emptyRow('import')])}
-              style={{ marginBottom: 14 }}>
+        style={{ marginBottom: 14 }}>
         + Thêm nguyên liệu
       </button>
     </FormShell>
@@ -199,15 +202,15 @@ function ImportForm() {
 function ExportForm() {
   const { myWarehouse, stocks } = useMyWarehouse();
   const [reason, setReason] = useState('');
-  const [note, setNote]     = useState('');
+  const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
-  const [rows, setRows]     = useState([emptyRow('export')]);
+  const [rows, setRows] = useState([emptyRow('export')]);
   const [loading, setLoading] = useMinLoading();
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
-  const removeRow = (i)    => setRows(rows.filter((_, idx) => idx !== i));
+  const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
     setError(''); setSuccess('');
@@ -231,7 +234,7 @@ function ExportForm() {
 
   return (
     <FormShell title="📤 Phiếu xuất kho" warehouseName={myWarehouse?.name}
-               onSubmit={handleSubmit} loading={loading} error={error} success={success}>
+      onSubmit={handleSubmit} loading={loading} error={error} success={success}>
       {myWarehouse?.type === 'TRANSIT' && (
         <div className="wh-alert wh-alert-error">⛔ Kho trung chuyển không được phép xuất bán!</div>
       )}
@@ -239,14 +242,14 @@ function ExportForm() {
         <div>
           <label className="wh-label">Lý do xuất kho <span style={{ color: 'var(--wh-danger)' }}>*</span></label>
           <input className="wh-input" placeholder="Nhập lý do bắt buộc..."
-                 value={reason} onChange={e => setReason(e.target.value)} />
+            value={reason} onChange={e => setReason(e.target.value)} />
         </div>
       </div>
       <div className="wh-form-row">
         <div>
           <label className="wh-label">Ghi chú</label>
           <textarea className="wh-textarea" rows={2} value={note}
-                    onChange={e => setNote(e.target.value)} placeholder="Ghi chú thêm..." />
+            onChange={e => setNote(e.target.value)} placeholder="Ghi chú thêm..." />
         </div>
       </div>
       <div style={{ marginBottom: 14 }}>
@@ -258,13 +261,13 @@ function ExportForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
-                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
-                              onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="export"
-                              canRemove={rows.length > 1} />
+            selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
+            onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="export"
+            canRemove={rows.length > 1} />
         ))}
       </div>
       <button className="wh-btn wh-btn-secondary wh-btn-sm" onClick={() => setRows([...rows, emptyRow('export')])}
-              style={{ marginBottom: 14 }}>
+        style={{ marginBottom: 14 }}>
         + Thêm nguyên liệu
       </button>
     </FormShell>
@@ -274,18 +277,18 @@ function ExportForm() {
 // ── CHUYỂN KHO ───────────────────────────────────────────────────────────────
 function TransferForm() {
   const { myWarehouse, allWarehouses, stocks } = useMyWarehouse();
-  const [toWh, setToWh]     = useState('');
-  const [note, setNote]     = useState('');
+  const [toWh, setToWh] = useState('');
+  const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
-  const [rows, setRows]     = useState([emptyRow('transfer')]);
+  const [rows, setRows] = useState([emptyRow('transfer')]);
   const [loading, setLoading] = useMinLoading();
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const destWarehouses = allWarehouses.filter(w => w.id !== myWarehouse?.id);
 
   const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
-  const removeRow = (i)    => setRows(rows.filter((_, idx) => idx !== i));
+  const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
     setError(''); setSuccess('');
@@ -312,7 +315,7 @@ function TransferForm() {
 
   return (
     <FormShell title="🔄 Phiếu chuyển kho" warehouseName={myWarehouse?.name}
-               onSubmit={handleSubmit} loading={loading} error={error} success={success}>
+      onSubmit={handleSubmit} loading={loading} error={error} success={success}>
       <div className="wh-form-row cols-2">
         <div>
           <label className="wh-label">Kho nguồn</label>
@@ -348,7 +351,7 @@ function TransferForm() {
         <div>
           <label className="wh-label">Ghi chú</label>
           <textarea className="wh-textarea" rows={2} value={note}
-                    onChange={e => setNote(e.target.value)} placeholder="Ghi chú..." />
+            onChange={e => setNote(e.target.value)} placeholder="Ghi chú..." />
         </div>
       </div>
       <div style={{ marginBottom: 14 }}>
@@ -362,13 +365,13 @@ function TransferForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
-                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
-                              onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="transfer"
-                              canRemove={rows.length > 1} />
+            selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
+            onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="transfer"
+            canRemove={rows.length > 1} />
         ))}
       </div>
       <button className="wh-btn wh-btn-secondary wh-btn-sm" onClick={() => setRows([...rows, emptyRow('transfer')])}
-              style={{ marginBottom: 14 }}>
+        style={{ marginBottom: 14 }}>
         + Thêm nguyên liệu
       </button>
     </FormShell>
@@ -379,15 +382,15 @@ function TransferForm() {
 function AdjustForm() {
   const { myWarehouse, stocks } = useMyWarehouse();
   const [reason, setReason] = useState('');
-  const [note, setNote]     = useState('');
+  const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
-  const [rows, setRows]     = useState([emptyRow('adjust')]);
+  const [rows, setRows] = useState([emptyRow('adjust')]);
   const [loading, setLoading] = useMinLoading();
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
-  const removeRow = (i)    => setRows(rows.filter((_, idx) => idx !== i));
+  const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
     setError(''); setSuccess('');
@@ -409,19 +412,19 @@ function AdjustForm() {
 
   return (
     <FormShell title="🔧 Phiếu điều chỉnh tồn kho" warehouseName={myWarehouse?.name}
-               onSubmit={handleSubmit} loading={loading} error={error} success={success}>
+      onSubmit={handleSubmit} loading={loading} error={error} success={success}>
       <div className="wh-form-row">
         <div>
           <label className="wh-label">Lý do điều chỉnh</label>
           <input className="wh-input" placeholder="Kiểm kê định kỳ, hư hỏng..."
-                 value={reason} onChange={e => setReason(e.target.value)} />
+            value={reason} onChange={e => setReason(e.target.value)} />
         </div>
       </div>
       <div className="wh-form-row">
         <div>
           <label className="wh-label">Ghi chú</label>
           <textarea className="wh-textarea" rows={2} value={note}
-                    onChange={e => setNote(e.target.value)} placeholder="Ghi chú thêm..." />
+            onChange={e => setNote(e.target.value)} placeholder="Ghi chú thêm..." />
         </div>
       </div>
       <div style={{ marginBottom: 14 }}>
@@ -436,13 +439,13 @@ function AdjustForm() {
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
           <IngredientSelector key={i} stocks={stocks} value={row}
-                              selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
-                              onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="adjust"
-                              canRemove={rows.length > 1} />
+            selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
+            onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="adjust"
+            canRemove={rows.length > 1} />
         ))}
       </div>
       <button className="wh-btn wh-btn-secondary wh-btn-sm" onClick={() => setRows([...rows, emptyRow('adjust')])}
-              style={{ marginBottom: 14 }}>
+        style={{ marginBottom: 14 }}>
         + Thêm nguyên liệu
       </button>
     </FormShell>

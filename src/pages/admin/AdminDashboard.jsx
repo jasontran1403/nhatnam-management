@@ -1,4 +1,5 @@
 // src/pages/admin/AdminDashboard.jsx
+import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { ChartSkeleton, Sk, StatCardSkeleton, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -53,13 +54,7 @@ function AnimNumber({ value }) {
   return <>{formatNumber(Math.round(v))}</>;
 }
 
-const PRESETS = [
-  { key: 'today', label: 'Hôm nay' },
-  { key: 'week', label: 'Tuần này' },
-  { key: 'month', label: 'Tháng này' },
-  { key: 'year', label: 'Năm này' },
-  { key: 'custom', label: 'Tuỳ chọn' },
-];
+
 
 // ── Status colors & Vietnamese labels ────────────────────────────────────────
 const STATUS_COLORS = {
@@ -74,17 +69,7 @@ const STATUS_COLORS = {
   FAILED: '#F43F5E',
 };
 
-const STATUS_LABEL_VI = {
-  PENDING: 'Chờ xác nhận',
-  CONFIRMED: 'Đã xác nhận',
-  PREPARING: 'Đang chuẩn bị',
-  READY: 'Sẵn sàng',
-  DELIVERING: 'Đang giao hàng',
-  PENDING_PAYMENT: 'Chờ thanh toán',
-  COMPLETED: 'Thành công',
-  CANCELLED: 'Hủy',
-  FAILED: 'Thất bại',
-};
+
 
 // ── Custom tooltip ────────────────────────────────────────────────────────────
 function ChartTooltip({ active, payload, label }) {
@@ -156,8 +141,28 @@ function ChangeBadge({ pct }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
+  const { t } = useLang();
   const navigate = useNavigate();
   const basePath = window.location.pathname.split('/').slice(0, 2).join('/');
+
+  const PRESETS = [
+    { key: 'today', label: t('common', 'today') },
+    { key: 'week', label: t('common', 'this_week') },
+    { key: 'month', label: t('common', 'this_month') },
+    { key: 'year', label: t('common', 'this_year') },
+    { key: 'custom', label: t('common', 'date_range') },
+  ];
+  const STATUS_LABEL_VI = {
+    PENDING: t('status', 'pending_confirm'),
+    CONFIRMED: t('status', 'confirmed'),
+    PREPARING: t('status', 'preparing'),
+    READY: t('status', 'ready'),
+    DELIVERING: 'Đang giao hàng',
+    PENDING_PAYMENT: 'Chờ thanh toán',
+    COMPLETED: 'Thành công',
+    CANCELLED: 'Huỷ',
+    FAILED: 'Thất bại',
+  };
 
   const [preset, setPreset] = useState('today');
   const [stats, setStats] = useState(null);
@@ -307,9 +312,9 @@ export default function AdminDashboard() {
         </div>
 
         {[
-          { label: 'Đơn đang xử lý', icon: Clock,        accent: 'purple', value: stats?.totalActiveOrders      },
-          { label: 'Đã hoàn thành',  icon: CheckCircle2,  accent: 'green',  value: stats?.completedOrdersAllTime },
-          { label: 'Đã hủy',         icon: XCircle,       accent: 'red',    value: stats?.cancelledOrdersAllTime },
+          { label: 'Đơn đang xử lý', icon: Clock, accent: 'purple', value: stats?.totalActiveOrders },
+          { label: 'Đã hoàn thành', icon: CheckCircle2, accent: 'green', value: stats?.completedOrdersAllTime },
+          { label: t('status', 'cancelled2'), icon: XCircle, accent: 'red', value: stats?.cancelledOrdersAllTime },
         ].map((c, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
@@ -323,8 +328,8 @@ export default function AdminDashboard() {
             {loading
               ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
               : <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums">
-                  <AnimNumber value={c.value ?? 0} />
-                </p>
+                <AnimNumber value={c.value ?? 0} />
+              </p>
             }
           </div>
         ))}
@@ -350,8 +355,8 @@ export default function AdminDashboard() {
           {loading
             ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
             : <p className="text-2xl sm:text-3xl font-bold text-orange-500 tabular-nums">
-                <AnimNumber value={debtStats?.nearingDeadline ?? 0} />
-              </p>
+              <AnimNumber value={debtStats?.nearingDeadline ?? 0} />
+            </p>
           }
           <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
         </div>
@@ -372,8 +377,8 @@ export default function AdminDashboard() {
           {loading
             ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
             : <p className="text-2xl sm:text-3xl font-bold text-red-500 tabular-nums">
-                <AnimNumber value={debtStats?.overdueCount ?? 0} />
-              </p>
+              <AnimNumber value={debtStats?.overdueCount ?? 0} />
+            </p>
           }
           <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
         </div>
@@ -496,6 +501,7 @@ export default function AdminDashboard() {
 
 // ── Top Products ──────────────────────────────────────────────────────────────
 function TopProductsTable({ loading, data, sortBy, onSort }) {
+  const { t } = useLang();
   return (
     <div className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-[#F0EBE3] flex items-center justify-between gap-2">
@@ -505,7 +511,7 @@ function TopProductsTable({ loading, data, sortBy, onSort }) {
         </div>
         <SortSelect value={sortBy} onChange={onSort} options={[
           { value: 'revenue', label: 'Doanh thu' },
-          { value: 'quantity', label: 'Số lượng' },
+          { value: 'quantity', label: t('common', 'quantity') },
           { value: 'orders', label: 'Số đơn' },
         ]} />
       </div>

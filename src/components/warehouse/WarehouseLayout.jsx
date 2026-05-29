@@ -1,4 +1,5 @@
 // src/components/warehouse/WarehouseLayout.jsx
+import { useLang } from '../../context/LangContext';
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -12,13 +13,14 @@ import {
 import ProfileButton from '../common/ProfileButton';
 
 const navItems = [
-  { to: '/warehouse/management', label: 'Quản lý kho', icon: Warehouse },
-  { to: '/warehouse/operations', label: 'Thao tác', icon: ClipboardList },
-  { to: '/warehouse/history', label: 'Lịch sử', icon: History },
-  { to: '/warehouse/orders', label: 'Đơn hàng', icon: Truck },
+  { to: '/warehouse/management', labelKey: 'warehouse_management', icon: Warehouse },
+  { to: '/warehouse/operations', labelKey: 'import_export', icon: ClipboardList },
+  { to: '/warehouse/history', labelKey: 'history', icon: History },
+  { to: '/warehouse/orders', labelKey: 'orders', icon: Truck },
 ];
 
 export default function WarehouseLayout() {
+  const { t } = useLang();
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -61,7 +63,7 @@ export default function WarehouseLayout() {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="text-[#8E8878] text-xs uppercase tracking-wider px-3 mb-2">Menu</p>
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, labelKey, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -77,7 +79,7 @@ export default function WarehouseLayout() {
               {({ isActive }) => (
                 <>
                   <Icon size={17} />
-                  <span className="text-sm font-medium">{label}</span>
+                  <span className="text-sm font-medium">{t('nav', labelKey)}</span>
                   {isActive && <ChevronRight size={14} className="ml-auto" />}
                 </>
               )}
@@ -92,7 +94,7 @@ export default function WarehouseLayout() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-[#8E8878] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
           >
             <LogOut size={17} />
-            <span className="text-sm font-medium">Đăng xuất</span>
+            <span className="text-sm font-medium">{t('profile', 'logout')}</span>
           </button>
         </div>
       </aside>

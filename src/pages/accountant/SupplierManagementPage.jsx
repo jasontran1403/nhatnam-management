@@ -1,4 +1,5 @@
 // src/pages/accountant/SupplierManagementPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -10,6 +11,7 @@ import Modal from '../../components/ui/Modal';
 const EMPTY_FORM = { name: '', phone: '', address: '', email: '', contactPerson: '', note: '' };
 
 export default function SupplierManagementPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -42,33 +44,33 @@ export default function SupplierManagementPage() {
   const openEdit = (s) => { setEditItem(s); setForm({ name: s.name || '', phone: s.phone || '', address: s.address || '', email: s.email || '', contactPerson: s.contactPerson || '', note: s.note || '' }); setModalOpen(true); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast('Tên nhà cung cấp là bắt buộc', 'error'); return; }
+    if (!form.name.trim()) { toast(t('supplier', 'supplier_name_required'), 'error'); return; }
     setSaving(true);
     try {
       if (editItem) {
         await accountantSupplierApi.update(editItem.id, form);
-        toast('Cập nhật thành công', 'success');
+        toast(t('common', 'success'), 'success');
       } else {
         await accountantSupplierApi.create(form);
-        toast('Tạo thành công', 'success');
+        toast(t('common', 'success'), 'success');
       }
       setModalOpen(false);
       load();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Lỗi', 'error');
+      toast(e?.response?.data?.message || t('common','error'), 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Xác nhận ẩn nhà cung cấp này?')) return;
+    if (!window.confirm(t('supplier','hide_confirm'))) return;
     try {
       await accountantSupplierApi.deactivate(id);
-      toast('Đã ẩn nhà cung cấp', 'success');
+      toast(t('supplier','hide_success'), 'success');
       load();
     } catch (e) {
-      toast('Lỗi', 'error');
+      toast(t('common','error'), 'error');
     }
   };
 
@@ -80,9 +82,9 @@ export default function SupplierManagementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#1C1C1E] flex items-center gap-2">
-            <Building2 size={24} className="text-[#C9A84C]" /> Nhà cung cấp
+            <Building2 size={24} className="text-[#C9A84C]" /> {t('supplier','management_title')}
           </h1>
-          <p className="text-sm text-[#8E8878] mt-1">Quản lý danh sách nhà cung cấp</p>
+          <p className="text-sm text-[#8E8878] mt-1">{t('supplier','management_subtitle')}</p>
         </div>
         <button
           onClick={openCreate}
@@ -99,7 +101,7 @@ export default function SupplierManagementPage() {
           <input
             value={q}
             onChange={e => { setQ(e.target.value); setPage(0); }}
-            placeholder="Tìm kiếm tên, số điện thoại..."
+            {...{placeholder: t("common","search")}}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
           />
         </div>
@@ -114,7 +116,7 @@ export default function SupplierManagementPage() {
         ) : suppliers.length === 0 ? (
           <div className="text-center py-12 text-[#8E8878]">
             <Building2 size={40} className="mx-auto mb-3 opacity-30" />
-            <p>Chưa có nhà cung cấp nào</p>
+            <p>{t('common','no_data')}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -205,7 +207,7 @@ export default function SupplierManagementPage() {
           </button>
           <button onClick={handleSave} disabled={saving}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50">
-            {saving ? 'Đang lưu...' : (editItem ? 'Cập nhật' : 'Tạo mới')}
+            {saving ? 'Đang lưu...' : (editItem ? 'Cập nhật': 'Tạo mới')}
           </button>
         </div>
       </Modal>

@@ -1,4 +1,5 @@
 // src/components/admin/CustomerOrderHistory.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft, ShoppingBag, CheckCircle2, Clock, DollarSign,
@@ -32,34 +33,7 @@ function daysUntil(deadlineMillis) {
   return Math.ceil(diff / 86400000);
 }
 
-// ── Status config ─────────────────────────────────────────────────────────────
-const STATUS_MAP = {
-  PENDING: { label: 'Chờ xử lý', bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
-  CONFIRMED: { label: 'Đã xác nhận', bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle2 },
-  PREPARING: { label: 'Đang chuẩn bị', bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
-  READY: { label: 'Sẵn sàng', bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle2 },
-  DELIVERING: { label: 'Đang giao', bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
-  PENDING_PAYMENT: { label: 'Chờ thanh toán', bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CardIcon },
-  COMPLETED: { label: 'Hoàn thành', bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle2 },
-  CANCELLED: { label: 'Đã huỷ', bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
-  FAILED: { label: 'Thất bại', bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
-};
 
-const PAYMENT_METHOD_LABELS = {
-  CASH: '💵 Tiền mặt',
-  BANK_TRANSFER: '🏦 Chuyển khoản',
-  DEBT: '📋 Công nợ',
-};
-
-function StatusBadge({ status }) {
-  const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING;
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}>
-      <Icon size={9} /> {cfg.label}
-    </span>
-  );
-}
 
 // Badge hạn thanh toán — màu theo độ khẩn
 function DeadlineBadge({ deadlineMillis, deadlineStr, onExtend }) {
@@ -122,10 +96,40 @@ function StatCard({ label, value, icon: Icon, accent = 'gold', sub }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/admin', onBack }) {
+  const { t } = useLang();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // ── Status config ─────────────────────────────────────────────────────────────
+  const STATUS_MAP = {
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
+    CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle2 },
+    PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
+    READY: { label: t('status', 'ready'), bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle2 },
+    DELIVERING: { label: t('status', 'delivering_short'), bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
+    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CardIcon },
+    COMPLETED: { label: t('status', 'completed'), bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle2 },
+    CANCELLED: { label: t('status', 'cancelled'), bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
+    FAILED: { label: t('status', 'rejected_short'), bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
+  };
+
+  const PAYMENT_METHOD_LABELS = {
+    CASH: '💵 Tiền mặt',
+    BANK_TRANSFER: '🏦 Chuyển khoản',
+    DEBT: '📋 Công nợ',
+  };
+
+  function StatusBadge({ status }) {
+    const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING;
+    const Icon = cfg.icon;
+    return (
+      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}>
+        <Icon size={9} /> {cfg.label}
+      </span>
+    );
+  }
 
   const showToast = useCallback((msg, type = 'error') => {
     setToast({ msg, type });
@@ -312,7 +316,7 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
                     className="px-4 py-2 text-sm rounded-xl bg-[#C9A84C] text-white
               hover:bg-[#b8953f] disabled:opacity-50"
                   >
-                    {extendModal.loading ? 'Đang xử lý...' : 'Xác nhận'}
+                    {extendModal.loading ? 'Đang xử lý...' : t('common', 'confirm')}
                   </button>
                 </div>
               </div>
@@ -371,7 +375,7 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
               <table className="w-full text-sm">
                 <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                   <tr>
-                    {['Mã đơn', 'Thời gian', 'Người đặt', 'Tổng tiền', 'Thanh toán', 'Trạng thái', 'Hạn TT'].map(h => (
+                    {[t('order', 'order_code'), 'Thời gian', 'Người đặt', t('order', 'total_amount'), t('payment', 'payment'), t('common', 'status'), 'Hạn TT'].map(h => (
                       <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
                         {h}
                       </th>

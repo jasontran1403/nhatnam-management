@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Camera, Image, Search, ChevronDown, CheckCircle2, Circle } from 'lucide-react';
 import { productApi, uploadApi, allIngredientApi } from '../../api/services';
@@ -54,7 +55,7 @@ function ImagePicker({ value, onChange }) {
 
   const handleFile = async (file) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) { toast('Chỉ chấp nhận file ảnh', 'warning'); return; }
+    if (!file.type.startsWith('image/')) { toast(t('product','image_type_error'), 'warning'); return; }
     setUploading(true);
     try {
       const res = await uploadApi.productImage(file);
@@ -62,7 +63,7 @@ function ImagePicker({ value, onChange }) {
       if (url) onChange(url);
       else throw new Error();
     } catch (err) {
-      toast(err?.response?.data?.message || 'Upload ảnh thất bại', 'error');
+      toast(err?.response?.data?.message || t('product','image_upload_error'), 'error');
     } finally { setUploading(false); }
   };
 
@@ -74,7 +75,7 @@ function ImagePicker({ value, onChange }) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-xs text-[#8E8878] block font-medium">
-        Ảnh sản phẩm <span className="text-red-400">*</span>
+        {t('product','image_required')} <span className="text-red-400">*</span>
       </label>
       <div
         onClick={() => !uploading && fileRef.current?.click()}
@@ -274,7 +275,8 @@ function IngredientPickerPopup({ selected, onConfirm, onClose }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ProductFormModal
 // ─────────────────────────────────────────────────────────────────────────────
-export default function ProductFormModal({ product, categories, onClose, onSaved }) {
+export default function ProductFormModal({
+  product, categories, onClose, onSaved }) {
   const toast = useToast();
   const isEdit = !!product;
   const [saving, setSaving] = useState(false);
@@ -374,7 +376,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
         basePrice: tiers[0].price || 0,
         unitsPerBox: form.unitsPerBox ? parseInt(form.unitsPerBox, 10) : null,
         tiers: tiers.map((t, idx) => ({
-          tierName: idx === 0 ? 'Mặc định' : `Từ ${t.fromQty}`,
+          tierName: idx === 0 ? 'Mặc định': `Từ ${t.fromQty}`,
           minQuantity: parseFloat(t.fromQty) || 0,
           maxQuantity: idx < tiers.length - 1
             ? parseFloat(tiers[idx + 1].fromQty) - 0.01
@@ -520,7 +522,8 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
                   {/* Preview giá thùng */}
                   {form.unitsPerBox && parseInt(form.unitsPerBox) > 0 && tiers[0]?.price && (
                     <div className="bg-[#FDF8ED] rounded-lg px-3 py-2 flex items-center justify-between">
-                      <span className="text-xs text-[#8E8878]">Giá 1 thùng ({form.unitsPerBox} {form.unit})</span>
+                      <span className="text-xs text-[#8E8878]">Giá 1 thùng ({form.unitsPerBox} {
+    const { t } = useLang();form.unit})</span>
                       <span className="text-sm font-bold text-[#C9A84C]">
                         {new Intl.NumberFormat('vi-VN').format(
                           parseInt(form.unitsPerBox) * (parseFloat(tiers[0].price) || 0)
@@ -724,7 +727,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
               className="flex-1 btn-gold rounded-xl py-2.5 text-sm font-bold flex items-center justify-center gap-2">
               {saving
                 ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang lưu...</>
-                : isEdit ? 'Cập nhật' : 'Tạo sản phẩm'
+                : isEdit ? 'Cập nhật': t('product','create_product')
               }
             </button>
           </div>

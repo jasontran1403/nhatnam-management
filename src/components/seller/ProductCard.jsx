@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { PackageX } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -8,6 +9,7 @@ function formatPrice(price) {
 }
 
 export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap = {} }) {
+  const { t } = useLang();
   const defaultTier = product.priceTiers?.find((t) => t.sortOrder === 0) || product.priceTiers?.[0];
   const priceVal = defaultTier?.price ?? product.basePrice ?? 0;
 
@@ -64,7 +66,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
           <div className="absolute inset-0 bg-black/65 flex items-center justify-center z-10">
             <div className="flex flex-col items-center text-white gap-1">
               <PackageX size={18} />
-              <span className="text-[11px] font-semibold">Hết hàng</span>
+              <span className="text-[11px] font-semibold">{t('status', 'out_of_stock')}</span>
             </div>
           </div>
         )}
@@ -109,7 +111,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
                   text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold whitespace-nowrap
                   ${isOutOfStock ? 'text-red-200 bg-red-800/60' : remaining <= 5 ? 'text-yellow-200 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
                 `}>
-                  {isOutOfStock ? 'Hết hàng' : `Còn ${parseFloat(Number(remaining).toFixed(3)).toLocaleString('vi-VN')}`}
+                  {isOutOfStock ? t('status', 'out_of_stock'): `${t('product','remaining_stock')} ${parseFloat(Number(remaining).toFixed(3)).toLocaleString('vi-VN')}`}
                 </span>
               )
             }

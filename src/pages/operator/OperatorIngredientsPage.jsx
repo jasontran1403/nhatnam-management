@@ -1,6 +1,7 @@
 // src/pages/operator/OperatorIngredientsPage.jsx
 // FIX #3: Import/Export
 // FIX #4: Category/SubCategory combobox với search + nút + tạo nhanh
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -134,6 +135,7 @@ function CategoryCombobox({ label, options, value, onChange, onCreateNew, placeh
 // ── Modal tạo nhanh category/subcategory ─────────────────────────────────────
 function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentName, prefill = '' }) {
   const toast = useToast();
+  const { t } = useLang();
   const [name, setName] = useState(prefill);
   const [imageUrl, setImageUrl] = useState('');
   const [uploading, setUploading] = useMinLoading();
@@ -153,12 +155,12 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
       });
       const json = await res.json();
       setImageUrl(json?.data || json?.imageUrl || '');
-    } catch { toast('Lỗi upload ảnh', 'error'); }
+    } catch { toast(t('common', 'error'), 'error'); }
     finally { setUploading(false); }
   };
 
   const handleSave = async () => {
-    if (!name.trim()) return toast('Tên không được trống', 'error');
+    if (!name.trim()) return toast(t('category', 'name_required'), 'error');
     setSaving(true);
     try {
       let res;
@@ -172,12 +174,12 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
         res = await operatorApi.createCategory(payload);
       }
       const created = res.data?.data || res.data;
-      toast(`Đã tạo "${name.trim()}"`, 'success');
+      toast(`${t('common', 'success')}: "${name.trim()}"`, 'success');
       // Truyền parentId vào để handleQuickCreated biết đây là subcategory hay category
       onCreated(created, parentId);
       onClose();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Lỗi tạo danh mục', 'error');
+      toast(e?.response?.data?.message || t('common', 'error'), 'error');
     } finally { setSaving(false); }
   };
 
@@ -194,7 +196,7 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
           <div>
             <h3 className="text-base font-bold text-[#1C1C1E]">
-              {parentId ? 'Thêm danh mục con' : 'Thêm danh mục'}
+              {parentId ? t('category', 'add_sub_category') : t('category', 'add_category')}
             </h3>
             {parentId && parentName && (
               <p className="text-xs text-[#8E8878] mt-0.5">Thuộc: <strong>{parentName}</strong></p>
@@ -212,13 +214,13 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
             </div>
             <label className="flex items-center gap-2 px-3 py-2 text-xs rounded-xl border border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
               {uploading ? <div className="w-3 h-3 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" /> : <ImagePlus size={13} />}
-              {uploading ? 'Đang tải...' : 'Chọn ảnh'}
+              {uploading ? t('common', 'loading') : t('common', 'select')}
               <input type="file" accept="image/*" className="hidden" onChange={e => handleUpload(e.target.files[0])} />
             </label>
           </div>
           {/* Name */}
           <div>
-            <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Tên danh mục *</label>
+            <label className="block text-xs font-medium text-[#5C5C5C] mb-1">{t('category', 'category')} *</label>
             <input value={name} onChange={e => setName(e.target.value)}
               placeholder="VD: Thịt bò, Rau củ..."
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]"
@@ -227,10 +229,10 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
         </div>
         <div className="px-5 pb-5 flex gap-2">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">Huỷ</button>
+            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">{t('common', 'cancel')}</button>
           <button onClick={handleSave} disabled={saving}
             className="flex-1 py-2.5 rounded-xl btn-gold text-sm font-medium disabled:opacity-50">
-            {saving ? 'Đang lưu...' : 'Tạo'}
+            {saving ? t('common', 'saving') : t('common', 'create')}
           </button>
         </div>
       </div>
@@ -240,6 +242,7 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OperatorIngredientsPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [ingredients, setIngredients] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -270,7 +273,7 @@ export default function OperatorIngredientsPage() {
         setCategories(catRes.data?.data || []);
         setSubCategories(subCatRes.data?.data || []);
       })
-      .catch(() => toast('Lỗi tải dữ liệu', 'error'))
+      .catch(() => toast(t('common', 'error_retry'), 'error'))
       .finally(() => setLoading(false));
   };
   useEffect(() => { fetchData(); }, []);
@@ -575,7 +578,7 @@ export default function OperatorIngredientsPage() {
                 className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">Huỷ</button>
               <button onClick={handleSave} disabled={saving}
                 className="flex-1 py-2.5 rounded-xl btn-gold text-sm font-medium disabled:opacity-50">
-                {saving ? 'Đang lưu...' : 'Lưu'}
+                {saving ? 'Đang lưu...' : t('common', 'save')}
               </button>
             </div>
           </div>

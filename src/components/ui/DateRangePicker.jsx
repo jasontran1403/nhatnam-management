@@ -1,4 +1,5 @@
 // src/components/ui/DateRangePicker.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useRef, useEffect } from 'react';
 import { DateRange } from 'react-date-range';
 import { vi } from 'date-fns/locale';
@@ -31,16 +32,19 @@ export function presetToRange(key) {
   }
 }
 
-const PRESETS = [
-  { key: 'today',  label: 'Hôm nay'   },
-  { key: 'week',   label: 'Tuần này'  },
-  { key: 'month',  label: 'Tháng này' },
-  { key: 'year',   label: 'Năm này'   },
-  { key: 'custom', label: 'Tuỳ chọn' },
-];
+// PRESETS phải là function nhận t — không được dùng t() ở module level
+function getPresets(t) {
+  return [
+    { key: 'today',  label: t('common', 'today')      },
+    { key: 'week',   label: t('common', 'this_week')  },
+    { key: 'month',  label: t('common', 'this_month') },
+    { key: 'year',   label: t('common', 'this_year')  },
+    { key: 'custom', label: t('common', 'date_range') },
+  ];
+}
 
 // ── Calendar dropdown dùng chung ──────────────────────────────────────────────
-function CalendarDropdown({ selection, onSelect, onApply, onCancel }) {
+function CalendarDropdown({ selection, onSelect, onApply, onCancel, t }) {
   return (
     <div
       className="absolute top-full left-0 mt-2 z-50 bg-white rounded-2xl shadow-2xl
@@ -71,13 +75,13 @@ function CalendarDropdown({ selection, onSelect, onApply, onCancel }) {
             onClick={onCancel}
             className="px-3 py-1.5 text-xs text-[#8E8878] rounded-xl border border-[#E8DDD0]
               hover:bg-[#F0EBE3] transition-colors">
-            Huỷ
+            {t('common', 'cancel')}
           </button>
           <button
             onClick={onApply}
             className="px-4 py-1.5 text-xs font-semibold text-white bg-[#C9A84C] rounded-xl
               hover:bg-[#B8943C] transition-colors">
-            Áp dụng
+            {t('common', 'confirm')}
           </button>
         </div>
       </div>
@@ -85,9 +89,11 @@ function CalendarDropdown({ selection, onSelect, onApply, onCancel }) {
   );
 }
 
-// ── FULL PRESET MODE (Dashboard, SaleKpi, OwnerProduction…) ──────────────────
-// Props: preset, onPreset, onRangeChange
+// ── FULL PRESET MODE ──────────────────────────────────────────────────────────
 function FullPresetPicker({ preset, onPreset, onRangeChange }) {
+  const { t } = useLang();
+  const PRESETS = getPresets(t);
+
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState({
     startDate: new Date(),
@@ -123,10 +129,10 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
 
   const customLabel = preset === 'custom'
     ? `${format(selection.startDate, 'dd/MM/yy')} → ${format(selection.endDate, 'dd/MM/yy')}`
-    : 'Tuỳ chọn';
+    : t('common', 'optional');
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap" ref={ref}>
+    <div className="flex items-center gap-1.5 flex-wrap relative" ref={ref}>
       {PRESETS.map(p => (
         <button
           key={p.key}
@@ -151,24 +157,24 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
           onSelect={({ selection: sel }) => setSelection(sel)}
           onApply={handleApply}
           onCancel={() => setOpen(false)}
+          t={t}
         />
       )}
     </div>
   );
 }
 
-// ── SIMPLE MODE (Orders, Expense/Income Voucher…) ─────────────────────────────
-// Props: from (timestamp|null), to (timestamp|null), onChange({from,to}), placeholder
+// ── SIMPLE MODE ───────────────────────────────────────────────────────────────
 function SimplePicker({ from, to, onChange, placeholder }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
-  const [selection, setSelection] = useState(() => {
-    const start = from ? new Date(from) : new Date();
-    const end   = to   ? new Date(to)   : new Date();
-    return { startDate: start, endDate: end, key: 'selection' };
-  });
+  const [selection, setSelection] = useState(() => ({
+    startDate: from ? new Date(from) : new Date(),
+    endDate:   to   ? new Date(to)   : new Date(),
+    key: 'selection',
+  }));
   const ref = useRef(null);
 
-  // Sync nếu from/to thay đổi từ bên ngoài
   useEffect(() => {
     setSelection({
       startDate: from ? new Date(from) : new Date(),
@@ -189,12 +195,12 @@ function SimplePicker({ from, to, onChange, placeholder }) {
 
   const label = hasRange
     ? `${format(new Date(from), 'dd/MM/yy')} → ${format(new Date(to), 'dd/MM/yy')}`
-    : (placeholder || 'Khoảng ngày');
+    : (placeholder || t('common', 'date_range'));
 
   const handleApply = () => {
     const f = startOfDay(selection.startDate).getTime();
-    const t = endOfDay(selection.endDate).getTime();
-    onChange({ from: f, to: t });
+    const to2 = endOfDay(selection.endDate).getTime();
+    onChange({ from: f, to: to2 });
     setOpen(false);
   };
 
@@ -235,15 +241,15 @@ function SimplePicker({ from, to, onChange, placeholder }) {
           onSelect={({ selection: sel }) => setSelection(sel)}
           onApply={handleApply}
           onCancel={() => setOpen(false)}
+          t={t}
         />
       )}
     </div>
   );
 }
 
-// ── Main export: auto-detect mode ─────────────────────────────────────────────
+// ── Main export ───────────────────────────────────────────────────────────────
 export default function DateRangePicker(props) {
-  // Simple mode: truyền from/to/onChange
   if ('onChange' in props || 'from' in props || 'to' in props) {
     return (
       <SimplePicker
@@ -254,7 +260,6 @@ export default function DateRangePicker(props) {
       />
     );
   }
-  // Full preset mode: truyền preset/onPreset/onRangeChange
   return (
     <FullPresetPicker
       preset={props.preset}

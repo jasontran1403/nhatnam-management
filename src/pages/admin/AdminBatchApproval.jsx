@@ -1,4 +1,5 @@
 // src/pages/admin/AdminBatchApproval.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -9,17 +10,7 @@ import {
   RefreshCw, X, Check, CheckCheck, FileText
 } from 'lucide-react';
 
-const STATUS_CFG = {
-  PENDING:            { label: 'Chờ duyệt',    bg: 'bg-amber-50 text-amber-700 border-amber-200',       icon: Clock },
-  PARTIALLY_APPROVED: { label: 'Duyệt 1 phần', bg: 'bg-blue-50 text-blue-700 border-blue-200',          icon: AlertCircle },
-  APPROVED:           { label: 'Đã duyệt',     bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-  REJECTED:           { label: 'Từ chối',      bg: 'bg-red-50 text-red-700 border-red-200',             icon: XCircle },
-};
-const ITEM_STATUS_CFG = {
-  PENDING:  { label: 'Chờ',    bg: 'bg-amber-50 text-amber-700' },
-  APPROVED: { label: 'Duyệt',  bg: 'bg-emerald-50 text-emerald-700' },
-  REJECTED: { label: 'Từ chối',bg: 'bg-red-50 text-red-700' },
-};
+
 
 function formatDate(ts) {
   if (!ts) return '—';
@@ -28,6 +19,7 @@ function formatDate(ts) {
 function formatPrice(n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ'; }
 
 export default function AdminBatchApproval() {
+  const { t } = useLang();
   const toast = useToast();
   const [batches, setBatches] = useState([]);
   const [total, setTotal] = useState(0);
@@ -41,6 +33,18 @@ export default function AdminBatchApproval() {
   const [acting, setActing] = useState(false);
   const SIZE = 20;
 
+  const STATUS_CFG = {
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
+    PARTIALLY_APPROVED: { label: t('batch', 'partial_approved'), bg: 'bg-blue-50 text-blue-700 border-blue-200', icon: AlertCircle },
+    APPROVED: { label: t('status', 'approved'), bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+    REJECTED: { label: t('status', 'rejected_short'), bg: 'bg-red-50 text-red-700 border-red-200', icon: XCircle },
+  };
+  const ITEM_STATUS_CFG = {
+    PENDING: { label: t('status', 'waiting'), bg: 'bg-amber-50 text-amber-700' },
+    APPROVED: { label: t('status', 'approved'), bg: 'bg-emerald-50 text-emerald-700' },
+    REJECTED: { label: t('status', 'rejected_short'), bg: 'bg-red-50 text-red-700' },
+  };
+
   const fetchBatches = useCallback(async () => {
     setLoading(true);
     try {
@@ -49,7 +53,7 @@ export default function AdminBatchApproval() {
       const d = res?.content || res?.data?.data || res;
       setBatches(Array.isArray(d) ? d : d?.content || []);
       setTotal(d?.totalItems || 0);
-    } catch (e) { toast('Lỗi tải phiếu', 'error'); }
+    } catch (e) { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [page, statusFilter]);
 
@@ -64,7 +68,7 @@ export default function AdminBatchApproval() {
       const res = await adminBatchApi.getDetail(b.id);
       const d = res?.data?.data || res?.data || res;
       setDetail(d);
-    } catch { toast('Lỗi tải chi tiết', 'error'); }
+    } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setDetailLoading(false); }
   };
 
@@ -73,10 +77,10 @@ export default function AdminBatchApproval() {
     setActing(true);
     try {
       await adminBatchApi.approveBatch(detail.id, reviewNote || undefined);
-      toast('Đã duyệt toàn bộ phiếu', 'success');
+      toast(t('common', 'success'), 'success');
       setDetail(null);
       fetchBatches();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi duyệt phiếu', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common', 'error'), 'error'); }
     finally { setActing(false); }
   };
 
@@ -138,7 +142,7 @@ export default function AdminBatchApproval() {
         {/* Filter tabs */}
         <div className="flex gap-1 mt-3 overflow-x-auto pb-1">
           {FILTER_TABS.map(s => {
-            const cfg = STATUS_CFG[s] || { label: 'Tất cả', bg: '' };
+            const cfg = STATUS_CFG[s] || { label: t('common', 'all'), bg: '' };
             return (
               <button key={s} onClick={() => { setStatusFilter(s); setPage(0); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0
@@ -320,7 +324,7 @@ export default function AdminBatchApproval() {
                   <button onClick={handleRejectBatch} disabled={acting}
                     className="flex-1 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
                     <XCircle size={14} />
-                    {acting ? '...' : 'Từ chối'}
+                    {acting ? '...' : t('common', 'reject')}
                   </button>
                 </div>
               </div>

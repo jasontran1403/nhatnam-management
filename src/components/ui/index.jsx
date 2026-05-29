@@ -1,7 +1,5 @@
 /**
  * ui.jsx — Single source of truth cho tất cả shared UI primitives.
- * Thay thế: components/admin/ui.jsx, components/common/Button.jsx,
- *           components/common/Input.jsx, Badge.jsx (duplicate)
  */
 import { Loader2 } from 'lucide-react';
 
@@ -47,7 +45,7 @@ export function SectionHeader({ title, action }) {
 
 // ── Feedback ──────────────────────────────────────────────────────────────────
 
-export function LoadingSpinner({ label = 'Đang tải...' }) {
+export function LoadingSpinner({ label = '' }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-[#8E8878]">
       <Loader2 className="animate-spin text-[#C9A84C]" size={26} />
@@ -146,12 +144,12 @@ export const selectCls = inputCls + ' cursor-pointer';
 export function TabBar({ tabs, active, onChange }) {
   return (
     <div className="flex bg-white border border-black/5 rounded-xl p-1 shadow-sm w-fit flex-wrap gap-0.5">
-      {tabs.map(t => (
-        <button key={t.id} onClick={() => onChange(t.id)}
+      {tabs.map(tab => (
+        <button key={tab.id} onClick={() => onChange(tab.id)}
           className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-            ${active === t.id ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
-          {t.icon && <t.icon size={14} />}
-          {t.label}
+            ${active === tab.id ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
+          {tab.icon && <tab.icon size={14} />}
+          {tab.label}
         </button>
       ))}
     </div>
@@ -168,12 +166,10 @@ export function Table({ children, className = '' }) {
   );
 }
 
-export function Thead({ children }) {
+export function Thead({ children, className = '' }) {
   return (
-    <thead>
-      <tr className="bg-[#FAF7F2] text-[#8E8878]">
-        {children}
-      </tr>
+    <thead className={className}>
+      {children}
     </thead>
   );
 }
@@ -195,9 +191,25 @@ export function Td({ children, className = '', right = false }) {
 }
 
 export function Tr({ children, onClick, className = '' }) {
+  const isHeader =
+    className.includes('bg-[#FAF7F2]') ||
+    className.includes('bg-');
+
   return (
-    <tr onClick={onClick}
-      className={`border-t border-black/5 transition-colors ${onClick ? 'cursor-pointer hover:bg-[#FAF7F2]/60' : 'hover:bg-[#FAF7F2]/30'} ${className}`}>
+    <tr
+      onClick={onClick}
+      className={`
+        ${!isHeader ? 'border-t border-black/5' : ''}
+        transition-colors
+        ${onClick
+          ? 'cursor-pointer hover:bg-[#FAF7F2]/60'
+          : !isHeader
+            ? 'hover:bg-[#FAF7F2]/30'
+            : ''
+        }
+        ${className}
+      `}
+    >
       {children}
     </tr>
   );

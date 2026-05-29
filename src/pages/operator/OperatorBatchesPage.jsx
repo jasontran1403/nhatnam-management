@@ -1,4 +1,5 @@
 // src/pages/operator/OperatorBatchesPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -15,10 +16,10 @@ function formatDate(ts) {
 }
 
 const STATUS_MAP = {
-  PENDING:              { label: 'Chờ duyệt',        bg: 'bg-amber-50 text-amber-600 border-amber-200',  icon: Clock },
-  PARTIALLY_APPROVED:   { label: 'Duyệt 1 phần',     bg: 'bg-blue-50 text-blue-600 border-blue-200',    icon: AlertCircle },
-  APPROVED:             { label: 'Đã duyệt',          bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
-  REJECTED:             { label: 'Bị từ chối',        bg: 'bg-red-50 text-red-500 border-red-200',       icon: XCircle },
+  PENDING:              { label: t('status', 'pending'),        bg: 'bg-amber-50 text-amber-600 border-amber-200',  icon: Clock },
+  PARTIALLY_APPROVED:   { label: t('batch', 'partial_approved'),     bg: 'bg-blue-50 text-blue-600 border-blue-200',    icon: AlertCircle },
+  APPROVED:             { label: t('status', 'approved'),          bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
+  REJECTED:             { label: t('status', 'rejected'),        bg: 'bg-red-50 text-red-500 border-red-200',       icon: XCircle },
 };
 
 function StatusBadge({ status }) {
@@ -32,6 +33,7 @@ function StatusBadge({ status }) {
 }
 
 export default function OperatorBatchesPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -42,7 +44,7 @@ export default function OperatorBatchesPage() {
       const res = await operatorApi.getMyBatches();
       setBatches(res.data?.data || []);
     } catch {
-      toast('Lỗi tải danh sách phiếu', 'error');
+      toast(t('common','error_retry'), 'error');
     } finally {
       setLoading(false);
     }
@@ -79,7 +81,7 @@ export default function OperatorBatchesPage() {
                     <span className="text-sm font-bold text-[#1C1C1E]">{b.batchCode}</span>
                     <StatusBadge status={b.status} />
                     <span className="text-[10px] bg-[#F0EBE3] text-[#8E8878] rounded-full px-2 py-0.5">
-                      {b.type === 'CREATE' ? 'Thêm mới' : 'Cập nhật'}
+                      {b.type === 'CREATE' ? 'Thêm mới': t('common','update')}
                     </span>
                   </div>
                   <p className="text-xs text-[#8E8878] mt-1">

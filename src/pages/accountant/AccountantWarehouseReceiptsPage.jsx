@@ -5,6 +5,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import { Warehouse, DollarSign, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { accountantWarehouseApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
+import { useLang } from '../../context/LangContext';
 import Modal from '../../components/ui/Modal';
 
 function fmt(n) {
@@ -21,6 +22,7 @@ function fmtInput(s) {
 
 export default function AccountantWarehouseReceiptsPage() {
   const toast = useToast();
+  const { t } = useLang();
   const [receipts, setReceipts]         = useState([]);
   const [loading, setLoading] = useMinLoading();
   const [selectedReceipt, setSelectedReceipt] = useState(null);
@@ -52,7 +54,7 @@ export default function AccountantWarehouseReceiptsPage() {
       setCostInputs(init);
       setDetailOpen(true);
     } catch (e) {
-      toast('Lỗi tải chi tiết phiếu', 'error');
+      toast(t('common', 'error_retry'), 'error');
     }
   };
 
@@ -62,7 +64,7 @@ export default function AccountantWarehouseReceiptsPage() {
     for (const item of items) {
       const cost = parseNum(costInputs[item.id]);
       if (!cost || cost <= 0) {
-        toast(`Vui lòng nhập giá vốn cho: ${item.ingredientName}`, 'error');
+        toast(`${t('admin','cost_price_label')}: ${item.ingredientName}`, 'error');
         return;
       }
     }
@@ -75,11 +77,11 @@ export default function AccountantWarehouseReceiptsPage() {
         })),
       };
       await accountantWarehouseApi.confirmCost(selectedReceipt.id, payload);
-      toast('Đã xác nhận giá vốn và cộng tồn kho!', 'success');
+      toast(t('expiry','confirmed_cost_stock'), 'success');
       setDetailOpen(false);
       loadPending();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Lỗi xác nhận', 'error');
+      toast(e?.response?.data?.message || t('common','error'), 'error');
     } finally {
       setConfirming(false);
     }

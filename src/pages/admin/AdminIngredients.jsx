@@ -12,6 +12,7 @@ import useDebounce from '../../utils/useDebounce.js';
 import {
   PageHeader, LoadingSpinner, EmptyState, inputCls, formatNumber, formatDate,
 } from '../../components/ui';
+import { useLang } from '../../context/LangContext.jsx';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 function formatPrice(n) {
@@ -71,9 +72,9 @@ function IngredientRow({ row }) {
             {row.expiryBadge === 'WARNING' && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />}
           </div>
           <p className="text-xs text-[#8E8878]">
-            {row.lots?.length || 0} lô
+            {t('ingredient', 'lot_count').replace('{n}', row.lots?.length || 0)}
             {row.lots?.length > 0 && row.lots.some(l => l.expiryDate) && (
-              <> · HSD gần nhất: {formatDate(row.nearestExpiryDate)}</>
+              <> · {t('ingredient', 'nearest_expiry')}: {formatDate(row.nearestExpiryDate)}</>
             )}
           </p>
         </div>
@@ -92,19 +93,19 @@ function IngredientRow({ row }) {
       {/* Lot detail */}
       {open && row.lots?.length > 0 && (
         <div className="bg-[#FAF7F2] px-4 py-3 border-t border-black/5">
-          <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">Chi tiết lô</p>
+          <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">{t('ingredient', 'lot_detail')}</p>
           <div className="space-y-1.5">
             {row.lots.map((lot, i) => (
               <div key={i} className="flex items-center justify-between text-xs gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[#555]">
-                    HSD: {lot.expiryDate ? formatDate(lot.expiryDate) : 'Không có HSD'}
+                    {t('batch', 'expiry_short')}: {lot.expiryDate ? formatDate(lot.expiryDate) : t('ingredient', 'no_expiry_date')}
                   </span>
                   <ExpiryBadge expiryDate={lot.expiryDate} />
                 </div>
                 <div className="flex items-center gap-4 flex-shrink-0 text-right">
                   <span className="text-[#8E8878]">
-                    Giá vốn: <span className="font-medium text-[#1C1C1E]">{formatPrice(lot.costPrice)}</span>
+                    {t('admin','cost_price_label')}: <span className="font-medium text-[#1C1C1E]">{formatPrice(lot.costPrice)}</span>
                   </span>
                   <span className="font-semibold text-[#1C1C1E]">
                     {formatNumber(lot.quantity)} {row.unit}
@@ -120,7 +121,7 @@ function IngredientRow({ row }) {
           {row.totalCostValue != null && Number(row.totalCostValue) > 0 && (
             <div className="mt-2 pt-2 border-t border-black/5 flex justify-end">
               <span className="text-xs text-[#8E8878]">
-                Tổng giá vốn: <span className="font-bold text-[#C9A84C]">{formatPrice(row.totalCostValue)}</span>
+                {t('admin','total_cost_label')}: <span className="font-bold text-[#C9A84C]">{formatPrice(row.totalCostValue)}</span>
               </span>
             </div>
           )}
@@ -147,7 +148,7 @@ function SubCategorySection({ name, rows }) {
       >
         {open ? <ChevronDown size={13} className="text-[#C4B9A8]" /> : <ChevronRight size={13} className="text-[#C4B9A8]" />}
         <span className="text-xs font-semibold text-[#5C5C5C] flex-1 truncate">
-          {name || 'Chưa phân loại'}
+          {name || t('ingredient', 'uncategorized')}
         </span>
         {hasDanger  && <AlertCircle  size={11} className="text-red-400 flex-shrink-0" />}
         {hasWarning && !hasDanger && <AlertTriangle size={11} className="text-amber-400 flex-shrink-0" />}
@@ -202,7 +203,7 @@ function CategorySection({ name, rows }) {
         <span className="font-bold text-[#1C1C1E] flex-1 truncate">{name}</span>
         {hasDanger  && <AlertCircle  size={13} className="text-red-500 flex-shrink-0" />}
         {hasWarning && !hasDanger && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />}
-        <span className="text-xs text-[#8E8878] flex-shrink-0">{rows.length} nguyên liệu</span>
+        <span className="text-xs text-[#8E8878] flex-shrink-0">{rows.length} {t('ingredient', 'ingredients').toLowerCase()}</span>
         {totalCost > 0 && (
           <span className="text-xs text-[#C9A84C] font-semibold flex-shrink-0 ml-2">{formatPrice(totalCost)}</span>
         )}
@@ -224,6 +225,7 @@ function CategorySection({ name, rows }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminIngredients() {
+  const { t } = useLang();
   const [warehouses,   setWarehouses]   = useState([]);
   const [selectedWhId, setSelectedWhId] = useState(null);
   const [q,            setQ]            = useState('');
@@ -261,7 +263,7 @@ export default function AdminIngredients() {
 
     rows.forEach(r => {
       const catKey  = r.categoryId   || '__none__';
-      const catName = r.categoryName || 'Chưa phân loại';
+      const catName = r.categoryName || t('ingredient', 'uncategorized');
 
       if (!map.has(catKey)) map.set(catKey, { id: catKey, name: catName, rows: [] });
       map.get(catKey).rows.push(r);
@@ -285,7 +287,7 @@ export default function AdminIngredients() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      <PageHeader icon={Package} title="Nguyên liệu" subtitle="Quản lý tồn kho và hạn sử dụng" />
+      <PageHeader icon={Package} title={t('ingredient', 'ingredients')} subtitle={t('warehouse', 'manage_stock_expiry')} />
 
       {/* Warehouse selector */}
       <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
@@ -317,9 +319,9 @@ export default function AdminIngredients() {
       {/* Summary cards */}
       {!loading && rows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <SummaryCard icon={Package}       label="Tổng nguyên liệu"        value={counts.total}   color="gold" />
-          <SummaryCard icon={AlertTriangle} label="Sắp hết hạn (≤ 3 tháng)" value={counts.warning} color="amber" />
-          <SummaryCard icon={AlertCircle}   label="Hết hạn gấp (≤ 1 tháng)" value={counts.danger}  color="red" />
+          <SummaryCard icon={Package}       label={t('ingredient', 'total_label')}        value={counts.total}   color="gold" />
+          <SummaryCard icon={AlertTriangle} label={t('ingredient', 'warning_label')} value={counts.warning} color="amber" />
+          <SummaryCard icon={AlertCircle}   label={t('ingredient', 'danger_label')}  value={counts.danger}  color="red" />
           <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
             <div className="inline-flex p-2 rounded-xl bg-emerald-50 text-emerald-600 mb-2">
               <Package size={16} />
@@ -335,7 +337,7 @@ export default function AdminIngredients() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
         <input
           type="text"
-          placeholder="Tìm tên nguyên liệu..."
+          {...{placeholder: t('ingredient', 'search_placeholder')}}
           value={q}
           onChange={e => setQ(e.target.value)}
           className={`${inputCls} pl-9 w-full`}
@@ -348,7 +350,7 @@ export default function AdminIngredients() {
           <div className="w-8 h-8 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
         </div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={Package} message="Không có nguyên liệu nào" />
+        <EmptyState icon={Package} message={t('ingredient', 'no_data')} />
       ) : (
         <div>
           {categoryGroups.map(cg => (

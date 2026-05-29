@@ -1,4 +1,5 @@
 // src/pages/accountant/AccountantCustomersPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -22,6 +23,7 @@ function getDebtUrgency(customer) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function AccountantCustomersPage() {
+  const { t } = useLang();
   const toast = useToast();
 
   const [customers,  setCustomers]  = useState([]);
@@ -48,7 +50,7 @@ export default function AccountantCustomersPage() {
       setTotal(data?.totalItems || data?.totalElements || 0);
       setPage(p);
     } catch {
-      toast('Không thể tải danh sách khách hàng', 'error');
+      toast(t('common', 'error_retry'), 'error');
     } finally { setLoading(false); }
   }, [search]);
 
@@ -76,17 +78,17 @@ export default function AccountantCustomersPage() {
       <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">Khách hàng</h1>
-            <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} khách hàng</p>
+            <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">{t('customer', 'customer')}</h1>
+            <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} {t('customer', 'customer').toLowerCase()}</p>
           </div>
           {/* FIX #3: Import / Export */}
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
-              if (e.target.files[0]) toast('Chức năng Import sẽ được xử lý ở backend', 'info');
+              if (e.target.files[0]) toast(t('common', 'info'), 'info');
             }} />
           </label>
-          <button onClick={() => toast('Chức năng Export sẽ được xử lý ở backend', 'info')}
+          <button onClick={() => toast(t('common', 'info'), 'info')}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
             <Download size={13} /> Export
           </button>
@@ -97,7 +99,7 @@ export default function AccountantCustomersPage() {
         </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
-          <input type="text" placeholder="Tìm tên, SĐT, mã khách hàng..."
+          <input type="text" {...{placeholder: t("customer", "customer_name")}}
             value={searchInput} onChange={e => setSearchInput(e.target.value)}
             className="w-full border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white
               focus:outline-none focus:border-[#C9A84C]" />
@@ -113,7 +115,7 @@ export default function AccountantCustomersPage() {
         ) : customers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2">
             <Search size={32} strokeWidth={1} />
-            <p className="text-sm">Không có khách hàng nào</p>
+            <p className="text-sm">{t('common', 'no_data')}</p>
           </div>
         ) : (
           <>
@@ -122,7 +124,7 @@ export default function AccountantCustomersPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                   <tr>
-                    {['Khách hàng', 'Liên hệ', 'Loại', 'Công nợ', 'Ghi chú'].map(h => (
+                    {[t('customer','customer'), t('customer','contact_name'), t('common','type'), t('payment','debt'), t('common','note')].map(h => (
                       <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
                         {h}
                       </th>
@@ -161,12 +163,12 @@ export default function AccountantCustomersPage() {
                             ${c.customerType === 'COMPANY'
                               ? 'bg-blue-50 text-blue-700 border-blue-200'
                               : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                            {c.customerType === 'COMPANY' ? 'Doanh nghiệp' : 'Khách lẻ'}
+                            {c.customerType === 'COMPANY' ? t('customer','company') : t('customer','retail')}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {c.debtDays > 0
-                            ? <span className="text-xs text-orange-600 font-semibold">{c.debtDays} ngày</span>
+                            ? <span className="text-xs text-orange-600 font-semibold">{c.debtDays} {t('common','date').toLowerCase()}</span>
                             : <span className="text-xs text-[#C4B9A8]">—</span>
                           }
                         </td>
@@ -175,7 +177,7 @@ export default function AccountantCustomersPage() {
                             <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border
                               ${urgency === 'critical' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
                               <Clock3 size={9} />
-                              {urgency === 'critical' ? 'Sắp hết hạn' : 'Gần hết hạn'}
+                              {urgency === 'critical' ? t('customer','expiring_soon') : t('customer','near_expiry')}
                             </span>
                           )}
                         </td>
@@ -212,16 +214,16 @@ export default function AccountantCustomersPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border
                             ${c.customerType === 'COMPANY' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                            {c.customerType === 'COMPANY' ? 'DN' : 'Lẻ'}
+                            {c.customerType === 'COMPANY' ? t('customer','company').substring(0,2) : t('customer','retail')}
                           </span>
                           {c.debtDays > 0 && (
-                            <span className="text-[10px] text-orange-500">📋 {c.debtDays} ngày</span>
+                            <span className="text-[10px] text-orange-500">📋 {c.debtDays} {t('common','date').toLowerCase()}</span>
                           )}
                           {urgency && (
                             <span className={`text-[10px] font-semibold
                               ${urgency === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>
                               <Clock3 size={9} className="inline mr-0.5" />
-                              {urgency === 'critical' ? 'Sắp hết hạn!' : 'Gần hết hạn'}
+                              {urgency === 'critical' ? t('customer','expiring_soon') : t('customer','near_expiry')}
                             </span>
                           )}
                         </div>

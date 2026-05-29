@@ -1,5 +1,6 @@
 // src/pages/warehouse/HistoryPage.jsx
 // FIX #4: Chỉ hiển thị lịch sử của kho đang active (hỗ trợ đa kho)
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -7,25 +8,28 @@ import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
 
-const TABS = [
-  { key: 'IMPORT', label: '📥 Nhập kho' },
-  { key: 'EXPORT', label: '📤 Xuất kho' },
-  { key: 'ADJUST', label: '🔧 Điều chỉnh' },
-  { key: 'TRANSFER', label: '🔄 Chuyển kho' },
-];
 
-const TYPE_BADGE = {
-  IMPORT:       { cls: 'badge-import',    label: 'Nhập' },
-  EXPORT_ORDER: { cls: 'badge-export',    label: 'Xuất đơn' },
-  EXPORT_OTHER: { cls: 'badge-export',    label: 'Xuất khác' },
-  ADJUST:       { cls: 'badge-adjust',    label: 'Điều chỉnh' },
-  TRANSFER_IN:  { cls: 'badge-transfer',  label: 'Chuyển vào' },
-  TRANSFER_OUT: { cls: 'badge-transfer',  label: 'Chuyển ra' },
-};
 
 export default function HistoryPage() {
+  const { t } = useLang();
   const { user } = useAuth();
   const { activeWarehouseId, activeWarehouseName } = useWarehouse();
+
+  const TABS = [
+    { key: 'IMPORT', label: t('warehouse', 'import_label') },
+    { key: 'EXPORT', label: t('warehouse', 'export_label') },
+    { key: 'ADJUST', label: t('warehouse', 'adjust_label') },
+    { key: 'TRANSFER', label: t('warehouse', 'transfer_label') },
+  ];
+
+  const TYPE_BADGE = {
+    IMPORT: { cls: 'badge-import', label: t('warehouse', 'import') },
+    EXPORT_ORDER: { cls: 'badge-export', label: t('warehouse', 'export_receipt') },
+    EXPORT_OTHER: { cls: 'badge-export', label: t('warehouse', 'export_warehouse') },
+    ADJUST: { cls: 'badge-adjust', label: t('warehouse', 'adjust_action') },
+    TRANSFER_IN: { cls: 'badge-transfer', label: 'Chuyển vào' },
+    TRANSFER_OUT: { cls: 'badge-transfer', label: 'Chuyển ra' },
+  };
 
   // Dùng activeWarehouseId từ context (đa kho), fallback user.warehouseId
   const assignedWarehouseId = activeWarehouseId || user?.warehouseId || user?.warehouse?.id;
@@ -71,7 +75,7 @@ export default function HistoryPage() {
     setLoading(true);
     const extra = {};
     if (dateFrom) extra.from = new Date(dateFrom).getTime();
-    if (dateTo)   extra.to   = new Date(dateTo).getTime() + 86399999;
+    if (dateTo) extra.to = new Date(dateTo).getTime() + 86399999;
     // warehouseId truyền thẳng vào API — backend sẽ validate user có quyền trên kho này
     warehouseApi.getHistory(tab, warehouseId, p, 15, extra)
       .then(res => {
@@ -244,9 +248,9 @@ function SkeletonTable() {
     <div className="wh-table-wrap">
       <table className="wh-table">
         <tbody>
-          {[1,2,3,4,5].map(i => (
+          {[1, 2, 3, 4, 5].map(i => (
             <tr key={i}>
-              {[1,2,3,4,5,6].map(j => (
+              {[1, 2, 3, 4, 5, 6].map(j => (
                 <td key={j}><div style={{ height: 16, background: '#f0ebe3', borderRadius: 4 }} /></td>
               ))}
             </tr>

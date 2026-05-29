@@ -3,10 +3,11 @@
 // Props: value (Date|null), onChange(Date), minDate (Date, default: now)
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { useLang } from '../../context/LangContext';
 
-const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
-                'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+// Vietnamese day abbreviations kept as-is (locale-specific short labels)
+const DAYS_VI = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const DAYS_EN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
@@ -21,7 +22,7 @@ function isBeforeDay(a, b) {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 // ─── Calendar Grid ────────────────────────────────────────────────────────────
-function CalendarGrid({ viewDate, selected, minDate, onSelect }) {
+function CalendarGrid({ viewDate, selected, minDate, onSelect, days }) {
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
@@ -35,7 +36,7 @@ function CalendarGrid({ viewDate, selected, minDate, onSelect }) {
   return (
     <div>
       <div className="grid grid-cols-7 mb-1">
-        {DAYS.map(d => (
+        {days.map(d => (
           <div key={d} className="text-center text-[10px] font-bold text-[#8E8878] py-1">{d}</div>
         ))}
       </div>
@@ -64,7 +65,7 @@ function CalendarGrid({ viewDate, selected, minDate, onSelect }) {
 }
 
 // ─── Time Scroll Picker ────────────────────────────────────────────────────────
-function TimePicker({ hour, minute, onChangeHour, onChangeMinute }) {
+function TimePicker({ hour, minute, onChangeHour, onChangeMinute, labelHour, labelMinute }) {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const minutes = Array.from({ length: 60 }, (_, i) => i);
   const hourRef = useRef(null);
@@ -88,7 +89,7 @@ function TimePicker({ hour, minute, onChangeHour, onChangeMinute }) {
     <div className="flex gap-2 h-full">
       {/* Hours */}
       <div className="flex-1 flex flex-col">
-        <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider text-center mb-1.5">Giờ</p>
+        <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider text-center mb-1.5">{labelHour}</p>
         <div ref={hourRef} className="flex-1 overflow-y-auto space-y-0.5"
           style={{ maxHeight: 190, scrollbarWidth: 'thin' }}>
           {hours.map(h => (
@@ -103,7 +104,7 @@ function TimePicker({ hour, minute, onChangeHour, onChangeMinute }) {
       <div className="flex items-center text-[#C4B9A8] font-bold text-lg select-none">:</div>
       {/* Minutes */}
       <div className="flex-1 flex flex-col">
-        <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider text-center mb-1.5">Phút</p>
+        <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider text-center mb-1.5">{labelMinute}</p>
         <div ref={minRef} className="flex-1 overflow-y-auto space-y-0.5"
           style={{ maxHeight: 190, scrollbarWidth: 'thin' }}>
           {minutes.map(m => (
@@ -121,13 +122,14 @@ function TimePicker({ hour, minute, onChangeHour, onChangeMinute }) {
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export default function DateTimePicker({
-  value,          // Date | null
-  onChange,       // (Date) => void
-  minDate,        // Date | null — default: now
-  placeholder = 'Chọn ngày & giờ',
+  value,
+  onChange,
+  minDate,
+  placeholder,
 }) {
+  const { t, lang } = useLang();
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState('calendar'); // 'calendar' | 'time'
+  const [tab, setTab] = useState('calendar');
   const [viewDate, setViewDate] = useState(() => {
     const d = value || new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -137,7 +139,13 @@ export default function DateTimePicker({
   const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 300 });
   const min = minDate || new Date();
 
-  // Close on outside click
+  const defaultPlaceholder = placeholder || t('common', 'choose_date');
+  const days = lang === 'vi' ? DAYS_VI : DAYS_EN;
+
+  // Month labels from lang file
+  const MONTH_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const monthLabel = (idx) => t('months', MONTH_KEYS[idx]);
+
   useEffect(() => {
     const handle = (e) => {
       if (
@@ -149,7 +157,6 @@ export default function DateTimePicker({
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  // Calculate dropdown position on open
   const handleOpen = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -164,7 +171,6 @@ export default function DateTimePicker({
     setTab('calendar');
   };
 
-  // Sync viewDate when value changes externally
   useEffect(() => {
     if (value) setViewDate(new Date(value.getFullYear(), value.getMonth(), 1));
   }, [value]);
@@ -176,7 +182,6 @@ export default function DateTimePicker({
   const setTime = (hour, minute) => {
     const base = selected ? new Date(selected) : new Date();
     base.setHours(hour, minute, 0, 0);
-    // Block past times on today
     if (base <= min) {
       const safe = new Date(min);
       safe.setMinutes(safe.getMinutes() + 1, 0, 0);
@@ -189,7 +194,6 @@ export default function DateTimePicker({
   const handleSelectDay = (date) => {
     const next = new Date(date);
     next.setHours(h, m, 0, 0);
-    // If past, move to next valid time
     if (next <= min) {
       const safe = new Date(min);
       safe.setDate(date.getDate());
@@ -215,36 +219,40 @@ export default function DateTimePicker({
     ? `${pad(selected.getDate())}/${pad(selected.getMonth()+1)}/${selected.getFullYear()}  ${pad(selected.getHours())}:${pad(selected.getMinutes())}`
     : '';
 
+  const tabCalendarLabel = selected
+    ? `${pad(selected.getDate())} ${monthLabel(selected.getMonth())}`
+    : t('common', 'choose_date_icon');
+  const tabTimeLabel = selected
+    ? `${pad(h)}:${pad(m)}`
+    : t('common', 'choose_time_icon');
+
   return (
     <div ref={triggerRef} className="relative">
-      {/* Trigger button */}
       <button type="button" onClick={handleOpen}
         className={`w-full flex items-center justify-between rounded-xl border-2 px-4 py-2.5 text-sm transition-all
           ${open ? 'border-[#C9A84C] shadow-sm' : 'border-[#E8DDD0]'} bg-[#FAFAF8]`}>
         <span className={displayValue ? 'text-[#1C1C1E] font-semibold' : 'text-[#C4B9A8]'}>
-          {displayValue || placeholder}
+          {displayValue || defaultPlaceholder}
         </span>
         <ChevronDown size={15} className={`text-[#8E8878] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown panel — fixed to escape overflow:hidden */}
       {open && (
         <div
           ref={dropdownRef}
           className="fixed bg-white rounded-2xl shadow-2xl border border-[#F0EBE3] z-[9999] overflow-hidden"
           style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
 
-
           {/* Tab bar */}
           <div className="flex border-b border-[#F0EBE3] bg-[#FAFAF8]">
             {[
-              { id: 'calendar', label: selected ? `${pad(selected.getDate())} ${MONTHS[selected.getMonth()]}` : '📅 Chọn ngày' },
-              { id: 'time',     label: selected ? `${pad(h)}:${pad(m)}` : '🕐 Chọn giờ' },
-            ].map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
+              { id: 'calendar', label: tabCalendarLabel },
+              { id: 'time',     label: tabTimeLabel },
+            ].map(tb => (
+              <button key={tb.id} onClick={() => setTab(tb.id)}
                 className={`flex-1 py-2.5 text-xs font-bold transition-colors
-                  ${tab === t.id ? 'text-[#C9A84C] border-b-2 border-[#C9A84C] bg-white' : 'text-[#8E8878] hover:text-[#5C4E3D]'}`}>
-                {t.label}
+                  ${tab === tb.id ? 'text-[#C9A84C] border-b-2 border-[#C9A84C] bg-white' : 'text-[#8E8878] hover:text-[#5C4E3D]'}`}>
+                {tb.label}
               </button>
             ))}
           </div>
@@ -261,7 +269,7 @@ export default function DateTimePicker({
                   <ChevronLeft size={15} />
                 </button>
                 <span className="text-sm font-bold text-[#1C1C1E]">
-                  {MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}
+                  {monthLabel(viewDate.getMonth())} {viewDate.getFullYear()}
                 </span>
                 <button onClick={() => {
                   const d = new Date(viewDate);
@@ -271,7 +279,7 @@ export default function DateTimePicker({
                   <ChevronRight size={15} />
                 </button>
               </div>
-              <CalendarGrid viewDate={viewDate} selected={selected} minDate={min} onSelect={handleSelectDay} />
+              <CalendarGrid viewDate={viewDate} selected={selected} minDate={min} onSelect={handleSelectDay} days={days} />
             </div>
           )}
 
@@ -282,6 +290,8 @@ export default function DateTimePicker({
                 hour={h} minute={m}
                 onChangeHour={(newH) => setTime(newH, m)}
                 onChangeMinute={(newM) => setTime(h, newM)}
+                labelHour={t('common', 'hour')}
+                labelMinute={t('common', 'minute')}
               />
             </div>
           )}
@@ -290,19 +300,19 @@ export default function DateTimePicker({
           <div className="px-3 pb-3 pt-2 border-t border-[#F0EBE3] flex gap-1.5">
             <button onClick={() => quickSet(0)}
               className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-[#5C4E3D] text-[11px] font-semibold hover:bg-[#F0EBE3] transition-colors">
-              ⚡ Ngay
+              {t('common', 'now_icon')}
             </button>
             <button onClick={() => quickSet(1)}
               className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-[#5C4E3D] text-[11px] font-semibold hover:bg-[#F0EBE3] transition-colors">
-              +1 giờ
+              +1h
             </button>
             <button onClick={() => quickSet(2)}
               className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-[#5C4E3D] text-[11px] font-semibold hover:bg-[#F0EBE3] transition-colors">
-              +2 giờ
+              +2h
             </button>
             <button onClick={() => setOpen(false)}
               className="flex-1 py-2 rounded-xl bg-[#C9A84C] text-white text-[11px] font-bold hover:bg-[#b8963d] transition-colors">
-              Xong ✓
+              {t('common', 'done')}
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 // src/components/common/NotificationBell.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, X, Check, CheckCheck, Clock, Package, CreditCard, Truck, FileText, Factory } from 'lucide-react';
 import { notificationApi } from '../../api/operatorApi';
@@ -18,16 +19,17 @@ const EVENT_ICONS = {
   DEFAULT:            Bell,
 };
 
-function formatTime(ts) {
+function formatTime(ts, t, lang) {
   if (!ts) return '';
   const diff = Date.now() - ts;
-  if (diff < 60000) return 'Vừa xong';
-  if (diff < 3600000) return Math.floor(diff / 60000) + ' phút trước';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + ' giờ trước';
-  return new Date(ts).toLocaleDateString('vi-VN');
+  if (diff < 60000) return t('common', 'just_now');
+  if (diff < 3600000) return Math.floor(diff / 60000) + t('common', 'minutes_ago');
+  if (diff < 86400000) return Math.floor(diff / 3600000) + t('common', 'hours_ago');
+  return new Date(ts).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US');
 }
 
 export default function NotificationBell({ role, token }) {
+  const { t, lang } = useLang();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -138,16 +140,16 @@ export default function NotificationBell({ role, token }) {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE3]">
             <div>
-              <h3 className="text-sm font-semibold text-[#1C1C1E]">Thông báo</h3>
+              <h3 className="text-sm font-semibold text-[#1C1C1E]">{t('notification', 'notification_bell')}</h3>
               {unreadCount > 0 && (
-                <p className="text-[10px] text-[#8E8878]">{unreadCount} chưa đọc</p>
+                <p className="text-[10px] text-[#8E8878]">{t('notification', 'unread_count').replace('{n}', unreadCount)}</p>
               )}
             </div>
             <div className="flex items-center gap-1">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  title="Đánh dấu tất cả đã đọc"
+                  title={t('common', 'mark_all_read')}
                   className="p-1.5 rounded-lg text-[#8E8878] hover:text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-all"
                 >
                   <CheckCheck size={14} />
@@ -194,7 +196,7 @@ export default function NotificationBell({ role, token }) {
                         </p>
                         <p className="text-[10px] text-[#8E8878] mt-0.5 flex items-center gap-1">
                           <Clock size={9} />
-                          {formatTime(n.createdAt)}
+                          {formatTime(n.createdAt, t, lang)}
                         </p>
                       </div>
                       {!n.isRead && (
@@ -209,7 +211,7 @@ export default function NotificationBell({ role, token }) {
                     disabled={loading}
                     className="w-full py-2.5 text-xs text-[#C9A84C] hover:bg-[#FAF7F2] transition-colors font-medium"
                   >
-                    {loading ? 'Đang tải...' : 'Xem thêm'}
+                    {loading ? t('common','loading'): t('common','view_more')}
                   </button>
                 )}
               </>

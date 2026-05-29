@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useRef } from 'react';
 import { ChartSkeleton, Sk, StatCardSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -17,8 +18,8 @@ import { PageHeader, formatCurrency } from '../../components/ui';
 const fmtM = (n) => {
   const v = Math.round(n || 0);
   if (v >= 1_000_000_000) return (v / 1_000_000_000).toFixed(1) + ' tỷ';
-  if (v >= 1_000_000)     return (v / 1_000_000).toFixed(1) + ' tr';
-  if (v >= 1_000)         return (v / 1_000).toFixed(0) + 'k';
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + ' tr';
+  if (v >= 1_000) return (v / 1_000).toFixed(0) + 'k';
   return v.toString();
 };
 
@@ -46,27 +47,16 @@ function useCountUp(target, duration = 700) {
 }
 
 // ── Period selector (same style as Dashboard) ─────────────────────────────────
-const PERIODS = [
-  { value: 'WEEK',    label: 'Tuần' },
-  { value: 'MONTH',   label: 'Tháng' },
-  { value: 'QUARTER', label: 'Quý' },
-  { value: 'Năm',     label: 'Năm', v: 'YEAR' },
-];
-const PERIOD_LIST = [
-  { value: 'WEEK',    label: 'Tuần' },
-  { value: 'MONTH',   label: 'Tháng' },
-  { value: 'QUARTER', label: 'Quý' },
-  { value: 'YEAR',    label: 'Năm' },
-];
+
 
 // ── Stat card matching design system ─────────────────────────────────────────
 function AnalyticsStatCard({ label, value, pct, icon: Icon, accent }) {
   const v = useCountUp(Number(value) || 0);
   const accentMap = {
-    gold:   'from-[#C9A84C]/15 to-[#C9A84C]/5 text-[#C9A84C] ring-[#C9A84C]/20',
-    green:  'from-emerald-500/15 to-emerald-500/5 text-emerald-600 ring-emerald-500/20',
-    red:    'from-red-500/15 to-red-500/5 text-red-600 ring-red-500/20',
-    blue:   'from-blue-500/15 to-blue-500/5 text-blue-600 ring-blue-500/20',
+    gold: 'from-[#C9A84C]/15 to-[#C9A84C]/5 text-[#C9A84C] ring-[#C9A84C]/20',
+    green: 'from-emerald-500/15 to-emerald-500/5 text-emerald-600 ring-emerald-500/20',
+    red: 'from-red-500/15 to-red-500/5 text-red-600 ring-red-500/20',
+    blue: 'from-blue-500/15 to-blue-500/5 text-blue-600 ring-blue-500/20',
   };
   const up = pct != null && pct >= 0;
   return (
@@ -98,10 +88,10 @@ function AnalyticsStatCard({ label, value, pct, icon: Icon, accent }) {
 function ForecastStatCard({ label, value, icon: Icon, accent, isCount }) {
   const v = useCountUp(Number(value) || 0);
   const accentMap = {
-    gold:   'from-[#C9A84C]/15 to-[#C9A84C]/5 text-[#C9A84C] ring-[#C9A84C]/20',
-    green:  'from-emerald-500/15 to-emerald-500/5 text-emerald-600 ring-emerald-500/20',
+    gold: 'from-[#C9A84C]/15 to-[#C9A84C]/5 text-[#C9A84C] ring-[#C9A84C]/20',
+    green: 'from-emerald-500/15 to-emerald-500/5 text-emerald-600 ring-emerald-500/20',
     purple: 'from-violet-500/15 to-violet-500/5 text-violet-600 ring-violet-500/20',
-    blue:   'from-blue-500/15 to-blue-500/5 text-blue-600 ring-blue-500/20',
+    blue: 'from-blue-500/15 to-blue-500/5 text-blue-600 ring-blue-500/20',
   };
   return (
     <div className="bg-sky-50/70 border border-sky-100 rounded-2xl p-4 sm:p-5 shadow-sm">
@@ -142,9 +132,23 @@ function ChartTooltip({ active, payload, label }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function OwnerAnalyticsPage() {
-  const [period, setPeriod]   = useState('MONTH');
-  const [data, setData]       = useState(null);
+  const { t } = useLang();
+  const [period, setPeriod] = useState('MONTH');
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useMinLoading();
+
+  const PERIODS = [
+    { value: 'WEEK', label: t('analytics', 'week') },
+    { value: 'MONTH', label: t('analytics', 'month') },
+    { value: 'QUARTER', label: t('analytics', 'quarter') },
+    { value: 'YEAR', label: t('analytics', 'year'), v: 'YEAR' },
+  ];
+  const PERIOD_LIST = [
+    { value: 'WEEK', label: t('analytics', 'week') },
+    { value: 'MONTH', label: t('analytics', 'month') },
+    { value: 'QUARTER', label: t('analytics', 'quarter') },
+    { value: 'YEAR', label: t('analytics', 'year') },
+  ];
 
   const load = async () => {
     setLoading(true);
@@ -155,8 +159,8 @@ export default function OwnerAnalyticsPage() {
 
   useEffect(() => { load(); }, [period]);
 
-  const historical  = data?.historical  || [];
-  const forecast    = data?.forecast;
+  const historical = data?.historical || [];
+  const forecast = data?.forecast;
   const ingForecast = data?.ingredientForecast || [];
 
   const chartData = [
@@ -174,7 +178,7 @@ export default function OwnerAnalyticsPage() {
 
   const expenseData = historical.map(p => ({
     label: p.label,
-    'Chi phí':   p.expense,
+    'Chi phí': p.expense,
     'Phiếu thu': p.income,
   }));
 
@@ -209,12 +213,12 @@ export default function OwnerAnalyticsPage() {
 
       {/* ── Stat cards ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {loading ? [0,1,2,3].map(i => <StatCardSkeleton key={i} />) : (
+        {loading ? [0, 1, 2, 3].map(i => <StatCardSkeleton key={i} />) : (
           <>
-            <AnalyticsStatCard label="Doanh thu" value={data?.currentRevenue}    pct={data?.revenuePctChange}    icon={DollarSign}   accent="gold"  />
-            <AnalyticsStatCard label="Lợi nhuận" value={data?.currentProfit}     pct={data?.profitPctChange}     icon={TrendingUp}   accent="green" />
-            <AnalyticsStatCard label="Chi phí"   value={data?.currentExpense}    pct={null}                     icon={TrendingDown} accent="red"   />
-            <AnalyticsStatCard label="Đơn hàng"  value={data?.currentOrderCount} pct={data?.orderCountPctChange} icon={ShoppingCart} accent="blue"  />
+            <AnalyticsStatCard label="Doanh thu" value={data?.currentRevenue} pct={data?.revenuePctChange} icon={DollarSign} accent="gold" />
+            <AnalyticsStatCard label="Lợi nhuận" value={data?.currentProfit} pct={data?.profitPctChange} icon={TrendingUp} accent="green" />
+            <AnalyticsStatCard label="Chi phí" value={data?.currentExpense} pct={null} icon={TrendingDown} accent="red" />
+            <AnalyticsStatCard label="Đơn hàng" value={data?.currentOrderCount} pct={data?.orderCountPctChange} icon={ShoppingCart} accent="blue" />
           </>
         )}
       </div>
@@ -224,7 +228,7 @@ export default function OwnerAnalyticsPage() {
         <div className="space-y-2">
           <Sk className="h-3 w-48" />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {[0,1,2,3].map(i => (
+            {[0, 1, 2, 3].map(i => (
               <div key={i} className="bg-sky-50/70 border border-sky-100 rounded-2xl p-4 sm:p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 space-y-2.5">
@@ -252,10 +256,10 @@ export default function OwnerAnalyticsPage() {
             </span>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <ForecastStatCard label="Doanh thu dự kiến" value={forecast.forecastRevenue}    icon={DollarSign}   accent="gold"   />
-            <ForecastStatCard label="Lợi nhuận dự kiến" value={forecast.forecastProfit}     icon={TrendingUp}   accent="green"  />
-            <ForecastStatCard label="Chi phí dự kiến"   value={forecast.forecastExpense}    icon={TrendingDown} accent="purple" />
-            <ForecastStatCard label="Đơn hàng dự kiến"  value={forecast.forecastOrderCount} icon={ShoppingCart} accent="blue"  isCount />
+            <ForecastStatCard label="Doanh thu dự kiến" value={forecast.forecastRevenue} icon={DollarSign} accent="gold" />
+            <ForecastStatCard label="Lợi nhuận dự kiến" value={forecast.forecastProfit} icon={TrendingUp} accent="green" />
+            <ForecastStatCard label="Chi phí dự kiến" value={forecast.forecastExpense} icon={TrendingDown} accent="purple" />
+            <ForecastStatCard label="Đơn hàng dự kiến" value={forecast.forecastOrderCount} icon={ShoppingCart} accent="blue" isCount />
           </div>
         </div>
       )}
@@ -279,8 +283,8 @@ export default function OwnerAnalyticsPage() {
                 <YAxis tickFormatter={fmtM} tick={{ fontSize: 10, fill: '#8E8878' }} width={40} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: '#FAF7F2' }} />
                 <Legend wrapperStyle={{ fontSize: 11, color: '#8E8878' }} />
-                <Bar dataKey="Doanh thu" fill="#C9A84C" radius={[4,4,0,0]} />
-                <Bar dataKey="Lợi nhuận" fill="#10B981" radius={[4,4,0,0]} />
+                <Bar dataKey="Doanh thu" fill="#C9A84C" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Lợi nhuận" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -300,7 +304,7 @@ export default function OwnerAnalyticsPage() {
                 <YAxis tickFormatter={fmtM} tick={{ fontSize: 10, fill: '#8E8878' }} width={40} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 11, color: '#8E8878' }} />
-                <Line type="monotone" dataKey="Chi phí"   stroke="#EF4444" strokeWidth={2} dot={{ r: 3, fill: '#EF4444' }} />
+                <Line type="monotone" dataKey="Chi phí" stroke="#EF4444" strokeWidth={2} dot={{ r: 3, fill: '#EF4444' }} />
                 <Line type="monotone" dataKey="Phiếu thu" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3, fill: '#3B82F6' }} />
               </LineChart>
             </ResponsiveContainer>

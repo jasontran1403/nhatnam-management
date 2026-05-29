@@ -1,4 +1,5 @@
 // src/pages/seller/SellerCustomersPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -52,6 +53,7 @@ function toCamelCase(str) {
 // ─── Category Combobox ────────────────────────────────────────────────────────
 // Search + dropdown + thêm nhanh
 function CategoryCombobox({ value, onChange }) {
+  const { t } = useLang();
   const toast = useToast();
   const [query, setQuery]       = useState('');
   const [options, setOptions]   = useState([]);
@@ -99,13 +101,13 @@ function CategoryCombobox({ value, onChange }) {
       const res = await api.post('/api/seller/customer-categories', { name, color });
       const created = res.data?.data;
       if (created) {
-        toast(`Đã tạo phân loại "${created.name}"`, 'success');
+        toast(`${t('common','success')} "${created.name}"`, 'success');
         onChange(created);
         setQuery('');
         setOpen(false);
       }
     } catch (e) {
-      toast(e?.response?.data?.message || 'Lỗi khi tạo phân loại', 'error');
+      toast(e?.response?.data?.message || t('common','error'), 'error');
     } finally { setCreating(false); }
   };
 
@@ -130,7 +132,7 @@ function CategoryCombobox({ value, onChange }) {
             value={query}
             onChange={e => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
-            placeholder={value ? value.name : 'Tìm hoặc tạo phân loại...'}
+            placeholder={value ? value.name : t('customer','find_or_create')}
             className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none placeholder:text-[#C4B9A8]"
           />
         )}
@@ -235,7 +237,7 @@ function ReceiverInfosSection({ customerId }) {
     try {
       await api.post(`/api/seller/customers/${customerId}/receiver-infos`, form);
       toast('Đã thêm địa chỉ', 'success'); setAdding(false); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
     finally { setSaving(false); }
   };
 
@@ -245,7 +247,7 @@ function ReceiverInfosSection({ customerId }) {
     try {
       await api.put(`/api/seller/customers/${customerId}/receiver-infos/${id}`, form);
       toast('Đã cập nhật', 'success'); setEditingId(null); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
     finally { setSaving(false); }
   };
 
@@ -254,14 +256,14 @@ function ReceiverInfosSection({ customerId }) {
     try {
       await api.delete(`/api/seller/customers/${customerId}/receiver-infos/${id}`);
       toast('Đã xóa', 'success'); load();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
   };
 
   const handleSetDefault = async (id) => {
     try {
       await api.patch(`/api/seller/customers/${customerId}/receiver-infos/${id}/set-default`);
       toast('Đã đặt làm mặc định', 'success'); load();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
   };
 
   const startEdit = (r) => {
@@ -674,6 +676,7 @@ function CategorySection({ label, color, customers, defaultOpen, onEdit }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SellerCustomersPage() {
+  const { t } = useLang();
   const toast = useToast();
   const { user } = useAuth();
   const isSuperSeller = user?.roles?.includes('SUPER_SELLER') || user?.role === 'SUPER_SELLER';
@@ -778,7 +781,7 @@ export default function SellerCustomersPage() {
             </div>
             <div>
               <h1 className="text-base font-bold text-[#1C1C1E]">Khách hàng</h1>
-              <p className="text-[11px] text-[#8E8878]">{isSuperSeller ? 'Tất cả' : 'Khách của tôi'} · {total} khách</p>
+              <p className="text-[11px] text-[#8E8878]">{isSuperSeller ? 'Tất cả': 'Khách của tôi'} · {total} khách</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">

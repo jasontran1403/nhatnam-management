@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -101,6 +102,7 @@ function ImagePicker({ value, onChange }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function IngredientsPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -218,7 +220,7 @@ export default function IngredientsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                   <tr>
-                    {['Nguyên liệu', 'Đơn vị', 'Thao tác'].map((h) => (
+                    {[t('ingredient','ingredient'), t('common','unit'), t('common','actions')].map((h) => (
                       <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">{h}</th>
                     ))}
                   </tr>
@@ -349,7 +351,7 @@ export default function IngredientsPage() {
                 className="flex-1 btn-gold rounded-xl py-2.5 text-sm font-bold flex items-center justify-center gap-2"
               >
                 {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={15} />}
-                {saving ? 'Đang lưu...' : (modal.item ? 'Cập nhật' : 'Tạo mới')}
+                {saving ? 'Đang lưu...' : (modal.item ? 'Cập nhật': 'Tạo mới')}
               </button>
             </div>
           </div>

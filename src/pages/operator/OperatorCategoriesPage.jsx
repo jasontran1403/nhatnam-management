@@ -1,5 +1,6 @@
 // src/pages/operator/OperatorCategoriesPage.jsx
 // FIX #4: Thêm subcategory (2 cấp) — danh mục gốc + danh mục con
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useMemo } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -11,6 +12,7 @@ import { Plus, Edit2, Trash2, Search, Layers, X, ImagePlus, ChevronRight, Chevro
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 
 export default function OperatorCategoriesPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -34,7 +36,7 @@ export default function OperatorCategoriesPage() {
         setCategories(catRes.data?.data || []);
         setSubCategories(subCatRes.data?.data || []); // ← THÊM
       })
-      .catch(() => toast('Lỗi tải dữ liệu', 'error'))
+      .catch(() => toast(t('common', 'error_retry'), 'error'))
       .finally(() => setLoading(false));
   };
 
@@ -45,7 +47,7 @@ export default function OperatorCategoriesPage() {
     setLoading(true);
     operatorApi.getCategories()
       .then(r => setCategories(r.data?.data || []))
-      .catch(() => toast('Lỗi tải danh mục', 'error'))
+      .catch(() => toast(t('common', 'error_retry'), 'error'))
       .finally(() => setLoading(false));
   };
   useEffect(() => { loadCategories(); }, []);
@@ -85,21 +87,21 @@ export default function OperatorCategoriesPage() {
       const json = await res.json();
       const url = json?.data || json?.imageUrl || '';
       setForm(f => ({ ...f, imageUrl: url }));
-    } catch { toast('Lỗi upload ảnh', 'error'); }
+    } catch { toast(t('common','error'), 'error'); }
     finally { setUploading(false); }
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return toast('Tên danh mục không được trống', 'error');
+    if (!form.name.trim()) return toast(t('category','name_required'), 'error');
     setSaving(true);
     try {
       const payload = { name: form.name, imageUrl: form.imageUrl, parentId: form.parentId };
       if (modal.cat) {
         await operatorApi.updateCategory(modal.cat.id, payload);
-        toast('Cập nhật thành công', 'success');
+        toast(t('common', 'success'), 'success');
       } else {
         await operatorApi.createCategory(payload);
-        toast('Tạo danh mục thành công', 'success');
+        toast(t('category','create_success'), 'success');
       }
       setModal({ open: false, cat: null });
       loadCategories();
@@ -267,7 +269,7 @@ export default function OperatorCategoriesPage() {
                   </div>
                   <label className="flex items-center gap-2 px-3 py-2 text-xs rounded-xl border border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
                     {uploading ? <div className="w-3 h-3 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" /> : <ImagePlus size={13} />}
-                    {uploading ? 'Đang tải...' : 'Chọn ảnh'}
+                    {uploading ? t('common', 'loading'): 'Chọn ảnh'}
                     <input type="file" accept="image/*" className="hidden" onChange={e => handleUpload(e.target.files[0])} />
                   </label>
                 </div>
@@ -293,7 +295,7 @@ export default function OperatorCategoriesPage() {
               </button>
               <button onClick={handleSave} disabled={saving}
                 className="flex-1 py-2.5 rounded-xl btn-gold text-sm font-medium disabled:opacity-50">
-                {saving ? 'Đang lưu...' : 'Lưu'}
+                {saving ? 'Đang lưu...' : t('common','save')}
               </button>
             </div>
           </div>

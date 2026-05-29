@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -21,47 +22,7 @@ import {
   Field, inputCls, formatCurrency, formatNumber, formatDateTime,
 } from '../../components/ui';
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'Tất cả trạng thái' },
-  { value: 'PREPARING', label: 'Đang chuẩn bị' },
-  { value: 'DELIVERING', label: 'Đang giao' },
-  { value: 'PENDING_PAYMENT', label: 'Chờ thanh toán' },
-  { value: 'COMPLETED', label: 'Hoàn thành' },
-  { value: 'CANCELLED', label: 'Đã hủy' },
-];
 
-const PAYMENT_METHOD_LABELS = {
-  CASH: '💵 Tiền mặt',
-  BANK_TRANSFER: '🏦 Chuyển khoản',
-  DEBT: '📋 Công nợ',
-};
-
-function formatLogNote(note) {
-  if (!note) return '—';
-  return note
-    .replace('Đổi sang: CASH', 'Đổi sang: Tiền mặt')
-    .replace('Đổi sang: BANK_TRANSFER', 'Đổi sang: Chuyển khoản')
-    .replace('Đổi sang: DEBT', 'Đổi sang: Công nợ');
-}
-
-const LOG_CONFIG = {
-  CREATED: { label: 'Tạo đơn hàng', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-  DELIVERING: { label: 'Bắt đầu giao hàng', icon: Truck, color: 'text-purple-600 bg-purple-50 border-purple-200' },
-  PENDING_PAYMENT: { label: 'Chờ thanh toán', icon: Clock, color: 'text-orange-600 bg-orange-50 border-orange-200' },
-  COMPLETED: { label: 'Hoàn thành đơn', icon: CheckCircle2, color: 'text-teal-600 bg-teal-50 border-teal-200' },
-  CANCELLED: { label: 'Hủy đơn hàng', icon: XCircle, color: 'text-red-600 bg-red-50 border-red-200' },
-  PAYMENT_METHOD_UPDATED: { label: 'Đổi phương thức TT', icon: DollarSign, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  DEADLINE_EXTENDED: { label: 'Gia hạn công nợ', icon: TimerReset, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  PARTIAL_PAYMENT: { label: 'Thu tiền một phần', icon: DollarSign, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' }, // ← thêm
-  FULLY_PAID: { label: 'Thanh toán đủ', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' }, // ← thêm
-};
-
-const ROLE_LABELS = {
-  SELLER: 'Bán hàng',
-  WAREHOUSE: 'Kho',
-  ACCOUNTANT: 'Kế toán',
-  ADMIN: 'Admin',
-};
 
 // ── Seller badge ──────────────────────────────────────────────────────────────
 function SellerBadge({ name }) {
@@ -77,10 +38,53 @@ function SellerBadge({ name }) {
 }
 
 export default function AdminOrders() {
+  const { t } = useLang();
   const [filters, setFilters] = useState({ q: '', status: '' });
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
+
+  const STATUS_OPTIONS = [
+    { value: '', label: t('admin', 'all_status') },
+    { value: 'PREPARING', label: t('status', 'preparing') },
+    { value: 'DELIVERING', label: t('status', 'delivering_short') },
+    { value: 'PENDING_PAYMENT', label: t('status', 'pending_payment') },
+    { value: 'COMPLETED', label: t('status', 'completed') },
+    { value: 'CANCELLED', label: t('status', 'cancelled2') },
+  ];
+
+  const PAYMENT_METHOD_LABELS = {
+    CASH: t('payment', 'cash_icon'),
+    BANK_TRANSFER: t('payment', 'bank_transfer_icon'),
+    DEBT: t('payment', 'debt_icon'),
+  };
+
+  function formatLogNote(note) {
+    if (!note) return '—';
+    return note
+      .replace('Đổi sang: CASH', t('payment', 'change_to_cash'))
+      .replace('Đổi sang: BANK_TRANSFER', t('payment', 'change_to_bank'))
+      .replace('Đổi sang: DEBT', t('payment', 'change_to_debt'));
+  }
+
+  const LOG_CONFIG = {
+    CREATED: { label: 'Tạo đơn hàng', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+    DELIVERING: { label: 'Bắt đầu giao hàng', icon: Truck, color: 'text-purple-600 bg-purple-50 border-purple-200' },
+    PENDING_PAYMENT: { label: t('status', 'pending_payment'), icon: Clock, color: 'text-orange-600 bg-orange-50 border-orange-200' },
+    COMPLETED: { label: 'Hoàn thành đơn', icon: CheckCircle2, color: 'text-teal-600 bg-teal-50 border-teal-200' },
+    CANCELLED: { label: 'Hủy đơn hàng', icon: XCircle, color: 'text-red-600 bg-red-50 border-red-200' },
+    PAYMENT_METHOD_UPDATED: { label: 'Đổi phương thức TT', icon: DollarSign, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+    DEADLINE_EXTENDED: { label: 'Gia hạn công nợ', icon: TimerReset, color: 'text-amber-600 bg-amber-50 border-amber-200' },
+    PARTIAL_PAYMENT: { label: 'Thu tiền một phần', icon: DollarSign, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' }, // ← thêm
+    FULLY_PAID: { label: 'Thanh toán đủ', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' }, // ← thêm
+  };
+
+  const ROLE_LABELS = {
+    SELLER: 'Bán hàng',
+    WAREHOUSE: 'Kho',
+    ACCOUNTANT: 'Kế toán',
+    ADMIN: 'Admin',
+  };
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailOrder, setDetailOrder] = useState(null);
@@ -99,8 +103,8 @@ export default function AdminOrders() {
       const params = {};
       if (filters.status) params.status = filters.status;
       if (debouncedQ) params.q = debouncedQ;
-      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0,0,0,0);
-      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23,59,59,999);
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
+      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
       if (filters.productId) params.productId = filters.productId;
       if (filters.customerId) params.customerId = filters.customerId;
       const res = await adminOrderApi.exportOrders(params);
@@ -120,8 +124,8 @@ export default function AdminOrders() {
       const params = { page, size: 20, sort: 'createdAt,desc' };
       if (debouncedQ) params.q = debouncedQ;
       if (filters.status) params.status = filters.status;
-      if (dateRange.from) params.fromDate = dateRange.from.setHours(0,0,0,0) || dateRange.from.getTime();
-      if (dateRange.to) params.toDate = new Date(dateRange.to).setHours(23,59,59,999);
+      if (dateRange.from) params.fromDate = dateRange.from.setHours(0, 0, 0, 0) || dateRange.from.getTime();
+      if (dateRange.to) params.toDate = new Date(dateRange.to).setHours(23, 59, 59, 999);
       if (filters.productId) params.productId = filters.productId;
       if (filters.customerId) params.customerId = filters.customerId;
       const res = await adminOrderApi.list(params);
@@ -194,8 +198,8 @@ export default function AdminOrders() {
       {/* Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
         {loading ? (
-        <TableSkeleton cols={5} rows={8} />
-      ) : data.content.length === 0 ? (
+          <TableSkeleton cols={5} rows={8} />
+        ) : data.content.length === 0 ? (
           <EmptyState icon={ShoppingCart} title="Không có đơn hàng" description="Thử điều chỉnh bộ lọc" />
         ) : (
           <>

@@ -1,5 +1,6 @@
 // src/pages/owner/OwnerEmployeesPage.jsx
 // Owner xem nhân sự: tab Nhân viên, Phiếu nghỉ, Phiếu OT, Duyệt lương
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users, Calendar, Clock, DollarSign, Check, X, FileText,
@@ -18,26 +19,26 @@ import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/common/Toast';
 
-const LEAVE_LABEL = { PAID: 'Có lương', UNPAID: 'Không lương' };
 
 // ── Payslip Modal ─────────────────────────────────────────────────────────────
 function PayslipModal({ userId, userName, onClose }) {
+  const { t } = useLang();
   const toast = useToast();
-  const [data, setData]   = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     hrPayslipApi.get(userId)
       .then(setData)
-      .catch(() => toast('Không tải được phiếu lương', 'error'))
+      .catch(() => toast(t('common', 'error_retry'), 'error'))
       .finally(() => setLoading(false));
   }, [userId]);
 
   const fmtVnd = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + ' ₫';
-  const monthName = data ? `Tháng ${data.month}/${data.year}` : '';
+  const monthName = data ? t('hr', 'month_label').replace('{m}', data.month).replace('{y}', data.year) : '';
 
   return (
-    <Modal open onClose={onClose} title={`Phiếu lương — ${userName}`} size="lg">
+    <Modal open onClose={onClose} title={`${t('hr', 'salary_slip')} — ${userName}`} size="lg">
       {loading ? <LoadingSpinner /> : !data ? (
         <EmptyState icon={DollarSign} title="Không có dữ liệu lương" />
       ) : (
@@ -128,7 +129,7 @@ function RejectModal({ salary, onClose, onDone }) {
       toast('Đã từ chối phiếu lương', 'success');
       onDone();
       onClose();
-    } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    } catch (e) { toast(e.message || t('common', 'error'), 'error'); }
     finally { setSaving(false); }
   };
 
@@ -152,12 +153,12 @@ function RejectModal({ salary, onClose, onDone }) {
 // ── Employees Tab ─────────────────────────────────────────────────────────────
 function EmployeesTab() {
   const toast = useToast();
-  const [users, setUsers]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [q, setQ]                 = useState('');
-  const [page, setPage]           = useState(0);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [payslip, setPayslip]     = useState(null);
+  const [payslip, setPayslip] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -190,7 +191,6 @@ function EmployeesTab() {
                 <Th>Họ tên</Th>
                 <Th>Bộ phận</Th>
                 <Th>Chức vụ</Th>
-                <Th>Role</Th>
                 <Th right>Phiếu lương</Th>
               </Tr>
             </Thead>
@@ -203,7 +203,6 @@ function EmployeesTab() {
                   </Td>
                   <Td>{u.department || '—'}</Td>
                   <Td>{u.position || '—'}</Td>
-                  <Td><Badge variant="default">{u.role}</Badge></Td>
                   <Td right>
                     <SecondaryButton className="!px-3 !py-1.5 text-xs" onClick={() => setPayslip(u)}>
                       <FileText size={12} /> Xem phiếu lương
@@ -230,9 +229,9 @@ function EmployeesTab() {
 // ── Leaves Tab (read-only for owner) ─────────────────────────────────────────
 function LeavesTab() {
   const toast = useToast();
-  const [rows, setRows]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [page, setPage]           = useState(0);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   const load = useCallback(async () => {
@@ -296,9 +295,9 @@ function LeavesTab() {
 // ── OT Tab (read-only for owner) ──────────────────────────────────────────────
 function OtTab() {
   const toast = useToast();
-  const [rows, setRows]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [page, setPage]           = useState(0);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   const load = useCallback(async () => {
@@ -356,14 +355,15 @@ function OtTab() {
 
 // ── Salary Approval Tab ───────────────────────────────────────────────────────
 function SalaryApprovalTab() {
+  const { t } = useLang();
   const toast = useToast();
-  const [rows, setRows]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [page, setPage]           = useState(0);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('PENDING');
-  const [rejectModal, setRejectModal]   = useState(null);
-  const [approving, setApproving]       = useState(null);
+  const [rejectModal, setRejectModal] = useState(null);
+  const [approving, setApproving] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -371,7 +371,7 @@ function SalaryApprovalTab() {
       const data = await hrSalaryApi.list({ status: statusFilter || undefined, page, size: 20 });
       setRows(data.content ?? data);
       setTotalPages(data.totalPages ?? 1);
-    } catch { toast('Không tải được phiếu lương', 'error'); }
+    } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [page, statusFilter]);
 
@@ -383,7 +383,7 @@ function SalaryApprovalTab() {
       await hrSalaryApi.approve(id);
       toast('Đã duyệt phiếu lương', 'success');
       load();
-    } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    } catch (e) { toast(e.message || t('common', 'error'), 'error'); }
     finally { setApproving(null); }
   };
 
@@ -391,10 +391,10 @@ function SalaryApprovalTab() {
     <div className="space-y-4">
       <div className="flex gap-2">
         {[
-          { val: 'PENDING',  label: 'Chờ duyệt' },
-          { val: 'APPROVED', label: 'Đã duyệt' },
-          { val: 'REJECTED', label: 'Từ chối' },
-          { val: '',         label: 'Tất cả' },
+          { val: 'PENDING', label: t('status', 'pending') },
+          { val: 'APPROVED', label: t('status', 'approved') },
+          { val: 'REJECTED', label: t('common', 'reject') },
+          { val: '', label: t('common', 'all') },
         ].map(({ val, label }) => (
           <button key={val} onClick={() => { setStatusFilter(val); setPage(0); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
@@ -441,9 +441,9 @@ function SalaryApprovalTab() {
                   <Td>
                     <Badge variant={
                       s.status === 'APPROVED' ? 'success' :
-                      s.status === 'REJECTED' ? 'danger' : 'warning'
+                        s.status === 'REJECTED' ? 'danger' : 'warning'
                     }>
-                      {s.status === 'PENDING' ? 'Chờ duyệt' : s.status === 'APPROVED' ? 'Đã duyệt' : 'Từ chối'}
+                      {s.status === 'PENDING' ? 'Chờ duyệt' : s.status === 'APPROVED' ? 'Đã duyệt' : t('common', 'reject')}
                     </Badge>
                     {s.rejectReason && (
                       <p className="text-xs text-red-500 mt-0.5 max-w-[140px] truncate">{s.rejectReason}</p>
@@ -488,23 +488,27 @@ function SalaryApprovalTab() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'employees', label: 'Nhân viên',   icon: Users },
-  { id: 'leaves',    label: 'Phiếu nghỉ',  icon: Calendar },
-  { id: 'ot',        label: 'Phiếu OT',    icon: Clock },
-  { id: 'salary',    label: 'Duyệt lương', icon: DollarSign },
+  { id: 'employees', label: 'Nhân viên', icon: Users },
+  { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
+  { id: 'ot', label: 'Phiếu OT', icon: Clock },
+  { id: 'salary', label: 'Duyệt lương', icon: DollarSign },
 ];
 
 export default function OwnerEmployeesPage() {
+  const { t } = useLang();
   const [tab, setTab] = useState('employees');
+
+  const LEAVE_LABEL = { PAID: t('hr', 'leave_paid'), UNPAID: t('hr', 'leave_unpaid') };
+
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
       <PageHeader icon={Users} title="Nhân sự" subtitle="Quản lý & duyệt lương nhân viên" />
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'employees' && <EmployeesTab />}
-      {tab === 'leaves'    && <LeavesTab />}
-      {tab === 'ot'        && <OtTab />}
-      {tab === 'salary'    && <SalaryApprovalTab />}
+      {tab === 'leaves' && <LeavesTab />}
+      {tab === 'ot' && <OtTab />}
+      {tab === 'salary' && <SalaryApprovalTab />}
     </div>
   );
 }

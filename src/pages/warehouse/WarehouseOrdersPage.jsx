@@ -1,4 +1,5 @@
 // src/pages/warehouse/WarehouseOrdersPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
@@ -81,7 +82,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
     <div className="space-y-2.5">
       {/* Label */}
       <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
-        🚗 Tài xế giao hàng
+        {t('warehouse','driver_delivery')}
       </p>
 
       {/* Selected tags */}
@@ -112,7 +113,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Tìm hoặc thêm tài xế..."
+              {...{placeholder: t("warehouse","add_driver")}}
               value={query}
               onChange={e => { setQuery(e.target.value); setOpen(true); }}
               onFocus={() => setOpen(true)}
@@ -163,7 +164,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
       {/* Hint */}
       {selectedDrivers.length === 0 && (
         <p className="text-[10px] text-[#C4B9A8] italic">
-          Không chọn = khách đến mua tận nơi
+          {t('warehouse','no_selection')}
         </p>
       )}
     </div>
@@ -215,7 +216,7 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
         {/* Customer info */}
         <div className="px-5 py-3 bg-[#FAF7F2] border-b border-[#F0EBE3] flex-shrink-0">
           <p className="text-xs font-semibold text-[#1C1C1E]">
-            {order.customerName || 'Khách lẻ/Khách vãng lai'}
+            {order.customerName || t('customer','retail')}
           </p>
           <p className="text-[10px] text-[#8E8878]">{order.customerPhone}</p>
           {order.notes && (
@@ -296,7 +297,7 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
             {delivering
               ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               : <Truck size={16} />}
-            {delivering ? 'Đang xử lý...' : 'Bắt đầu giao hàng'}
+            {delivering ? 'Đang xử lý...': 'Bắt đầu giao hàng'}
           </button>
         </div>
       </div>
@@ -322,7 +323,7 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
             </span>
           </div>
           <p className="text-sm font-semibold text-[#1C1C1E] truncate">
-            {order.customerName || 'Khách lẻ/Khách vãng lai'}
+            {order.customerName || t('customer','retail')}
           </p>
           <p className="text-[11px] text-[#8E8878] mt-0.5">{order.customerPhone}</p>
           {order.drivers?.length > 0 && (
@@ -367,6 +368,7 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function WarehouseOrdersPage() {
+  const { t } = useLang();
   const toast = useToast();
   const { user } = useAuth();
   const { activeWarehouseId, activeWarehouseName } = useWarehouse();

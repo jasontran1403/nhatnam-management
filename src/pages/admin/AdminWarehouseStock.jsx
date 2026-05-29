@@ -1,4 +1,5 @@
 // src/pages/admin/AdminWarehouseStock.jsx
+import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useMemo } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -64,7 +65,7 @@ function SubCategorySection({ name, items }) {
           ? <ChevronDown  size={13} className="text-[#C4B9A8] flex-shrink-0" />
           : <ChevronRight size={13} className="text-[#C4B9A8] flex-shrink-0" />}
         <span className="text-xs font-semibold text-[#5C5C5C] flex-1 truncate">
-          {name || 'Chưa phân loại'}
+          {name || t('warehouse','uncategorized')}
         </span>
         <span className="text-[10px] text-[#8E8878] flex-shrink-0 mr-2">{items.length} NL</span>
         {totalCost > 0 && (
@@ -85,6 +86,7 @@ function SubCategorySection({ name, items }) {
 
 // ── Category section ──────────────────────────────────────────────────────────
 function CategorySection({ name, items }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(true);
 
   // Group by subCategory
@@ -117,7 +119,7 @@ function CategorySection({ name, items }) {
           ? <ChevronDown  size={15} className="text-[#C9A84C] flex-shrink-0" />
           : <ChevronRight size={15} className="text-[#C9A84C] flex-shrink-0" />}
         <span className="font-bold text-[#1C1C1E] flex-1 truncate">{name}</span>
-        <span className="text-xs text-[#8E8878] flex-shrink-0 mr-3">{items.length} nguyên liệu</span>
+        <span className="text-xs text-[#8E8878] flex-shrink-0 mr-3">{t('warehouse','ingredient_count').replace('{n}',items.length)}</span>
         {totalCost > 0 && (
           <span className="text-sm font-bold text-[#C9A84C] flex-shrink-0">
             {formatCurrency(totalCost)}
@@ -145,6 +147,7 @@ function CategorySection({ name, items }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminWarehouseStock() {
+  const { t } = useLang();
   const { id }    = useParams();
   const navigate  = useNavigate();
 
@@ -178,7 +181,7 @@ export default function AdminWarehouseStock() {
     const map = new Map();
     filteredItems.forEach(item => {
       const key  = item.categoryId   || '__none__';
-      const name = item.categoryName || 'Chưa phân loại';
+      const name = item.categoryName || t('warehouse','uncategorized');
       if (!map.has(key)) map.set(key, { id: key, name, items: [] });
       map.get(key).items.push(item);
     });
@@ -205,8 +208,8 @@ export default function AdminWarehouseStock() {
         </button>
         <PageHeader
           icon={Package}
-          title={warehouse?.name || 'Kho hàng'}
-          subtitle={`${items.length} nguyên liệu${warehouse?.address ? ` — ${warehouse.address}` : ''}`}
+          title={warehouse?.name || t('warehouse','warehouse')}
+          subtitle={`${t('warehouse','ingredient_count').replace('{n}',items.length)}${warehouse?.address ? ` — ${warehouse.address}` : ''}`}
         />
       </div>
 
@@ -227,7 +230,7 @@ export default function AdminWarehouseStock() {
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
-          placeholder="Tìm tên nguyên liệu..."
+          {...{placeholder: t("ingredient","search_placeholder")}}
           className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-black/10 text-sm
             bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
         />
@@ -242,7 +245,7 @@ export default function AdminWarehouseStock() {
       {/* Result info */}
       {q && (
         <p className="text-xs text-[#8E8878]">
-          Tìm thấy <strong>{filteredItems.length}</strong> / {items.length} nguyên liệu
+          Tìm thấy <strong>{filteredItems.length}</strong> / {t('warehouse','ingredient_count').replace('{n}',items.length)}
           {visibleTotal > 0 && <> · Giá vốn hiển thị: <strong className="text-[#C9A84C]">{formatCurrency(visibleTotal)}</strong></>}
         </p>
       )}

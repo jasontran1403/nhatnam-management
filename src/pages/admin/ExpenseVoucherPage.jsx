@@ -1,4 +1,5 @@
 // src/pages/admin/ExpenseVoucherPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -13,11 +14,7 @@ import {
 import Modal from '../../components/ui/Modal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 
-const STATUS_MAP = {
-  PENDING:  { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-700 border-amber-200',      icon: Clock },
-  APPROVED: { label: 'Đã duyệt',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-  REJECTED: { label: 'Từ chối',   cls: 'bg-red-50 text-red-600 border-red-200',             icon: XCircle },
-};
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 function imgSrc(url) {
@@ -92,9 +89,8 @@ function Lightbox({ images, index, onClose, onPrev, onNext }) {
             <button
               key={i}
               onClick={(e) => { e.stopPropagation(); /* handled by parent */ }}
-              className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
-                i === index ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'
-              }`}
+              className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === index ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'
+                }`}
             >
               <img src={imgSrc(url)} className="w-full h-full object-cover" />
             </button>
@@ -117,9 +113,9 @@ function StatusBadge({ status }) {
 
 function SummaryCard({ icon: Icon, label, value, accent }) {
   const colors = {
-    gold:  { bg: 'bg-amber-50',   icon: 'text-amber-600',   val: 'text-amber-700'   },
+    gold: { bg: 'bg-amber-50', icon: 'text-amber-600', val: 'text-amber-700' },
     green: { bg: 'bg-emerald-50', icon: 'text-emerald-600', val: 'text-emerald-700' },
-    blue:  { bg: 'bg-sky-50',     icon: 'text-sky-600',     val: 'text-sky-700'     },
+    blue: { bg: 'bg-sky-50', icon: 'text-sky-600', val: 'text-sky-700' },
   };
   const c = colors[accent] || colors.gold;
   return (
@@ -169,7 +165,7 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox }) {
           )}
         </td>
         <td className="px-2 py-3 text-[#8E8878]">
-          {open ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </td>
       </tr>
 
@@ -178,7 +174,7 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox }) {
           <td colSpan={9} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">Khoản chi</p>
+                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">{t('admin', 'expense_items_label')}</p>
                 <div className="space-y-1">
                   {(v.items || []).map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
@@ -223,25 +219,32 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox }) {
 }
 
 export default function ExpenseVoucherPage() {
+  const { t } = useLang();
   const toast = useToast();
-  const [vouchers, setVouchers]       = useState([]);
+  const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useMinLoading();
-  const [page, setPage]               = useState(0);
-  const [totalPages, setTotalPages]   = useState(0);
-  const [dateRange, setDateRange]     = useState({ from: null, to: null });
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState('');
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [actioning, setActioning]     = useState(false);
+  const [actioning, setActioning] = useState(false);
+
+  const STATUS_MAP = {
+    PENDING: { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
+    APPROVED: { label: t('status', 'approved'), cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+    REJECTED: { label: t('status', 'rejected_short'), cls: 'bg-red-50 text-red-600 border-red-200', icon: XCircle },
+  };
 
   // Lightbox state
   const [lightboxImages, setLightboxImages] = useState([]);
-  const [lightboxIndex, setLightboxIndex]   = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
-  const openLightbox  = (images, i) => { setLightboxImages(images); setLightboxIndex(i); };
+  const openLightbox = (images, i) => { setLightboxImages(images); setLightboxIndex(i); };
   const closeLightbox = () => setLightboxIndex(null);
-  const prevImage     = () => setLightboxIndex(i => (i - 1 + lightboxImages.length) % lightboxImages.length);
-  const nextImage     = () => setLightboxIndex(i => (i + 1) % lightboxImages.length);
+  const prevImage = () => setLightboxIndex(i => (i - 1 + lightboxImages.length) % lightboxImages.length);
+  const nextImage = () => setLightboxIndex(i => (i + 1) % lightboxImages.length);
 
   const load = useCallback(async (p = 0) => {
     setLoading(true);
@@ -252,11 +255,11 @@ export default function ExpenseVoucherPage() {
       let items = res.content || [];
 
       if (dateRange.from) {
-        const f = new Date(dateRange.from).setHours(0,0,0,0);
+        const f = new Date(dateRange.from).setHours(0, 0, 0, 0);
         items = items.filter(v => v.createdAt >= f);
       }
       if (dateRange.to) {
-        const t = new Date(dateRange.to).setHours(23,59,59,999);
+        const t = new Date(dateRange.to).setHours(23, 59, 59, 999);
         items = items.filter(v => v.createdAt <= t);
       }
 
@@ -275,7 +278,7 @@ export default function ExpenseVoucherPage() {
       await adminExpenseApi.approve(id, null);
       toast('Đã duyệt phiếu chi', 'success');
       load(page);
-    } catch(e) { toast(e?.response?.data?.message || 'Lỗi khi duyệt', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi duyệt', 'error'); }
     finally { setActioning(false); }
   };
 
@@ -287,14 +290,14 @@ export default function ExpenseVoucherPage() {
       toast('Đã từ chối phiếu chi', 'success');
       setRejectModal(null); setRejectReason('');
       load(page);
-    } catch(e) { toast(e?.response?.data?.message || 'Lỗi khi từ chối', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi từ chối', 'error'); }
     finally { setActioning(false); }
   };
 
-  const totalAmount    = vouchers.reduce((s, v) => s + Number(v.totalAmount || 0), 0);
+  const totalAmount = vouchers.reduce((s, v) => s + Number(v.totalAmount || 0), 0);
   const approvedAmount = vouchers.filter(v => v.status === 'APPROVED').reduce((s, v) => s + Number(v.totalAmount || 0), 0);
-  const approvedCount  = vouchers.filter(v => v.status === 'APPROVED').length;
-  const pendingCount   = vouchers.filter(v => v.status === 'PENDING').length;
+  const approvedCount = vouchers.filter(v => v.status === 'APPROVED').length;
+  const pendingCount = vouchers.filter(v => v.status === 'PENDING').length;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
@@ -302,9 +305,9 @@ export default function ExpenseVoucherPage() {
         subtitle={pendingCount > 0 ? `${pendingCount} chờ duyệt` : 'Tất cả phiếu chi'} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <SummaryCard icon={DollarSign} label="Tổng số tiền phiếu chi" value={formatCurrency(totalAmount)}   accent="gold" />
-        <SummaryCard icon={FileText}   label="Tổng số phiếu chi"       value={vouchers.length + ' phiếu'}    accent="blue" />
-        <SummaryCard icon={BadgeCheck} label="Tổng phiếu đã duyệt"     value={approvedCount + ' phiếu — ' + formatCurrency(approvedAmount)} accent="green" />
+        <SummaryCard icon={DollarSign} label="Tổng số tiền phiếu chi" value={formatCurrency(totalAmount)} accent="gold" />
+        <SummaryCard icon={FileText} label="Tổng số phiếu chi" value={vouchers.length + ' phiếu'} accent="blue" />
+        <SummaryCard icon={BadgeCheck} label="Tổng phiếu đã duyệt" value={approvedCount + ' phiếu — ' + formatCurrency(approvedAmount)} accent="green" />
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -344,7 +347,7 @@ export default function ExpenseVoucherPage() {
             <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
-                  {['Mã phiếu','Lý do / Đơn vị','Người lập','Người yêu cầu','Tổng tiền','Trạng thái','Ngày tạo','Hành động',''].map(h => (
+                  {['Mã phiếu', 'Lý do / Đơn vị', 'Người lập', 'Người yêu cầu', t('order', 'total_amount'), t('common', 'status'), 'Ngày tạo', 'Hành động', ''].map(h => (
                     <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
                   ))}
                 </tr>

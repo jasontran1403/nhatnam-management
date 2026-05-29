@@ -1,4 +1,5 @@
 // src/pages/admin/IncomeVoucherPage.jsx
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -109,7 +110,7 @@ function VoucherRow({ v, onOpenLightbox, onOpenDetail }) {
           <td colSpan={8} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">Khoản thu</p>
+                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">{t('admin','income_items_label')}</p>
                 <div className="space-y-1">
                   {(v.items || []).map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
@@ -122,7 +123,7 @@ function VoucherRow({ v, onOpenLightbox, onOpenDetail }) {
               {(v.imageUrls || []).length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">
-                    Ảnh chứng từ ({v.imageUrls.length})
+                    {t('admin','receipt_images')} ({v.imageUrls.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {v.imageUrls.map((url, i) => (
@@ -146,6 +147,7 @@ function VoucherRow({ v, onOpenLightbox, onOpenDetail }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function IncomeVoucherPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [vouchers, setVouchers]       = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -176,7 +178,7 @@ export default function IncomeVoucherPage() {
       setTotalPages(res.totalPages || 0);
       setPage(p);
     } catch {
-      toast('Không thể tải phiếu thu', 'error');
+      toast(t('common','error_retry'), 'error');
     } finally {
       setLoading(false);
     }
@@ -192,8 +194,8 @@ export default function IncomeVoucherPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-5">
         <PageHeader
           icon={TrendingUp}
-          title="Phiếu thu"
-          subtitle={`${confirmedCount} phiếu thu`}
+          {...{title: t("voucher","income_voucher")}}
+          subtitle={`${confirmedCount} ${t('voucher','income_voucher').toLowerCase()}`}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -232,7 +234,7 @@ export default function IncomeVoucherPage() {
               <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
-                    {['Mã phiếu', 'Lý do / Người nộp', 'Người lập', 'Tổng tiền', 'Trạng thái', 'Ngày tạo', ''].map(h => (
+                    {['Mã phiếu', 'Lý do / Người nộp', 'Người lập', t('order','total_amount'), t('common','status'), 'Ngày tạo', ''].map(h => (
                       <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
                     ))}
                   </tr>

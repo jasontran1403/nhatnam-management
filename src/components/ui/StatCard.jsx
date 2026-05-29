@@ -1,6 +1,9 @@
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { useLang } from '../../context/LangContext';
 
 export default function StatCard({ label, value, icon: Icon, changePercent, loading, accent = 'gold' }) {
+  const { t } = useLang();
+
   const accentMap = {
     gold:   'from-[#C9A84C]/15 to-[#C9A84C]/5 text-[#C9A84C] ring-[#C9A84C]/20',
     blue:   'from-blue-500/15 to-blue-500/5 text-blue-600 ring-blue-500/20',
@@ -26,7 +29,7 @@ export default function StatCard({ label, value, icon: Icon, changePercent, load
           {showChange && !loading && (
             <div className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${up ? 'text-emerald-600' : 'text-red-600'}`}>
               {up ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              {up ? '+' : ''}{changePercent.toFixed(1)}% so hôm qua
+              {up ? '+' : ''}{changePercent.toFixed(1)}% {t('common', 'today').toLowerCase()}
             </div>
           )}
         </div>

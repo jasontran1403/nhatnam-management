@@ -10,6 +10,7 @@
 // 8. Chứng từ seller: bỏ text "Chưa có" → span rỗng
 // 9. <CancelOrderModal> ở cuối
 
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -39,49 +40,49 @@ function formatDateShort(ts) {
 }
 function parseVND(str) { return Number(String(str).replace(/[^0-9]/g, '')); }
 
-const STATUS_MAP = {
-  PENDING: { label: 'Chờ xử lý', bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
-  CONFIRMED: { label: 'Đã xác nhận', bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle },
-  PREPARING: { label: 'Đang chuẩn bị', bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
-  READY: { label: 'Sẵn sàng', bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle },
-  DELIVERING: { label: 'Đang giao', bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
-  PENDING_PAYMENT: { label: 'Chờ thanh toán', bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CreditCard },
-  COMPLETED: { label: 'Hoàn thành', bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
-  CANCELLED: { label: 'Đã huỷ', bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
-  FAILED: { label: 'Thất bại', bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
-};
-const PAYMENT_METHOD_MAP = {
-  CASH: { label: '💵 Tiền mặt', bg: 'bg-green-50  text-green-700  border-green-200' },
-  BANK_TRANSFER: { label: '🏦 Chuyển khoản', bg: 'bg-blue-50   text-blue-700   border-blue-200' },
-  DEBT: { label: '📋 Công nợ', bg: 'bg-orange-50 text-orange-700 border-orange-200' },
-};
-const PAYMENT_METHODS = [
-  { value: 'CASH', label: '💵 Tiền mặt' },
-  { value: 'BANK_TRANSFER', label: '🏦 Chuyển khoản' },
-  { value: 'DEBT', label: '📋 Công nợ' },
-];
-const FILTER_TABS = [
-  { value: 'ALL', label: 'Tất cả' },
-  { value: 'DELIVERING', label: 'Đang giao' },
-  { value: 'PENDING_PAYMENT', label: 'Chờ thanh toán' },
-  { value: 'COMPLETED', label: 'Hoàn thành' },
-  { value: 'PENDING', label: 'Chờ xử lý' },
-  { value: 'PREPARING', label: 'Đang chuẩn bị' },
-  { value: 'CANCELLED', label: 'Đã huỷ' },
-];
+
 
 function BtnSpinner({ size = 13, colorClass = 'border-current' }) {
   return <div style={{ width: size, height: size }} className={`border-2 ${colorClass} border-t-transparent rounded-full animate-spin flex-shrink-0`} />;
 }
 function StatusBadge({ status }) {
-  const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING; const Icon = cfg.icon;
-  return <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}><Icon size={9} /> {cfg.label}</span>;
+  const { t } = useLang();
+  const STATUS_MAP = {
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
+    CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle },
+    PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
+    READY: { label: t('status', 'ready'), bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle },
+    DELIVERING: { label: t('status', 'delivering_short'), bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
+    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CreditCard },
+    COMPLETED: { label: t('status', 'completed'), bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
+    CANCELLED: { label: t('status', 'cancelled'), bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
+    FAILED: { label: t('status', 'rejected_short'), bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
+  };
+  const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING;
+  const Icon = cfg.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}>
+      <Icon size={9} /> {cfg.label}
+    </span>
+  );
 }
+
 function PaymentMethodBadge({ method }) {
+  const { t } = useLang();
+  const PAYMENT_METHOD_MAP = {
+    CASH: { label: t('payment', 'cash_icon'), bg: 'bg-green-50  text-green-700  border-green-200' },
+    BANK_TRANSFER: { label: t('payment', 'bank_transfer_icon'), bg: 'bg-blue-50   text-blue-700   border-blue-200' },
+    DEBT: { label: t('payment', 'debt_icon'), bg: 'bg-orange-50 text-orange-700 border-orange-200' },
+  };
   const cfg = PAYMENT_METHOD_MAP[method];
   if (!cfg) return <span className="text-xs text-[#8E8878]">{method || '—'}</span>;
-  return <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}>{cfg.label}</span>;
+  return (
+    <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}>
+      {cfg.label}
+    </span>
+  );
 }
+
 function WarehouseBadge({ name }) {
   if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
   return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-sky-50 text-sky-700 border-sky-200 whitespace-nowrap">🏭 {name}</span>;
@@ -99,16 +100,32 @@ function CreatedByBadge({ name }) {
   if (!name) return <span className="text-xs text-[#8E8878]">—</span>;
   return <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0] whitespace-nowrap">👤 {name}</span>;
 }
+
 function PaymentMethodCell({ value, onSave, disabled }) {
+  const { t } = useLang();
+  const PAYMENT_METHODS = [
+    { value: 'CASH', label: t('payment', 'cash_icon') },
+    { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon') },
+    { value: 'DEBT', label: t('payment', 'debt_icon') },
+  ];
   const [open, setOpen] = useState(false);
   const handleSelect = (val) => { setOpen(false); if (val !== value) onSave(val); };
   if (disabled) return <PaymentMethodBadge method={value} />;
   return (
     <div className="relative">
-      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 group"><PaymentMethodBadge method={value} /><ChevronDown size={10} className="text-[#C9A84C] opacity-70 group-hover:opacity-100 transition-opacity" /></button>
-      {open && (<><div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 group">
+        <PaymentMethodBadge method={value} />
+        <ChevronDown size={10} className="text-[#C9A84C] opacity-70 group-hover:opacity-100 transition-opacity" />
+      </button>
+      {open && (<>
+        <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
         <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[#E8DDD0] rounded-xl shadow-lg py-1 min-w-[160px]">
-          {PAYMENT_METHODS.map(m => <button key={m.value} onClick={() => handleSelect(m.value)} className={`w-full text-left px-3 py-2 text-xs hover:bg-[#FAF7F2] transition-colors ${m.value === value ? 'font-bold text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>{m.label}</button>)}
+          {PAYMENT_METHODS.map(m => (
+            <button key={m.value} onClick={() => handleSelect(m.value)}
+              className={`w-full text-left px-3 py-2 text-xs hover:bg-[#FAF7F2] transition-colors ${m.value === value ? 'font-bold text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+              {m.label}
+            </button>
+          ))}
         </div>
       </>)}
     </div>
@@ -133,7 +150,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
 
   const handleAmountChange = (e) => { const raw = e.target.value.replace(/[^0-9]/g, ''); setAmountInput(raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : ''); setError(''); };
   const handleConfirm = () => {
-    if (!paidNum || paidNum <= 0) { setError('Vui lòng nhập số tiền đã thanh toán'); return; }
+    if (!paidNum || paidNum <= 0) { setError(t('payment', 'enter_paid_amount_required')); return; }
     if (paidNum > remaining) { setError(`Số tiền không được vượt quá số còn lại (${formatPrice(remaining)})`); return; }
     if (hasDeadline && (!deadlineDays || Number(deadlineDays) <= 0)) { setError('Vui lòng nhập số ngày hạn thanh toán hợp lệ'); return; }
     if (isBankTransfer && !bankName.trim()) { setError('Vui lòng nhập tên ngân hàng'); return; }
@@ -323,6 +340,7 @@ function getRowBg(o) {
 }
 
 export default function OrdersPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [orders, setOrders] = useState([]); const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(null); const [total, setTotal] = useState(0);
@@ -334,6 +352,37 @@ export default function OrdersPage() {
   const [partialOrder, setPartialOrder] = useState(null); const [partialLoading, setPartialLoading] = useMinLoading();
   const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkConfirm, setBulkConfirm] = useState(null);
   const [bulkLoading, setBulkLoading] = useMinLoading(); const [pageSize, setPageSize] = useState(20);
+
+  const STATUS_MAP = {
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
+    CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle },
+    PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
+    READY: { label: t('status', 'ready'), bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle },
+    DELIVERING: { label: t('status', 'delivering_short'), bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
+    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CreditCard },
+    COMPLETED: { label: t('status', 'completed'), bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
+    CANCELLED: { label: t('status', 'cancelled'), bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
+    FAILED: { label: t('status', 'rejected_short'), bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
+  };
+  const PAYMENT_METHOD_MAP = {
+    CASH: { label: t('payment', 'cash_icon'), bg: 'bg-green-50  text-green-700  border-green-200' },
+    BANK_TRANSFER: { label: t('payment', 'bank_transfer_icon'), bg: 'bg-blue-50   text-blue-700   border-blue-200' },
+    DEBT: { label: t('payment', 'debt_icon'), bg: 'bg-orange-50 text-orange-700 border-orange-200' },
+  };
+  const PAYMENT_METHODS = [
+    { value: 'CASH', label: t('payment', 'cash_icon') },
+    { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon') },
+    { value: 'DEBT', label: t('payment', 'debt_icon') },
+  ];
+  const FILTER_TABS = [
+    { value: 'ALL', label: t('common', 'all') },
+    { value: 'DELIVERING', label: t('status', 'delivering_short') },
+    { value: 'PENDING_PAYMENT', label: t('status', 'pending_payment') },
+    { value: 'COMPLETED', label: t('status', 'completed') },
+    { value: 'PENDING', label: t('status', 'pending') },
+    { value: 'PREPARING', label: t('status', 'preparing') },
+    { value: 'CANCELLED', label: t('status', 'cancelled') },
+  ];
 
   // ── THÊM ─────────────────────────────────────────────────────────────────
   const [cancelTarget, setCancelTarget] = useState(null); const [cancelLoading, setCancelLoading] = useMinLoading();
@@ -481,8 +530,8 @@ export default function OrdersPage() {
                     <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                       <tr>
                         <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.size === orders.length && orders.length > 0} onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} /></th>
-                        {['Mã đơn', 'Thời gian', 'Khách hàng', 'Kho', 'Trạng thái', 'PT Thanh toán',
-                          'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hoá đơn', 'Thao tác']
+                        {[t('order', 'order_code'), 'Thời gian', t('customer', 'customer'), 'Kho', t('common', 'status'), 'PT Thanh toán',
+                          'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hoá đơn', t('common', 'actions')]
                           .map(h => (
                             <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                           ))}
@@ -651,7 +700,7 @@ export default function OrdersPage() {
             <p className="text-sm text-[#8E8878]">{selectedIds.size} đơn đã chọn</p>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setBulkConfirm(null)} className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
-              <button disabled={bulkLoading} onClick={async () => { const c = bulkConfirm; setBulkConfirm(null); await executeBulkComplete(c.mode); }} className="flex-1 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold disabled:opacity-50">{bulkLoading ? 'Đang xử lý...' : 'Xác nhận'}</button>
+              <button disabled={bulkLoading} onClick={async () => { const c = bulkConfirm; setBulkConfirm(null); await executeBulkComplete(c.mode); }} className="flex-1 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold disabled:opacity-50">{bulkLoading ? 'Đang xử lý...' : t('common', 'confirm')}</button>
             </div>
           </div>
         </div>

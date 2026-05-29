@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -34,34 +35,35 @@ function VarianceBadge({ pct }) {
   );
 }
 
-const TABS = [
-  { id: 'batches',   label: 'Mẻ sản xuất',     icon: ClipboardList },
-  { id: 'recipes',   label: 'Công thức',        icon: FlaskConical },
-  { id: 'products',  label: 'Thành phẩm',       icon: Package },
-  { id: 'materials', label: 'Nguyên vật liệu',  icon: Factory },
-];
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OwnerProductionPage() {
-  const [tab, setTab]             = useState('batches');
-  const [batches, setBatches]     = useState([]);
-  const [recipes, setRecipes]     = useState([]);
-  const [products, setProducts]   = useState([]);
+  const { t } = useLang();
+  const [batches, setBatches] = useState([]);
+  const [recipes, setRecipes] = useState([]);
+  const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useMinLoading();
 
+  const TABS = [
+    { id: 'batches', label: t('batch', 'production_batches'), icon: ClipboardList },
+    { id: 'recipes', label: t('batch', 'formulas'), icon: FlaskConical },
+    { id: 'products', label: t('batch', 'finished_goods'), icon: Package },
+    { id: 'materials', label: t('batch', 'raw_materials'), icon: Factory },
+  ];
+
+  const [tab, setTab] = useState('batches');
   // Date filter for batches
-  const [preset, setPreset]   = useState('month');
-  const [range, setRange]     = useState(() => presetToRange('month'));
+  const [preset, setPreset] = useState('month');
+  const [range, setRange] = useState(() => presetToRange('month'));
 
   // Modals
-  const [batchDetail, setBatchDetail]         = useState(null);
+  const [batchDetail, setBatchDetail] = useState(null);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
-  const [editRecipe, setEditRecipe]           = useState(null);
-  const [showMatModal, setShowMatModal]       = useState(false);
-  const [editMat, setEditMat]                 = useState(null);
-  const [showProdModal, setShowProdModal]     = useState(false);
-  const [editProd, setEditProd]               = useState(null);
+  const [editRecipe, setEditRecipe] = useState(null);
+  const [showMatModal, setShowMatModal] = useState(false);
+  const [editMat, setEditMat] = useState(null);
+  const [showProdModal, setShowProdModal] = useState(false);
+  const [editProd, setEditProd] = useState(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -102,19 +104,18 @@ export default function OwnerProductionPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader
         icon={Factory}
-        title="Quản lý sản xuất"
-        subtitle="Theo dõi mẻ sản xuất, công thức định lượng và hao hụt"
+        title={t('analytics', 'manage_production')}
+        subtitle={t('misc', 'manage_production_full')}
       />
 
       {/* Tabs */}
       <div className="bg-white rounded-2xl border border-black/5 p-1 shadow-sm flex gap-1 w-fit">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              tab === t.id
-                ? 'bg-[#1C1C1E] text-white shadow-sm'
-                : 'text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'
-            }`}>
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === t.id
+              ? 'bg-[#1C1C1E] text-white shadow-sm'
+              : 'text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'
+              }`}>
             <t.icon size={15} />
             {t.label}
           </button>
@@ -138,74 +139,74 @@ export default function OwnerProductionPage() {
               </div>
 
               {filteredBatches.length === 0
-                ? <EmptyState icon={ClipboardList} title="Không có mẻ nào trong khoảng thời gian này" />
-                : (
-                  <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-                    <table className="w-full text-sm hidden md:table">
-                      <thead>
-                        <tr className="bg-[#FAF7F2] text-[#8E8878]">
-                          <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Mã mẻ</th>
-                          <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Thành phẩm</th>
-                          <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Nhân viên</th>
-                          <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Ngày SX</th>
-                          <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider">Thực tế / Chuẩn</th>
-                          <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Hao hụt</th>
-                          <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Trạng thái</th>
-                          <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider">Thao tác</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredBatches.map(b => (
-                          <tr key={b.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-xs font-semibold text-[#1C1C1E]">{b.batchCode}</td>
-                            <td className="px-4 py-3">
-                              <p className="font-medium text-[#1C1C1E]">{b.productName}</p>
-                              <p className="text-xs text-[#8E8878]">{b.recipeName}</p>
-                            </td>
-                            <td className="px-4 py-3 text-[#8E8878] text-xs">{b.createdByName}</td>
-                            <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{fmtDate(b.producedAt)}</td>
-                            <td className="px-4 py-3 text-right text-sm">
-                              <span className="font-semibold text-[#1C1C1E]">{b.actualOutputQty}</span>
-                              <span className="text-[#8E8878]"> / {b.standardOutputQty} {b.outputUnit}</span>
-                            </td>
-                            <td className="px-4 py-3 text-center"><VarianceBadge pct={b.outputVariancePct} /></td>
-                            <td className="px-4 py-3 text-center">
-                              {b.status === 'REVIEWED'
-                                ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đã xem</Badge>
-                                : <Badge className="bg-amber-50 text-amber-700 ring-amber-200">Chờ xem</Badge>}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <button onClick={() => openBatch(b.id)}
-                                className="px-3 py-1.5 text-xs font-medium rounded-xl bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#F0EBE3] transition-colors border border-black/5">
-                                Chi tiết
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                ? <EmptyState icon={ClipboardList} title={t('batch', 'no_batches')} />
+              : (
+              <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+                <table className="w-full text-sm hidden md:table">
+                  <thead>
+                    <tr className="bg-[#FAF7F2] text-[#8E8878]">
+                      <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Mã mẻ</th>
+                      <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Thành phẩm</th>
+                      <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Nhân viên</th>
+                      <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Ngày SX</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider">Thực tế / Chuẩn</th>
+                      <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Hao hụt</th>
+                      <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBatches.map(b => (
+                      <tr key={b.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-[#1C1C1E]">{b.batchCode}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-[#1C1C1E]">{b.productName}</p>
+                          <p className="text-xs text-[#8E8878]">{b.recipeName}</p>
+                        </td>
+                        <td className="px-4 py-3 text-[#8E8878] text-xs">{b.createdByName}</td>
+                        <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{fmtDate(b.producedAt)}</td>
+                        <td className="px-4 py-3 text-right text-sm">
+                          <span className="font-semibold text-[#1C1C1E]">{b.actualOutputQty}</span>
+                          <span className="text-[#8E8878]"> / {b.standardOutputQty} {b.outputUnit}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center"><VarianceBadge pct={b.outputVariancePct} /></td>
+                        <td className="px-4 py-3 text-center">
+                          {b.status === 'REVIEWED'
+                            ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đã xem</Badge>
+                            : <Badge className="bg-amber-50 text-amber-700 ring-amber-200">Chờ xem</Badge>}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button onClick={() => openBatch(b.id)}
+                            className="px-3 py-1.5 text-xs font-medium rounded-xl bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#F0EBE3] transition-colors border border-black/5">
+                            Chi tiết
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
 
-                    {/* Mobile */}
-                    <div className="md:hidden divide-y divide-black/5">
-                      {filteredBatches.map(b => (
-                        <div key={b.id} className="p-4" onClick={() => openBatch(b.id)}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="font-mono text-xs font-semibold text-[#1C1C1E]">{b.batchCode}</p>
-                              <p className="font-medium text-sm text-[#1C1C1E] mt-0.5">{b.productName}</p>
-                              <p className="text-xs text-[#8E8878]">{b.createdByName} · {fmtDate(b.producedAt)}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <VarianceBadge pct={b.outputVariancePct} />
-                              <p className="text-xs text-[#8E8878] mt-1">
-                                {b.status === 'REVIEWED' ? '✓ Đã xem' : '⏳ Chờ xem'}
-                              </p>
-                            </div>
-                          </div>
+                {/* Mobile */}
+                <div className="md:hidden divide-y divide-black/5">
+                  {filteredBatches.map(b => (
+                    <div key={b.id} className="p-4" onClick={() => openBatch(b.id)}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs font-semibold text-[#1C1C1E]">{b.batchCode}</p>
+                          <p className="font-medium text-sm text-[#1C1C1E] mt-0.5">{b.productName}</p>
+                          <p className="text-xs text-[#8E8878]">{b.createdByName} · {fmtDate(b.producedAt)}</p>
                         </div>
-                      ))}
+                        <div className="text-right flex-shrink-0">
+                          <VarianceBadge pct={b.outputVariancePct} />
+                          <p className="text-xs text-[#8E8878] mt-1">
+                            {b.status === 'REVIEWED' ? '✓ Đã xem' : '⏳ Chờ xem'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
                 )}
             </div>
           )}
@@ -458,9 +459,9 @@ export default function OwnerProductionPage() {
           title={editMat ? 'Sửa nguyên vật liệu' : 'Thêm nguyên vật liệu'}
           initial={editMat}
           fields={[
-            { key: 'name',        label: 'Tên NVL',                required: true },
-            { key: 'unit',        label: 'Đơn vị (kg, lít, hộp…)', required: true },
-            { key: 'description', label: 'Mô tả' },
+            { key: 'name', label: 'Tên NVL', required: true },
+            { key: 'unit', label: 'Đơn vị (kg, lít, hộp…)', required: true },
+            { key: 'description', label: t('common', 'description') },
           ]}
           onClose={() => setShowMatModal(false)}
           onSave={async (data) => {
@@ -477,9 +478,9 @@ export default function OwnerProductionPage() {
           title={editProd ? 'Sửa thành phẩm' : 'Thêm thành phẩm'}
           initial={editProd}
           fields={[
-            { key: 'name',        label: 'Tên thành phẩm',          required: true },
-            { key: 'unit',        label: 'Đơn vị (kg, cái, hộp…)',  required: true },
-            { key: 'description', label: 'Mô tả' },
+            { key: 'name', label: 'Tên thành phẩm', required: true },
+            { key: 'unit', label: 'Đơn vị (kg, cái, hộp…)', required: true },
+            { key: 'description', label: t('common', 'description') },
           ]}
           onClose={() => setShowProdModal(false)}
           onSave={async (data) => {
@@ -495,9 +496,9 @@ export default function OwnerProductionPage() {
 
 // ── Simple Form Modal ─────────────────────────────────────────────────────────
 function SimpleFormModal({ title, initial, fields, onClose, onSave }) {
-  const [form, setForm]   = useState(initial || {});
+  const [form, setForm] = useState(initial || {});
   const [saving, setSaving] = useState(false);
-  const [err, setErr]     = useState('');
+  const [err, setErr] = useState('');
 
   const submit = async () => {
     const missing = fields.filter(f => f.required && !form[f.key]);
@@ -533,18 +534,18 @@ function SimpleFormModal({ title, initial, fields, onClose, onSave }) {
 function RecipeModal({ recipe, products, materials, onClose, onSaved }) {
   const [form, setForm] = useState({
     factoryProductId: recipe?.factoryProductId || '',
-    name:             recipe?.name             || '',
-    standardOutputQty:recipe?.standardOutputQty|| '',
-    notes:            recipe?.notes            || '',
+    name: recipe?.name || '',
+    standardOutputQty: recipe?.standardOutputQty || '',
+    notes: recipe?.notes || '',
     items: recipe?.items?.map(i => ({
       factoryMaterialId: i.factoryMaterialId,
-      standardQty:       i.standardQty,
-      unit:              i.unit,
-      sortOrder:         i.sortOrder,
+      standardQty: i.standardQty,
+      unit: i.unit,
+      sortOrder: i.sortOrder,
     })) || [],
   });
   const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState('');
+  const [err, setErr] = useState('');
 
   // Lấy đơn vị của thành phẩm đang chọn (để hiển thị, không còn ô nhập)
   const selectedProduct = products.find(p => p.id === Number(form.factoryProductId));
@@ -569,15 +570,15 @@ function RecipeModal({ recipe, products, materials, onClose, onSaved }) {
     try {
       const payload = {
         ...form,
-        factoryProductId:  Number(form.factoryProductId),
+        factoryProductId: Number(form.factoryProductId),
         standardOutputQty: Number(form.standardOutputQty),
         // outputUnit lấy từ thành phẩm, không nhập tay
         outputUnit: selectedProduct?.unit || '',
         items: form.items.map((it, i) => ({
           factoryMaterialId: Number(it.factoryMaterialId),
-          standardQty:       Number(it.standardQty),
-          unit:              it.unit,
-          sortOrder:         i,
+          standardQty: Number(it.standardQty),
+          unit: it.unit,
+          sortOrder: i,
         })),
       };
       if (recipe) await recipeApi.update(recipe.id, payload);

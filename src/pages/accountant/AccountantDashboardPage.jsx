@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { accountantDashboardApi } from '../../api/accountantApi';
 import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
+import { useLang } from '../../context/LangContext';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 function formatPrice(n) {
@@ -157,6 +158,7 @@ function TopProductRow({ p, i, imgUrl, pct }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AccountantDashboardPage() {
+  const { t } = useLang();
   const navigate = useNavigate();
 
   const [preset,       setPreset]       = useState('today');

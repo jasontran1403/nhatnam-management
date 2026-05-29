@@ -1,6 +1,7 @@
 // src/pages/operator/OperatorProductsPage.jsx
 // FIX #3: Thêm nút Import/Export
 // FIX #4: Thêm mã hàng (itemCode), danh mục con (subCategoryId) vào form sản phẩm
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { operatorApi, uploadApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
@@ -45,20 +46,20 @@ function TierRow({ tier, idx, onChange, onRemove }) {
     <div className="flex gap-2 items-center py-1.5 border-b border-[#F0EBE3] last:border-0">
       <input
         className="flex-1 text-xs border border-[#E8DDD0] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C9A84C]"
-        placeholder="Tên tier (VD: Sỉ 10+)"
+        {...{placeholder: t("operator","tier_name_placeholder")}}
         value={tier.tierName}
         onChange={e => onChange(idx, 'tierName', e.target.value)}
       />
       <input
         className="w-20 text-xs border border-[#E8DDD0] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C9A84C] text-center"
-        placeholder="Từ SL"
+        {...{placeholder: t("operator","from_qty_placeholder")}}
         type="number" min="0"
         value={tier.minQuantity}
         onChange={e => onChange(idx, 'minQuantity', e.target.value)}
       />
       <input
         className="w-24 text-xs border border-[#E8DDD0] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C9A84C] text-right"
-        placeholder="Giá"
+        {...{placeholder: t("common","price")}}
         type="text"
         value={tier.priceDisplay || ''}
         onChange={e => {
@@ -97,7 +98,7 @@ function ProductItemCard({ item, idx, categories, ingredients, existingProducts,
       const url = res.data?.data?.imageUrl || res.data?.data;
       update('imageUrl', url);
     } catch {
-      toast('Lỗi upload ảnh', 'error');
+      toast(t('common','error'), 'error');
     } finally {
       setUploading(false);
     }
@@ -326,7 +327,7 @@ function ProductItemCard({ item, idx, categories, ingredients, existingProducts,
                   : <ImageIcon size={13} className="text-[#8E8878]" />
                 }
                 <span className="text-xs text-[#8E8878]">
-                  {uploading ? 'Đang tải...' : item.imageUrl ? 'Đổi ảnh' : 'Chọn ảnh'}
+                  {uploading ? 'Đang tải...': item.imageUrl ? 'Đổi ảnh' : 'Chọn ảnh'}
                 </span>
               </label>
               {item.imageUrl && (
@@ -373,6 +374,7 @@ function ProductItemCard({ item, idx, categories, ingredients, existingProducts,
 }
 
 export default function OperatorProductsPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [batchType, setBatchType] = useState('CREATE');
   const [note, setNote] = useState('');
@@ -575,7 +577,7 @@ export default function OperatorProductsPage() {
       {/* Submit */}
       <div className="flex items-center gap-3">
         <div className="flex-1 text-sm text-[#8E8878]">
-          {items.length} sản phẩm · Loại phiếu: {batchType === 'CREATE' ? 'Thêm mới' : 'Cập nhật'}
+          {items.length} sản phẩm · Loại phiếu: {batchType === 'CREATE' ? 'Thêm mới': 'Cập nhật'}
         </div>
         <button
           onClick={handleSubmit}

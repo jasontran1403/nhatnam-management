@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
@@ -94,19 +95,20 @@ function parseChangedProductName(message) {
 }
 
 function VatBreakdownDisplay({ breakdown, infoOnly }) {
+  const { t } = useLang();
   if (!breakdown || breakdown.length === 0) return null;
   const totalVat = breakdown.reduce((s, g) => s + g.vatAmt, 0);
   return (
     <div>
       <div className="flex justify-between text-xs text-[#C4B9A8]">
-        <span>VAT {infoOnly ? '(đã trong giá)' : ''}</span>
+        <span>VAT {infoOnly ? t('misc','vat_inclusive') : ''}</span>
         <span>{formatPrice(totalVat)}</span>
       </div>
       <div className="pl-3 mt-0.5 space-y-0.5">
         {breakdown.map(g => (
           <div key={`${g.rate}-${g.mode}`} className="flex justify-between items-center">
             <span className="text-[10px] text-[#C4B9A8]">
-              • {g.rate}% ({g.mode === 'EXCLUSIVE' ? 'ngoài giá' : 'trong giá'})
+              • {g.rate}% ({g.mode === 'EXCLUSIVE' ? t('misc','vat_exclusive') : t('misc','vat_inclusive')})
             </span>
             <span className="text-[10px] text-[#C4B9A8]">
               {g.mode === 'EXCLUSIVE' ? '+' : ''}{formatPrice(g.vatAmt)}
@@ -131,12 +133,13 @@ function CartPanel({
   onRemoveItem, onPriceOverride, onItemDiscountChange, onPromoToggle, onSubmit,
   onSaveDraft, savingDraft,
 }) {
+  const { t } = useLang();
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="px-4 py-3 border-b border-[#F0EBE3] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShoppingBag size={16} className="text-[#C9A84C]" />
-          <span className="font-semibold text-sm text-[#1C1C1E]">Giỏ hàng</span>
+          <span className="font-semibold text-sm text-[#1C1C1E]">{t('order','order')}</span>
           {cartItems.length > 0 && (
             <span className="bg-[#C9A84C] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
               {cartItems.length}
@@ -145,7 +148,7 @@ function CartPanel({
         </div>
         {cartItems.length > 0 && (
           <button onClick={onClearCart} className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-600">
-            <Trash2 size={11} /> Xoá tất cả
+            <Trash2 size={11} /> {t('common','delete')}
           </button>
         )}
       </div>
@@ -616,6 +619,7 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
 
 
 export default function POSPage() {
+  const { t } = useLang();
   const toast = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();

@@ -4,6 +4,7 @@ import { UserCircle, X, Eye, EyeOff, Loader2, Check, Mail, Phone, Lock } from 'l
 import api from '../../api/axios';
 import { useToast } from './Toast';
 import { useAuth } from '../../context/AuthContext';
+import { useLang } from '../../context/LangContext';
 import { useNavigate } from 'react-router-dom';
 
 function inputCls(hasErr) {
@@ -13,22 +14,21 @@ function inputCls(hasErr) {
             : 'border-black/10 focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20'}`;
 }
 
-export default function ProfileButton() {
+export default function ProfileButton({ compact = false }) {
     const navigate = useNavigate();
     const [redirecting, setRedirecting] = useState(false);
     const toast = useToast();
     const { user: authUser, logout, updateUser } = useAuth();
+    const { t } = useLang();
     const [open, setOpen] = useState(false);
-    const [tab, setTab] = useState('info'); // 'info' | 'password'
+    const [tab, setTab] = useState('info');
 
-    // Profile info state
     const [profile, setProfile] = useState(null);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [infoForm, setInfoForm] = useState({ fullName: '', email: '', phoneNumber: '' });
     const [infoErr, setInfoErr] = useState({});
     const [savingInfo, setSavingInfo] = useState(false);
 
-    // Password state
     const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
     const [pwdErr, setPwdErr] = useState({});
     const [savingPwd, setSavingPwd] = useState(false);
@@ -57,11 +57,10 @@ export default function ProfileButton() {
         loadProfile();
     };
 
-    // ── Cập nhật thông tin ────────────────────────────────────────────────────
     const handleSaveInfo = async () => {
         const errs = {};
         if (infoForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(infoForm.email))
-            errs.email = 'Email không hợp lệ';
+            errs.email = t('misc', 'email_invalid');
         setInfoErr(errs);
         if (Object.keys(errs).length) return;
 
@@ -73,28 +72,27 @@ export default function ProfileButton() {
                 phoneNumber: infoForm.phoneNumber.trim() || null,
             });
             if (res.data?.success === false) {
-                toast(res.data?.message || 'Lỗi cập nhật', 'error');
+                toast(res.data?.message || t('profile', 'update_info_error'), 'error');
                 return;
             }
-            toast('Cập nhật thành công', 'success');
+            toast(t('common', 'update') + ' ' + t('common', 'success').toLowerCase(), 'success');
             const updated = res.data?.data;
             setProfile(updated);
-            updateUser({ fullName: updated?.fullName, email: updated?.email, phoneNumber: updated?.phoneNumber }); // ← thêm dòng này
+            updateUser({ fullName: updated?.fullName, email: updated?.email, phoneNumber: updated?.phoneNumber });
         } catch (e) {
-            toast(e?.response?.data?.message || 'Lỗi cập nhật', 'error');
+            toast(e?.response?.data?.message || t('profile', 'update_info_error'), 'error');
         } finally {
             setSavingInfo(false);
         }
     };
 
-    // ── Đổi mật khẩu ─────────────────────────────────────────────────────────
     const handleChangePassword = async () => {
         const errs = {};
-        if (!pwdForm.currentPassword) errs.currentPassword = 'Bắt buộc';
+        if (!pwdForm.currentPassword) errs.currentPassword = t('common', 'required');
         if (!pwdForm.newPassword || pwdForm.newPassword.length < 6)
-            errs.newPassword = 'Tối thiểu 6 ký tự';
+            errs.newPassword = t('auth', 'password_min_length');
         if (pwdForm.newPassword !== pwdForm.confirmPassword)
-            errs.confirmPassword = 'Mật khẩu xác nhận không khớp';
+            errs.confirmPassword = t('auth', 'password_mismatch');
         setPwdErr(errs);
         if (Object.keys(errs).length) return;
 
@@ -105,50 +103,52 @@ export default function ProfileButton() {
                 newPassword: pwdForm.newPassword,
             });
             if (res.data?.success === false) {
-                toast(res.data?.message || 'Lỗi đổi mật khẩu', 'error');
+                toast(res.data?.message || t('auth', 'change_password_error'), 'error');
                 return;
             }
-            toast('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.', 'success');
-            setRedirecting(true); // ← thêm
+            toast(t('auth', 'change_password_success_relogin'), 'success');
+            setRedirecting(true);
             setTimeout(() => { setOpen(false); logout(); navigate('/login'); }, 1500);
         } catch (e) {
-            toast(e?.response?.data?.message || 'Lỗi đổi mật khẩu', 'error');
+            toast(e?.response?.data?.message || t('auth', 'change_password_error'), 'error');
         } finally {
             setSavingPwd(false);
         }
     };
 
-    const ROLE_LABEL = {
-        ADMIN: 'Quản trị viên', OWNER: 'Chủ sở hữu',
-        ACCOUNTANT: 'Kế toán', SUPER_ACCOUNTANT: 'Kế toán trưởng',
-        WAREHOUSE: 'Nhân viên kho', SUPER_WAREHOUSE: 'Trưởng kho',
-        SELLER: 'Nhân viên kinh doanh', SUPER_SELLER: 'Trưởng phòng kinh doanh',
-        OPERATOR: 'Nhân viên nhập liệu', SHIPPER: 'Giao hàng',
-        FACTORY_WORKER: 'Nhân viên Xưởng',
-    };
+    const displayRole = t('roles', (authUser?.role || '').toLowerCase()) || authUser?.role || '';
 
-    const displayRole = ROLE_LABEL[authUser?.role] || authUser?.role || '';
+    const tabs = [
+        { key: 'info',     label: t('profile', 'info_tab'),    icon: UserCircle },
+        { key: 'password', label: t('profile', 'password_tab'), icon: Lock },
+    ];
+
+    const pwdFields = [
+        { key: 'currentPassword', label: t('auth', 'current_password'), showKey: 'current' },
+        { key: 'newPassword',     label: t('auth', 'new_password'),     showKey: 'new',     hint: t('auth', 'password_min_length') },
+        { key: 'confirmPassword', label: t('auth', 'confirm_password'), showKey: 'confirm' },
+    ];
 
     return (
         <>
-            {/* Nút trigger */}
             <button
                 onClick={handleOpen}
                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-[#FAF7F2] transition group"
-                title="Hồ sơ cá nhân"
+                title={t('profile', 'my_profile')}
             >
                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                     {(authUser?.fullName || authUser?.username || '?')[0]?.toUpperCase()}
                 </div>
-                <div className="hidden sm:block text-left">
-                    <p className="text-xs font-semibold text-[#1C1C1E] leading-tight truncate max-w-[120px]">
-                        {authUser?.fullName || authUser?.username}
-                    </p>
-                    <p className="text-[10px] text-[#8E8878] leading-tight">{displayRole}</p>
-                </div>
+                {!compact && (
+                    <div className="hidden sm:block text-left">
+                        <p className="text-xs font-semibold text-[#1C1C1E] leading-tight truncate max-w-[120px]">
+                            {authUser?.fullName || authUser?.username}
+                        </p>
+                        <p className="text-[10px] text-[#8E8878] leading-tight">{displayRole}</p>
+                    </div>
+                )}
             </button>
 
-            {/* Modal */}
             {open && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
@@ -156,7 +156,7 @@ export default function ProfileButton() {
                         {redirecting && (
                             <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 rounded-2xl">
                                 <Loader2 size={28} className="animate-spin text-[#C9A84C]" />
-                                <p className="text-sm font-semibold text-[#1C1C1E]">Đang đăng xuất...</p>
+                                <p className="text-sm font-semibold text-[#1C1C1E]">{t('common', 'loading')}</p>
                             </div>
                         )}
 
@@ -178,10 +178,7 @@ export default function ProfileButton() {
 
                         {/* Tabs */}
                         <div className="flex border-b border-black/5">
-                            {[
-                                { key: 'info', label: 'Thông tin', icon: UserCircle },
-                                { key: 'password', label: 'Mật khẩu', icon: Lock },
-                            ].map(({ key, label, icon: Icon }) => (
+                            {tabs.map(({ key, label, icon: Icon }) => (
                                 <button key={key} onClick={() => setTab(key)}
                                     className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition border-b-2
                     ${tab === key
@@ -192,7 +189,7 @@ export default function ProfileButton() {
                             ))}
                         </div>
 
-                        {/* Tab: Thông tin */}
+                        {/* Tab: Info */}
                         {tab === 'info' && (
                             <div className="p-5 space-y-4">
                                 {loadingProfile ? (
@@ -201,21 +198,18 @@ export default function ProfileButton() {
                                     </div>
                                 ) : (
                                     <>
-                                        {/* Tên hiển thị */}
                                         <div>
                                             <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                <UserCircle size={13} className="text-[#C9A84C]" /> Tên hiển thị
+                                                <UserCircle size={13} className="text-[#C9A84C]" /> {t('profile', 'full_name')}
                                             </label>
                                             <input
                                                 type="text"
                                                 value={infoForm.fullName}
                                                 onChange={e => setInfoForm(p => ({ ...p, fullName: e.target.value }))}
-                                                placeholder="Nguyễn Văn A"
+                                                placeholder={t('placeholder', 'name_example')}
                                                 className={inputCls(false)}
                                             />
                                         </div>
-
-                                        {/* Email */}
                                         <div>
                                             <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
                                                 <Mail size={13} className="text-[#C9A84C]" /> Email
@@ -229,11 +223,9 @@ export default function ProfileButton() {
                                             />
                                             {infoErr.email && <p className="text-xs text-red-500 mt-1">{infoErr.email}</p>}
                                         </div>
-
-                                        {/* Số điện thoại */}
                                         <div>
                                             <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                <Phone size={13} className="text-[#C9A84C]" /> Số điện thoại
+                                                <Phone size={13} className="text-[#C9A84C]" /> {t('customer', 'phone')}
                                             </label>
                                             <input
                                                 type="tel"
@@ -243,29 +235,24 @@ export default function ProfileButton() {
                                                 className={inputCls(false)}
                                             />
                                         </div>
-
                                         <button
                                             onClick={handleSaveInfo}
                                             disabled={savingInfo}
                                             className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2"
                                         >
                                             {savingInfo
-                                                ? <><Loader2 size={16} className="animate-spin" /> Đang lưu...</>
-                                                : <><Check size={16} /> Lưu thay đổi</>}
+                                                ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</>
+                                                : <><Check size={16} /> {t('common', 'save_changes')}</>}
                                         </button>
                                     </>
                                 )}
                             </div>
                         )}
 
-                        {/* Tab: Mật khẩu */}
+                        {/* Tab: Password */}
                         {tab === 'password' && (
                             <div className="p-5 space-y-4">
-                                {[
-                                    { key: 'currentPassword', label: 'Mật khẩu hiện tại', showKey: 'current' },
-                                    { key: 'newPassword', label: 'Mật khẩu mới', showKey: 'new', hint: 'Tối thiểu 6 ký tự' },
-                                    { key: 'confirmPassword', label: 'Xác nhận mật khẩu mới', showKey: 'confirm' },
-                                ].map(({ key, label, showKey, hint }) => (
+                                {pwdFields.map(({ key, label, showKey, hint }) => (
                                     <div key={key}>
                                         <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">{label}</label>
                                         <div className="relative">
@@ -286,19 +273,17 @@ export default function ProfileButton() {
                                         {hint && !pwdErr[key] && <p className="text-xs text-[#8E8878] mt-1">{hint}</p>}
                                     </div>
                                 ))}
-
                                 <button
                                     onClick={handleChangePassword}
                                     disabled={savingPwd}
                                     className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {savingPwd
-                                        ? <><Loader2 size={16} className="animate-spin" /> Đang đổi...</>
-                                        : <><Lock size={16} /> Đổi mật khẩu</>}
+                                        ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</>
+                                        : <><Lock size={16} /> {t('auth', 'change_password')}</>}
                                 </button>
-
                                 <p className="text-xs text-[#8E8878] text-center">
-                                    Sau khi đổi mật khẩu, bạn sẽ được đăng xuất và cần đăng nhập lại.
+                                    {t('auth', 'change_password_success_relogin')}
                                 </p>
                             </div>
                         )}

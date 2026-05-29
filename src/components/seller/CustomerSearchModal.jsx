@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useRef } from 'react';
 import {
   Search, X, UserCheck, Plus, MapPin, Phone, User,
@@ -63,7 +64,7 @@ function CustomerCodeInput({ value, onChange, error }) {
   return (
     <div>
       <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">
-        Mã khách hàng<span className="text-red-400 ml-0.5">*</span>
+        {t('customer','customer')}<span className="text-red-400 ml-0.5">*</span>
       </label>
       <div className="relative">
         <input
@@ -345,11 +346,11 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     let ok = true;
 
     // Mã KH bắt buộc với mọi loại
-    if (!form.customerCode.trim()) { errs.customerCode = 'Bắt buộc'; ok = false; }
+    if (!form.customerCode.trim()) { errs.customerCode = t('common','required'); ok = false; }
 
     if (isCompany) {
       // COMPANY bắt buộc: tên công ty, MST, email
-      if (!form.companyName.trim()) { errs.companyName = 'Bắt buộc'; ok = false; }
+      if (!form.companyName.trim()) { errs.companyName = t('common','required'); ok = false; }
       if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
 
       // Receiver là tuỳ chọn cho cả khách lẻ và công ty
@@ -443,8 +444,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
       <div className="px-4 py-3 border-b border-[#F0EBE3] shrink-0">
         <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
           {[
-            ['RETAIL', <User size={11} />, 'Cá nhân'],
-            ['COMPANY', <Building2 size={11} />, 'Công ty'],
+            ['RETAIL', <User size={11} />, t('customer','individual')],
+            ['COMPANY', <Building2 size={11} />, t('customer','company')],
           ].map(([type, icon, label], i) => (
             <button key={type} type="button"
               onClick={() => { setCustomerType(type); setErrors({}); setReceiverErrors([{}]); }}
@@ -869,6 +870,7 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
 
 // ── Main Modal ────────────────────────────────────────────────────
 export default function CustomerSearchModal({ open, onClose, onSelect, selected }) {
+  const { t } = useLang();
   const toast = useToast();
   const [step, setStep] = useState('search');
   const [query, setQuery] = useState('');

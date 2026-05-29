@@ -1,5 +1,6 @@
 // src/pages/shared/IncomeCreatePage.jsx
 // Dùng chung cho ACCOUNTANT và SUPER_ACCOUNTANT
+import { useLang } from '../../context/LangContext';
 import { useState, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -15,28 +16,31 @@ function parseVND(s) {
   return Number(String(s).replace(/[^0-9]/g, '')) || 0;
 }
 
-const STATUS_CFG = {
-  CONFIRMED: { label: 'Đã xác nhận', cls: 'bg-emerald-100 text-emerald-700' },
-  APPROVED:  { label: 'Đã duyệt',    cls: 'bg-emerald-100 text-emerald-700' },
-  PENDING:   { label: 'Chờ duyệt',   cls: 'bg-amber-100 text-amber-700'    },
-  REJECTED:  { label: 'Từ chối',     cls: 'bg-red-100 text-red-600'         },
-};
+
 
 export default function IncomeCreatePage() {
+  const { t } = useLang();
   const toast = useToast();
 
-  const [payerName, setPayerName]     = useState('');
-  const [reason, setReason]           = useState('');
-  const [items, setItems]             = useState([{ id: 1, itemName: '', amount: '', note: '' }]);
-  const [images, setImages]           = useState([]);
-  const [submitting, setSubmitting]   = useState(false);
-  const [vouchers, setVouchers]       = useState([]);
+  const STATUS_CFG = {
+    CONFIRMED: { label: t('status', 'confirmed'), cls: 'bg-emerald-100 text-emerald-700' },
+    APPROVED: { label: t('status', 'approved'), cls: 'bg-emerald-100 text-emerald-700' },
+    PENDING: { label: t('status', 'pending'), cls: 'bg-amber-100 text-amber-700' },
+    REJECTED: { label: t('status', 'rejected_short'), cls: 'bg-red-100 text-red-600' },
+  };
+
+  const [payerName, setPayerName] = useState('');
+  const [reason, setReason] = useState('');
+  const [items, setItems] = useState([{ id: 1, itemName: '', amount: '', note: '' }]);
+  const [images, setImages] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [vouchers, setVouchers] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
-  const [listLoaded, setListLoaded]   = useState(false);
+  const [listLoaded, setListLoaded] = useState(false);
   const [detailVoucher, setDetailVoucher] = useState(null);
   const fileRef = useRef();
 
-  const addItem    = () => setItems(prev => [...prev, { id: Date.now(), itemName: '', amount: '', note: '' }]);
+  const addItem = () => setItems(prev => [...prev, { id: Date.now(), itemName: '', amount: '', note: '' }]);
   const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
   const updateItem = (id, key, val) =>
     setItems(prev => prev.map(i => i.id === id ? { ...i, [key]: val } : i));
@@ -58,16 +62,16 @@ export default function IncomeCreatePage() {
           prev.map(img => img.id === tmp.id ? { ...img, uploading: false, uploadedUrl: uploaded } : img));
       } catch (err) {
         setImages(prev => prev.filter(img => img.id !== tmp.id));
-        toast('Lỗi upload ảnh: ' + (err?.response?.data?.message || err?.message || 'Unknown'), 'error');
+        toast(t('common', 'error') + ': ' + (err?.response?.data?.message || err?.message || 'Unknown'), 'error');
       }
     }
     e.target.value = '';
   };
 
   const handleSubmit = async () => {
-    if (!reason.trim()) { toast('Lý do thu là bắt buộc', 'error'); return; }
+    if (!reason.trim()) { toast(t('voucher', 'income_reason_required'), 'error'); return; }
     const validItems = items.filter(i => i.itemName.trim() && parseVND(i.amount) > 0);
-    if (validItems.length === 0) { toast('Phải có ít nhất 1 khoản thu hợp lệ', 'error'); return; }
+    if (validItems.length === 0) { toast(t('voucher', 'min_one_income'), 'error'); return; }
     const uploadingCount = images.filter(img => img.uploading).length;
     if (uploadingCount > 0) { toast(`Đang tải ${uploadingCount} ảnh, vui lòng chờ...`, 'warning'); return; }
     const uploadedUrls = images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl);

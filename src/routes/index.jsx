@@ -1,13 +1,15 @@
 /**
  * routes/index.jsx — tất cả routes tập trung một chỗ.
+ * Nav labels được dịch live qua useLang() + buildNav().
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from '../components/common/PrivateRoute';
 import AppLayout from '../components/layout/AppLayout';
+import { useLang } from '../context/LangContext';
 import {
-  adminNav, ownerNav, hrNav, sellerNav, warehouseNav, superWarehouseNav,
-  accountantNav, superAccountantNav, operatorNav, factoryWorkerNav,
-  ROLE_DEFAULT_PATH,
+  adminNavRaw, ownerNavRaw, hrNavRaw, sellerNavRaw, warehouseNavRaw,
+  superWarehouseNavRaw, accountantNavRaw, superAccountantNavRaw,
+  operatorNavRaw, factoryWorkerNavRaw, buildNav, ROLE_DEFAULT_PATH,
 } from '../components/layout/navConfigs';
 
 // Auth
@@ -74,6 +76,17 @@ function RootRedirect() {
   return <Navigate to={path} replace />;
 }
 
+// ── AppLayout wrapper that auto-translates nav ────────────────────────────────
+function TranslatedLayout({ rawNav, allowedRoles, children, ...rest }) {
+  const { t } = useLang();
+  const navItems = buildNav(rawNav, t);
+  return (
+    <PrivateRoute allowedRoles={allowedRoles}>
+      <AppLayout navItems={navItems} {...rest} />
+    </PrivateRoute>
+  );
+}
+
 // ── All routes ────────────────────────────────────────────────────────────────
 export default function AppRoutes() {
   return (
@@ -81,17 +94,17 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<RootRedirect />} />
 
-      {/* ── HR ───────────────────────────────────────────────────────────── */}
+      {/* ── HR */}
       <Route path="/hr"
-        element={<PrivateRoute allowedRoles={['HR']}><AppLayout navItems={hrNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={hrNavRaw} allowedRoles={['HR']} />}>
         <Route index element={<Navigate to="/hr/manage" replace />} />
         <Route path="manage"   element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
       </Route>
 
-      {/* ── SELLER ───────────────────────────────────────────────────────── */}
+      {/* ── SELLER */}
       <Route path="/seller"
-        element={<PrivateRoute allowedRoles={['ADMIN','OWNER','SELLER','SUPER_SELLER']}><AppLayout navItems={sellerNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={sellerNavRaw} allowedRoles={['ADMIN','OWNER','SELLER','SUPER_SELLER']} />}>
         <Route index element={<Navigate to="/seller/pos" replace />} />
         <Route path="pos"           element={<POSPage />} />
         <Route path="orders"        element={<OrdersPage />} />
@@ -100,9 +113,9 @@ export default function AppRoutes() {
         <Route path="orders-manage" element={<AccountantOrdersPage />} />
       </Route>
 
-      {/* ── OWNER ────────────────────────────────────────────────────────── */}
+      {/* ── OWNER */}
       <Route path="/owner"
-        element={<PrivateRoute allowedRoles={['OWNER']}><AppLayout navItems={ownerNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={ownerNavRaw} allowedRoles={['OWNER']} />}>
         <Route index element={<Navigate to="/owner/dashboard" replace />} />
         <Route path="dashboard"            element={<AdminDashboard />} />
         <Route path="pos"                  element={<POSPage />} />
@@ -122,9 +135,9 @@ export default function AppRoutes() {
         <Route path="production"           element={<OwnerProductionPage />} />
       </Route>
 
-      {/* ── ADMIN ────────────────────────────────────────────────────────── */}
+      {/* ── ADMIN */}
       <Route path="/admin"
-        element={<PrivateRoute allowedRoles={['ADMIN']}><AppLayout navItems={adminNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={adminNavRaw} allowedRoles={['ADMIN']} />}>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard"            element={<AdminDashboard />} />
         <Route path="orders"               element={<AdminOrders />} />
@@ -142,9 +155,9 @@ export default function AppRoutes() {
         <Route path="production"           element={<OwnerProductionPage />} />
       </Route>
 
-      {/* ── WAREHOUSE ────────────────────────────────────────────────────── */}
+      {/* ── WAREHOUSE */}
       <Route path="/warehouse"
-        element={<PrivateRoute allowedRoles={['ADMIN','WAREHOUSE']}><AppLayout navItems={warehouseNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={warehouseNavRaw} allowedRoles={['ADMIN','WAREHOUSE']} />}>
         <Route index element={<Navigate to="/warehouse/management" replace />} />
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
@@ -153,9 +166,9 @@ export default function AppRoutes() {
         <Route path="expenses"   element={<ExpenseCreatePage />} />
       </Route>
 
-      {/* ── SUPER WAREHOUSE ──────────────────────────────────────────────── */}
+      {/* ── SUPER WAREHOUSE */}
       <Route path="/super-warehouse"
-        element={<PrivateRoute allowedRoles={['SUPER_WAREHOUSE']}><AppLayout navItems={superWarehouseNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={superWarehouseNavRaw} allowedRoles={['SUPER_WAREHOUSE']} />}>
         <Route index element={<Navigate to="/super-warehouse/management" replace />} />
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
@@ -164,9 +177,9 @@ export default function AppRoutes() {
         <Route path="expenses"   element={<ExpenseCreatePage />} />
       </Route>
 
-      {/* ── ACCOUNTANT ───────────────────────────────────────────────────── */}
+      {/* ── ACCOUNTANT */}
       <Route path="/accountant"
-        element={<PrivateRoute allowedRoles={['ADMIN','OWNER','ACCOUNTANT','SUPER_ACCOUNTANT']}><AppLayout navItems={accountantNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={accountantNavRaw} allowedRoles={['ADMIN','OWNER','ACCOUNTANT','SUPER_ACCOUNTANT']} />}>
         <Route index element={<Navigate to="/accountant/dashboard" replace />} />
         <Route path="dashboard"   element={<AccountantDashboardPage />} />
         <Route path="orders"      element={<AccountantOrdersPage />} />
@@ -176,9 +189,9 @@ export default function AppRoutes() {
         <Route path="incomes"     element={<IncomeCreatePage />} />
       </Route>
 
-      {/* ── SUPER ACCOUNTANT ─────────────────────────────────────────────── */}
+      {/* ── SUPER ACCOUNTANT */}
       <Route path="/super-accountant"
-        element={<PrivateRoute allowedRoles={['SUPER_ACCOUNTANT']}><AppLayout navItems={superAccountantNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={superAccountantNavRaw} allowedRoles={['SUPER_ACCOUNTANT']} />}>
         <Route index element={<Navigate to="/super-accountant/dashboard" replace />} />
         <Route path="dashboard"          element={<AccountantDashboardPage />} />
         <Route path="history"            element={<AccountantOrdersPage />} />
@@ -188,9 +201,9 @@ export default function AppRoutes() {
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
       </Route>
 
-      {/* ── OPERATOR ─────────────────────────────────────────────────────── */}
+      {/* ── OPERATOR */}
       <Route path="/operator"
-        element={<PrivateRoute allowedRoles={['OPERATOR','ADMIN','OWNER']}><AppLayout navItems={operatorNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={operatorNavRaw} allowedRoles={['OPERATOR','ADMIN','OWNER']} />}>
         <Route index element={<Navigate to="/operator/categories" replace />} />
         <Route path="categories"  element={<OperatorCategoriesPage />} />
         <Route path="ingredients" element={<OperatorIngredientsPage />} />
@@ -199,9 +212,9 @@ export default function AppRoutes() {
         <Route path="landingpage" element={<OperatorLandingpagePage />} />
       </Route>
 
-      {/* ── FACTORY WORKER ───────────────────────────────────────────────── */}
+      {/* ── FACTORY WORKER */}
       <Route path="/factory"
-        element={<PrivateRoute allowedRoles={['FACTORY_WORKER']}><AppLayout navItems={factoryWorkerNav} /></PrivateRoute>}>
+        element={<TranslatedLayout rawNav={factoryWorkerNavRaw} allowedRoles={['FACTORY_WORKER']} />}>
         <Route index element={<Navigate to="/factory/dashboard" replace />} />
         <Route path="dashboard" element={<FactoryDashboardPage />} />
         <Route path="batches"   element={<FactoryCreateBatchPage />} />

@@ -1,3 +1,4 @@
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -6,6 +7,7 @@ import { useToast } from '../../components/common/Toast';
 import { Plus, Edit2, Trash2, RefreshCw, Layers, X, Check } from 'lucide-react';
 
 export default function CategoriesPage() {
+  const { t } = useLang();
   const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -18,7 +20,7 @@ export default function CategoriesPage() {
     setLoading(true);
     categoryApi.getAll()
       .then((r) => setCategories(r.data?.data || []))
-      .catch(() => toast('Không thể tải danh mục', 'error'))
+      .catch(() => toast(t('common', 'error_retry'), 'error'))
       .finally(() => setLoading(false));
   };
 
@@ -34,15 +36,15 @@ export default function CategoriesPage() {
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) { toast('Vui lòng nhập tên danh mục', 'warning'); return; }
+    if (!formData.name.trim()) { toast(t('category','name_required'), 'warning'); return; }
     setSaving(true);
     try {
       if (editModal.cat) {
         await categoryApi.update(editModal.cat.id, formData);
-        toast('Cập nhật danh mục thành công', 'success');
+        toast(t('category','update_success'), 'success');
       } else {
         await categoryApi.create(formData);
-        toast('Tạo danh mục thành công', 'success');
+        toast(t('category','create_success'), 'success');
       }
       setEditModal({ open: false, cat: null });
       fetchAll();
@@ -52,11 +54,11 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (cat) => {
-    if (!window.confirm(`Xoá danh mục "${cat.name}"?`)) return;
+    if (!window.confirm(`${t('common','delete')} "${cat.name}"?`)) return;
     setDeletingId(cat.id);
     try {
       await categoryApi.delete(cat.id);
-      toast('Đã xoá danh mục', 'success');
+      toast(t('common','success'), 'success');
       fetchAll();
     } catch (err) {
       toast(err?.response?.data?.message || 'Lỗi khi xoá', 'error');
@@ -188,7 +190,7 @@ export default function CategoriesPage() {
                   ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   : <Check size={15} />
                 }
-                {saving ? 'Đang lưu...' : (editModal.cat ? 'Cập nhật' : 'Tạo danh mục')}
+                {saving ? 'Đang lưu...' : (editModal.cat ? 'Cập nhật': 'Tạo danh mục')}
               </button>
             </div>
           </div>

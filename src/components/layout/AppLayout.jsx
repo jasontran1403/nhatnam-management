@@ -1,26 +1,25 @@
 /**
  * AppLayout — layout dùng chung cho tất cả roles.
  * Truyền vào `navItems` để mỗi role có menu riêng.
- * Thay thế: AdminLayout, OwnerLayout, SellerLayout, WarehouseLayout,
- *           AccountantLayout, SuperAccountantLayout, SuperWarehouseLayout,
- *           OperatorLayout, FactoryWorkerLayout
  */
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LogOut, Menu, X, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useLang } from '../../context/LangContext';
 import NotificationBell from '../common/NotificationBell';
 import ProfileButton from '../common/ProfileButton';
+import LangToggle from '../common/LangToggle';
 
 export default function AppLayout({ navItems = [], groups = null }) {
   const { user, token, logout } = useAuth();
+  const { t } = useLang();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const close = () => setOpen(false);
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  // groups: [{label, items}] — nếu muốn phân nhóm menu
   const menuGroups = groups || [{ label: 'Menu', items: navItems }];
 
   return (
@@ -77,16 +76,12 @@ export default function AppLayout({ navItems = [], groups = null }) {
           ))}
         </nav>
 
-        {/* User + logout */}
+        {/* User + logout + lang toggle */}
         <div className="px-3 py-3 border-t border-white/10 flex-shrink-0">
-          <div className="px-3 py-2 mb-1">
-            <p className="text-white/70 text-xs font-medium truncate">{user?.fullName}</p>
-            <p className="text-[#8E8878] text-[10px] truncate">{user?.role}</p>
-          </div>
           <button onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-[#8E8878] hover:text-red-400 hover:bg-red-500/10 transition-all">
             <LogOut size={16} />
-            <span className="text-sm font-medium">Đăng xuất</span>
+            <span className="text-sm font-medium">{t('profile', 'logout')}</span>
           </button>
         </div>
       </aside>
@@ -107,6 +102,8 @@ export default function AppLayout({ navItems = [], groups = null }) {
 
         {/* Desktop topbar */}
         <div className="hidden lg:flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0 gap-1">
+          <LangToggle variant="ghost" />
+          <div className="w-px h-5 bg-black/10 mx-1" />
           <ProfileButton />
           <div className="w-px h-5 bg-black/10 mx-1" />
           <NotificationBell role={user?.role} token={token} />

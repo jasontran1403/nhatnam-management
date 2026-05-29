@@ -1,4 +1,5 @@
 // src/pages/admin/AdminCustomers.jsx
+import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -46,7 +47,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
     try {
       const res = await api.get(`${apiPrefix}/customers/${customerId}/receiver-infos`);
       setReceivers(res.data?.data || []);
-    } catch { toast('Không thể tải địa chỉ nhận hàng', 'error'); }
+    } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [customerId, apiPrefix]);
 
@@ -55,32 +56,32 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
   const resetForm = () => setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
 
   const handleAdd = async () => {
-    if (!form.receiverAddress.trim()) { toast('Vui lòng nhập địa chỉ nhận hàng', 'error'); return; }
+    if (!form.receiverAddress.trim()) { toast(t('delivery','shipping_address_req'), 'error'); return; }
     setSaving(true);
     try {
       await api.post(`${apiPrefix}/customers/${customerId}/receiver-infos`, form);
-      toast('Đã thêm địa chỉ nhận hàng', 'success');
+      toast(t('common', 'success'), 'success');
       setAdding(false); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi thêm', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
     finally { setSaving(false); }
   };
 
   const handleUpdate = async (id) => {
-    if (!form.receiverAddress.trim()) { toast('Vui lòng nhập địa chỉ nhận hàng', 'error'); return; }
+    if (!form.receiverAddress.trim()) { toast(t('delivery','shipping_address_req'), 'error'); return; }
     setSaving(true);
     try {
       await api.put(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}`, form);
-      toast('Đã cập nhật', 'success');
+      toast(t('common','success'), 'success');
       setEditingId(null); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi cập nhật', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Xóa địa chỉ này?')) return;
+    if (!window.confirm(t('misc','confirm_delete'))) return;
     try {
       await api.delete(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}`);
-      toast('Đã xóa', 'success'); load();
+      toast(t('common','success'), 'success'); load();
     } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi xóa', 'error'); }
   };
 
@@ -88,7 +89,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
     try {
       await api.patch(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}/set-default`);
       toast('Đã đặt làm mặc định', 'success'); load();
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
   };
 
   const startEdit = (r) => {
@@ -418,6 +419,7 @@ function SellerFilterDropdown({ value, onChange }) {
 
 // ── Create / Edit Customer Modal ──────────────────────────────────────────────
 function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
+  const { t } = useLang();
   const isEdit = !!customer;
   const [form, setForm] = useState({
     name: '', phone: '', email: '', customerType: 'RETAIL',
@@ -496,7 +498,7 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         <div className="flex justify-end gap-2">
           <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
           <PrimaryButton onClick={handleSave} loading={saving}>
-            {isEdit ? 'Lưu thay đổi' : 'Tạo khách hàng'}
+            {isEdit ? 'Lưu thay đổi': t('customer','create_customer')}
           </PrimaryButton>
         </div>
       }>
@@ -588,6 +590,7 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AdminCustomers() {
+  const { t } = useLang();
   const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
   const debouncedQ = useDebounce(filters.q, 600);
   const [page, setPage] = useState(0);
@@ -823,7 +826,7 @@ export default function AdminCustomers() {
                         <td className="px-4 py-3"><p className="text-[#1C1C1E]">{c.phone}</p></td>
                         <td className="px-4 py-3">
                           <Badge className={isCompany ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}>
-                            {isCompany ? 'Công ty' : 'Cá nhân'}
+                            {isCompany ? 'Công ty': t('customer','individual')}
                           </Badge>
                           {c.pricingType === 'WHOLESALE_PRICE'
                             ? <Badge className="bg-purple-50 text-purple-700 ring-purple-200 mt-0.5">Sỉ</Badge>
@@ -939,7 +942,7 @@ export default function AdminCustomers() {
                       <button onClick={e => openDebtDays(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-50 text-orange-600">CN</button>
                       <button onClick={() => setActiveConfirm({ mode: 'single', lock: c.isActive, customer: c })}
                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${c.isActive ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {c.isActive ? 'Khóa' : 'Mở'}
+                        {c.isActive ? 'Khóa': 'Mở'}
                       </button>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 // src/components/common/VoucherDetailModal.jsx
 // Component xem chi tiết phiếu chi / phiếu thu — dùng chung cho tất cả role.
+import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Receipt, TrendingUp, User, Building2, Calendar, Hash } from 'lucide-react';
 
@@ -22,12 +23,14 @@ function formatDateTime(ts) {
   }).format(new Date(ts));
 }
 
-const STATUS_CFG = {
-  CONFIRMED: { label: 'Đã xác nhận', cls: 'bg-emerald-100 text-emerald-700' },
-  APPROVED:  { label: 'Đã duyệt',    cls: 'bg-emerald-100 text-emerald-700' },
-  PENDING:   { label: 'Chờ duyệt',   cls: 'bg-amber-100 text-amber-700'    },
-  REJECTED:  { label: 'Từ chối',     cls: 'bg-red-100 text-red-600'         },
-};
+function getStatusCfg(t) {
+  return {
+    CONFIRMED: { label: t('status', 'confirmed'),  cls: 'bg-emerald-100 text-emerald-700' },
+    APPROVED:  { label: t('status', 'approved'),   cls: 'bg-emerald-100 text-emerald-700' },
+    PENDING:   { label: t('status', 'pending'),    cls: 'bg-amber-100 text-amber-700'    },
+    REJECTED:  { label: t('status', 'rejected'),   cls: 'bg-red-100 text-red-600'         },
+  };
+}
 
 // ── Lightbox nhỏ gọn ────────────────────────────────────────────────────────
 function Lightbox({ images, index, onClose }) {
@@ -106,6 +109,7 @@ function Lightbox({ images, index, onClose }) {
  *   onClose  — callback đóng modal
  */
 export default function VoucherDetailModal({ voucher, type = 'expense', onClose }) {
+  const { t } = useLang();
   const [lightboxIdx, setLightboxIdx] = useState(null);
 
   useEffect(() => {
@@ -117,6 +121,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
   if (!voucher) return null;
 
   const isExpense = type === 'expense';
+  const STATUS_CFG = getStatusCfg(t);
   const status    = STATUS_CFG[voucher.status] || STATUS_CFG.CONFIRMED;
   const images    = voucher.imageUrls || [];
   const items     = voucher.items     || [];
@@ -141,7 +146,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
                 : <TrendingUp size={18} className="text-emerald-600" />}
               <div>
                 <p className="font-bold text-[#1C1C1E] text-sm">
-                  {isExpense ? 'Phiếu chi' : 'Phiếu thu'}
+                  {isExpense ? t('voucher', 'expense_title') : t('voucher', 'income_title')}
                 </p>
                 <p className="font-mono text-xs text-[#C9A84C]">{voucher.voucherCode}</p>
               </div>
@@ -167,7 +172,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
               <div className="flex items-start gap-2">
                 <User size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-[#8E8878]">Người lập</p>
+                  <p className="text-xs text-[#8E8878]">{t('voucher', 'creator_label')}</p>
                   <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.createdByName || '—'}</p>
                 </div>
               </div>
@@ -176,7 +181,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
                 <div className="flex items-start gap-2">
                   <User size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#8E8878]">Người yêu cầu</p>
+                    <p className="text-xs text-[#8E8878]">{t('voucher', 'requester_label')}</p>
                     <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.requestedByName}</p>
                   </div>
                 </div>
@@ -186,7 +191,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
                 <div className="flex items-start gap-2">
                   <User size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#8E8878]">Người nộp tiền</p>
+                    <p className="text-xs text-[#8E8878]">{t('voucher', 'payer_label')}</p>
                     <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.payerName}</p>
                   </div>
                 </div>
@@ -196,7 +201,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
                 <div className="flex items-start gap-2">
                   <Building2 size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#8E8878]">Đơn vị / NCC</p>
+                    <p className="text-xs text-[#8E8878]">{t('voucher', 'vendor_label')}</p>
                     <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.vendorName}</p>
                   </div>
                 </div>
@@ -205,7 +210,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
               <div className="flex items-start gap-2">
                 <Calendar size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-[#8E8878]">Ngày tạo</p>
+                  <p className="text-xs text-[#8E8878]">{t('voucher', 'created_date')}</p>
                   <p className="text-sm font-semibold text-[#1C1C1E]">{formatDateTime(voucher.createdAt)}</p>
                 </div>
               </div>
@@ -213,14 +218,14 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
 
             {/* Lý do */}
             <div className="bg-[#FAF7F2] rounded-xl px-4 py-3">
-              <p className="text-xs text-[#8E8878] mb-1">Lý do {isExpense ? 'chi' : 'thu'}</p>
+              <p className="text-xs text-[#8E8878] mb-1">{isExpense ? t('voucher', 'expense_reason') : t('voucher', 'income_reason')}</p>
               <p className="text-sm text-[#1C1C1E] font-medium">{voucher.reason}</p>
             </div>
 
             {/* Khoản chi/thu */}
             <div>
               <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2 flex items-center gap-1.5">
-                <Hash size={12} /> Các khoản {isExpense ? 'chi' : 'thu'}
+                <Hash size={12} /> {isExpense ? t('voucher', 'expense_items') : t('voucher', 'income_items')}
               </p>
               <div className="space-y-1.5">
                 {items.map((item, i) => (
@@ -236,7 +241,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
                 ))}
               </div>
               <div className="flex justify-between items-center mt-3 pt-2 border-t-2 border-[#E8DDD0]">
-                <p className="text-sm font-bold text-[#1C1C1E]">Tổng cộng</p>
+                <p className="text-sm font-bold text-[#1C1C1E]">{t('voucher', 'total_amount')}</p>
                 <p className="text-lg font-bold text-[#C9A84C]">{formatVND(voucher.totalAmount)}</p>
               </div>
             </div>
@@ -244,7 +249,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
             {/* Lý do từ chối */}
             {voucher.status === 'REJECTED' && voucher.rejectReason && (
               <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <p className="text-xs font-semibold text-red-500 uppercase mb-1">Lý do từ chối</p>
+                <p className="text-xs font-semibold text-red-500 uppercase mb-1">{t('voucher', 'reject_reason_label')}</p>
                 <p className="text-sm text-red-700">{voucher.rejectReason}</p>
               </div>
             )}
@@ -253,7 +258,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
             {images.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">
-                  Ảnh chứng từ ({images.length})
+                  {t('voucher', 'receipt_images')} ({images.length})
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {images.map((url, i) => (
