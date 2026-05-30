@@ -32,7 +32,6 @@ export function presetToRange(key) {
   }
 }
 
-// PRESETS phải là function nhận t — không được dùng t() ở module level
 function getPresets(t) {
   return [
     { key: 'today',  label: t('common', 'today')      },
@@ -43,7 +42,7 @@ function getPresets(t) {
   ];
 }
 
-// ── Calendar dropdown dùng chung ──────────────────────────────────────────────
+// ── Calendar dropdown ─────────────────────────────────────────────────────────
 function CalendarDropdown({ selection, onSelect, onApply, onCancel, t }) {
   return (
     <div
@@ -213,7 +212,7 @@ function SimplePicker({ from, to, onChange, placeholder }) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(prev => !prev)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
+        className={`flex items-center gap-1.5 px-3 h-[38px] rounded-xl text-xs font-semibold
           transition-all border whitespace-nowrap
           ${hasRange
             ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'

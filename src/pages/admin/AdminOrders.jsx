@@ -1,10 +1,10 @@
 import { useLang } from '../../context/LangContext';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   ShoppingCart, Search, Eye, Ban,
-  User,
+  User, Users, X,
   Download, FileText,
 } from 'lucide-react';
 import { adminOrderApi, getImageUrl } from '../../api/adminApi';
@@ -22,6 +22,126 @@ import {
 import OrderDetailModal from '../../components/seller/OrderDetailModal.jsx';
 
 
+
+// ── Customer filter ──────────────────────────────────────────────────────────
+function CustomerFilter({ value, onChange }) {
+  const [query, setQuery] = useState('');
+  const [allOptions, setAllOptions] = useState([]);   // toàn bộ list từ API
+  const [open, setOpen] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const ref = useRef(null);
+
+  // debounce query để lọc + gọi API khi gõ
+  const debouncedQuery = useDebounce(query, 600);
+
+  // Fetch từ API search customer của admin — chỉ gọi lại khi debouncedQuery thay đổi
+  useEffect(() => {
+    let cancelled = false;
+    setFetching(true);
+    adminOrderApi.searchCustomers(debouncedQuery || '')
+      .then(items => {
+        if (cancelled) return;
+        setAllOptions(Array.isArray(items) ? items : []);
+      })
+      .catch(() => { if (!cancelled) setAllOptions([]); })
+      .finally(() => { if (!cancelled) setFetching(false); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery]);
+
+  // close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleOpen = () => {
+    setOpen(o => !o);
+    // Reset query khi mở để load lại full list
+    if (!open) setQuery('');
+  };
+
+  const handleSelect = (c) => {
+    const displayName = c.companyName || c.name || 'Khách lẻ';
+    onChange({ id: c.id, name: displayName });
+    setOpen(false);
+    setQuery('');
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange(null);
+    setQuery('');
+  };
+
+  return (
+    <div ref={ref} className="relative sm:w-56">
+      <button
+        type="button"
+        onClick={handleOpen}
+        className={`w-full flex items-center gap-2 px-3 h-[38px] rounded-xl border text-sm transition-colors
+          ${value ? 'border-[#C9A84C] bg-[#C9A84C]/5 text-[#1C1C1E]' : 'border-[#E8DDD0] bg-white text-[#8E8878]'}
+          hover:border-[#C9A84C]/60`}>
+        <Users size={14} className={value ? 'text-[#C9A84C]' : 'text-[#8E8878]'} />
+        <span className="flex-1 text-left truncate text-xs">
+          {value?.name || 'Lọc theo khách hàng'}
+        </span>
+        {value
+          ? <X size={13} className="text-[#8E8878] hover:text-red-500 shrink-0" onClick={handleClear} />
+          : <Search size={13} className="text-[#C4B9A8] shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-30 w-72 bg-white border border-[#E8DDD0] rounded-2xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-[#F0EBE3]">
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <input
+                autoFocus
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Tìm tên, SĐT khách hàng..."
+                className="w-full pl-8 pr-3 py-2 text-sm border border-[#E8DDD0] rounded-xl focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2]"
+              />
+            </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto">
+            {fetching ? (
+              <div className="flex justify-center py-5">
+                <div className="w-4 h-4 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : allOptions.length === 0 ? (
+              <p className="text-xs text-[#8E8878] text-center py-5">Không tìm thấy</p>
+            ) : (
+              allOptions.map(c => {
+                const displayName = c.companyName || c.name || 'Khách lẻ';
+                const isCompany = c.customerType === 'COMPANY';
+                const isSelected = value?.id === c.id;
+                const initial = displayName[0]?.toUpperCase() || '?';
+                return (
+                  <button key={c.id} type="button"
+                    onClick={() => handleSelect(c)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-[#FAF7F2] transition-colors
+                      ${isSelected ? 'bg-[#C9A84C]/10' : ''}`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold
+                      ${isCompany ? 'bg-[#C9A84C]/20 text-[#C9A84C]' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
+                      {initial}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-[#1C1C1E] truncate">{displayName}</p>
+                      {c.phone && <p className="text-[10px] text-[#8E8878]">{c.phone}</p>}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Spinner nhỏ ──────────────────────────────────────────────────────────────
 function BtnSpinner({ size = 13, colorClass = 'border-current' }) {
@@ -103,6 +223,7 @@ export default function AdminOrders() {
   const [invoiceLoadingId, setInvoiceLoadingId] = useState(null);
   const [detailLoading, setDetailLoading] = useState(null);
   const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
 
   const handleExport = async () => {
@@ -136,11 +257,11 @@ export default function AdminOrders() {
       if (dateRange.from) params.fromDate = dateRange.from.setHours(0, 0, 0, 0) || dateRange.from.getTime();
       if (dateRange.to) params.toDate = new Date(dateRange.to).setHours(23, 59, 59, 999);
       if (filters.productId) params.productId = filters.productId;
-      if (filters.customerId) params.customerId = filters.customerId;
+      if (selectedCustomer?.id) params.customerId = selectedCustomer.id;
       const res = await adminOrderApi.list(params);
       setData(res);
     } finally { setLoading(false); }
-  }, [page, debouncedQ, filters.status, dateRange, filters.productId, filters.customerId]);
+  }, [page, debouncedQ, filters.status, dateRange, filters.productId, selectedCustomer]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -203,10 +324,15 @@ export default function AdminOrders() {
           className={`${inputCls} sm:w-52`}>
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <DateRangePicker
-          from={dateRange.from} to={dateRange.to}
-          onChange={r => { setDateRange(r); setPage(0); }}
-          placeholder="Khoảng ngày" />
+        <div className="flex-shrink-0" style={{ minHeight: '38px' }}>
+          <DateRangePicker
+            from={dateRange.from} to={dateRange.to}
+            onChange={r => { setDateRange(r); setPage(0); }}
+            placeholder="Khoảng ngày" />
+        </div>
+        <CustomerFilter
+          value={selectedCustomer}
+          onChange={c => { setSelectedCustomer(c); setPage(0); }} />
         <button onClick={handleExport} disabled={exporting}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200
     hover:bg-emerald-100 transition-colors disabled:opacity-60 text-sm font-medium whitespace-nowrap"

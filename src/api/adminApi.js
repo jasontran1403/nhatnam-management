@@ -44,6 +44,8 @@ export const adminOrderApi = {
   getProducts: () => api.get('/api/admin/products').then(unwrap),
   downloadInvoice: (orderId) =>
     api.get(`/api/admin/orders/orders/${orderId}/invoice`, { responseType: 'blob' }),
+  searchCustomers: (q = '') =>
+    api.get('/api/admin/orders/customers/search', { params: { q, size: 50 } }).then(unwrap),
 };
 
 // ─── Customers ───────────────────────────────────────────────────────────────
