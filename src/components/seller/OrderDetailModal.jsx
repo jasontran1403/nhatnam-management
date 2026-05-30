@@ -77,7 +77,7 @@ function VatBreakdownBlock({ groups, total, light }) {
   return (
     <div className="border-t border-white/10 pt-1.5 mt-1.5">
       <div className="flex justify-between">
-        <span className={`text-xs ${textMuted}`}>VAT (đã trong giá)</span>
+        <span className={`text-xs ${textMuted}`}>VAT</span>
         <span className={`text-xs ${textMain}`}>{formatPrice(total)}</span>
       </div>
       <div className="pl-3 mt-0.5 space-y-0.5">
@@ -493,7 +493,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
               ) : Number(o.vatAmount) > 0 ? (
                 <div className="border-t border-white/10 pt-1.5 mt-1.5">
                   <div className="flex justify-between">
-                    <span className="text-xs text-white/40">VAT (đã trong giá)</span>
+                    <span className="text-xs text-white/40">VAT</span>
                     <span className="text-xs text-white/50">{formatPrice(o.vatAmount)}</span>
                   </div>
                 </div>

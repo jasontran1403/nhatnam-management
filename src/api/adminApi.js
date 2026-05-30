@@ -42,6 +42,8 @@ export const adminOrderApi = {
   exportOrders: (params) =>
     api.get('/api/admin/orders/export', { params, responseType: 'blob' }),
   getProducts: () => api.get('/api/admin/products').then(unwrap),
+  downloadInvoice: (orderId) =>
+    api.get(`/api/admin/orders/orders/${orderId}/invoice`, { responseType: 'blob' }),
 };
 
 // ─── Customers ───────────────────────────────────────────────────────────────
