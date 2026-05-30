@@ -721,7 +721,7 @@ export default function OrdersPage() {
       {/* THÊM: Modal sửa đơn hàng PREPARING */}
       <EditOrderModal
         open={!!editTarget}
-        order={editTarget}
+        orderId={editTarget?.id}
         onClose={() => setEditTarget(null)}
         onSaved={() => {
           setEditTarget(null);

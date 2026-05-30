@@ -30,6 +30,7 @@ function formatQty(n) {
 
 // ── Driver Picker ─────────────────────────────────────────────────────────────
 function DriverPicker({ selectedDrivers, onChange }) {
+  const { t } = useLang();
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState([]);
   const [open, setOpen]         = useState(false);

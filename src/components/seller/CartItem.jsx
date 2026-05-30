@@ -85,10 +85,10 @@ export default function CartItem({
   const promoNoteRef = useRef(null);
 
   const isPriceOverridden = item.priceSource === 'MANUAL';
-  const itemDiscountPct   = item.itemDiscountRate ?? 0;
-  const maxDiscount       = item.maxDiscountRate ?? 0;
-  const isPromo           = item.isPromo === true;
-  const promoNote         = item.promoNote || '';
+  const itemDiscountPct = item.itemDiscountRate ?? 0;
+  const maxDiscount = item.maxDiscountRate ?? 0;
+  const isPromo = item.isPromo === true;
+  const promoNote = item.promoNote || '';
 
   const vatRate = item.vatRate ?? 0;
   const vatMode = item.vatMode ?? 'INCLUSIVE';
@@ -98,7 +98,10 @@ export default function CartItem({
   // Đơn giá chưa thuế để hiển thị
   const netUnitPrice = calcNetPrice(item.unitPrice, vatRate, vatMode);
   // Thành tiền dòng = netUnitPrice × qty
-  const lineNetTotal = netUnitPrice * item.quantity;
+  const lineBaseTotal = isInclusive
+    ? Number(item.unitPrice) * item.quantity   // INCLUSIVE: dùng gross
+    : calcNetPrice(item.unitPrice, vatRate, vatMode) * item.quantity; // EXCLUSIVE: dùng net
+
 
   // ── Qty ───────────────────────────────────────────────────────────
   const handleQtyClick = () => {
@@ -402,13 +405,13 @@ export default function CartItem({
           </button>
         )}
 
-        {/* Thành tiền dòng (giá chưa thuế) */}
+        {/* Thành tiền dòng */}
         {!isPromo && (
           <p className="text-[10px] text-[#8E8878] mt-0.5">
-            = {fmt(lineNetTotal)}
+            = {fmt(lineBaseTotal)}
             {hasDiscount && (
               <span className="text-emerald-600 ml-1">
-                → {fmt(lineNetTotal * (1 - itemDiscountPct / 100))}
+                → {fmt(lineBaseTotal * (1 - itemDiscountPct / 100))}
               </span>
             )}
           </p>

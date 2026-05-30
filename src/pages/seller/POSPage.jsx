@@ -979,39 +979,43 @@ export default function POSPage() {
 
   // ── Tính toán tổng đơn ────────────────────────────────────────────────
   const calcNet = (item) => calcNetPrice(item.unitPrice, item.vatRate, item.vatMode);
+  const calcGross = (item) => Number(item.unitPrice); // giá gốc lưu trong state
 
-  // Promo Total
+  // Promo Total (tính trên net của giá trước promo)
   const promoTotal = cartItems.reduce((s, i) => {
     if (!i.isPromo) return s;
     const origPrice = Number(i._priceBeforePromo ?? i.unitPrice);
     return s + calcNetPrice(origPrice, i.vatRate, i.vatMode) * Number(i.quantity);
   }, 0);
 
-  // Tạm tính = Tổng Net (giá chưa VAT) của tất cả món thường
+  // ── Tạm tính ──────────────────────────────────────────────────────────
+  // INCLUSIVE: dùng gross (giá có thuế) — user thấy giá này
+  // EXCLUSIVE: dùng net (giá chưa thuế) — thuế tính riêng
   const subtotalNet = cartItems.reduce((s, i) => {
     if (i.isPromo) return s;
-    return s + calcNet(i) * Number(i.quantity);
+    const mode = i.vatMode ?? 'INCLUSIVE';
+    return s + (mode === 'INCLUSIVE' ? calcGross(i) : calcNet(i)) * Number(i.quantity);
   }, 0);
+  // subtotalNet giờ = tạm tính đúng (gross cho INCLUSIVE, net cho EXCLUSIVE)
 
-  // Giảm giá từng món - Logic theo vatMode
+  // ── CK món ────────────────────────────────────────────────────────────
+  // INCLUSIVE: giảm trên gross (giá có thuế)
+  // EXCLUSIVE: giảm trên net (giá chưa thuế)
   const itemDiscountTotal = cartItems.reduce((s, i) => {
     if (i.isPromo) return s;
     const d = i.itemDiscountRate ?? 0;
     if (!d) return s;
-
-    const qty = Number(i.quantity);
-    if (i.vatMode === 'INCLUSIVE') {
-      // Kem: Giảm trên Gross (giá đã có VAT)
-      return s + Number(i.unitPrice) * (d / 100) * qty;
-    } else {
-      // Các món khác: Giảm trên Net
-      return s + calcNet(i) * (d / 100) * qty;
-    }
+    const mode = i.vatMode ?? 'INCLUSIVE';
+    const base = mode === 'INCLUSIVE'
+      ? calcGross(i) * Number(i.quantity)
+      : calcNet(i) * Number(i.quantity);
+    return s + base * (d / 100);
   }, 0);
 
   const subtotalAfterItemDiscount = subtotalNet - itemDiscountTotal;
 
-  // Giảm tổng bill
+  // ── Giảm tổng bill ────────────────────────────────────────────────────
+  // Tính trên subtotalAfterItemDiscount (đã đồng nhất gross/net theo từng loại)
   const maxDiscountFixed = Math.round(subtotalAfterItemDiscount * 0.1);
   const discountAmt = discountFixedAmt !== null
     ? Math.min(discountFixedAmt, maxDiscountFixed)
@@ -1021,41 +1025,42 @@ export default function POSPage() {
 
   const surchargeNum = Number(surcharge) || 0;
 
-  // VAT Breakdown - Tính trên Net sau giảm
+  // ── VAT Breakdown ─────────────────────────────────────────────────────
+  // INCLUSIVE: VAT đã trong giá → tách ra hiển thị, KHÔNG cộng vào total
+  // EXCLUSIVE: VAT chưa trong giá → cộng vào total
   const vatBreakdown = useMemo(() => {
     const map = {};
     for (const i of cartItems) {
       if (i.isPromo) continue;
-
       const rate = i.vatRate ?? 0;
       const mode = i.vatMode ?? 'INCLUSIVE';
       if (rate === 0) continue;
 
       const qty = Number(i.quantity);
-      const netLine = calcNet(i) * qty;
 
-      // Giảm món của dòng này
-      let lineItemDiscount = 0;
+      // Base line (đồng nhất với cách tính subtotal và discount)
+      const baseLine = mode === 'INCLUSIVE'
+        ? calcGross(i) * qty
+        : calcNet(i) * qty;
+
+      // CK món của dòng này (trên cùng base)
       const d = i.itemDiscountRate ?? 0;
-      if (d > 0) {
-        lineItemDiscount = (mode === 'INCLUSIVE')
-          ? Number(i.unitPrice) * (d / 100) * qty
-          : calcNet(i) * (d / 100) * qty;
-      }
+      const lineItemDiscount = d > 0 ? baseLine * (d / 100) : 0;
 
-      // Phân bổ giảm bill theo tỷ lệ Net
-      const proportion = subtotalNet > 0 ? netLine / subtotalNet : 1;
+      // Phân bổ giảm bill theo tỷ lệ base
+      const proportion = subtotalNet > 0 ? baseLine / subtotalNet : 1;
       const lineBillDiscount = discountAmt * proportion;
 
-      // Net sau tất cả giảm
-      const lineNetAfterDiscount = netLine - lineItemDiscount - lineBillDiscount;
+      // Base sau tất cả giảm
+      const lineAfterDiscount = baseLine - lineItemDiscount - lineBillDiscount;
 
-      // Tính VAT
       let vatAmt = 0;
       if (mode === 'INCLUSIVE') {
-        vatAmt = lineNetAfterDiscount * (rate / 100);
+        // VAT đã trong giá: tách ngược ra = lineAfterDiscount × rate / (100 + rate)
+        vatAmt = lineAfterDiscount * rate / (100 + rate);
       } else {
-        vatAmt = lineNetAfterDiscount * (rate / 100);
+        // VAT ngoài giá: tính thêm = lineAfterDiscount × rate / 100
+        vatAmt = lineAfterDiscount * rate / 100;
       }
 
       const key = `${rate}|${mode}`;
@@ -1067,8 +1072,14 @@ export default function POSPage() {
 
   const totalVat = vatBreakdown.reduce((s, g) => s + g.vatAmt, 0);
 
-  // Tổng cộng
-  const total = subtotalAfterAllDiscountNet + surchargeNum + totalVat;
+  // ── Tổng cộng ─────────────────────────────────────────────────────────
+  // INCLUSIVE: VAT đã trong subtotalAfterAllDiscountNet → không cộng thêm
+  // EXCLUSIVE: VAT chưa tính → cộng thêm exclusive VAT
+  const exclusiveVatTotal = vatBreakdown
+    .filter(g => g.mode === 'EXCLUSIVE')
+    .reduce((s, g) => s + g.vatAmt, 0);
+
+  const total = subtotalAfterAllDiscountNet + exclusiveVatTotal + surchargeNum;
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const setCustomer = useCallback((newCustomer) => {
