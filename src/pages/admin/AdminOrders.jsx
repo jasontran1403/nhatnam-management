@@ -11,6 +11,7 @@ import { adminOrderApi, getImageUrl } from '../../api/adminApi';
 import { downloadBlob } from '../../api/services';
 import { OrderStatusBadge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import OrderDetailModal from '../common/OrderDetailModal';
 import Pagination from '../../components/ui/Pagination';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import useDebounce from '../../utils/useDebounce.js';
@@ -19,7 +20,6 @@ import {
   SecondaryButton, DangerButton,
   Field, inputCls, formatCurrency, formatNumber, formatDateTime,
 } from '../../components/ui';
-import OrderDetailModal from '../../components/seller/OrderDetailModal.jsx';
 
 
 
@@ -132,6 +132,12 @@ function CustomerFilter({ value, onChange }) {
                       <p className="text-xs font-semibold text-[#1C1C1E] truncate">{displayName}</p>
                       {c.phone && <p className="text-[10px] text-[#8E8878]">{c.phone}</p>}
                     </div>
+                    {isSelected
+                      ? <div className="w-2 h-2 rounded-full bg-[#C9A84C] shrink-0" />
+                      : <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0
+                          ${isCompany ? 'bg-sky-50 text-sky-700' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
+                          {isCompany ? 'Cty' : 'Lẻ'}
+                        </span>}
                   </button>
                 );
               })
@@ -235,7 +241,7 @@ export default function AdminOrders() {
       if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
       if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
       if (filters.productId) params.productId = filters.productId;
-      if (filters.customerId) params.customerId = filters.customerId;
+      if (selectedCustomer?.id) params.customerId = selectedCustomer.id;
       const res = await adminOrderApi.exportOrders(params);
       downloadBlob(res.data, `don-hang-admin-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
     } catch {
@@ -254,7 +260,7 @@ export default function AdminOrders() {
       const params = { page, size: 20, sort: 'createdAt,desc' };
       if (debouncedQ) params.q = debouncedQ;
       if (filters.status) params.status = filters.status;
-      if (dateRange.from) params.fromDate = dateRange.from.setHours(0, 0, 0, 0) || dateRange.from.getTime();
+      if (dateRange.from) params.fromDate = new Date(dateRange.from).setHours(0, 0, 0, 0);
       if (dateRange.to) params.toDate = new Date(dateRange.to).setHours(23, 59, 59, 999);
       if (filters.productId) params.productId = filters.productId;
       if (selectedCustomer?.id) params.customerId = selectedCustomer.id;
@@ -324,7 +330,7 @@ export default function AdminOrders() {
           className={`${inputCls} sm:w-52`}>
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <div className="flex-shrink-0" style={{ minHeight: '38px' }}>
+        <div className="flex-shrink-0 [&>*]:h-[38px] [&_button]:h-[38px] [&_button]:rounded-xl">
           <DateRangePicker
             from={dateRange.from} to={dateRange.to}
             onChange={r => { setDateRange(r); setPage(0); }}
