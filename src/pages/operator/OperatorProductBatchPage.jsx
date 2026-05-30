@@ -679,25 +679,79 @@ function PriceInput({ value, onChange, placeholder }) {
 // ── IngredientSelect ──────────────────────────────────────────────────────
 function IngredientSelect({ ingredients, value, onChange }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const selected = ingredients.find(i => String(i.id) === String(value));
+
+  const filtered = ingredients.filter(i =>
+    i.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleOpen = () => { setSearch(''); setOpen(true); };
+  const handleSelect = (id) => { onChange(id); setOpen(false); setSearch(''); };
+
   return (
-    <div className="relative">
-      <div onClick={() => setOpen(!open)}
-        className="border border-[#E8DDD0] rounded-lg px-3 py-1.5 text-xs cursor-pointer hover:border-[#C9A84C]">
+    <>
+      <div onClick={handleOpen}
+        className="border border-[#E8DDD0] rounded-lg px-3 py-1.5 text-xs cursor-pointer hover:border-[#C9A84C] truncate">
         {selected ? selected.name : 'Chọn nguyên liệu...'}
       </div>
+
       {open && ReactDOM.createPortal(
-        <div className="fixed bg-white border border-[#E8DDD0] rounded-xl shadow-2xl z-[11000] w-80 max-h-72 overflow-auto"
-          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-          {ingredients.map(i => (
-            <div key={i.id} onClick={() => { onChange(i.id); setOpen(false); }}
-              className="px-4 py-2 hover:bg-[#FAF7F2] cursor-pointer text-sm">
-              {i.name}
+        <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-lg">Chọn nguyên liệu</h3>
+              <button onClick={() => { setOpen(false); setSearch(''); }}
+                className="text-[#8E8878] hover:text-red-500">
+                <X size={20} />
+              </button>
             </div>
-          ))}
+
+            {/* Search */}
+            <div className="p-4 border-b">
+              <div className="relative">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C4B9A8]" />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Tìm nguyên liệu..."
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E8DDD0] focus:border-[#C9A84C] focus:outline-none text-sm"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-auto p-2">
+              {filtered.length === 0 ? (
+                <div className="text-center py-12 text-[#8E8878] italic text-sm">
+                  Không tìm thấy nguyên liệu nào
+                </div>
+              ) : (
+                filtered.map(i => (
+                  <div key={i.id} onClick={() => handleSelect(i.id)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-colors
+                      ${String(i.id) === String(value)
+                        ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30'
+                        : 'hover:bg-[#FAF7F2]'}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[#1C1C1E] truncate text-sm">{i.name}</p>
+                      {i.unit && <p className="text-xs text-[#8E8878]">ĐVT: {i.unit}</p>}
+                    </div>
+                    {String(i.id) === String(value) && (
+                      <span className="text-[10px] bg-[#C9A84C] text-white rounded-full px-2 py-0.5 font-semibold shrink-0">
+                        Đang chọn
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>,
         document.body
       )}
-    </div>
+    </>
   );
 }
