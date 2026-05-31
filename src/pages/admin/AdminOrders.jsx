@@ -11,7 +11,7 @@ import { adminOrderApi, getImageUrl } from '../../api/adminApi';
 import { downloadBlob } from '../../api/services';
 import { OrderStatusBadge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
-import OrderDetailModal from '../common/OrderDetailModal';
+import OrderDetailModal from '../../components/seller/OrderDetailModal.jsx';
 import Pagination from '../../components/ui/Pagination';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import useDebounce from '../../utils/useDebounce.js';

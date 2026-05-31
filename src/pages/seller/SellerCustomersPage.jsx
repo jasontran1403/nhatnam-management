@@ -13,10 +13,9 @@ import {
 
 const inputCls = 'w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]';
 
-// Bảng màu mặc định khi tạo category mới
 const DEFAULT_COLORS = [
-  '#C9A84C','#3B82F6','#10B981','#F59E0B','#EF4444',
-  '#8B5CF6','#EC4899','#06B6D4','#84CC16','#F97316',
+  '#C9A84C', '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+  '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16', '#F97316',
 ];
 
 function useDebounce(val, ms) {
@@ -51,25 +50,22 @@ function toCamelCase(str) {
 }
 
 // ─── Category Combobox ────────────────────────────────────────────────────────
-// Search + dropdown + thêm nhanh
 function CategoryCombobox({ value, onChange }) {
   const { t } = useLang();
   const toast = useToast();
-  const [query, setQuery]       = useState('');
-  const [options, setOptions]   = useState([]);
-  const [open, setOpen]         = useState(false);
+  const [query, setQuery] = useState('');
+  const [options, setOptions] = useState([]);
+  const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const wrapRef = useRef(null);
   const debouncedQ = useDebounce(query, 250);
 
-  // Load options khi query thay đổi
   useEffect(() => {
     api.get(`/api/seller/customer-categories/search?q=${encodeURIComponent(debouncedQ)}`)
       .then(r => setOptions(r.data?.data || []))
       .catch(() => {});
   }, [debouncedQ]);
 
-  // Đóng dropdown khi click ngoài
   useEffect(() => {
     const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', handler);
@@ -77,37 +73,25 @@ function CategoryCombobox({ value, onChange }) {
   }, []);
 
   const exactMatch = options.some(o => o.name.toLowerCase() === query.trim().toLowerCase());
-  const canCreate  = query.trim().length > 0 && !exactMatch;
+  const canCreate = query.trim().length > 0 && !exactMatch;
 
-  const handleSelect = (cat) => {
-    onChange(cat);
-    setQuery('');
-    setOpen(false);
-  };
-
-  const handleClear = (e) => {
-    e.stopPropagation();
-    onChange(null);
-    setQuery('');
-  };
+  const handleSelect = (cat) => { onChange(cat); setQuery(''); setOpen(false); };
+  const handleClear = (e) => { e.stopPropagation(); onChange(null); setQuery(''); };
 
   const handleCreate = async () => {
     const name = query.trim();
     if (!name) return;
     setCreating(true);
     try {
-      // Chọn màu ngẫu nhiên từ bảng màu
       const color = DEFAULT_COLORS[Math.floor(Math.random() * DEFAULT_COLORS.length)];
       const res = await api.post('/api/seller/customer-categories', { name, color });
       const created = res.data?.data;
       if (created) {
-        toast(`${t('common','success')} "${created.name}"`, 'success');
-        onChange(created);
-        setQuery('');
-        setOpen(false);
+        toast(`Đã tạo "${created.name}"`, 'success');
+        onChange(created); setQuery(''); setOpen(false);
       }
     } catch (e) {
-      toast(e?.response?.data?.message || t('common','error'), 'error');
+      toast(e?.response?.data?.message || 'Lỗi', 'error');
     } finally { setCreating(false); }
   };
 
@@ -116,14 +100,12 @@ function CategoryCombobox({ value, onChange }) {
       <div
         className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-text transition-colors
           ${open ? 'border-[#C9A84C]' : 'border-[#E8DDD0]'} bg-[#FAFAF8]`}
-        onClick={() => { setOpen(true); }}
+        onClick={() => setOpen(true)}
       >
         <Tag size={13} className="text-[#C4B9A8] shrink-0" />
         {value && !open ? (
           <div className="flex-1 flex items-center gap-1.5 min-w-0">
-            {value.color && (
-              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: value.color }} />
-            )}
+            {value.color && <span className="w-3 h-3 rounded-full shrink-0" style={{ background: value.color }} />}
             <span className="text-sm text-[#1C1C1E] truncate">{value.name}</span>
           </div>
         ) : (
@@ -132,7 +114,7 @@ function CategoryCombobox({ value, onChange }) {
             value={query}
             onChange={e => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
-            placeholder={value ? value.name : t('customer','find_or_create')}
+            placeholder={value ? value.name : 'Tìm hoặc tạo phân loại...'}
             className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none placeholder:text-[#C4B9A8]"
           />
         )}
@@ -142,7 +124,6 @@ function CategoryCombobox({ value, onChange }) {
           </button>
         )}
       </div>
-
       {open && (
         <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-[#E8DDD0] shadow-lg overflow-hidden max-h-52 overflow-y-auto">
           {options.length === 0 && !canCreate && (
@@ -152,8 +133,7 @@ function CategoryCombobox({ value, onChange }) {
             <button key={cat.id} onClick={() => handleSelect(cat)}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-[#FDF8ED] transition-colors text-left
                 ${value?.id === cat.id ? 'bg-[#FDF8ED]' : ''}`}>
-              <span className="w-3 h-3 rounded-full shrink-0"
-                style={{ background: cat.color || '#C9A84C' }} />
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: cat.color || '#C9A84C' }} />
               <span className="flex-1 truncate">{cat.name}</span>
               {value?.id === cat.id && <Check size={13} className="text-[#C9A84C] shrink-0" />}
             </button>
@@ -173,102 +153,63 @@ function CategoryCombobox({ value, onChange }) {
   );
 }
 
-// ─── Receiver Form ────────────────────────────────────────────────────────────
-function ReceiverForm({ form, setForm, onSave, onCancel, saving }) {
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">
-          Địa chỉ nhận hàng <span className="text-red-400">*</span>
-        </label>
-        <input value={form.receiverAddress} onChange={e => setForm(f => ({ ...f, receiverAddress: e.target.value }))}
-          className={inputCls} placeholder="123 Đường ABC, Phường XYZ, Quận 1, TP.HCM" autoFocus />
-      </div>
-      <div>
-        <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Tên người nhận</label>
-        <input value={form.receiverName} onChange={e => setForm(f => ({ ...f, receiverName: e.target.value }))}
-          className={inputCls} placeholder="Nguyễn Văn A" />
-      </div>
-      <div>
-        <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">SĐT người nhận</label>
-        <input value={form.receiverPhone} onChange={e => setForm(f => ({ ...f, receiverPhone: e.target.value }))}
-          className={inputCls} placeholder="0901 234 567" />
-      </div>
-      <div className="flex gap-2 pt-2">
-        <button onClick={onCancel}
-          className="flex-1 py-1.5 rounded-lg border border-[#E8DDD0] text-xs text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
-          Hủy
-        </button>
-        <button onClick={onSave} disabled={saving}
-          className="flex-1 py-1.5 rounded-lg bg-[#C9A84C] text-white text-xs font-semibold hover:bg-[#b8973d] disabled:opacity-50 transition-colors">
-          {saving ? 'Đang lưu...' : 'Lưu'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── Receiver Infos Section ───────────────────────────────────────────────────
-function ReceiverInfosSection({ customerId }) {
-  const toast = useToast();
+// Không có nút Lưu/Hủy riêng — edit trực tiếp, báo lên modal qua onReceiverChange
+function ReceiverInfosSection({ customerId, onReceiverChange }) {
   const [receivers, setReceivers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '' });
-  const [saving, setSaving] = useState(false);
+  const origRef = useRef([]); // snapshot từ server để tính diff khi save
 
   const load = useCallback(async () => {
     if (!customerId) return;
     setLoading(true);
     try {
       const res = await api.get(`/api/seller/customers/${customerId}/receiver-infos`);
-      setReceivers(res.data?.data || []);
-    } catch { toast('Không thể tải địa chỉ nhận hàng', 'error'); }
+      const data = res.data?.data || [];
+      origRef.current = data.map(r => ({ ...r }));
+      const copy = data.map(r => ({ ...r }));
+      setReceivers(copy);
+      onReceiverChange(copy, origRef.current);
+    } catch {}
     finally { setLoading(false); }
-  }, [customerId, toast]);
+  }, [customerId]);
 
   useEffect(() => { load(); }, [load]);
-  const resetForm = () => setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
 
-  const handleAdd = async () => {
-    if (!form.receiverAddress.trim()) { toast('Vui lòng nhập địa chỉ', 'error'); return; }
-    setSaving(true);
-    try {
-      await api.post(`/api/seller/customers/${customerId}/receiver-infos`, form);
-      toast('Đã thêm địa chỉ', 'success'); setAdding(false); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
-    finally { setSaving(false); }
+  const update = (newList) => {
+    setReceivers(newList);
+    onReceiverChange(newList, origRef.current);
   };
 
-  const handleUpdate = async (id) => {
-    if (!form.receiverAddress.trim()) { toast('Vui lòng nhập địa chỉ', 'error'); return; }
-    setSaving(true);
-    try {
-      await api.put(`/api/seller/customers/${customerId}/receiver-infos/${id}`, form);
-      toast('Đã cập nhật', 'success'); setEditingId(null); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
-    finally { setSaving(false); }
+  const handleFieldChange = (id, field, value) => {
+    update(receivers.map(r => r.id === id ? { ...r, [field]: value } : r));
   };
 
-  const handleDelete = async (id) => {
+  const handleAdd = () => {
+    const tempId = `new_${Date.now()}`;
+    update([...receivers, {
+      id: tempId,
+      receiverName: '',
+      receiverPhone: '',
+      receiverAddress: '',
+      isDefault: receivers.length === 0,
+      _isNew: true,
+    }]);
+  };
+
+  const handleDelete = (id) => {
     if (!window.confirm('Xóa địa chỉ này?')) return;
-    try {
-      await api.delete(`/api/seller/customers/${customerId}/receiver-infos/${id}`);
-      toast('Đã xóa', 'success'); load();
-    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
+    const next = receivers.filter(r => r.id !== id);
+    // Nếu xóa default thì set cái đầu làm default
+    const deletedWasDefault = receivers.find(r => r.id === id)?.isDefault;
+    if (deletedWasDefault && next.length > 0) {
+      next[0] = { ...next[0], isDefault: true };
+    }
+    update(next);
   };
 
-  const handleSetDefault = async (id) => {
-    try {
-      await api.patch(`/api/seller/customers/${customerId}/receiver-infos/${id}/set-default`);
-      toast('Đã đặt làm mặc định', 'success'); load();
-    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
-  };
-
-  const startEdit = (r) => {
-    setEditingId(r.id); setAdding(false);
-    setForm({ receiverName: r.receiverName || '', receiverPhone: r.receiverPhone || '', receiverAddress: r.receiverAddress || '' });
+  const handleSetDefault = (id) => {
+    update(receivers.map(r => ({ ...r, isDefault: r.id === id })));
   };
 
   return (
@@ -277,68 +218,89 @@ function ReceiverInfosSection({ customerId }) {
         <label className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider">
           📦 Địa chỉ nhận hàng {receivers.length > 0 && `(${receivers.length})`}
         </label>
-        {!adding && editingId === null && (
-          <button onClick={() => { setAdding(true); setEditingId(null); resetForm(); }}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] font-semibold hover:bg-[#C9A84C]/20 transition-colors">
-            <Plus size={11} /> Thêm địa chỉ
-          </button>
-        )}
+        <button
+          onClick={handleAdd}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] font-semibold hover:bg-[#C9A84C]/20 transition-colors"
+        >
+          <Plus size={11} /> Thêm địa chỉ
+        </button>
       </div>
-      {adding && (
-        <div className="border border-[#C9A84C]/30 rounded-xl p-3 bg-[#FDF8ED]">
-          <p className="text-[11px] font-semibold text-[#C9A84C] mb-2">Thêm địa chỉ mới</p>
-          <ReceiverForm form={form} setForm={setForm} onSave={handleAdd}
-            onCancel={() => { setAdding(false); resetForm(); }} saving={saving} />
-        </div>
-      )}
+
       {loading ? (
         <div className="text-xs text-[#8E8878] text-center py-3">Đang tải...</div>
-      ) : receivers.length === 0 && !adding ? (
+      ) : receivers.length === 0 ? (
         <div className="text-xs text-[#C4B9A8] text-center py-3 italic border border-dashed border-[#E8DDD0] rounded-xl">
           Chưa có địa chỉ nhận hàng
         </div>
       ) : (
-        <div className="space-y-2">
-          {receivers.map(r => (
-            <div key={r.id} className={`rounded-xl border p-3 ${r.isDefault ? 'border-[#C9A84C]/40 bg-[#FDF8ED]' : 'border-[#F0EBE3] bg-white'}`}>
-              {editingId === r.id ? (
+        <div className="space-y-3">
+          {receivers.map((r, idx) => (
+            <div key={r.id}
+              className={`rounded-xl border p-3 space-y-2
+                ${r.isDefault ? 'border-[#C9A84C]/40 bg-[#FDF8ED]' : 'border-[#F0EBE3] bg-white'}
+                ${r._isNew ? 'border-dashed' : ''}`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  {r.isDefault && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#C9A84C]">
+                      <Star size={9} fill="currentColor" /> Mặc định
+                    </span>
+                  )}
+                  {r._isNew && (
+                    <span className="text-[10px] font-bold text-amber-500 bg-amber-50 border border-amber-200 px-1.5 rounded">Mới</span>
+                  )}
+                  {!r._isNew && !r.isDefault && (
+                    <span className="text-[10px] text-[#8E8878]">Địa chỉ {idx + 1}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-0.5">
+                  {!r.isDefault && (
+                    <button onClick={() => handleSetDefault(r.id)} title="Đặt làm mặc định"
+                      className="p-1.5 rounded-lg text-[#C4B9A8] hover:text-[#C9A84C] hover:bg-[#FDF8ED] transition-colors">
+                      <Star size={12} />
+                    </button>
+                  )}
+                  <button onClick={() => handleDelete(r.id)}
+                    className="p-1.5 rounded-lg text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 transition-colors">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Fields — luôn hiển thị, không có nút lưu riêng */}
+              <div>
+                <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">
+                  Địa chỉ <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={r.receiverAddress || ''}
+                  onChange={e => handleFieldChange(r.id, 'receiverAddress', e.target.value)}
+                  className={inputCls}
+                  placeholder="123 Đường ABC, P. XYZ, Q.1, TP.HCM"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <p className="text-[11px] font-semibold text-[#5C4E3D] mb-2">Chỉnh sửa địa chỉ</p>
-                  <ReceiverForm form={form} setForm={setForm}
-                    onSave={() => handleUpdate(r.id)}
-                    onCancel={() => { setEditingId(null); resetForm(); }} saving={saving} />
+                  <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Tên người nhận</label>
+                  <input
+                    value={r.receiverName || ''}
+                    onChange={e => handleFieldChange(r.id, 'receiverName', e.target.value)}
+                    className={inputCls}
+                    placeholder="Nguyễn Văn A"
+                  />
                 </div>
-              ) : (
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                      {r.isDefault && <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#C9A84C]"><Star size={9} fill="currentColor" /> Mặc định</span>}
-                      {r.receiverName && <span className="text-xs font-semibold text-[#1C1C1E]">{r.receiverName}</span>}
-                      {r.receiverPhone && <span className="text-[11px] text-[#8E8878]">{r.receiverPhone}</span>}
-                    </div>
-                    <p className="text-xs text-[#5C4E3D] flex items-start gap-1">
-                      <MapPin size={10} className="mt-0.5 shrink-0 text-[#8E8878]" />
-                      <span>{r.receiverAddress}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    {!r.isDefault && (
-                      <button onClick={() => handleSetDefault(r.id)}
-                        className="p-1.5 rounded-lg text-[#C4B9A8] hover:text-[#C9A84C] hover:bg-[#FDF8ED] transition-colors">
-                        <Star size={12} />
-                      </button>
-                    )}
-                    <button onClick={() => startEdit(r)}
-                      className="p-1.5 rounded-lg text-[#8E8878] hover:text-[#C9A84C] hover:bg-[#FDF8ED] transition-colors">
-                      <Edit2 size={12} />
-                    </button>
-                    <button onClick={() => handleDelete(r.id)}
-                      className="p-1.5 rounded-lg text-[#8E8878] hover:text-red-400 hover:bg-red-50 transition-colors">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">SĐT người nhận</label>
+                  <input
+                    value={r.receiverPhone || ''}
+                    onChange={e => handleFieldChange(r.id, 'receiverPhone', e.target.value)}
+                    className={inputCls}
+                    placeholder="0901 234 567"
+                  />
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>
@@ -350,30 +312,35 @@ function ReceiverInfosSection({ customerId }) {
 // ─── Edit Customer Modal ──────────────────────────────────────────────────────
 function EditCustomerModal({ open, customer, onClose, onSaved }) {
   const toast = useToast();
-  const [form, setForm]           = useState({});
-  const [saving, setSaving]       = useState(false);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
   const [codeChecking, setCodeChecking] = useState(false);
   const [codeError, setCodeError] = useState('');
-  const [category, setCategory]   = useState(null); // { id, name, color }
+  const [category, setCategory] = useState(null);
   const codeDebounceRef = useRef(null);
+
+  // receivers = state hiện tại, origReceivers = snapshot từ server
+  const receiversRef = useRef([]);
+  const origReceiversRef = useRef([]);
 
   useEffect(() => {
     if (!open || !customer) return;
+    receiversRef.current = [];
+    origReceiversRef.current = [];
     setCodeError('');
     setForm({
-      customerCode:   customer.customerCode  || '',
-      customerType:   customer.customerType  || 'RETAIL',
-      name:           customer.name          || '',
-      phone:          customer.phone         || '',
-      email:          customer.email         || '',
-      companyName:    customer.companyName   || '',
-      taxCode:        customer.taxCode       || '',
-      companyPhone:   customer.companyPhone  || '',
-      companyAddress: customer.companyAddress|| '',
-      contactName:    customer.contactName   || '',
-      pricingType:    customer.pricingType   || 'RETAIL_PRICE',
+      customerCode:   customer.customerCode   || '',
+      customerType:   customer.customerType   || 'RETAIL',
+      name:           customer.name           || '',
+      phone:          customer.phone          || '',
+      email:          customer.email          || '',
+      companyName:    customer.companyName    || '',
+      taxCode:        customer.taxCode        || '',
+      companyPhone:   customer.companyPhone   || '',
+      companyAddress: customer.companyAddress || '',
+      contactName:    customer.contactName    || '',
+      pricingType:    customer.pricingType    || 'RETAIL_PRICE',
     });
-    // Khôi phục category từ data hiện tại
     setCategory(customer.categoryId
       ? { id: customer.categoryId, name: customer.categoryName, color: customer.categoryColor }
       : null);
@@ -400,11 +367,26 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
     }, 500);
   };
 
+  // Callback từ ReceiverInfosSection — lưu vào ref (không cần re-render modal)
+  const handleReceiverChange = (current, orig) => {
+    receiversRef.current = current;
+    if (orig) origReceiversRef.current = orig;
+  };
+
   const handleSave = async () => {
     if (codeError) { toast(codeError, 'error'); return; }
     if (!form.customerCode?.trim()) { toast('Mã khách hàng không được để trống', 'error'); return; }
+
+    // Validate receiver: address bắt buộc nếu có dòng nào
+    const invalidReceiver = receiversRef.current.find(r => !r.receiverAddress?.trim());
+    if (invalidReceiver) {
+      toast('Vui lòng nhập địa chỉ nhận hàng (không được để trống)', 'error');
+      return;
+    }
+
     setSaving(true);
     try {
+      // ── 1. Lưu thông tin khách hàng ──────────────────────────────────────
       const payload = {
         customerCode:   form.customerCode.trim().toUpperCase(),
         customerType:   form.customerType,
@@ -421,8 +403,76 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
       };
       const res = await api.put(`/api/seller/customers/b2b/${customer.id}`, payload);
       if (res.data?.code !== 900 && res.data?.code !== 200) {
-        toast(res.data?.message || 'Lỗi khi cập nhật', 'error'); return;
+        toast(res.data?.message || 'Lỗi khi cập nhật', 'error');
+        return;
       }
+
+      // ── 2. Tính diff receivers và gọi batch ──────────────────────────────
+      const current = receiversRef.current;
+      const orig    = origReceiversRef.current;
+
+      const ops = [];
+
+      // Delete: có trong orig nhưng không còn trong current
+      const currentRealIds = new Set(
+        current.filter(r => !String(r.id).startsWith('new_')).map(r => r.id)
+      );
+      for (const o of orig) {
+        if (!currentRealIds.has(o.id)) {
+          ops.push({ op: 'delete', id: o.id });
+        }
+      }
+
+      // Add / Update / SetDefault
+      for (const r of current) {
+        if (String(r.id).startsWith('new_')) {
+          // Thêm mới
+          if (r.receiverAddress?.trim()) {
+            ops.push({
+              op: 'add',
+              data: {
+                receiverAddress: r.receiverAddress.trim(),
+                receiverName:    r.receiverName?.trim()  || null,
+                receiverPhone:   r.receiverPhone?.trim() || null,
+                isDefault:       !!r.isDefault,
+              },
+            });
+          }
+        } else {
+          const o = orig.find(x => x.id === r.id);
+          if (!o) continue;
+
+          // Update nếu có thay đổi
+          const changed =
+            (r.receiverAddress || '') !== (o.receiverAddress || '') ||
+            (r.receiverName    || '') !== (o.receiverName    || '') ||
+            (r.receiverPhone   || '') !== (o.receiverPhone   || '');
+          if (changed) {
+            ops.push({
+              op: 'update',
+              id: r.id,
+              data: {
+                receiverAddress: r.receiverAddress,
+                receiverName:    r.receiverName  || null,
+                receiverPhone:   r.receiverPhone || null,
+              },
+            });
+          }
+
+          // SetDefault nếu thay đổi
+          if (!!r.isDefault !== !!o.isDefault && r.isDefault) {
+            ops.push({ op: 'setDefault', id: r.id });
+          }
+        }
+      }
+
+      if (ops.length > 0) {
+        await api.patch(
+          `/api/seller/customers/${customer.id}/receiver-infos/batch`,
+          ops
+        );
+      }
+
       toast('Cập nhật thành công', 'success');
       onSaved(res.data?.data);
       onClose();
@@ -434,14 +484,18 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Header */}
         <div className="px-5 py-4 border-b border-[#F0EBE3] flex items-center justify-between shrink-0">
           <div>
             <h3 className="font-bold text-[#1C1C1E] text-base">Sửa thông tin khách hàng</h3>
             <p className="text-xs text-[#8E8878] mt-0.5">#{customer.customerCode}</p>
           </div>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-red-400 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-[#8E8878] hover:text-red-400 transition-colors">
+            <X size={18} />
+          </button>
         </div>
 
+        {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
 
           {/* Mã khách hàng */}
@@ -451,12 +505,15 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
             </label>
             <div className="relative">
               <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C4B9A8]" />
-              <input value={form.customerCode} onChange={e => handleCodeChange(e.target.value)}
+              <input
+                value={form.customerCode}
+                onChange={e => handleCodeChange(e.target.value)}
                 className={`${inputCls} pl-8 uppercase font-mono
                   ${codeError ? 'border-red-400 focus:border-red-400' : ''}
                   ${!codeError && form.customerCode && form.customerCode.trim().toUpperCase() !== (customer.customerCode || '').toUpperCase()
                     ? 'border-emerald-400 focus:border-emerald-400' : ''}`}
-                placeholder="VD: KH001" />
+                placeholder="VD: KH001"
+              />
               {codeChecking && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />}
               {!codeChecking && codeError && <AlertCircle size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400" />}
               {!codeChecking && !codeError && form.customerCode && form.customerCode.trim().toUpperCase() !== (customer.customerCode || '').toUpperCase() && (
@@ -565,9 +622,12 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
             </div>
           </div>
 
-          {/* Địa chỉ nhận hàng */}
+          {/* Địa chỉ nhận hàng — không có nút lưu riêng */}
           <div className="border-t border-[#F0EBE3] pt-3">
-            <ReceiverInfosSection customerId={customer.id} />
+            <ReceiverInfosSection
+              customerId={customer.id}
+              onReceiverChange={handleReceiverChange}
+            />
           </div>
 
           <p className="text-[10px] text-[#B0A090] bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#C9A84C]/15">
@@ -575,6 +635,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
           </p>
         </div>
 
+        {/* Footer — chỉ 1 nút Lưu thay đổi duy nhất */}
         <div className="px-5 pb-5 pt-3 border-t border-[#F0EBE3] flex gap-2 shrink-0">
           <button onClick={onClose} disabled={saving}
             className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C4E3D] font-semibold hover:bg-[#F0EBE3] transition-colors">
@@ -582,7 +643,9 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
           </button>
           <button onClick={handleSave} disabled={saving || !!codeError || codeChecking}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-colors flex items-center justify-center gap-2 disabled:opacity-40">
-            {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
+            {saving
+              ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <Check size={14} />}
             Lưu thay đổi
           </button>
         </div>
@@ -645,24 +708,19 @@ function CategorySection({ label, color, customers, defaultOpen, onEdit }) {
 
   return (
     <div className="rounded-2xl border border-[#F0EBE3] overflow-hidden">
-      {/* Header */}
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-[#FDF8ED] transition-colors"
       >
-        {color ? (
-          <span className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-        ) : (
-          <Tag size={13} className="text-[#C4B9A8] shrink-0" />
-        )}
+        {color
+          ? <span className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
+          : <Tag size={13} className="text-[#C4B9A8] shrink-0" />}
         <span className="font-semibold text-sm text-[#1C1C1E] flex-1 text-left">{label}</span>
         <span className="text-[11px] text-[#8E8878] font-medium">{customers.length} khách</span>
         {open
           ? <ChevronDown size={15} className="text-[#8E8878] shrink-0" />
           : <ChevronRight size={15} className="text-[#8E8878] shrink-0" />}
       </button>
-
-      {/* Body */}
       {open && (
         <div className="border-t border-[#F0EBE3] p-3 space-y-2 bg-[#FAFAF8]">
           {customers.map(c => (
@@ -687,12 +745,12 @@ export default function SellerCustomersPage() {
   const [page, setPage]           = useState(0);
   const PAGE_SIZE = 200;
 
-  const [search, setSearch]       = useState('');
+  const [search, setSearch]         = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const debouncedSearch = useDebounce(search, 400);
 
-  const [editTarget, setEditTarget]   = useState(null);
-  const [importing, setImporting]     = useState(false);
+  const [editTarget, setEditTarget]         = useState(null);
+  const [importing, setImporting]           = useState(false);
   const [exportingTemplate, setExportingTemplate] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -715,15 +773,13 @@ export default function SellerCustomersPage() {
 
   useEffect(() => { load(0); }, [debouncedSearch, typeFilter]);
 
-  // Nhóm khách theo category
   const grouped = (() => {
-    const map = new Map(); // key = categoryId (null → "Chưa phân loại")
+    const map = new Map();
     for (const c of customers) {
       const key = c.categoryId ?? '__none__';
       if (!map.has(key)) map.set(key, { label: c.categoryName || 'Chưa phân loại', color: c.categoryColor || null, items: [] });
       map.get(key).items.push(c);
     }
-    // Sắp xếp: có category trước (theo tên), "Chưa phân loại" cuối
     const entries = [...map.entries()];
     entries.sort(([ka, a], [kb, b]) => {
       if (ka === '__none__') return 1;
@@ -781,7 +837,7 @@ export default function SellerCustomersPage() {
             </div>
             <div>
               <h1 className="text-base font-bold text-[#1C1C1E]">Khách hàng</h1>
-              <p className="text-[11px] text-[#8E8878]">{isSuperSeller ? 'Tất cả': 'Khách của tôi'} · {total} khách</p>
+              <p className="text-[11px] text-[#8E8878]">{isSuperSeller ? 'Tất cả' : 'Khách của tôi'} · {total} khách</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -849,13 +905,11 @@ export default function SellerCustomersPage() {
           </div>
         ) : (
           <>
-            {/* Khi đang search → hiển thị flat (không accordion) */}
             {search ? (
               <div className="space-y-2">
                 {customers.map(c => <CustomerRow key={c.id} c={c} onEdit={setEditTarget} />)}
               </div>
             ) : (
-              /* Accordion phân nhóm theo category */
               <div className="space-y-3">
                 {grouped.map(([key, { label, color, items }], idx) => (
                   <CategorySection
@@ -863,7 +917,7 @@ export default function SellerCustomersPage() {
                     label={label}
                     color={color}
                     customers={items}
-                    defaultOpen={idx === 0}  // mặc định expand nhóm đầu tiên
+                    defaultOpen={idx === 0}
                     onEdit={setEditTarget}
                   />
                 ))}

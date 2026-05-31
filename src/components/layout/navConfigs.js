@@ -8,6 +8,9 @@ import {
   Warehouse, Package, LogOut, Receipt, TrendingUp,
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
+  FileSpreadsheet,
+  ClipboardCheck,
+  FileClock,
 } from 'lucide-react';
 
 // Raw nav configs với i18n keys
@@ -47,9 +50,10 @@ export const hrNavRaw = [
 
 export const sellerNavRaw = [
   { to: '/seller/pos',       labelKey: 'pos',       icon: ShoppingCart },
-  { to: '/seller/orders',    labelKey: 'orders',    icon: ClipboardList },
-  { to: '/seller/drafts',    labelKey: 'drafts',    icon: FileText },
+  { to: '/seller/orders',    labelKey: 'orders',    icon: ClipboardCheck },
+  { to: '/seller/drafts',    labelKey: 'drafts',    icon: FileClock },
   { to: '/seller/customers', labelKey: 'customers', icon: Users },
+  { to: '/seller/quotation', labelKey: 'quotation', icon: Receipt },
 ];
 
 export const warehouseNavRaw = [

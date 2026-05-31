@@ -152,7 +152,8 @@
     "salaries": "Payslips",
     "factory_batches": "Enter Production Batch",
     "batch_history": "Batch History",
-    "warehouse_receipts": "Warehouse Receipts"
+    "warehouse_receipts": "Warehouse Receipts",
+    "quotation": "Quotation"
   },
   "profile": {
     "my_profile": "My Profile",

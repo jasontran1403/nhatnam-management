@@ -102,7 +102,6 @@ export const orderApi = {
     api.patch(`/api/seller/orders/${orderId}/pending-payment`),
   cancelOrder: (id, reason) =>
     api.patch(`/api/seller/orders/${id}/cancel`, { reason }),
-  // Sửa đơn hàng đang PREPARING
   updateOrderItems: (id, data) =>
     api.put(`/api/seller/orders/${id}/items`, data),
 };
@@ -125,7 +124,6 @@ export const inventoryApi = {
 
 // ─── Accountant ──────────────────────────────────────────────────────────────
 export const accountantApi = {
-  // Orders
   getOrders: (params) => api.get('/api/accountant/orders', { params }),
   markPendingPayment: (id) => api.patch(`/api/accountant/orders/${id}/pending-payment`),
   markCompleted: (id) => api.patch(`/api/accountant/orders/${id}/complete`),
@@ -134,37 +132,27 @@ export const accountantApi = {
     api.get('/api/accountant/orders/export', { params, responseType: 'blob' }),
   getProducts: () => api.get('/api/accountant/products'),
   getCustomersList: (q) => api.get('/api/accountant/customers', { params: { q, size: 100 } }),
-
-  // Customers
   getCustomers: (params) => api.get('/api/accountant/customers', { params }),
   getCustomerOrders: (customerId) => api.get(`/api/accountant/customers/${customerId}/orders`),
-
-  // Dashboard
   getSummary: (from, to) => api.get('/api/accountant/dashboard/summary', { params: { from, to } }),
   getChart: (from, to, groupBy) => api.get('/api/accountant/dashboard/chart', { params: { from, to, groupBy } }),
   getTopProducts: (from, to, limit = 10) => api.get('/api/accountant/dashboard/top-products', { params: { from, to, limit } }),
-
   recordPartialPayment: (id, paidAmountOrData, debtDays) => {
     const body = typeof paidAmountOrData === 'object' && paidAmountOrData !== null
       ? paidAmountOrData
       : { paidAmount: paidAmountOrData, debtDays };
     return api.patch(`/api/accountant/orders/${id}/partial-payment`, body);
   },
-
   getInvoice: (orderId) =>
     api.get(`/api/accountant/orders/${orderId}/invoice`, { responseType: 'blob' }),
-
   waiveRemainder: (id, data) =>
     api.patch(`/api/accountant/orders/${id}/waive-remainder`, data),
-
   getOrderDetail: (id) => api.get(`/api/accountant/orders/${id}/detail`),
   getOrderLogs: (id) => api.get(`/api/accountant/orders/${id}/logs`),
   bulkComplete: (data) => api.post('/api/accountant/orders/bulk-complete', data),
   uploadReceiptFile: (id, formData) =>
     api.patch(`/api/accountant/orders/${id}/receipt-file`, formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }),
-
-  // ── THÊM: hủy đơn ────────────────────────────────────────────────────────
   cancelOrder: (id, reason) =>
     api.patch(`/api/accountant/orders/${id}/cancel`, { reason }),
 };
@@ -257,4 +245,21 @@ export const paymentApi = {
     api.get(`/api/accountant/orders/${orderId}/payment-transactions`),
   recordPartialPayment: (id, data) =>
     api.patch(`/api/accountant/orders/${id}/partial-payment`, data),
+};
+
+// ─── Quotation API ────────────────────────────────────────────────────────────
+export const quotationApi = {
+  /**
+   * Tạo và download PDF báo giá
+   * @param {Object} payload
+   * @param {string} payload.customerName       - Tên khách hàng (có thể null → "QUÝ KHÁCH HÀNG")
+   * @param {string} payload.quotationContent   - Nội dung báo giá (VD: "SẢN PHẨM ICEHOT & RICH'S")
+   * @param {Array}  payload.items              - Danh sách sản phẩm
+   * @param {number} payload.items[].productId
+   * @param {number} [payload.items[].tierId]   - null = giá lẻ (basePrice)
+   * @param {number} payload.items[].vatRate    - 0 | 5 | 8 | 10 | 12
+   * @param {string} payload.items[].vatMode    - "INCLUSIVE" | "EXCLUSIVE"
+   */
+  exportPdf: (payload) =>
+    api.post('/api/seller/quotations/export-pdf', payload, { responseType: 'blob' }),
 };

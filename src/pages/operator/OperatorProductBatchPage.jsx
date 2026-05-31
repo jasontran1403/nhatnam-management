@@ -14,8 +14,8 @@ const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi',
 
 // 3 khung giá cố định mặc định
 const DEFAULT_TIERS = [
-  { _id: 'tier-1', tierName: 'Sỉ 1', minQty: 0,  maxQty: 5,    price: '' },
-  { _id: 'tier-2', tierName: 'Sỉ 2', minQty: 5,  maxQty: 20,   price: '' },
+  { _id: 'tier-1', tierName: 'Sỉ 1', minQty: 0, maxQty: 5, price: '' },
+  { _id: 'tier-2', tierName: 'Sỉ 2', minQty: 5, maxQty: 20, price: '' },
   { _id: 'tier-3', tierName: 'Sỉ 3', minQty: 20, maxQty: null, price: '' },
 ];
 
@@ -50,6 +50,10 @@ const fmtNum = (v) => {
   const n = parseInt(String(v ?? '').replace(/[^0-9]/g, ''), 10);
   return isNaN(n) ? '' : n.toLocaleString('vi-VN');
 };
+
+const normalize = (str) =>
+  (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -122,20 +126,20 @@ export default function OperatorProductBatchPage() {
       hasWholesale: hasTiers,
       tiers: hasTiers
         ? p.tiers.map((t, idx) => ({
-            _id: `tier-${idx}-${Date.now()}`,
-            tierName: t.tierName || `Sỉ ${idx + 1}`,
-            minQty: t.minQuantity ?? DEFAULT_TIERS[idx]?.minQty ?? 0,
-            maxQty: t.maxQuantity ?? DEFAULT_TIERS[idx]?.maxQty ?? null,
-            price: t.price != null ? String(t.price) : '',
-          }))
+          _id: `tier-${idx}-${Date.now()}`,
+          tierName: t.tierName || `Sỉ ${idx + 1}`,
+          minQty: t.minQuantity ?? DEFAULT_TIERS[idx]?.minQty ?? 0,
+          maxQty: t.maxQuantity ?? DEFAULT_TIERS[idx]?.maxQty ?? null,
+          price: t.price != null ? String(t.price) : '',
+        }))
         : DEFAULT_TIERS.map(t => ({ ...t, _id: `${t._id}-${Date.now()}`, price: '' })),
       ingredients: (p.ingredients && p.ingredients.length > 0)
         ? p.ingredients.map(ing => ({
-            _id: Date.now() + Math.random(),
-            ingredientId: String(ing.ingredientId || ''),
-            quantity: ing.quantity != null ? ing.quantity : 1,
-            canOverride: ing.canOverride || false,
-          }))
+          _id: Date.now() + Math.random(),
+          ingredientId: String(ing.ingredientId || ''),
+          quantity: ing.quantity != null ? ing.quantity : 1,
+          canOverride: ing.canOverride || false,
+        }))
         : [emptyIngredient()],
     });
     setShowProductModal(false);
@@ -206,12 +210,12 @@ export default function OperatorProductBatchPage() {
           // Chỉ gửi tiers nếu bật giá sỉ
           tiers: it.hasWholesale
             ? it.tiers.map((tier, idx) => ({
-                tierName: tier.tierName,
-                minQuantity: tier.minQty,
-                maxQuantity: tier.maxQty,
-                price: Number(String(tier.price).replace(/[^0-9]/g, '')),
-                sortOrder: idx,
-              }))
+              tierName: tier.tierName,
+              minQuantity: tier.minQty,
+              maxQuantity: tier.maxQty,
+              price: Number(String(tier.price).replace(/[^0-9]/g, '')),
+              sortOrder: idx,
+            }))
             : [],
           ingredients: it.ingredients
             .filter(ing => ing.ingredientId)
@@ -683,7 +687,7 @@ function IngredientSelect({ ingredients, value, onChange }) {
   const selected = ingredients.find(i => String(i.id) === String(value));
 
   const filtered = ingredients.filter(i =>
-    i.name?.toLowerCase().includes(search.toLowerCase())
+    normalize(i.name).includes(normalize(search))
   );
 
   const handleOpen = () => { setSearch(''); setOpen(true); };
@@ -698,7 +702,7 @@ function IngredientSelect({ ingredients, value, onChange }) {
 
       {open && ReactDOM.createPortal(
         <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="bg-white rounded-2xl w-full max-w-lg h-[60svh] flex flex-col shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="font-semibold text-lg">Chọn nguyên liệu</h3>
@@ -725,8 +729,9 @@ function IngredientSelect({ ingredients, value, onChange }) {
             {/* List */}
             <div className="flex-1 overflow-auto p-2">
               {filtered.length === 0 ? (
-                <div className="text-center py-12 text-[#8E8878] italic text-sm">
-                  Không tìm thấy nguyên liệu nào
+                <div className="flex flex-col items-center justify-center h-full text-[#B0A898]">
+                  <Search size={32} className="mb-2 opacity-30" />
+                  <p className="text-sm italic">Không tìm thấy nguyên liệu nào</p>
                 </div>
               ) : (
                 filtered.map(i => (

@@ -152,7 +152,8 @@
     "salaries": "Phiếu lương",
     "factory_batches": "Nhập mẻ SX",
     "batch_history": "Lịch sử mẻ",
-    "warehouse_receipts": "Phiếu nhập kho"
+    "warehouse_receipts": "Phiếu nhập kho",
+    "quotation": "Báo giá"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

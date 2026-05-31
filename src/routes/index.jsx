@@ -67,6 +67,7 @@ import OperatorLandingpagePage from '../pages/operator/OperatorLandingpagePage';
 // Factory Worker
 import { FactoryDashboardPage, FactoryHistoryPage } from '../pages/factory_worker/FactoryWorkerPages';
 import FactoryCreateBatchPage from '../pages/factory_worker/FactoryCreateBatchPage';
+import QuotationPage from '../pages/seller/QuotationPage';
 
 // ── Root redirect ─────────────────────────────────────────────────────────────
 function RootRedirect() {
@@ -111,6 +112,7 @@ export default function AppRoutes() {
         <Route path="drafts"        element={<DraftOrdersPage />} />
         <Route path="customers"     element={<SellerCustomersPage />} />
         <Route path="orders-manage" element={<AccountantOrdersPage />} />
+        <Route path="quotation"     element={<QuotationPage />} />
       </Route>
 
       {/* ── OWNER */}
