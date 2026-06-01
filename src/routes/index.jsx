@@ -18,6 +18,7 @@ import LoginPage from '../pages/auth/LoginPage';
 // Admin / Owner shared pages
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminOrders from '../pages/admin/AdminOrders';
+import AdminPOSPage from '../pages/admin/AdminPOSPage';
 import AdminCustomers from '../pages/admin/AdminCustomers';
 import AdminUsers from '../pages/admin/AdminUsers';
 import AdminWarehouses from '../pages/admin/AdminWarehouses';
@@ -120,7 +121,7 @@ export default function AppRoutes() {
         element={<TranslatedLayout rawNav={ownerNavRaw} allowedRoles={['OWNER']} />}>
         <Route index element={<Navigate to="/owner/dashboard" replace />} />
         <Route path="dashboard"            element={<AdminDashboard />} />
-        <Route path="pos"                  element={<POSPage />} />
+        <Route path="pos"                  element={<AdminPOSPage />} />
         <Route path="drafts"               element={<DraftOrdersPage />} />
         <Route path="orders"               element={<AdminOrders />} />
         <Route path="customers"            element={<AdminCustomers />} />

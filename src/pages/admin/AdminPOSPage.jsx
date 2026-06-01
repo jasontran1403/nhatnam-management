@@ -27,7 +27,6 @@ const cartHoldApi = {
     api.post('/api/seller/cart-hold/held-quantities', { warehouseId, ingredientIds }),
 };
 
-// Format số tiền 2 chữ số thập phân
 function formatPrice(price) {
   const num = price || 0;
   return new Intl.NumberFormat('vi-VN', {
@@ -39,13 +38,12 @@ function formatPrice(price) {
 let cartIdCounter = 0;
 const newCartId = () => ++cartIdCounter;
 
-// Tính đơn giá chưa thuế
 function calcNetPrice(price, vatRate, vatMode) {
   const rate = vatRate ?? 0;
   const mode = vatMode ?? 'INCLUSIVE';
   if (rate === 0) return price;
   if (mode === 'INCLUSIVE') return price / (1 + rate / 100);
-  return price; // EXCLUSIVE: giá gốc chưa thuế
+  return price;
 }
 
 function parseChangedProductName(message) {
@@ -54,7 +52,6 @@ function parseChangedProductName(message) {
 }
 
 // ── TierSelectModal ────────────────────────────────────────────────────────
-// Hiện khi click vào sản phẩm hoặc click badge giá trong giỏ
 function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm, onClose }) {
   const hasTiers = product.priceTiers && product.priceTiers.length > 0;
 
@@ -73,7 +70,6 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
         </div>
 
         <div className="p-4 space-y-2">
-          {/* Giá lẻ (basePrice) */}
           <button
             onClick={() => onConfirm({ priceSource: 'BASE', tierId: null, tierName: null, unitPrice: product.basePrice })}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
@@ -89,7 +85,6 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
             </div>
           </button>
 
-          {/* Các khung giá sỉ */}
           {hasTiers && product.priceTiers
             .slice()
             .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -119,7 +114,6 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
 }
 
 // ── VatBreakdownDisplay ────────────────────────────────────────────────────
-// Đơn giá hiển thị là net chưa thuế → tất cả VAT đều cộng vào tổng
 function VatBreakdownDisplay({ breakdown }) {
   if (!breakdown || breakdown.length === 0) return null;
   const totalVat = breakdown.reduce((s, g) => s + g.vatAmt, 0);
@@ -343,13 +337,11 @@ function CartPanel({
       {/* Summary */}
       <div className="px-4 pb-4 pt-2 border-t border-[#F0EBE3] bg-white">
         <div className="space-y-1 mb-3">
-          {/* Tạm tính */}
           <div className="flex justify-between text-xs text-[#8E8878]">
             <span>Tạm tính</span>
-            <span>{formatPrice(subtotalNet)}</span>   {/* subtotalNet đã được map = subtotalGross */}
+            <span>{formatPrice(subtotalNet)}</span>
           </div>
 
-          {/* Giảm giá */}
           {(itemDiscountTotal > 0 || discountAmt > 0 || promoTotal > 0) && (
             <div>
               <div className="flex justify-between text-xs text-emerald-600">
@@ -381,7 +373,6 @@ function CartPanel({
             </div>
           )}
 
-          {/* Phụ phí */}
           {surchargeNum > 0 && (
             <div className="flex justify-between text-xs text-orange-500">
               <span>Phụ phí</span>
@@ -389,14 +380,12 @@ function CartPanel({
             </div>
           )}
 
-          {/* VAT breakdown */}
           {vatBreakdown.length > 0 && (
             <div className="pt-1 border-t border-dashed border-[#F0EBE3]">
               <VatBreakdownDisplay breakdown={vatBreakdown} />
             </div>
           )}
 
-          {/* Tổng cộng */}
           <div className="flex justify-between font-bold text-sm text-[#1C1C1E] pt-1 border-t border-[#F0EBE3]">
             <span>Tổng cộng</span>
             <span className="text-[#C9A84C]">{formatPrice(total)}</span>
@@ -530,7 +519,8 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
 }
 
 // ── DeliveryTimeModal ─────────────────────────────────────────────────────
-function DeliveryTimeModal({ onConfirm, onClose }) {
+// THAY ĐỔI: thêm prop isOwner, state includeKpi, toggle "Tính KPI" chỉ hiện với OWNER
+function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
   const defaultDelivery = (() => {
     const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
   })();
@@ -538,10 +528,14 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
   const [orderedBy, setOrderedBy] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [showPrices, setShowPrices] = useState(true);
+  // THAY ĐỔI: mặc định tính KPI = true
+  const [includeKpi, setIncludeKpi] = useState(true);
   const [DTPicker, setDTPicker] = useState(null);
+
   useEffect(() => {
     import('../../components/ui/DateTimePicker').then(m => setDTPicker(() => m.default));
   }, []);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -555,6 +549,7 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
             <X size={15} />
           </button>
         </div>
+
         <div className="px-5 py-4 space-y-4">
           <div>
             <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">👤 Tên người đặt hàng</label>
@@ -575,6 +570,8 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
               : <div className="h-11 rounded-xl border-2 border-[#E8DDD0] animate-pulse bg-[#FAFAF8]" />}
           </div>
         </div>
+
+        {/* Toggle hiển thị giá */}
         <div className="px-5 pb-1">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${showPrices ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}
@@ -584,9 +581,39 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
             <span className="text-xs font-semibold text-[#1C1C1E]">Hiển thị giá trên phiếu</span>
           </label>
         </div>
+
+        {/* THAY ĐỔI: Toggle tính KPI — chỉ hiện với OWNER */}
+        {isOwner && (
+          <div className="px-5 pb-3 mt-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <div
+                className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${includeKpi ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}
+                onClick={() => setIncludeKpi(p => !p)}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${includeKpi ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-[#1C1C1E]">Tính KPI</span>
+                {!includeKpi && (
+                  <p className="text-[10px] text-[#8E8878] mt-0.5">Đơn này sẽ không tính vào KPI phòng/cá nhân</p>
+                )}
+              </div>
+            </label>
+          </div>
+        )}
+
         <div className="px-5 pb-5 flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3]">Hủy</button>
-          <button onClick={() => onConfirm(deliveryDate?.getTime() ?? null, orderedBy.trim() || null, showPrices, recipientName.trim() || null)}
+          <button
+            // THAY ĐỔI: truyền thêm includeKpi vào onConfirm
+            // OWNER → truyền lựa chọn của họ; không phải OWNER → luôn true (BE tự xử lý theo role)
+            onClick={() => onConfirm(
+              deliveryDate?.getTime() ?? null,
+              orderedBy.trim() || null,
+              showPrices,
+              recipientName.trim() || null,
+              isOwner ? includeKpi : true,
+            )}
             disabled={!deliveryDate}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-40 flex items-center justify-center gap-2">
             <Receipt size={15} /> Tạo đơn hàng
@@ -597,13 +624,18 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
   );
 }
 
-// ── POSPage (main) ──────────────────────────────────────────────────────────
-export default function POSPage() {
+// ── Admin (main) ──────────────────────────────────────────────────────────
+export default function AdminPOSPage() {
   const { t } = useLang();
   const toast = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // THAY ĐỔI: xác định role từ JWT (user.role là string đơn)
+  const userRole = user?.role || '';
+  const isOwner = userRole === 'OWNER';
+  const isSuperSeller = userRole === 'SUPER_SELLER';
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -637,9 +669,8 @@ export default function POSPage() {
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
 
-  // TierSelectModal state
-  const [tierModalProduct, setTierModalProduct] = useState(null); // product object
-  const [tierModalCartId, setTierModalCartId] = useState(null);   // cartId nếu đổi tier từ giỏ
+  const [tierModalProduct, setTierModalProduct] = useState(null);
+  const [tierModalCartId, setTierModalCartId] = useState(null);
 
   const [countdownSeconds, setCountdownSeconds] = useState(0);
   const timerRef = useRef(null);
@@ -725,7 +756,6 @@ export default function POSPage() {
       .then(res => {
         const list = res.data?.data || res.data || [];
         setWarehouses(list);
-        // Nếu có draft đang chờ restore warehouse → ưu tiên theo draft
         const draftState = location.state?.draft;
         if (draftState?.warehouseId) {
           const found = list.find(w => w.id === draftState.warehouseId);
@@ -781,12 +811,10 @@ export default function POSPage() {
       setSurcharge(s);
       setSurchargeDisplay(new Intl.NumberFormat('vi-VN').format(s));
     }
-    // Restore warehouse từ draft
     if (draft.warehouseId) {
       setWarehouses(prev => {
         const found = prev.find(w => w.id === draft.warehouseId);
         if (found) setSelectedWarehouse(found);
-        // Nếu chưa load xong warehouses → sẽ xử lý sau bằng effect riêng
         return prev;
       });
     }
@@ -832,21 +860,16 @@ export default function POSPage() {
     return list;
   }, [products, activeCategory, searchQuery, sortField, sortDir]);
 
-  // ── Thêm món vào giỏ ────────────────────────────────────────────────────
-  // Nếu có tiers → mở TierSelectModal; không có → thêm thẳng BASE
   const handleAddProduct = useCallback((product) => {
     const effStock = calcEffectiveStock(product);
     const productWithStock = effStock !== null ? { ...product, stockQuantity: effStock } : product;
 
     if (product.unitsPerBox && product.unitsPerBox > 0) {
-      // Có thùng → mở SaleTypeModal trước
       setPendingSaleProduct(productWithStock);
     } else if (product.priceTiers && product.priceTiers.length > 0) {
-      // Có tiers → mở TierSelectModal
       setTierModalProduct(productWithStock);
       setTierModalCartId(null);
     } else {
-      // Không có gì → thêm thẳng BASE
       addToCartDirect(productWithStock, 'RETAIL', 'BASE', null, null, productWithStock.basePrice);
     }
   }, [calcEffectiveStock]);
@@ -866,10 +889,9 @@ export default function POSPage() {
       productImageUrl: product.imageUrl,
       unit: displayUnit,
       quantity: addQty,
-      // unitPrice = giá gốc (trước khi trừ VAT), luôn lưu giá gốc
       unitPrice: unitPrice,
       originalUnitPrice: unitPrice,
-      priceSource,   // 'BASE' | 'TIER' | 'MANUAL'
+      priceSource,
       tierId,
       tierName,
       vatRate: product.vatRate ?? 0,
@@ -884,23 +906,19 @@ export default function POSPage() {
     }]);
   }, []);
 
-  // Confirm từ TierSelectModal (thêm mới hoặc đổi tier trong giỏ)
   const handleTierConfirm = useCallback(({ priceSource, tierId, tierName, unitPrice }) => {
     if (tierModalCartId != null) {
-      // Đổi tier cho item đã có trong giỏ
       setCartItems(prev => prev.map(i => {
         if (i.id !== tierModalCartId) return i;
         return { ...i, priceSource, tierId, tierName, unitPrice, originalUnitPrice: unitPrice, isManualPrice: false };
       }));
     } else if (tierModalProduct) {
-      // Thêm mới
       addToCartDirect(tierModalProduct, 'RETAIL', priceSource, tierId, tierName, unitPrice);
     }
     setTierModalProduct(null);
     setTierModalCartId(null);
   }, [tierModalCartId, tierModalProduct, addToCartDirect]);
 
-  // Mở TierSelectModal từ CartItem (đổi tier)
   const handleTierSelect = useCallback((cartId) => {
     const item = cartItems.find(i => i.id === cartId);
     if (!item) return;
@@ -910,7 +928,6 @@ export default function POSPage() {
     setTierModalCartId(cartId);
   }, [cartItems, calcEffectiveStock]);
 
-  // ── Cập nhật qty — KHÔNG thay đổi giá ──────────────────────────────────
   const updateQty = useCallback((cartId, qty) => {
     if (qty <= 0) { setCartItems((prev) => prev.filter((i) => i.id !== cartId)); return; }
     setCartItems((prev) => prev.map((i) => {
@@ -921,12 +938,10 @@ export default function POSPage() {
         const effStock = calcEffectiveStock(prod);
         if (effStock !== null) cappedQty = Math.min(qty, Math.round((effStock + i.quantity) * 1000) / 1000);
       }
-      // Giá KHÔNG thay đổi dù qty thay đổi
       return { ...i, quantity: cappedQty };
     }));
   }, [calcEffectiveStock]);
 
-  // ── Override giá → set priceSource = MANUAL ──────────────────────────
   const overridePrice = useCallback((cartId, newPrice, isManual = false) => {
     setCartItems((prev) => prev.map((i) => {
       if (i.id !== cartId) return i;
@@ -936,18 +951,16 @@ export default function POSPage() {
         originalUnitPrice: i.originalUnitPrice ?? i.unitPrice,
         priceSource: isManual ? 'MANUAL' : i.priceSource,
         isManualPrice: isManual ? true : i.isManualPrice,
-        // Khi manual → xóa tier
         tierId: isManual ? null : i.tierId,
         tierName: isManual ? null : i.tierName,
       };
     }));
   }, []);
 
-  // ── Đổi VAT rate (chỉ EXCLUSIVE) ─────────────────────────────────────
   const handleVatRateChange = useCallback((cartId, newRate) => {
     setCartItems(prev => prev.map(i => {
       if (i.id !== cartId) return i;
-      if ((i.vatMode ?? 'INCLUSIVE') === 'INCLUSIVE') return i; // không đổi INCLUSIVE
+      if ((i.vatMode ?? 'INCLUSIVE') === 'INCLUSIVE') return i;
       return { ...i, vatRate: newRate };
     }));
   }, []);
@@ -977,30 +990,21 @@ export default function POSPage() {
     cartHoldApi.release().catch(() => { });
   }, []);
 
-  // ── Tính toán tổng đơn ────────────────────────────────────────────────
   const calcNet = (item) => calcNetPrice(item.unitPrice, item.vatRate, item.vatMode);
-  const calcGross = (item) => Number(item.unitPrice); // giá gốc lưu trong state
+  const calcGross = (item) => Number(item.unitPrice);
 
-  // Promo Total (tính trên net của giá trước promo)
   const promoTotal = cartItems.reduce((s, i) => {
     if (!i.isPromo) return s;
     const origPrice = Number(i._priceBeforePromo ?? i.unitPrice);
     return s + calcNetPrice(origPrice, i.vatRate, i.vatMode) * Number(i.quantity);
   }, 0);
 
-  // ── Tạm tính ──────────────────────────────────────────────────────────
-  // INCLUSIVE: dùng gross (giá có thuế) — user thấy giá này
-  // EXCLUSIVE: dùng net (giá chưa thuế) — thuế tính riêng
   const subtotalNet = cartItems.reduce((s, i) => {
     if (i.isPromo) return s;
     const mode = i.vatMode ?? 'INCLUSIVE';
     return s + (mode === 'INCLUSIVE' ? calcGross(i) : calcNet(i)) * Number(i.quantity);
   }, 0);
-  // subtotalNet giờ = tạm tính đúng (gross cho INCLUSIVE, net cho EXCLUSIVE)
 
-  // ── CK món ────────────────────────────────────────────────────────────
-  // INCLUSIVE: giảm trên gross (giá có thuế)
-  // EXCLUSIVE: giảm trên net (giá chưa thuế)
   const itemDiscountTotal = cartItems.reduce((s, i) => {
     if (i.isPromo) return s;
     const d = i.itemDiscountRate ?? 0;
@@ -1014,8 +1018,6 @@ export default function POSPage() {
 
   const subtotalAfterItemDiscount = subtotalNet - itemDiscountTotal;
 
-  // ── Giảm tổng bill ────────────────────────────────────────────────────
-  // Tính trên subtotalAfterItemDiscount (đã đồng nhất gross/net theo từng loại)
   const maxDiscountFixed = Math.round(subtotalAfterItemDiscount * 0.1);
   const discountAmt = discountFixedAmt !== null
     ? Math.min(discountFixedAmt, maxDiscountFixed)
@@ -1025,9 +1027,6 @@ export default function POSPage() {
 
   const surchargeNum = Number(surcharge) || 0;
 
-  // ── VAT Breakdown ─────────────────────────────────────────────────────
-  // INCLUSIVE: VAT đã trong giá → tách ra hiển thị, KHÔNG cộng vào total
-  // EXCLUSIVE: VAT chưa trong giá → cộng vào total
   const vatBreakdown = useMemo(() => {
     const map = {};
     for (const i of cartItems) {
@@ -1037,29 +1036,22 @@ export default function POSPage() {
       if (rate === 0) continue;
 
       const qty = Number(i.quantity);
-
-      // Base line (đồng nhất với cách tính subtotal và discount)
       const baseLine = mode === 'INCLUSIVE'
         ? calcGross(i) * qty
         : calcNet(i) * qty;
 
-      // CK món của dòng này (trên cùng base)
       const d = i.itemDiscountRate ?? 0;
       const lineItemDiscount = d > 0 ? baseLine * (d / 100) : 0;
 
-      // Phân bổ giảm bill theo tỷ lệ base
       const proportion = subtotalNet > 0 ? baseLine / subtotalNet : 1;
       const lineBillDiscount = discountAmt * proportion;
 
-      // Base sau tất cả giảm
       const lineAfterDiscount = baseLine - lineItemDiscount - lineBillDiscount;
 
       let vatAmt = 0;
       if (mode === 'INCLUSIVE') {
-        // VAT đã trong giá: tách ngược ra = lineAfterDiscount × rate / (100 + rate)
         vatAmt = lineAfterDiscount * rate / (100 + rate);
       } else {
-        // VAT ngoài giá: tính thêm = lineAfterDiscount × rate / 100
         vatAmt = lineAfterDiscount * rate / 100;
       }
 
@@ -1070,20 +1062,13 @@ export default function POSPage() {
     return Object.values(map).sort((a, b) => a.rate - b.rate);
   }, [cartItems, subtotalNet, itemDiscountTotal, discountAmt]);
 
-  const totalVat = vatBreakdown.reduce((s, g) => s + g.vatAmt, 0);
-
-  // ── Tổng cộng ─────────────────────────────────────────────────────────
-  // INCLUSIVE: VAT đã trong subtotalAfterAllDiscountNet → không cộng thêm
-  // EXCLUSIVE: VAT chưa tính → cộng thêm exclusive VAT
   const exclusiveVatTotal = vatBreakdown
     .filter(g => g.mode === 'EXCLUSIVE')
     .reduce((s, g) => s + g.vatAmt, 0);
 
   const total = subtotalAfterAllDiscountNet + exclusiveVatTotal + surchargeNum;
 
-  // ── Handlers ──────────────────────────────────────────────────────────
   const setCustomer = useCallback((newCustomer) => {
-    // Khi đổi khách, giá KHÔNG thay đổi (bỏ resolveUnitPrice theo pricingType)
     setCustomerState(newCustomer);
   }, []);
 
@@ -1184,7 +1169,14 @@ export default function POSPage() {
     setDeliveryModalOpen(true);
   }, [customer, cartItems, toast]);
 
-  const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true, recipientName = null) => {
+  // THAY ĐỔI: handleSubmit nhận thêm includeKpi, đưa vào payload
+  const handleSubmit = useCallback(async (
+    deliveryDatetime,
+    orderedByName,
+    showPrices = true,
+    recipientName = null,
+    includeKpi = true,   // ← tham số mới
+  ) => {
     setDeliveryModalOpen(false);
     if (!customer || cartItems.length === 0) return;
     setSubmitting(true);
@@ -1205,6 +1197,7 @@ export default function POSPage() {
         deliveryDatetime: deliveryDatetime ?? null,
         orderedByName: orderedByName || undefined,
         showPrices,
+        includeKpi,  // ← thêm vào payload
         items: cartItems.map((i) => ({
           productId: i.productId,
           tierId: (i.isPromo || i.priceSource !== 'TIER') ? undefined : i.tierId,
@@ -1217,8 +1210,6 @@ export default function POSPage() {
           isManualPrice: i.isPromo ? true : (i.priceSource === 'MANUAL'),
           saleType: i.saleType || 'RETAIL',
           notes: i.isPromo ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
-          vatRate: i.vatRate,        // ← THÊM DÒNG NÀY
-          vatMode: i.vatMode,
         })),
       };
       const res = await orderApi.create(payload);
@@ -1248,7 +1239,7 @@ export default function POSPage() {
     discount,
     surchargeDisplay,
     surcharge,
-    subtotalNet,           // ← Dùng subtotalNet (tổng chưa VAT)
+    subtotalNet,
     discountAmt,
     surchargeNum,
     vatBreakdown,
@@ -1423,7 +1414,6 @@ export default function POSPage() {
           customer={customer}
           onConfirm={({ saleType }) => {
             if (pendingSaleProduct.priceTiers?.length > 0) {
-              // Có tiers → mở TierSelectModal sau khi chọn saleType
               setTierModalProduct({ ...pendingSaleProduct, _saleType: saleType });
               setTierModalCartId(null);
             } else {
@@ -1445,9 +1435,13 @@ export default function POSPage() {
         />
       )}
 
+      {/* THAY ĐỔI: truyền isOwner vào DeliveryTimeModal, onConfirm nhận thêm includeKpi */}
       {deliveryModalOpen && (
         <DeliveryTimeModal
-          onConfirm={(ts, orderedByName, showPrices, recipientName) => handleSubmit(ts, orderedByName, showPrices, recipientName)}
+          isOwner={isOwner}
+          onConfirm={(ts, orderedByName, showPrices, recipientName, includeKpi) =>
+            handleSubmit(ts, orderedByName, showPrices, recipientName, includeKpi)
+          }
           onClose={() => setDeliveryModalOpen(false)}
         />
       )}
