@@ -57,6 +57,9 @@ function parseChangedProductName(message) {
 // Hiện khi click vào sản phẩm hoặc click badge giá trong giỏ
 function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm, onClose }) {
   const hasTiers = product.priceTiers && product.priceTiers.length > 0;
+  const saleType = product._saleType || 'RETAIL';
+  const unitsPerBox = (saleType === 'BOX' && product.unitsPerBox > 0) ? product.unitsPerBox : 1;
+  const isBox = unitsPerBox > 1;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -66,6 +69,9 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
           <div>
             <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Chọn loại giá</p>
             <h3 className="text-white font-bold text-sm mt-0.5 truncate max-w-[200px]">{product.name}</h3>
+            {isBox && (
+              <p className="text-white/60 text-[10px] mt-0.5">📦 Thùng {unitsPerBox} hộp</p>
+            )}
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
             <X size={14} />
@@ -73,9 +79,13 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
         </div>
 
         <div className="p-4 space-y-2">
-          {/* Giá lẻ (basePrice) */}
           <button
-            onClick={() => onConfirm({ priceSource: 'BASE', tierId: null, tierName: null, unitPrice: product.basePrice })}
+            onClick={() => onConfirm({
+              priceSource: 'BASE',
+              tierId: null,
+              tierName: null,
+              unitPrice: product.basePrice * unitsPerBox, // giá thùng nếu BOX
+            })}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
               ${currentPriceSource === 'BASE'
                 ? 'border-sky-400 bg-sky-50'
@@ -83,20 +93,26 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
           >
             <div className="text-left">
               <p className="text-sm font-semibold text-[#1C1C1E]">Giá lẻ</p>
+              {isBox && <p className="text-[10px] text-[#8E8878]">{formatPrice(product.basePrice)} / hộp</p>}
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-sky-600">{formatPrice(product.basePrice)}</p>
+              <p className="text-sm font-bold text-sky-600">{formatPrice(product.basePrice * unitsPerBox)}</p>
+              {isBox && <p className="text-[10px] text-[#8E8878]">/ thùng</p>}
             </div>
           </button>
 
-          {/* Các khung giá sỉ */}
           {hasTiers && product.priceTiers
             .slice()
             .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
             .map((tier, idx) => (
               <button
                 key={tier.id}
-                onClick={() => onConfirm({ priceSource: 'TIER', tierId: tier.id, tierName: tier.tierName, unitPrice: tier.price })}
+                onClick={() => onConfirm({
+                  priceSource: 'TIER',
+                  tierId: tier.id,
+                  tierName: tier.tierName,
+                  unitPrice: tier.price * unitsPerBox, // giá thùng nếu BOX
+                })}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
                   ${currentTierId === tier.id
                     ? 'border-orange-400 bg-orange-50'
@@ -104,9 +120,11 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
               >
                 <div className="text-left">
                   <p className="text-sm font-semibold text-[#1C1C1E]">{tier.tierName || `Sỉ ${idx + 1}`}</p>
+                  {isBox && <p className="text-[10px] text-[#8E8878]">{formatPrice(tier.price)} / hộp</p>}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-orange-600">{formatPrice(tier.price)}</p>
+                  <p className="text-sm font-bold text-orange-600">{formatPrice(tier.price * unitsPerBox)}</p>
+                  {isBox && <p className="text-[10px] text-[#8E8878]">/ thùng</p>}
                   {currentTierId === tier.id && <Check size={14} className="text-orange-500 ml-auto mt-0.5" />}
                 </div>
               </button>
@@ -894,7 +912,11 @@ export default function POSPage() {
       }));
     } else if (tierModalProduct) {
       // Thêm mới
-      addToCartDirect(tierModalProduct, 'RETAIL', priceSource, tierId, tierName, unitPrice);
+      addToCartDirect(
+        tierModalProduct,
+        tierModalProduct._saleType || 'RETAIL',  // ← lấy saleType đúng
+        priceSource, tierId, tierName, unitPrice
+      );
     }
     setTierModalProduct(null);
     setTierModalCartId(null);
@@ -1210,8 +1232,12 @@ export default function POSPage() {
           tierId: (i.isPromo || i.priceSource !== 'TIER') ? undefined : i.tierId,
           quantity: i.quantity,
           sentUnitPrice: i.isPromo ? 0 : (
-            (i.saleType === 'BOX' && i.unitsPerBox > 0) ? i.unitPrice / i.unitsPerBox : i.unitPrice
+            (i.saleType === 'BOX' && i.unitsPerBox > 0)
+              ? i.unitPrice / i.unitsPerBox   // chia lại để gửi giá per unit cho backend
+              : i.unitPrice
           ),
+
+
           priceMode: i.isPromo ? 'BASE' : (i.priceSource === 'TIER' ? 'TIER' : 'BASE'),
           discountPercent: (!i.isPromo && (i.itemDiscountRate ?? 0) > 0) ? i.itemDiscountRate : undefined,
           isManualPrice: i.isPromo ? true : (i.priceSource === 'MANUAL'),
@@ -1423,11 +1449,16 @@ export default function POSPage() {
           customer={customer}
           onConfirm={({ saleType }) => {
             if (pendingSaleProduct.priceTiers?.length > 0) {
-              // Có tiers → mở TierSelectModal sau khi chọn saleType
               setTierModalProduct({ ...pendingSaleProduct, _saleType: saleType });
               setTierModalCartId(null);
             } else {
-              addToCartDirect(pendingSaleProduct, saleType, 'BASE', null, null, pendingSaleProduct.basePrice);
+              // Không có tiers → tính giá thùng ngay tại đây
+              const upb = (saleType === 'BOX' && pendingSaleProduct.unitsPerBox > 0)
+                ? pendingSaleProduct.unitsPerBox : 1;
+              addToCartDirect(
+                pendingSaleProduct, saleType, 'BASE', null, null,
+                pendingSaleProduct.basePrice * upb  // ← nhân unitsPerBox
+              );
             }
             setPendingSaleProduct(null);
           }}
