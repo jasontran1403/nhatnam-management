@@ -133,6 +133,7 @@ function IngredientRow({ row }) {
 
 // ── SubCategory section ───────────────────────────────────────────────────────
 function SubCategorySection({ name, rows }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(true);
   const totalStock = rows.reduce((s, r) => s + Number(r.stockQuantity || 0), 0);
   const totalCost  = rows.reduce((s, r) => s + Number(r.totalCostValue || 0), 0);
