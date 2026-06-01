@@ -353,6 +353,14 @@ export default function OrdersPage() {
   const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkConfirm, setBulkConfirm] = useState(null);
   const [bulkLoading, setBulkLoading] = useMinLoading(); const [pageSize, setPageSize] = useState(20);
 
+  const [exportDateRange, setExportDateRange] = useState({ from: null, to: null });
+  const [showExportPicker, setShowExportPicker] = useState(false);
+
+  // Ingredient export (chỉ cho thuytm)
+  const [showIngredientModal, setShowIngredientModal] = useState(false);
+  const [ingredientDateRange, setIngredientDateRange] = useState({ from: null, to: null });
+  const [exportingIngredients, setExportingIngredients] = useState(false);
+
   const STATUS_MAP = {
     PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
     CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle },
@@ -394,6 +402,10 @@ export default function OrdersPage() {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); }
     catch { return {}; }
   }, []);
+
+  const currentId = currentUser.userId || 0;
+  const isThuytm = currentId === 15; // Replace 1 with the actual user ID for thuytm if different
+
   const isSuperSeller = currentUser.role === 'SUPER_SELLER';
 
   const canActOnOrder = useCallback((o) => {
@@ -422,11 +434,40 @@ export default function OrdersPage() {
   useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 500); return () => clearTimeout(t); }, [searchInput]);
 
   const handleExport = async () => {
+    // Nếu chưa chọn ngày → mở picker trước
+    if (!exportDateRange.from || !exportDateRange.to) {
+      setShowExportPicker(true);
+      return;
+    }
     setExporting(true);
     try {
-      const params = {}; if (statusFilter !== 'ALL') params.status = statusFilter; if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0); if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
-      const res = await accountantApi.exportOrders(params); downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
-    } catch { toast('Không thể xuất file Excel', 'error'); } finally { setExporting(false); }
+      const params = { excludeCancelled: true };
+      if (statusFilter !== 'ALL') params.status = statusFilter;
+      if (exportDateRange.from) params.from = new Date(exportDateRange.from).setHours(0, 0, 0, 0);
+      if (exportDateRange.to) params.to = new Date(exportDateRange.to).setHours(23, 59, 59, 999);
+      const res = await accountantApi.exportOrders(params);
+      downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+    } catch { toast('Không thể xuất file Excel', 'error'); }
+    finally { setExporting(false); setShowExportPicker(false); }
+  };
+
+  const handleIngredientExport = async () => {
+    if (!ingredientDateRange.from || !ingredientDateRange.to) {
+      toast('Vui lòng chọn khoảng thời gian', 'error');
+      return;
+    }
+    setExportingIngredients(true);
+    try {
+      const params = {
+        from: new Date(ingredientDateRange.from).setHours(0, 0, 0, 0),
+        to: new Date(ingredientDateRange.to).setHours(23, 59, 59, 999),
+      };
+      const res = await orderApi.exportIngredients(params);
+      downloadBlob(res.data, `nguyen-lieu-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+      setShowIngredientModal(false);
+      setIngredientDateRange({ from: null, to: null });
+    } catch { toast('Không thể xuất báo cáo nguyên liệu', 'error'); }
+    finally { setExportingIngredients(false); }
   };
 
   const handleInvoice = async (orderId, e) => {
@@ -512,7 +553,24 @@ export default function OrdersPage() {
           <div className="hidden sm:flex items-center gap-1.5"><DateRangePicker from={dateRange.from} to={dateRange.to} onChange={r => { setDateRange(r); setPage(0); }} placeholder="Khoảng ngày" /></div>
           <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); fetchOrders(0); }} className="border border-[#E8DDD0] rounded-xl px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-[#C9A84C] hidden sm:block">{[20, 50, 100].map(n => <option key={n} value={n}>{n}/trang</option>)}</select>
           <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
-          <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0">{exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}</button>
+
+          <button
+            onClick={() => setShowExportPicker(true)}
+            disabled={exporting}
+            title="Xuất Excel đơn hàng"
+            className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0">
+            {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
+          </button>
+
+          {/* Export nguyên liệu — chỉ hiện cho thuytm */}
+          {isThuytm && (
+            <button
+              onClick={() => setShowIngredientModal(true)}
+              title="Xuất báo cáo nguyên liệu"
+              className="p-2 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors shrink-0">
+              <List size={14} />
+            </button>
+          )}
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
           {FILTER_TABS.map(t => <button key={t.value} onClick={() => setStatusFilter(t.value)} className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${statusFilter === t.value ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>{t.label}</button>)}
@@ -707,6 +765,67 @@ export default function OrdersPage() {
       )}
 
       {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onRefresh={fetchOrders} />}
+
+      {/* Modal chọn ngày Export đơn hàng */}
+      {showExportPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowExportPicker(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-[#1C1C1E]">Chọn khoảng thời gian xuất</h2>
+              <button onClick={() => setShowExportPicker(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-[#8E8878]">Đơn hủy sẽ tự động bị loại khỏi báo cáo.</p>
+            <DateRangePicker
+              from={exportDateRange.from}
+              to={exportDateRange.to}
+              onChange={r => setExportDateRange(r)}
+              placeholder="Chọn khoảng ngày"
+            />
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setShowExportPicker(false)} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
+              <button
+                onClick={handleExport}
+                disabled={exporting || !exportDateRange.from || !exportDateRange.to}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                {exporting ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><Download size={14} /> Xuất Excel</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Export nguyên liệu (chỉ thuytm) */}
+      {showIngredientModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowIngredientModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xuất báo cáo</p>
+                <h2 className="font-bold text-[#1C1C1E]">Nguyên liệu bán ra</h2>
+              </div>
+              <button onClick={() => setShowIngredientModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-[#8E8878]">Tổng hợp nguyên liệu từ tất cả đơn hàng (không tính đơn hủy) trong khoảng thời gian đã chọn.</p>
+            <DateRangePicker
+              from={ingredientDateRange.from}
+              to={ingredientDateRange.to}
+              onChange={r => setIngredientDateRange(r)}
+              placeholder="Chọn khoảng ngày"
+            />
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => { setShowIngredientModal(false); setIngredientDateRange({ from: null, to: null }); }} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
+              <button
+                onClick={handleIngredientExport}
+                disabled={exportingIngredients || !ingredientDateRange.from || !ingredientDateRange.to}
+                className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                {exportingIngredients ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><List size={14} /> Xuất báo cáo</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* THÊM: Modal hủy đơn */}
       {cancelTarget && (

@@ -54,6 +54,9 @@ function parseChangedProductName(message) {
 // ── TierSelectModal ────────────────────────────────────────────────────────
 function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm, onClose }) {
   const hasTiers = product.priceTiers && product.priceTiers.length > 0;
+  const saleType = product._saleType || 'RETAIL';
+  const unitsPerBox = (saleType === 'BOX' && product.unitsPerBox > 0) ? product.unitsPerBox : 1;
+  const isBox = unitsPerBox > 1;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -63,6 +66,9 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
           <div>
             <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Chọn loại giá</p>
             <h3 className="text-white font-bold text-sm mt-0.5 truncate max-w-[200px]">{product.name}</h3>
+            {isBox && (
+              <p className="text-white/60 text-[10px] mt-0.5">📦 Thùng {unitsPerBox} hộp</p>
+            )}
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
             <X size={14} />
@@ -71,7 +77,12 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
 
         <div className="p-4 space-y-2">
           <button
-            onClick={() => onConfirm({ priceSource: 'BASE', tierId: null, tierName: null, unitPrice: product.basePrice })}
+            onClick={() => onConfirm({
+              priceSource: 'BASE',
+              tierId: null,
+              tierName: null,
+              unitPrice: product.basePrice * unitsPerBox,
+            })}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
               ${currentPriceSource === 'BASE'
                 ? 'border-sky-400 bg-sky-50'
@@ -79,9 +90,11 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
           >
             <div className="text-left">
               <p className="text-sm font-semibold text-[#1C1C1E]">Giá lẻ</p>
+              {isBox && <p className="text-[10px] text-[#8E8878]">{formatPrice(product.basePrice)} / hộp</p>}
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-sky-600">{formatPrice(product.basePrice)}</p>
+              <p className="text-sm font-bold text-sky-600">{formatPrice(product.basePrice * unitsPerBox)}</p>
+              {isBox && <p className="text-[10px] text-[#8E8878]">/ thùng</p>}
             </div>
           </button>
 
@@ -91,7 +104,12 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
             .map((tier, idx) => (
               <button
                 key={tier.id}
-                onClick={() => onConfirm({ priceSource: 'TIER', tierId: tier.id, tierName: tier.tierName, unitPrice: tier.price })}
+                onClick={() => onConfirm({
+                  priceSource: 'TIER',
+                  tierId: tier.id,
+                  tierName: tier.tierName,
+                  unitPrice: tier.price * unitsPerBox,
+                })}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
                   ${currentTierId === tier.id
                     ? 'border-orange-400 bg-orange-50'
@@ -99,9 +117,11 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
               >
                 <div className="text-left">
                   <p className="text-sm font-semibold text-[#1C1C1E]">{tier.tierName || `Sỉ ${idx + 1}`}</p>
+                  {isBox && <p className="text-[10px] text-[#8E8878]">{formatPrice(tier.price)} / hộp</p>}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-orange-600">{formatPrice(tier.price)}</p>
+                  <p className="text-sm font-bold text-orange-600">{formatPrice(tier.price * unitsPerBox)}</p>
+                  {isBox && <p className="text-[10px] text-[#8E8878]">/ thùng</p>}
                   {currentTierId === tier.id && <Check size={14} className="text-orange-500 ml-auto mt-0.5" />}
                 </div>
               </button>
@@ -519,7 +539,7 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
 }
 
 // ── DeliveryTimeModal ─────────────────────────────────────────────────────
-// THAY ĐỔI: thêm prop isOwner, state includeKpi, toggle "Tính KPI" chỉ hiện với OWNER
+// isOwner: chỉ OWNER mới thấy toggle "Tính KPI"
 function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
   const defaultDelivery = (() => {
     const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
@@ -528,7 +548,6 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
   const [orderedBy, setOrderedBy] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [showPrices, setShowPrices] = useState(true);
-  // THAY ĐỔI: mặc định tính KPI = true
   const [includeKpi, setIncludeKpi] = useState(true);
   const [DTPicker, setDTPicker] = useState(null);
 
@@ -574,15 +593,17 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
         {/* Toggle hiển thị giá */}
         <div className="px-5 pb-1">
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${showPrices ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}
-              onClick={() => setShowPrices(p => !p)}>
+            <div
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${showPrices ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}
+              onClick={() => setShowPrices(p => !p)}
+            >
               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${showPrices ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </div>
             <span className="text-xs font-semibold text-[#1C1C1E]">Hiển thị giá trên phiếu</span>
           </label>
         </div>
 
-        {/* THAY ĐỔI: Toggle tính KPI — chỉ hiện với OWNER */}
+        {/* Toggle tính KPI — chỉ hiện với OWNER */}
         {isOwner && (
           <div className="px-5 pb-3 mt-1">
             <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -605,8 +626,6 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
         <div className="px-5 pb-5 flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3]">Hủy</button>
           <button
-            // THAY ĐỔI: truyền thêm includeKpi vào onConfirm
-            // OWNER → truyền lựa chọn của họ; không phải OWNER → luôn true (BE tự xử lý theo role)
             onClick={() => onConfirm(
               deliveryDate?.getTime() ?? null,
               orderedBy.trim() || null,
@@ -615,7 +634,8 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
               isOwner ? includeKpi : true,
             )}
             disabled={!deliveryDate}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-40 flex items-center justify-center gap-2">
+            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-40 flex items-center justify-center gap-2"
+          >
             <Receipt size={15} /> Tạo đơn hàng
           </button>
         </div>
@@ -624,7 +644,7 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
   );
 }
 
-// ── Admin (main) ──────────────────────────────────────────────────────────
+// ── AdminPOSPage (main) ────────────────────────────────────────────────────
 export default function AdminPOSPage() {
   const { t } = useLang();
   const toast = useToast();
@@ -632,10 +652,9 @@ export default function AdminPOSPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // THAY ĐỔI: xác định role từ JWT (user.role là string đơn)
+  // Xác định role từ JWT (user.role là string đơn)
   const userRole = user?.role || '';
   const isOwner = userRole === 'OWNER';
-  const isSuperSeller = userRole === 'SUPER_SELLER';
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -913,7 +932,11 @@ export default function AdminPOSPage() {
         return { ...i, priceSource, tierId, tierName, unitPrice, originalUnitPrice: unitPrice, isManualPrice: false };
       }));
     } else if (tierModalProduct) {
-      addToCartDirect(tierModalProduct, 'RETAIL', priceSource, tierId, tierName, unitPrice);
+      addToCartDirect(
+        tierModalProduct,
+        tierModalProduct._saleType || 'RETAIL',
+        priceSource, tierId, tierName, unitPrice,
+      );
     }
     setTierModalProduct(null);
     setTierModalCartId(null);
@@ -990,6 +1013,7 @@ export default function AdminPOSPage() {
     cartHoldApi.release().catch(() => { });
   }, []);
 
+  // ── Tính toán tổng đơn ────────────────────────────────────────────────
   const calcNet = (item) => calcNetPrice(item.unitPrice, item.vatRate, item.vatMode);
   const calcGross = (item) => Number(item.unitPrice);
 
@@ -1017,14 +1041,12 @@ export default function AdminPOSPage() {
   }, 0);
 
   const subtotalAfterItemDiscount = subtotalNet - itemDiscountTotal;
-
   const maxDiscountFixed = Math.round(subtotalAfterItemDiscount * 0.1);
   const discountAmt = discountFixedAmt !== null
     ? Math.min(discountFixedAmt, maxDiscountFixed)
     : Math.round(subtotalAfterItemDiscount * discount) / 100;
 
   const subtotalAfterAllDiscountNet = subtotalAfterItemDiscount - discountAmt;
-
   const surchargeNum = Number(surcharge) || 0;
 
   const vatBreakdown = useMemo(() => {
@@ -1036,16 +1058,11 @@ export default function AdminPOSPage() {
       if (rate === 0) continue;
 
       const qty = Number(i.quantity);
-      const baseLine = mode === 'INCLUSIVE'
-        ? calcGross(i) * qty
-        : calcNet(i) * qty;
-
+      const baseLine = mode === 'INCLUSIVE' ? calcGross(i) * qty : calcNet(i) * qty;
       const d = i.itemDiscountRate ?? 0;
       const lineItemDiscount = d > 0 ? baseLine * (d / 100) : 0;
-
       const proportion = subtotalNet > 0 ? baseLine / subtotalNet : 1;
       const lineBillDiscount = discountAmt * proportion;
-
       const lineAfterDiscount = baseLine - lineItemDiscount - lineBillDiscount;
 
       let vatAmt = 0;
@@ -1068,6 +1085,7 @@ export default function AdminPOSPage() {
 
   const total = subtotalAfterAllDiscountNet + exclusiveVatTotal + surchargeNum;
 
+  // ── Handlers ──────────────────────────────────────────────────────────
   const setCustomer = useCallback((newCustomer) => {
     setCustomerState(newCustomer);
   }, []);
@@ -1169,13 +1187,13 @@ export default function AdminPOSPage() {
     setDeliveryModalOpen(true);
   }, [customer, cartItems, toast]);
 
-  // THAY ĐỔI: handleSubmit nhận thêm includeKpi, đưa vào payload
+  // includeKpi: OWNER truyền lựa chọn, role khác luôn true (BE tự xử lý theo role)
   const handleSubmit = useCallback(async (
     deliveryDatetime,
     orderedByName,
     showPrices = true,
     recipientName = null,
-    includeKpi = true,   // ← tham số mới
+    includeKpi = true,
   ) => {
     setDeliveryModalOpen(false);
     if (!customer || cartItems.length === 0) return;
@@ -1197,19 +1215,23 @@ export default function AdminPOSPage() {
         deliveryDatetime: deliveryDatetime ?? null,
         orderedByName: orderedByName || undefined,
         showPrices,
-        includeKpi,  // ← thêm vào payload
+        includeKpi,
         items: cartItems.map((i) => ({
           productId: i.productId,
           tierId: (i.isPromo || i.priceSource !== 'TIER') ? undefined : i.tierId,
           quantity: i.quantity,
           sentUnitPrice: i.isPromo ? 0 : (
-            (i.saleType === 'BOX' && i.unitsPerBox > 0) ? i.unitPrice / i.unitsPerBox : i.unitPrice
+            (i.saleType === 'BOX' && i.unitsPerBox > 0)
+              ? i.unitPrice / i.unitsPerBox
+              : i.unitPrice
           ),
           priceMode: i.isPromo ? 'BASE' : (i.priceSource === 'TIER' ? 'TIER' : 'BASE'),
           discountPercent: (!i.isPromo && (i.itemDiscountRate ?? 0) > 0) ? i.itemDiscountRate : undefined,
           isManualPrice: i.isPromo ? true : (i.priceSource === 'MANUAL'),
           saleType: i.saleType || 'RETAIL',
           notes: i.isPromo ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
+          vatRate: i.vatRate,
+          vatMode: i.vatMode,
         })),
       };
       const res = await orderApi.create(payload);
@@ -1417,7 +1439,12 @@ export default function AdminPOSPage() {
               setTierModalProduct({ ...pendingSaleProduct, _saleType: saleType });
               setTierModalCartId(null);
             } else {
-              addToCartDirect(pendingSaleProduct, saleType, 'BASE', null, null, pendingSaleProduct.basePrice);
+              const upb = (saleType === 'BOX' && pendingSaleProduct.unitsPerBox > 0)
+                ? pendingSaleProduct.unitsPerBox : 1;
+              addToCartDirect(
+                pendingSaleProduct, saleType, 'BASE', null, null,
+                pendingSaleProduct.basePrice * upb,
+              );
             }
             setPendingSaleProduct(null);
           }}
@@ -1435,7 +1462,7 @@ export default function AdminPOSPage() {
         />
       )}
 
-      {/* THAY ĐỔI: truyền isOwner vào DeliveryTimeModal, onConfirm nhận thêm includeKpi */}
+      {/* DeliveryTimeModal: truyền isOwner để hiện toggle KPI */}
       {deliveryModalOpen && (
         <DeliveryTimeModal
           isOwner={isOwner}

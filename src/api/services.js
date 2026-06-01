@@ -104,6 +104,9 @@ export const orderApi = {
     api.patch(`/api/seller/orders/${id}/cancel`, { reason }),
   updateOrderItems: (id, data) =>
     api.put(`/api/seller/orders/${id}/items`, data),
+  exportIngredients: (params) =>
+    api.get('/api/seller/orders/export-ingredients', { params, responseType: 'blob' }),
+
 };
 
 // ─── Draft Order API ──────────────────────────────────────────────────────────
