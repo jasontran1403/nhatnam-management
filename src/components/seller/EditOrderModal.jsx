@@ -21,7 +21,7 @@ function tsToDatetimeLocal(ts) {
   if (!ts) return '';
   const d = new Date(ts);
   const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function datetimeLocalToTs(str) {
   if (!str) return null;
@@ -30,16 +30,16 @@ function datetimeLocalToTs(str) {
 
 const EXCLUSIVE_VAT = [0, 5, 8, 10, 12];
 const PAYMENT_METHODS = [
-  { value: 'CASH',          label: '💵 Tiền mặt' },
+  { value: 'CASH', label: '💵 Tiền mặt' },
   { value: 'BANK_TRANSFER', label: '🏦 Chuyển khoản' },
-  { value: 'DEBT',          label: '📋 Công nợ' },
+  { value: 'DEBT', label: '📋 Công nợ' },
 ];
 
 const DEFAULT_SURCHARGE_TYPES = [
-  { name: 'Thùng xốp',      placeholder: '20.000' },
+  { name: 'Thùng xốp', placeholder: '20.000' },
   { name: 'Phí vận chuyển', placeholder: '30.000' },
-  { name: 'Gửi xe',         placeholder: '10.000' },
-  { name: 'Đá khô',         placeholder: '15.000' },
+  { name: 'Gửi xe', placeholder: '10.000' },
+  { name: 'Đá khô', placeholder: '15.000' },
 ];
 
 // ── SurchargePanel ────────────────────────────────────────────────────────────
@@ -158,10 +158,10 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
             <p className="text-sm font-semibold">Giá lẻ</p>
             <p className="text-sm font-bold text-sky-600">{fmt(product?.basePrice)}</p>
           </button>
-          {(product?.priceTiers ?? []).slice().sort((a,b)=>(a.sortOrder??0)-(b.sortOrder??0)).map((tier, idx) => (
+          {(product?.priceTiers ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((tier, idx) => (
             <button key={tier.id} onClick={() => onConfirm({ priceSource: 'TIER', tierId: tier.id, tierName: tier.tierName, unitPrice: tier.price })}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${currentTierId===tier.id ? 'border-orange-400 bg-orange-50' : 'border-[#E8DDD0] hover:border-orange-300'}`}>
-              <p className="text-sm font-semibold">{tier.tierName || `Sỉ ${idx+1}`}</p>
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${currentTierId === tier.id ? 'border-orange-400 bg-orange-50' : 'border-[#E8DDD0] hover:border-orange-300'}`}>
+              <p className="text-sm font-semibold">{tier.tierName || `Sỉ ${idx + 1}`}</p>
               <p className="text-sm font-bold text-orange-600">{fmt(tier.price)}</p>
             </button>
           ))}
@@ -180,9 +180,12 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
   const [showPromoNote, setShowPromoNote] = useState(false);
   const [promoNoteInput, setPromoNoteInput] = useState('');
   const [showVatPicker, setShowVatPicker] = useState(false);
+  const [isEditingQty, setIsEditingQty] = useState(false);
+  const [qtyInput, setQtyInput] = useState('');
   const priceRef = useRef(null);
   const discountRef = useRef(null);
   const promoRef = useRef(null);
+  const qtyInputRef = useRef(null);
 
   const vatRate = item.vatRate ?? 0;
   const vatMode = item.vatMode ?? 'INCLUSIVE';
@@ -193,6 +196,9 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
   const isPromo = !!item.isPromo;
   const isNew = item.originalQuantity === undefined;
   const deltaQty = isNew ? item.quantity : (item.quantity - item.originalQuantity);
+
+  const unit = (item.unit || '').toLowerCase();
+  const isDecimalUnit = unit === 'kg' || unit === 'kilogam' || unit === 'lít' || unit === 'lit' || unit === 'l';
 
   const startEditPrice = () => {
     setPriceDisplay(String(item.unitPrice));
@@ -225,6 +231,39 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
   const togglePromo = () => {
     if (isPromo) { onPromoToggle(item._editId, false, ''); setShowPromoNote(false); }
     else openPromo();
+  };
+
+  const startEditQty = () => {
+    setQtyInput(String(item.quantity));
+    setIsEditingQty(true);
+    setTimeout(() => {
+      qtyInputRef.current?.focus();
+      qtyInputRef.current?.select();
+    }, 30);
+  };
+
+  const commitQty = () => {
+    let val = parseFloat(qtyInput.replace(',', '.'));
+    if (isNaN(val)) val = item.quantity;
+
+    // Kiểm tra DVT: nếu là kg hoặc lít thì cho nhập lẻ (2 số thập phân), còn lại phải là số nguyên
+    if (!isDecimalUnit) {
+      val = Math.round(val);
+    } else {
+      val = Math.round(val * 100) / 100;
+    }
+
+    if (val <= 0) {
+      onRemove(item._editId);
+    } else {
+      onUpdateQty(item._editId, val);
+    }
+    setIsEditingQty(false);
+  };
+
+  const handleQtyKeyDown = (e) => {
+    if (e.key === 'Enter') commitQty();
+    if (e.key === 'Escape') setIsEditingQty(false);
   };
 
   const priceBadge = item.priceSource === 'MANUAL'
@@ -267,7 +306,7 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
               <span className="text-[9px] text-emerald-700 font-semibold mr-1">Thuế %:</span>
               {EXCLUSIVE_VAT.map(r => (
                 <button key={r} onClick={() => { onVatRateChange(item._editId, r); setShowVatPicker(false); }}
-                  className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${vatRate===r ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-100'}`}>
+                  className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${vatRate === r ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-100'}`}>
                   {r}%
                 </button>
               ))}
@@ -281,13 +320,13 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
               <div className="flex items-center gap-1">
                 <input ref={priceRef} type="text" inputMode="decimal" value={priceDisplay}
                   onChange={e => setPriceDisplay(e.target.value.replace(/[^0-9.]/g, ''))}
-                  onBlur={commitPrice} onKeyDown={e => { if(e.key==='Enter') commitPrice(); if(e.key==='Escape') setEditingPrice(false); }}
+                  onBlur={commitPrice} onKeyDown={e => { if (e.key === 'Enter') commitPrice(); if (e.key === 'Escape') setEditingPrice(false); }}
                   className="w-24 text-xs border-2 border-[#C9A84C] rounded-lg px-2 py-1 focus:outline-none font-semibold" />
                 <span className="text-[10px] text-[#8E8878]">đ</span>
               </div>
             ) : (
               <button onClick={startEditPrice} className="flex items-center gap-1 group">
-                <span className={`text-xs font-bold ${item.priceSource==='MANUAL' ? 'text-purple-600' : 'text-[#C9A84C] group-hover:text-[#A07830]'}`}>{fmt(netPrice)}</span>
+                <span className={`text-xs font-bold ${item.priceSource === 'MANUAL' ? 'text-purple-600' : 'text-[#C9A84C] group-hover:text-[#A07830]'}`}>{fmt(netPrice)}</span>
                 <Pencil size={9} className="text-[#C4B9A8] group-hover:text-[#C9A84C]" />
               </button>
             )}
@@ -307,7 +346,7 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
             <div className="mt-1.5 flex items-center gap-1.5 bg-[#FAF7F2] rounded-lg px-2 py-1.5 border border-[#E8DDD0]">
               <input ref={discountRef} type="text" inputMode="numeric" value={discountInput}
                 onChange={e => setDiscountInput(e.target.value.replace(/[^0-9]/g, ''))}
-                onKeyDown={e => { if(e.key==='Enter') commitDiscount(); if(e.key==='Escape') setShowDiscount(false); }}
+                onKeyDown={e => { if (e.key === 'Enter') commitDiscount(); if (e.key === 'Escape') setShowDiscount(false); }}
                 placeholder="0" className="w-10 text-xs text-center border border-[#E8DDD0] rounded-lg px-1 py-1 focus:outline-none focus:border-[#C9A84C] bg-white font-semibold" />
               <span className="text-[10px] text-[#8E8878]">%</span>
               <button onClick={commitDiscount} className="w-5 h-5 rounded-full bg-[#C9A84C] text-white flex items-center justify-center"><Check size={10} /></button>
@@ -318,7 +357,7 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
           {showPromoNote && (
             <div className="mt-1.5 flex items-center gap-1.5 bg-rose-50 rounded-lg px-2 py-1.5 border border-rose-200">
               <input ref={promoRef} type="text" value={promoNoteInput} onChange={e => setPromoNoteInput(e.target.value)}
-                onKeyDown={e => { if(e.key==='Enter') commitPromo(); if(e.key==='Escape') setShowPromoNote(false); }}
+                onKeyDown={e => { if (e.key === 'Enter') commitPromo(); if (e.key === 'Escape') setShowPromoNote(false); }}
                 placeholder="Ghi chú KM..." className="flex-1 text-[10px] border border-rose-200 rounded-lg px-2 py-1 focus:outline-none focus:border-rose-400 bg-white" />
               <button onClick={commitPromo} className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center"><Check size={10} /></button>
             </div>
@@ -330,16 +369,38 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
           {!isPromo && (
             <p className="text-[10px] text-[#8E8878] mt-0.5">
               = {fmt(lineNet)}
-              {itemDiscount > 0 && <span className="text-emerald-600 ml-1">→ {fmt(lineNet*(1-itemDiscount/100))}</span>}
+              {itemDiscount > 0 && <span className="text-emerald-600 ml-1">→ {fmt(lineNet * (1 - itemDiscount / 100))}</span>}
             </p>
           )}
         </div>
 
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <button onClick={() => onRemove(item._editId)} className="w-5 h-5 rounded-full text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 flex items-center justify-center"><Trash2 size={11} /></button>
+          <button onClick={() => onRemove(item._editId)} className="w-5 h-5 rounded-full text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 flex items-center justify-center">
+            <Trash2 size={11} />
+          </button>
           <div className="flex items-center gap-1">
             <button onClick={() => onUpdateQty(item._editId, item.quantity - 1)} className="w-6 h-6 rounded-full bg-[#F0EBE3] text-sm font-bold flex items-center justify-center hover:bg-[#E8DDD0]">−</button>
-            <span className="text-sm font-bold w-8 text-center">{item.quantity}</span>
+
+            {isEditingQty ? (
+              <input
+                ref={qtyInputRef}
+                type="text"
+                inputMode="decimal"
+                value={qtyInput}
+                onChange={e => setQtyInput(e.target.value.replace(/[^0-9.,]/g, ''))}
+                onBlur={commitQty}
+                onKeyDown={handleQtyKeyDown}
+                className="w-12 text-center text-sm font-bold border-2 border-[#C9A84C] rounded-lg px-1 py-0.5 focus:outline-none"
+              />
+            ) : (
+              <span
+                onClick={startEditQty}
+                className="text-sm font-bold w-10 text-center cursor-pointer hover:bg-[#F0EBE3] rounded-lg py-0.5 transition-colors"
+              >
+                {item.quantity}
+              </span>
+            )}
+
             <button onClick={() => onUpdateQty(item._editId, item.quantity + 1)} className="w-6 h-6 rounded-full bg-[#F0EBE3] text-sm font-bold flex items-center justify-center hover:bg-[#E8DDD0]">+</button>
           </div>
         </div>
@@ -361,7 +422,7 @@ function ProductPickerModal({ onAdd, onClose, existingIds }) {
   useEffect(() => { searchRef.current?.focus(); }, []);
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
   useEffect(() => {
-    categoryApi.getAll().then(res => { const c = res.data?.data || res.data || []; setCategories(Array.isArray(c)?c:[]); }).catch(()=>{});
+    categoryApi.getAll().then(res => { const c = res.data?.data || res.data || []; setCategories(Array.isArray(c) ? c : []); }).catch(() => { });
   }, []);
   useEffect(() => {
     setLoading(true);
@@ -369,8 +430,8 @@ function ProductPickerModal({ onAdd, onClose, existingIds }) {
     if (debouncedQ.trim()) params.search = debouncedQ.trim();
     if (selectedCat !== 'ALL') params.categoryId = selectedCat;
     productApi.getAll(params)
-      .then(res => { const d=res.data?.data; const l=d?.content??d??res.data??[]; setProducts(Array.isArray(l)?l:[]); })
-      .catch(()=>setProducts([])).finally(()=>setLoading(false));
+      .then(res => { const d = res.data?.data; const l = d?.content ?? d ?? res.data ?? []; setProducts(Array.isArray(l) ? l : []); })
+      .catch(() => setProducts([])).finally(() => setLoading(false));
   }, [debouncedQ, selectedCat]);
 
   return (
@@ -383,46 +444,46 @@ function ProductPickerModal({ onAdd, onClose, existingIds }) {
         <div className="px-4 py-2 shrink-0 border-b border-[#F0EBE3]">
           <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
-            <input ref={searchRef} value={q} onChange={e=>setQ(e.target.value)} placeholder="Tìm sản phẩm..."
+            <input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm sản phẩm..."
               className="w-full pl-8 pr-3 py-2 text-sm border border-[#E8DDD0] rounded-xl outline-none focus:border-[#C9A84C]" />
           </div>
         </div>
         {categories.length > 0 && (
           <div className="flex gap-1.5 px-4 py-2 overflow-x-auto scrollbar-hide shrink-0 border-b border-[#F0EBE3]">
-            <button onClick={()=>setSelectedCat('ALL')} className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors ${selectedCat==='ALL'?'bg-[#C9A84C] text-white':'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}><Grid size={10}/>Tất cả</button>
-            {categories.map(cat=>(
-              <button key={cat.id??cat.name} onClick={()=>setSelectedCat(cat.id??cat.name)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors ${selectedCat===(cat.id??cat.name)?'bg-[#C9A84C] text-white':'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}>
-                {cat.name??cat}
+            <button onClick={() => setSelectedCat('ALL')} className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors ${selectedCat === 'ALL' ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}><Grid size={10} />Tất cả</button>
+            {categories.map(cat => (
+              <button key={cat.id ?? cat.name} onClick={() => setSelectedCat(cat.id ?? cat.name)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors ${selectedCat === (cat.id ?? cat.name) ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}>
+                {cat.name ?? cat}
               </button>
             ))}
           </div>
         )}
         <div className="flex-1 overflow-y-auto">
           {loading
-            ? <div className="flex items-center justify-center py-12 gap-2 text-[#8E8878]"><Loader2 size={18} className="animate-spin"/><span className="text-sm">Đang tải...</span></div>
-            : products.length===0
-              ? <div className="flex flex-col items-center justify-center py-12 text-[#8E8878] gap-2"><Search size={28} strokeWidth={1}/><p className="text-sm">Không tìm thấy</p></div>
+            ? <div className="flex items-center justify-center py-12 gap-2 text-[#8E8878]"><Loader2 size={18} className="animate-spin" /><span className="text-sm">Đang tải...</span></div>
+            : products.length === 0
+              ? <div className="flex flex-col items-center justify-center py-12 text-[#8E8878] gap-2"><Search size={28} strokeWidth={1} /><p className="text-sm">Không tìm thấy</p></div>
               : <div className="px-2 py-2 space-y-0.5">
-                  {products.map(p=>(
-                    <button key={p.id} onClick={()=>onAdd(p)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#FDF8ED] text-left transition-colors group">
-                      {p.imageUrl
-                        ? <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-xl object-cover shrink-0 border border-[#F0EBE3]"/>
-                        : <div className="w-10 h-10 rounded-xl shrink-0 bg-[#F0EBE3] flex items-center justify-center"><Package size={14} className="text-[#C4B9A8]"/></div>}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#1C1C1E] truncate">{p.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-xs text-[#C9A84C] font-medium">{fmt(p.basePrice)}</p>
-                          {p.categoryName && <span className="text-[10px] bg-[#F0EBE3] text-[#8E8878] rounded-full px-1.5 py-0.5">{p.categoryName}</span>}
-                          {existingIds.has(p.id) && <span className="text-[10px] bg-sky-100 text-sky-700 rounded-full px-1.5 py-0.5 font-semibold">Đang có</span>}
-                        </div>
+                {products.map(p => (
+                  <button key={p.id} onClick={() => onAdd(p)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#FDF8ED] text-left transition-colors group">
+                    {p.imageUrl
+                      ? <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-xl object-cover shrink-0 border border-[#F0EBE3]" />
+                      : <div className="w-10 h-10 rounded-xl shrink-0 bg-[#F0EBE3] flex items-center justify-center"><Package size={14} className="text-[#C4B9A8]" /></div>}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#1C1C1E] truncate">{p.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-[#C9A84C] font-medium">{fmt(p.basePrice)}</p>
+                        {p.categoryName && <span className="text-[10px] bg-[#F0EBE3] text-[#8E8878] rounded-full px-1.5 py-0.5">{p.categoryName}</span>}
+                        {existingIds.has(p.id) && <span className="text-[10px] bg-sky-100 text-sky-700 rounded-full px-1.5 py-0.5 font-semibold">Đang có</span>}
                       </div>
-                      <div className="w-7 h-7 rounded-full bg-[#C9A84C]/10 flex items-center justify-center group-hover:bg-[#C9A84C] transition-colors shrink-0">
-                        <Plus size={13} className="text-[#C9A84C] group-hover:text-white"/>
-                      </div>
-                    </button>
-                  ))}
-                </div>}
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-[#C9A84C]/10 flex items-center justify-center group-hover:bg-[#C9A84C] transition-colors shrink-0">
+                      <Plus size={13} className="text-[#C9A84C] group-hover:text-white" />
+                    </div>
+                  </button>
+                ))}
+              </div>}
         </div>
         <div className="px-4 py-3 border-t border-[#F0EBE3] shrink-0 text-center">
           <p className="text-[11px] text-[#8E8878]">{products.length} sản phẩm · Nhấn để thêm</p>
@@ -437,32 +498,30 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const toast = useToast();
   const idCounter = useRef(0);
   const nextId = () => { idCounter.current += 1; return idCounter.current; };
+  const [priceDisplayOption, setPriceDisplayOption] = useState('show');
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [fetchingDetail, setFetchingDetail] = useState(false);
+  const [items, setItems] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
 
-  const [orderDetail, setOrderDetail]         = useState(null);
-  const [fetchingDetail, setFetchingDetail]   = useState(false);
-  const [items, setItems]                     = useState([]);
-  const [allProducts, setAllProducts]         = useState([]);
-
-  const [orderedByName, setOrderedByName]     = useState('');
-  const [receiverName, setReceiverName]       = useState('');
+  const [orderedByName, setOrderedByName] = useState('');
+  const [receiverName, setReceiverName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryDatetime, setDeliveryDatetime] = useState('');
-  const [paymentMethod, setPaymentMethod]     = useState('CASH');
-  const [notes, setNotes]                     = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [notes, setNotes] = useState('');
 
-  const [discount, setDiscount]               = useState(0);
-  const [discountFixed, setDiscountFixed]     = useState(null);
+  const [discount, setDiscount] = useState(0);
+  const [discountFixed, setDiscountFixed] = useState(null);
   const [discountFixedDisplay, setDiscountFixedDisplay] = useState('');
 
-  // ── SURCHARGE: thay state đơn → list items ────────────────────────────────
-  const [surchargeItems, setSurchargeItems]   = useState([]);
+  const [surchargeItems, setSurchargeItems] = useState([]);
 
-  const [showPicker, setShowPicker]           = useState(false);
-  const [tierEditId, setTierEditId]           = useState(null);
-  const [tierProduct, setTierProduct]         = useState(null);
-  const [saving, setSaving]                   = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [tierEditId, setTierEditId] = useState(null);
+  const [tierProduct, setTierProduct] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  // Tổng phụ phí
   const surchargeNum = surchargeItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
   useEffect(() => {
@@ -481,6 +540,17 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     orderApi.getById(orderId).then(res => {
       if (cancelled) return;
       const d = res.data?.data ?? res.data;
+      const showPricesVal = d?.showPrices ?? true;
+      const hideAllPricesVal = d?.hideAllPrices ?? false;
+
+      if (hideAllPricesVal) {
+        setPriceDisplayOption('hide_all');
+      } else if (!showPricesVal) {
+        setPriceDisplayOption('hide_prices');
+      } else {
+        setPriceDisplayOption('show');
+      }
+
       setOrderDetail(d);
 
       setOrderedByName(d?.orderedByName ?? '');
@@ -499,14 +569,12 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         setDiscountFixedDisplay(new Intl.NumberFormat('vi-VN').format(Number(d.discountAmount)));
       }
 
-      // ── Parse surchargeDetail ─────────────────────────────────────────────
       if (d?.surchargeDetail) {
         try {
           const parsed = JSON.parse(d.surchargeDetail);
           setSurchargeItems(Array.isArray(parsed) ? parsed : []);
         } catch { setSurchargeItems([]); }
       } else if (Number(d?.surcharge) > 0) {
-        // backward compat: đơn cũ chỉ có surcharge đơn
         setSurchargeItems([{ name: 'Phụ phí', amount: Number(d.surcharge) }]);
       } else {
         setSurchargeItems([]);
@@ -535,8 +603,8 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         notes: i.notes ?? null,
       })));
     })
-    .catch(() => { if (!cancelled) toast('Không thể tải chi tiết đơn hàng', 'error'); })
-    .finally(() => { if (!cancelled) setFetchingDetail(false); });
+      .catch(() => { if (!cancelled) toast('Không thể tải chi tiết đơn hàng', 'error'); })
+      .finally(() => { if (!cancelled) setFetchingDetail(false); });
 
     return () => { cancelled = true; };
   }, [open, orderId]); // eslint-disable-line
@@ -549,7 +617,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
       const d = res.data?.data;
       const l = d?.content ?? d ?? res.data ?? [];
       setAllProducts(Array.isArray(l) ? l : []);
-    }).catch(() => {});
+    }).catch(() => { });
     return () => { cancelled = true; };
   }, [open]);
 
@@ -575,7 +643,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const promoToggle = useCallback((editId, enable, note) => {
     setItems(prev => prev.map(i => {
       if (i._editId !== editId) return i;
-      if (enable) return { ...i, isPromo: true, promoNote: note||'', _priceBeforePromo: i._priceBeforePromo ?? i.unitPrice };
+      if (enable) return { ...i, isPromo: true, promoNote: note || '', _priceBeforePromo: i._priceBeforePromo ?? i.unitPrice };
       return { ...i, isPromo: false, promoNote: '', unitPrice: i._priceBeforePromo ?? i.unitPrice, _priceBeforePromo: undefined };
     }));
   }, []);
@@ -613,7 +681,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
       }];
     });
     toast(`Đã thêm "${product.name}"`, 'success');
-  }, [toast]); // eslint-disable-line
+  }, [toast]);
 
   const subtotalGross = items.reduce((s, i) => i.isPromo ? s : s + Number(i.unitPrice) * i.quantity, 0);
 
@@ -665,6 +733,14 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     if (items.length === 0) { toast('Đơn hàng cần có ít nhất 1 sản phẩm', 'warning'); return; }
     setSaving(true);
     try {
+      const getShowPricesValue = () => {
+        return priceDisplayOption === 'show';
+      };
+
+      const getHideAllPricesValue = () => {
+        return priceDisplayOption === 'hide_all';
+      };
+
       const payload = {
         orderedByName: orderedByName || undefined,
         receiverName: receiverName || undefined,
@@ -674,7 +750,9 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         notes: notes || undefined,
         discountAmount: discountFixed !== null ? discountAmt : undefined,
         discountRate: discountFixed === null ? discount : undefined,
-        // ── SURCHARGE: gửi list thay vì số đơn ───────────────────────────
+        // QUAN TRỌNG: sửa lại 2 dòng này
+        showPrices: getShowPricesValue(),
+        hideAllPrices: getHideAllPricesValue(),
         surchargeItems: surchargeItems.filter(i => Number(i.amount) > 0),
         items: items.map(i => ({
           productId: i.productId,
@@ -686,11 +764,18 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
           isManualPrice: i.isPromo ? true : (i.priceSource === 'MANUAL'),
           discountPercent: (!i.isPromo && i.itemDiscountRate > 0) ? i.itemDiscountRate : undefined,
           saleType: i.saleType ?? 'RETAIL',
-          notes: i.isPromo ? `[KM]${i.promoNote ? ' '+i.promoNote : ''}` : (i.notes || undefined),
+          notes: i.isPromo ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
           vatRate: i.vatRate ?? 0,
           vatMode: i.vatMode ?? 'INCLUSIVE',
         })),
       };
+
+      console.log('Saving order with:', {
+        showPrices: payload.showPrices,
+        hideAllPrices: payload.hideAllPrices,
+        priceDisplayOption
+      });
+
       await orderApi.updateOrderItems(orderId, payload);
       toast('Đã cập nhật đơn hàng', 'success');
       onSaved?.();
@@ -729,39 +814,58 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                 <div className="px-4 pb-3 space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><User size={10}/>Người đặt</label>
-                      <input value={orderedByName} onChange={e=>setOrderedByName(e.target.value)} placeholder="Tên người đặt..."
+                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><User size={10} />Người đặt</label>
+                      <input value={orderedByName} onChange={e => setOrderedByName(e.target.value)} placeholder="Tên người đặt..."
                         className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C]" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><User size={10}/>Người nhận</label>
-                      <input value={receiverName} onChange={e=>setReceiverName(e.target.value)} placeholder="Tên người nhận..."
+                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><User size={10} />Người nhận</label>
+                      <input value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Tên người nhận..."
                         className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C]" />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><MapPin size={10}/>Địa chỉ giao hàng</label>
-                    <input value={deliveryAddress} onChange={e=>setDeliveryAddress(e.target.value)} placeholder="Địa chỉ..."
+                    <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><MapPin size={10} />Địa chỉ giao hàng</label>
+                    <input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Địa chỉ..."
                       className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C]" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><Clock size={10}/>Giờ giao hàng</label>
-                      <input type="datetime-local" value={deliveryDatetime} onChange={e=>setDeliveryDatetime(e.target.value)}
+                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><Clock size={10} />Giờ giao hàng</label>
+                      <input type="datetime-local" value={deliveryDatetime} onChange={e => setDeliveryDatetime(e.target.value)}
                         className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C]" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><CreditCard size={10}/>Thanh toán</label>
-                      <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}
+                      <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><CreditCard size={10} />Thanh toán</label>
+                      <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
                         className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C] bg-white">
-                        {PAYMENT_METHODS.map(m=><option key={m.value} value={m.value}>{m.label}</option>)}
+                        {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                       </select>
                     </div>
                   </div>
                   <div>
                     <label className="text-[10px] text-[#8E8878] font-semibold mb-1 block">Ghi chú</label>
-                    <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Ghi chú đơn hàng..."
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Ghi chú đơn hàng..."
                       className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C] resize-none" />
+                  </div>
+
+                  {/* Thêm option hiển thị giá */}
+                  <div className="pt-2 border-t border-[#F0EBE3]">
+                    <label className="block text-[10px] text-[#8E8878] font-semibold mb-1.5">💰 Hiển thị giá</label>
+                    <select
+                      value={priceDisplayOption}
+                      onChange={(e) => setPriceDisplayOption(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-[#E8DDD0] rounded-xl focus:outline-none focus:border-[#C9A84C] bg-white"
+                    >
+                      <option value="show">Hiển thị đầy đủ giá</option>
+                      <option value="hide_prices">Che giá (ẩn giá từng sản phẩm, chỉ hiện tổng)</option>
+                      <option value="hide_all">Che toàn bộ (ẩn tất cả số tiền)</option>
+                    </select>
+                    <p className="text-[9px] text-[#8E8878] mt-1">
+                      {priceDisplayOption === 'show' && '✓ Hiển thị tất cả giá trên phiếu'}
+                      {priceDisplayOption === 'hide_prices' && '✓ Ẩn giá từng sản phẩm, vẫn hiển thị tổng tiền'}
+                      {priceDisplayOption === 'hide_all' && '✓ Ẩn toàn bộ số tiền trên phiếu (chỉ hiển thị tên và số lượng)'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -770,14 +874,14 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
             <div className="px-5 py-3">
               {fetchingDetail ? (
                 <div className="flex items-center justify-center py-10 gap-2 text-[#8E8878]">
-                  <Loader2 size={18} className="animate-spin"/><span className="text-sm">Đang tải đơn hàng...</span>
+                  <Loader2 size={18} className="animate-spin" /><span className="text-sm">Đang tải đơn hàng...</span>
                 </div>
               ) : items.length === 0 ? (
                 <p className="text-sm text-[#8E8878] text-center py-6">Chưa có sản phẩm nào</p>
               ) : (
                 items.map(item => (
                   <EditItemRow key={item._editId} item={item}
-                    prodInfo={allProducts.find(p=>p.id===item.productId)}
+                    prodInfo={allProducts.find(p => p.id === item.productId)}
                     onUpdateQty={updateQty} onRemove={removeItem} onPriceOverride={priceOverride}
                     onDiscountChange={discountChange} onPromoToggle={promoToggle}
                     onVatRateChange={vatRateChange} onTierSelect={handleTierSelect} />
@@ -785,9 +889,9 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
               )}
 
               {!fetchingDetail && (
-                <button onClick={()=>setShowPicker(true)}
+                <button onClick={() => setShowPicker(true)}
                   className="w-full mt-3 py-2.5 rounded-xl border-2 border-dashed border-[#E8DDD0] text-[#8E8878] text-xs font-semibold flex items-center justify-center gap-1.5 hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
-                  <Plus size={13}/>Thêm sản phẩm<ChevronRight size={12} className="opacity-60"/>
+                  <Plus size={13} />Thêm sản phẩm<ChevronRight size={12} className="opacity-60" />
                 </button>
               )}
             </div>
@@ -798,24 +902,24 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[#8E8878] shrink-0 w-20">Giảm giá:</span>
                   <div className="flex items-center gap-1 flex-wrap flex-1">
-                    {[0,3,5,8,10].map(d=>(
-                      <button key={d} onClick={()=>{setDiscount(d);setDiscountFixed(null);setDiscountFixedDisplay('');}}
-                        className={`text-[10px] px-2 py-1 rounded-md font-semibold transition-colors ${discount===d&&discountFixed===null?'bg-[#C9A84C] text-white':'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
+                    {[0, 3, 5, 8, 10].map(d => (
+                      <button key={d} onClick={() => { setDiscount(d); setDiscountFixed(null); setDiscountFixedDisplay(''); }}
+                        className={`text-[10px] px-2 py-1 rounded-md font-semibold transition-colors ${discount === d && discountFixed === null ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
                         {d}%
                       </button>
                     ))}
-                    {discountFixed===null
-                      ? <button onClick={()=>{setDiscount(0);setDiscountFixed(0);setDiscountFixedDisplay('');}} className="text-[10px] px-2 py-1 rounded-md font-semibold bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]">Nhập tiền</button>
+                    {discountFixed === null
+                      ? <button onClick={() => { setDiscount(0); setDiscountFixed(0); setDiscountFixedDisplay(''); }} className="text-[10px] px-2 py-1 rounded-md font-semibold bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]">Nhập tiền</button>
                       : <div className="flex items-center gap-1">
-                          <div className="relative">
-                            <input type="text" inputMode="numeric" value={discountFixedDisplay}
-                              onChange={e=>{const raw=e.target.value.replace(/[^0-9]/g,'');setDiscountFixedDisplay(raw);setDiscountFixed(raw===''?0:parseInt(raw,10));}}
-                              placeholder={`tối đa ${new Intl.NumberFormat('vi-VN').format(maxDiscountFixed)}`}
-                              className="w-28 rounded-md px-2 py-1 text-[10px] text-right pr-5 border border-[#C9A84C] bg-[#C9A84C]/5 font-semibold text-[#C9A84C] focus:outline-none"/>
-                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
-                          </div>
-                          <button onClick={()=>{setDiscountFixed(null);setDiscountFixedDisplay('');}} className="text-[10px] px-1.5 py-1 rounded-md bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] font-semibold">×</button>
-                        </div>}
+                        <div className="relative">
+                          <input type="text" inputMode="numeric" value={discountFixedDisplay}
+                            onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setDiscountFixedDisplay(raw); setDiscountFixed(raw === '' ? 0 : parseInt(raw, 10)); }}
+                            placeholder={`tối đa ${new Intl.NumberFormat('vi-VN').format(maxDiscountFixed)}`}
+                            className="w-28 rounded-md px-2 py-1 text-[10px] text-right pr-5 border border-[#C9A84C] bg-[#C9A84C]/5 font-semibold text-[#C9A84C] focus:outline-none" />
+                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+                        </div>
+                        <button onClick={() => { setDiscountFixed(null); setDiscountFixedDisplay(''); }} className="text-[10px] px-1.5 py-1 rounded-md bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] font-semibold">×</button>
+                      </div>}
                   </div>
                 </div>
 
@@ -830,12 +934,11 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                 {/* Summary */}
                 <div className="space-y-0.5 pt-2 border-t border-[#F0EBE3]">
                   <div className="flex justify-between text-xs text-[#8E8878]"><span>Tạm tính</span><span>{fmt(subtotalGross)}</span></div>
-                  {(itemDiscountTotal>0||discountAmt>0) && (
+                  {(itemDiscountTotal > 0 || discountAmt > 0) && (
                     <div className="flex justify-between text-xs text-emerald-600">
-                      <span>Giảm</span><span>-{fmt(itemDiscountTotal+discountAmt)}</span>
+                      <span>Giảm</span><span>-{fmt(itemDiscountTotal + discountAmt)}</span>
                     </div>
                   )}
-                  {/* Surcharge breakdown */}
                   {surchargeNum > 0 && (
                     <div>
                       <div className="flex justify-between text-xs text-orange-500">
@@ -849,8 +952,8 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                       ))}
                     </div>
                   )}
-                  {exclusiveVatTotal>0 && <div className="flex justify-between text-xs text-[#8E8878]"><span>VAT (ngoài giá)</span><span>+{fmt(exclusiveVatTotal)}</span></div>}
-                  {vatDisplayTotal>0 && (
+                  {exclusiveVatTotal > 0 && <div className="flex justify-between text-xs text-[#8E8878]"><span>VAT (ngoài giá)</span><span>+{fmt(exclusiveVatTotal)}</span></div>}
+                  {vatDisplayTotal > 0 && (
                     <div className="flex justify-between text-xs text-[#C4B9A8]">
                       <span>VAT (đã trong giá)</span><span>{fmt(vatDisplayTotal - exclusiveVatTotal)}</span>
                     </div>
@@ -869,24 +972,24 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
               className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C4E3D] font-semibold hover:bg-[#F0EBE3] transition-colors disabled:opacity-50">
               Hủy
             </button>
-            <button onClick={handleSave} disabled={saving||items.length===0||fetchingDetail}
+            <button onClick={handleSave} disabled={saving || items.length === 0 || fetchingDetail}
               className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#b8973d] transition-colors disabled:opacity-50">
               {saving
-                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>Đang lưu...</>
-                : <><Save size={14}/>Lưu thay đổi</>}
+                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Đang lưu...</>
+                : <><Save size={14} />Lưu thay đổi</>}
             </button>
           </div>
         </div>
       </div>
 
-      {showPicker && <ProductPickerModal onAdd={addProduct} onClose={()=>setShowPicker(false)} existingIds={existingProductIds}/>}
+      {showPicker && <ProductPickerModal onAdd={addProduct} onClose={() => setShowPicker(false)} existingIds={existingProductIds} />}
 
       {tierProduct && (
         <TierSelectModal product={tierProduct}
-          currentTierId={items.find(i=>i._editId===tierEditId)?.tierId}
-          currentPriceSource={items.find(i=>i._editId===tierEditId)?.priceSource??'BASE'}
+          currentTierId={items.find(i => i._editId === tierEditId)?.tierId}
+          currentPriceSource={items.find(i => i._editId === tierEditId)?.priceSource ?? 'BASE'}
           onConfirm={handleTierConfirm}
-          onClose={()=>{setTierEditId(null);setTierProduct(null);}}/>
+          onClose={() => { setTierEditId(null); setTierProduct(null); }} />
       )}
     </>
   );

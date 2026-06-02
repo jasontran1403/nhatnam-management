@@ -22,10 +22,10 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 // SurchargePanel — hiển thị dạng "thêm" thay vì mặc định 4 ô
 // Không hiện sẵn 4 ô, thay vào đó hiện nút + và danh sách các phụ phí đã thêm
 const PRESET_SURCHARGE_TYPES = [
-  { name: 'Thùng xốp',      amount: 20000 },
+  { name: 'Thùng xốp', amount: 20000 },
   { name: 'Phí vận chuyển', amount: 30000 },
-  { name: 'Gửi xe',         amount: 10000 },
-  { name: 'Đá khô',         amount: 15000 },
+  { name: 'Gửi xe', amount: 10000 },
+  { name: 'Đá khô', amount: 15000 },
 ];
 
 function SurchargePanel({ surchargeItems, onChange }) {
@@ -639,6 +639,8 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
   return { heldByAll };
 }
 
+// Thay thế phần switch trong DeliveryTimeModal bằng dropdown
+// DeliveryTimeModal component - sửa lại phần onConfirm
 function DeliveryTimeModal({ onConfirm, onClose }) {
   const defaultDelivery = (() => {
     const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
@@ -646,11 +648,21 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
   const [deliveryDate, setDeliveryDate] = useState(defaultDelivery);
   const [orderedBy, setOrderedBy] = useState('');
   const [recipientName, setRecipientName] = useState('');
-  const [showPrices, setShowPrices] = useState(true);
+  const [priceDisplayOption, setPriceDisplayOption] = useState('show'); // 'show', 'hide_prices', 'hide_all'
   const [DTPicker, setDTPicker] = useState(null);
+
   useEffect(() => {
     import('../../components/ui/DateTimePicker').then(m => setDTPicker(() => m.default));
   }, []);
+
+  const getShowPricesValue = () => {
+    return priceDisplayOption === 'show';
+  };
+
+  const getHideAllPricesValue = () => {
+    return priceDisplayOption === 'hide_all';
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -683,19 +695,43 @@ function DeliveryTimeModal({ onConfirm, onClose }) {
               ? <DTPicker value={deliveryDate} onChange={setDeliveryDate} minDate={new Date()} placeholder="Chọn ngày & giờ giao hàng" />
               : <div className="h-11 rounded-xl border-2 border-[#E8DDD0] animate-pulse bg-[#FAFAF8]" />}
           </div>
-        </div>
-        <div className="px-5 pb-1">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${showPrices ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}
-              onClick={() => setShowPrices(p => !p)}>
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${showPrices ? 'translate-x-4' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-xs font-semibold text-[#1C1C1E]">Hiển thị giá trên phiếu</span>
-          </label>
+          <div>
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">💰 Hiển thị giá</label>
+            <select
+              value={priceDisplayOption}
+              onChange={(e) => setPriceDisplayOption(e.target.value)}
+              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm focus:outline-none focus:border-[#C9A84C] bg-white"
+            >
+              <option value="show">Hiển thị đầy đủ giá</option>
+              <option value="hide_prices">Che giá (ẩn giá từng sản phẩm, chỉ hiện tổng)</option>
+              <option value="hide_all">Che toàn bộ (ẩn tất cả số tiền)</option>
+            </select>
+            <p className="text-[10px] text-[#8E8878] mt-1">
+              {priceDisplayOption === 'show' && '✓ Hiển thị tất cả giá trên phiếu'}
+              {priceDisplayOption === 'hide_prices' && '✓ Ẩn giá từng sản phẩm, vẫn hiển thị tổng tiền'}
+              {priceDisplayOption === 'hide_all' && '✓ Ẩn toàn bộ số tiền trên phiếu (chỉ hiển thị tên và số lượng)'}
+            </p>
+          </div>
         </div>
         <div className="px-5 pb-5 flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3]">Hủy</button>
-          <button onClick={() => onConfirm(deliveryDate?.getTime() ?? null, orderedBy.trim() || null, showPrices, recipientName.trim() || null)}
+          <button
+            onClick={() => {
+              console.log('Sending values:', {
+                deliveryDatetime: deliveryDate?.getTime() ?? null,
+                orderedBy: orderedBy.trim() || null,
+                showPrices: getShowPricesValue(),
+                recipientName: recipientName.trim() || null,
+                hideAllPrices: getHideAllPricesValue()
+              });
+              onConfirm(
+                deliveryDate?.getTime() ?? null,
+                orderedBy.trim() || null,
+                getShowPricesValue(),
+                recipientName.trim() || null,
+                getHideAllPricesValue()
+              );
+            }}
             disabled={!deliveryDate}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-40 flex items-center justify-center gap-2">
             <Receipt size={15} /> Tạo đơn hàng
@@ -1163,7 +1199,7 @@ export default function POSPage() {
     setDeliveryModalOpen(true);
   }, [customer, cartItems, toast]);
 
-  const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true, recipientName = null) => {
+  const handleSubmit = useCallback(async (deliveryDatetime, orderedByName, showPrices = true, recipientName = null, hideAllPrices = false) => {
     setDeliveryModalOpen(false);
     if (!customer || cartItems.length === 0) return;
     setSubmitting(true);
@@ -1182,7 +1218,8 @@ export default function POSPage() {
         warehouseId: selectedWarehouse?.id,
         deliveryDatetime: deliveryDatetime ?? null,
         orderedByName: orderedByName || undefined,
-        showPrices,
+        showPrices: showPrices,
+        hideAllPrices: hideAllPrices,
         items: cartItems.map((i) => ({
           productId: i.productId,
           tierId: (i.isPromo || i.priceSource !== 'TIER') ? undefined : i.tierId,
@@ -1197,6 +1234,7 @@ export default function POSPage() {
           vatMode: i.vatMode,
         })),
       };
+
       const res = await orderApi.create(payload);
       const body = res.data;
       if (body?.code === PRICE_CHANGED_CODE) { await handlePriceChanged(body.message); return; }
@@ -1389,7 +1427,9 @@ export default function POSPage() {
 
       {deliveryModalOpen && (
         <DeliveryTimeModal
-          onConfirm={(ts, orderedByName, showPrices, recipientName) => handleSubmit(ts, orderedByName, showPrices, recipientName)}
+          onConfirm={(ts, orderedByName, showPrices, recipientName, hideAllPrices) =>
+            handleSubmit(ts, orderedByName, showPrices, recipientName, hideAllPrices)
+          }
           onClose={() => setDeliveryModalOpen(false)}
         />
       )}
