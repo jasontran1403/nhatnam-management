@@ -63,7 +63,7 @@ function CategoryCombobox({ value, onChange }) {
   useEffect(() => {
     api.get(`/api/seller/customer-categories/search?q=${encodeURIComponent(debouncedQ)}`)
       .then(r => setOptions(r.data?.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, [debouncedQ]);
 
   useEffect(() => {
@@ -164,13 +164,18 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
     if (!customerId) return;
     setLoading(true);
     try {
-      const res = await api.get(`/api/seller/customers/${customerId}/receiver-infos`);
-      const data = res.data?.data || [];
+      const res = await api.get(
+        `/api/seller/customers/${customerId}/receiver-infos`
+      );
+
+      const data = res.data?.data?.receiverInfos || [];
+
       origRef.current = data.map(r => ({ ...r }));
       const copy = data.map(r => ({ ...r }));
+
       setReceivers(copy);
       onReceiverChange(copy, origRef.current);
-    } catch {}
+    } catch { }
     finally { setLoading(false); }
   }, [customerId]);
 
@@ -329,17 +334,19 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
     origReceiversRef.current = [];
     setCodeError('');
     setForm({
-      customerCode:   customer.customerCode   || '',
-      customerType:   customer.customerType   || 'RETAIL',
-      name:           customer.name           || '',
-      phone:          customer.phone          || '',
-      email:          customer.email          || '',
-      companyName:    customer.companyName    || '',
-      taxCode:        customer.taxCode        || '',
-      companyPhone:   customer.companyPhone   || '',
+      customerCode: customer.customerCode || '',
+      customerType: customer.customerType || 'RETAIL',
+      name: customer.name || '',
+      phone: customer.phone || '',
+      email: customer.email || '',
+      companyName: customer.companyName || '',
+      taxCode: customer.taxCode || '',
+      companyPhone: customer.companyPhone || '',
       companyAddress: customer.companyAddress || '',
-      contactName:    customer.contactName    || '',
-      pricingType:    customer.pricingType    || 'RETAIL_PRICE',
+      contactName: customer.contactName || '',
+      pricingType: customer.pricingType || 'RETAIL_PRICE',
+      discountRate: customer.discountRate ?? 0,
+      invoiceDays: customer.invoiceDays ?? -1,
     });
     setCategory(customer.categoryId
       ? { id: customer.categoryId, name: customer.categoryName, color: customer.categoryColor }
@@ -362,7 +369,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
       try {
         const res = await api.get(`/api/seller/customers/check-code?code=${trimmed}`);
         if (res.data?.data?.exists) setCodeError(`Mã "${trimmed}" đã tồn tại`);
-      } catch (_) {}
+      } catch (_) { }
       finally { setCodeChecking(false); }
     }, 500);
   };
@@ -388,18 +395,20 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
     try {
       // ── 1. Lưu thông tin khách hàng ──────────────────────────────────────
       const payload = {
-        customerCode:   form.customerCode.trim().toUpperCase(),
-        customerType:   form.customerType,
-        pricingType:    form.pricingType,
-        name:           toCamelCase(form.name) || null,
-        phone:          form.phone   || null,
-        email:          form.email   || null,
-        taxCode:        form.taxCode || null,
-        companyName:    isCompany ? (toCamelCase(form.companyName)    || null) : null,
-        companyPhone:   isCompany ? (form.companyPhone                || null) : null,
+        customerCode: form.customerCode.trim().toUpperCase(),
+        customerType: form.customerType,
+        pricingType: form.pricingType,
+        name: toCamelCase(form.name) || null,
+        phone: form.phone || null,
+        email: form.email || null,
+        taxCode: form.taxCode || null,
+        companyName: isCompany ? (toCamelCase(form.companyName) || null) : null,
+        companyPhone: isCompany ? (form.companyPhone || null) : null,
         companyAddress: isCompany ? (toCamelCase(form.companyAddress) || null) : null,
-        contactName:    isCompany ? (toCamelCase(form.contactName)    || null) : null,
-        categoryId:     category ? category.id : null,
+        contactName: isCompany ? (toCamelCase(form.contactName) || null) : null,
+        categoryId: category ? category.id : null,
+        discountRate: form.discountRate ?? 0,
+        invoiceDays: form.invoiceDays ?? -1,
       };
       const res = await api.put(`/api/seller/customers/b2b/${customer.id}`, payload);
       if (res.data?.code !== 900 && res.data?.code !== 200) {
@@ -409,7 +418,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
       // ── 2. Tính diff receivers và gọi batch ──────────────────────────────
       const current = receiversRef.current;
-      const orig    = origReceiversRef.current;
+      const orig = origReceiversRef.current;
 
       const ops = [];
 
@@ -432,9 +441,9 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
               op: 'add',
               data: {
                 receiverAddress: r.receiverAddress.trim(),
-                receiverName:    r.receiverName?.trim()  || null,
-                receiverPhone:   r.receiverPhone?.trim() || null,
-                isDefault:       !!r.isDefault,
+                receiverName: r.receiverName?.trim() || null,
+                receiverPhone: r.receiverPhone?.trim() || null,
+                isDefault: !!r.isDefault,
               },
             });
           }
@@ -445,16 +454,16 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
           // Update nếu có thay đổi
           const changed =
             (r.receiverAddress || '') !== (o.receiverAddress || '') ||
-            (r.receiverName    || '') !== (o.receiverName    || '') ||
-            (r.receiverPhone   || '') !== (o.receiverPhone   || '');
+            (r.receiverName || '') !== (o.receiverName || '') ||
+            (r.receiverPhone || '') !== (o.receiverPhone || '');
           if (changed) {
             ops.push({
               op: 'update',
               id: r.id,
               data: {
                 receiverAddress: r.receiverAddress,
-                receiverName:    r.receiverName  || null,
-                receiverPhone:   r.receiverPhone || null,
+                receiverName: r.receiverName || null,
+                receiverPhone: r.receiverPhone || null,
               },
             });
           }
@@ -622,6 +631,86 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
             </div>
           </div>
 
+          {/* Chiết khấu */}
+          <div>
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+              Chiết khấu
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.discountRate > 0}
+                  onChange={e => set('discountRate', e.target.checked ? 5 : 0)}
+                  className="w-4 h-4 accent-[#C9A84C] rounded"
+                />
+                <span className="text-sm text-[#5C4E3D]">Có chiết khấu</span>
+              </label>
+              {form.discountRate > 0 && (
+                <div className="flex items-center gap-2 pl-6">
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={form.discountRate}
+                    onChange={e => set('discountRate', Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className={`${inputCls} w-24 text-center font-mono`}
+                  />
+                  <span className="text-sm text-[#8E8878]">%</span>
+                  <div className="flex-1 h-2 rounded-full bg-[#F0EBE3] overflow-hidden">
+                    <div className="h-full rounded-full bg-[#C9A84C] transition-all" style={{ width: `${form.discountRate}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Xuất hóa đơn */}
+          <div>
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+              Xuất hóa đơn
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.invoiceDays >= 0}
+                  onChange={e => set('invoiceDays', e.target.checked ? 0 : -1)}
+                  className="w-4 h-4 accent-[#C9A84C] rounded"
+                />
+                <span className="text-sm text-[#5C4E3D]">Có xuất hóa đơn</span>
+              </label>
+              {form.invoiceDays >= 0 && (
+                <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+                  <button type="button" onClick={() => set('invoiceDays', 0)}
+                    className={`flex-1 py-2 font-medium transition-colors
+                      ${form.invoiceDays === 0 ? 'bg-[#1A2744] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                    Xuất ngay trong ngày
+                  </button>
+                  <button type="button"
+                    onClick={() => set('invoiceDays', form.invoiceDays > 0 ? form.invoiceDays : 7)}
+                    className={`flex-1 py-2 font-medium transition-colors border-l border-[#E8DDD0]
+                      ${form.invoiceDays > 0 ? 'bg-[#1A2744] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                    Xuất sau N ngày
+                  </button>
+                </div>
+              )}
+              {form.invoiceDays > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[#8E8878]">Xuất sau</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.invoiceDays}
+                    onChange={e => set('invoiceDays', Math.max(1, parseInt(e.target.value) || 1))}
+                    className={`${inputCls} w-20 text-center font-mono`}
+                  />
+                  <span className="text-sm text-[#8E8878]">ngày</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Địa chỉ nhận hàng — không có nút lưu riêng */}
           <div className="border-t border-[#F0EBE3] pt-3">
             <ReceiverInfosSection
@@ -656,7 +745,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
 // ─── Customer Row ─────────────────────────────────────────────────────────────
 function CustomerRow({ c, onEdit }) {
-  const isCompany  = c.customerType === 'COMPANY';
+  const isCompany = c.customerType === 'COMPANY';
   const isWholesale = c.pricingType === 'WHOLESALE_PRICE';
 
   return (
@@ -679,6 +768,12 @@ function CustomerRow({ c, onEdit }) {
           </span>
           {c.createdByAdmin && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100">Admin</span>}
           {c.discountRate > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100">-{c.discountRate}%</span>}
+          {c.invoiceDays === 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">HĐ ngay</span>
+          )}
+          {c.invoiceDays > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">HĐ +{c.invoiceDays}d</span>
+          )}
         </div>
         <div className="flex items-center gap-3 mt-1 flex-wrap">
           {c.customerCode && <span className="text-[11px] text-[#8E8878]">#{c.customerCode}</span>}
@@ -691,7 +786,7 @@ function CustomerRow({ c, onEdit }) {
         {c.createdByAdmin
           ? <p className="text-[11px] text-sky-500 font-medium">Admin/Owner</p>
           : c.createdBySellerName ? <p className="text-[11px] text-[#8E8878]">{c.createdBySellerName}</p>
-          : null}
+            : null}
         <p className="text-[10px] text-[#C4B9A8]">{formatDate(c.createdAt)}</p>
       </div>
       <button onClick={() => onEdit(c)}
@@ -740,17 +835,17 @@ export default function SellerCustomersPage() {
   const isSuperSeller = user?.roles?.includes('SUPER_SELLER') || user?.role === 'SUPER_SELLER';
 
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [total, setTotal]         = useState(0);
-  const [page, setPage]           = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const PAGE_SIZE = 200;
 
-  const [search, setSearch]         = useState('');
+  const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const debouncedSearch = useDebounce(search, 400);
 
-  const [editTarget, setEditTarget]         = useState(null);
-  const [importing, setImporting]           = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [importing, setImporting] = useState(false);
   const [exportingTemplate, setExportingTemplate] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -885,7 +980,7 @@ export default function SellerCustomersPage() {
 
         {loading ? (
           <div className="space-y-3">
-            {[1,2,3,4,5].map(i => (
+            {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#F0EBE3] animate-pulse shrink-0" />
                 <div className="flex-1 space-y-2">

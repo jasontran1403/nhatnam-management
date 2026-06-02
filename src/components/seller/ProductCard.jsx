@@ -1,3 +1,5 @@
+// src/components/seller/ProductCard.jsx
+// UPDATED: Allow adding out-of-stock items — they go to cart but order button will be disabled
 import { useLang } from '../../context/LangContext';
 import { PackageX } from 'lucide-react';
 
@@ -14,7 +16,6 @@ function formatPrice(price) {
 export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap = {} }) {
   const { t } = useLang();
 
-  // Luôn hiển thị basePrice — không dùng tier[0]
   const priceVal = product.basePrice ?? 0;
   const hasTiers = product.priceTiers && product.priceTiers.length > 0;
 
@@ -26,7 +27,8 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
 
   const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
   const isOutOfStock = stock !== null && stock <= 0;
-  const isDisabled = isOutOfStock;
+  // NOTE: No longer disabled when out of stock — allow adding to draft/cart
+  // The order button in CartPanel will be disabled instead
   const remaining = stock !== null ? Math.max(0, stock) : null;
 
   const getIngStock = (ing) => {
@@ -37,11 +39,9 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
 
   return (
     <button
-      onClick={() => { if (!isDisabled) onAdd(product); }}
-      disabled={isDisabled}
+      onClick={() => onAdd(product)}
       className="card-product rounded-xl overflow-hidden text-left w-full flex flex-col
-        cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed
-        active:scale-95 transition-transform"
+        cursor-pointer active:scale-95 transition-transform"
     >
       <div className="relative aspect-square bg-[#F0EBE3] overflow-hidden w-full">
         {imageUrl ? (
@@ -63,11 +63,13 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
           🍽️
         </div>
 
+        {/* Out of stock overlay — dimmed but still clickable */}
         {isOutOfStock && (
-          <div className="absolute inset-0 bg-black/65 flex items-center justify-center z-10">
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
             <div className="flex flex-col items-center text-white gap-1">
               <PackageX size={18} />
               <span className="text-[11px] font-semibold">{t('status', 'out_of_stock')}</span>
+              <span className="text-[9px] text-white/70">Thêm vào nháp</span>
             </div>
           </div>
         )}
@@ -82,11 +84,9 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
 
           <div className="flex items-center justify-between gap-1 mt-0.5">
             <div className="flex flex-col gap-0.5">
-              {/* Luôn hiển thị basePrice */}
               <span className="text-[#FFD97D] text-[11px] sm:text-xs font-bold drop-shadow">
                 {formatPrice(priceVal)}
               </span>
-              {/* Badge sỉ nếu có tier */}
               {hasTiers && (
                 <span className="text-[9px] bg-orange-400/80 text-white rounded px-1 py-0.5 font-semibold w-fit">
                   Có giá sỉ

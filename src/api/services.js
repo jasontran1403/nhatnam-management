@@ -111,12 +111,29 @@ export const orderApi = {
 
 // ─── Draft Order API ──────────────────────────────────────────────────────────
 export const draftApi = {
+  /** Lưu đơn nháp mới (DRAFT hoặc SCHEDULED) */
   save: (data) => api.post('/api/seller/drafts', data),
+
+  /** Lấy danh sách đơn nháp của seller đang đăng nhập */
   getAll: () => api.get('/api/seller/drafts'),
+
+  /** Chi tiết 1 đơn nháp */
   getById: (id) => api.get(`/api/seller/drafts/${id}`),
+
+  /** Xóa đơn nháp */
   delete: (id) => api.delete(`/api/seller/drafts/${id}`),
+
+  /** Kiểm tra tồn kho trước khi chuyển sang POS */
   checkStock: (id) => api.get(`/api/seller/drafts/${id}/stock-check`),
+
+  /**
+   * Tạo phiếu đặt hàng PDF từ đơn nháp.
+   * Trả về Blob — dùng fetch trực tiếp với Authorization header
+   * hoặc dùng responseType: 'blob' nếu dùng axios:
+   */
+  getInvoice: (id) => api.get(`/api/seller/drafts/${id}/invoice`, { responseType: 'blob' }),
 };
+
 
 // ─── Inventory ───────────────────────────────────────────────────────────────
 export const inventoryApi = {

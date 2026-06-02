@@ -65,7 +65,7 @@ function CustomerCodeInput({ value, onChange, error }) {
   return (
     <div>
       <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">
-        {t('customer','customer')}<span className="text-red-400 ml-0.5">*</span>
+        {t('customer', 'customer')}<span className="text-red-400 ml-0.5">*</span>
       </label>
       <div className="relative">
         <input
@@ -348,11 +348,11 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     let ok = true;
 
     // Mã KH bắt buộc với mọi loại
-    if (!form.customerCode.trim()) { errs.customerCode = t('common','required'); ok = false; }
+    if (!form.customerCode.trim()) { errs.customerCode = t('common', 'required'); ok = false; }
 
     if (isCompany) {
       // COMPANY bắt buộc: tên công ty, MST, email
-      if (!form.companyName.trim()) { errs.companyName = t('common','required'); ok = false; }
+      if (!form.companyName.trim()) { errs.companyName = t('common', 'required'); ok = false; }
       if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
 
       // Receiver là tuỳ chọn cho cả khách lẻ và công ty
@@ -370,25 +370,25 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
 
     // Chỉ địa chỉ là bắt buộc nếu có điền bất kỳ field nào
     receivers.forEach((r, i) => {
-        const anyFilled = r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim();
-        if (anyFilled) {
-          if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Địa chỉ là bắt buộc'; ok = false; }
-        }
-      });
-
-      const mainPhone = form.companyPhone;
-      const filledReceivers = receivers.filter(r =>
-        r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim()
-      );
-      const { ok: dupOk, errors: dupErrors } = validateReceiverDuplicates(filledReceivers, mainPhone);
-      if (!dupOk) {
-        ok = false;
-        let fi = 0;
-        receivers.forEach((r, i) => {
-          const anyFilled = r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim();
-          if (anyFilled) { rErrs[i] = { ...rErrs[i], ...dupErrors[fi] }; fi++; }
-        });
+      const anyFilled = r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim();
+      if (anyFilled) {
+        if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Địa chỉ là bắt buộc'; ok = false; }
       }
+    });
+
+    const mainPhone = form.companyPhone;
+    const filledReceivers = receivers.filter(r =>
+      r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim()
+    );
+    const { ok: dupOk, errors: dupErrors } = validateReceiverDuplicates(filledReceivers, mainPhone);
+    if (!dupOk) {
+      ok = false;
+      let fi = 0;
+      receivers.forEach((r, i) => {
+        const anyFilled = r.receiverName.trim() || r.receiverPhone.trim() || r.receiverAddress.trim();
+        if (anyFilled) { rErrs[i] = { ...rErrs[i], ...dupErrors[fi] }; fi++; }
+      });
+    }
 
 
     setReceiverErrors(rErrs);
@@ -446,8 +446,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
       <div className="px-4 py-3 border-b border-[#F0EBE3] shrink-0">
         <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
           {[
-            ['RETAIL', <User size={11} />, t('customer','individual')],
-            ['COMPANY', <Building2 size={11} />, t('customer','company')],
+            ['RETAIL', <User size={11} />, t('customer', 'individual')],
+            ['COMPANY', <Building2 size={11} />, t('customer', 'company')],
           ].map(([type, icon, label], i) => (
             <button key={type} type="button"
               onClick={() => { setCustomerType(type); setErrors({}); setReceiverErrors([{}]); }}
@@ -601,13 +601,18 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
   const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '' });
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+  const [customerMeta, setCustomerMeta] = useState({ discountRate: 0, invoiceDays: -1 });
 
   const isCompany = customer.customerType === 'COMPANY';
 
   useEffect(() => {
     customerApi.getReceiverInfos(customer.id)
       .then(res => {
-        const list = res.data?.data || [];
+        const payload = res.data?.data || {};
+        const list = Array.isArray(payload) ? payload : (payload.receiverInfos || []);
+        const discountRate = payload.discountRate ?? 0;
+        const invoiceDays = payload.invoiceDays ?? -1;
+        setCustomerMeta({ discountRate, invoiceDays });
         setReceiverInfos(list);
         const def = list.find(r => r.isDefault) || list[0];
         if (def) setSelectedId(def.id);
@@ -741,9 +746,63 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      <div className="px-4 py-3 bg-[#FAF8F3] border-b border-[#F0EBE3] shrink-0">
-        <p className="text-xs font-semibold text-[#1C1C1E]">{customer.contactName || customer.name}</p>
-        <p className="text-[11px] text-[#8E8878]">{customer.customerCode} · {customer.phone}</p>
+      <div className="px-4 py-3 bg-[#FAF8F3] border-b border-[#F0EBE3] shrink-0 space-y-2">
+        {/* Tên + mã */}
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">
+              {customer.companyName || customer.name || 'Khách vãng lai'}
+            </span>
+
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+      ${customer.customerType === 'COMPANY'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-green-100 text-green-700'
+                }`}
+            >
+              {customer.customerType === 'COMPANY'
+                ? '🏢 Khách công ty'
+                : '👤 Khách cá nhân'}
+            </span>
+          </div>
+          <p className="text-[11px] text-[#8E8878]">Mã KH: #{customer.customerCode} · {customer.phone}</p>
+        </div>
+
+        {/* Chiết khấu + Xuất hóa đơn */}
+        <div className="flex flex-wrap gap-2">
+          {/* Chiết khấu */}
+          {customerMeta.discountRate > 0 ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200">
+              <span className="text-[10px] font-bold text-emerald-600">
+                Chiết khấu {customerMeta.discountRate}%
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F0EBE3] border border-[#E8DDD0]">
+              <span className="text-[10px] text-[#8E8878]">Không chiết khấu</span>
+            </div>
+          )}
+
+          {/* Xuất hóa đơn */}
+          {customerMeta.invoiceDays === -1 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F0EBE3] border border-[#E8DDD0]">
+              <span className="text-[10px] text-[#8E8878]">Không xuất hóa đơn</span>
+            </div>
+          )}
+          {customerMeta.invoiceDays === 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200">
+              <span className="text-[10px] font-bold text-violet-600">Xuất HĐ ngay trong ngày</span>
+            </div>
+          )}
+          {customerMeta.invoiceDays > 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200">
+              <span className="text-[10px] font-bold text-violet-600">
+                Xuất HĐ sau {customerMeta.invoiceDays} ngày
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">

@@ -5,7 +5,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Search, UserPlus, UserCheck, ShoppingBag, Trash2,
   ChevronDown, X, Receipt, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle,
-  Save, Check, Plus,
+  Save, Check, Plus, PackageX, RefreshCw,
 } from 'lucide-react';
 import { productApi, categoryApi, orderApi, warehouseApi, draftApi } from '../../api/services';
 import api from '../../api/axios';
@@ -15,6 +15,7 @@ import ProductCard from '../../components/seller/ProductCard';
 import CartItem from '../../components/seller/CartItem';
 import CustomerSearchModal from '../../components/seller/CustomerSearchModal';
 import SaleTypeModal from '../../components/seller/SaleTypeModal';
+import SaveDraftModal from '../../components/common/SaveDraftModal.jsx';
 
 const PRICE_CHANGED_CODE = 950;
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -275,6 +276,10 @@ function CartPanel({
   onRemoveItem, onPriceOverride, onItemDiscountChange, onPromoToggle,
   onVatRateChange, onTierSelect, onSubmit, onSaveDraft, savingDraft, countdownSeconds,
   cartContainerRef,
+  // NEW PROPS:
+  hasOutOfStockItems,  // boolean — true if any cart item is out of stock
+  onUpdatePrices,      // () => void — refresh prices from server
+  updatingPrices,      // boolean
 }) {
   const { t } = useLang();
   const formatCountdown = (seconds) => {
@@ -311,13 +316,37 @@ function CartPanel({
         </div>
       </div>
 
+      {/* Out-of-stock warning banner */}
+      {hasOutOfStockItems && cartItems.length > 0 && (
+        <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2">
+          <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[11px] font-semibold text-red-700">Có món hết hàng trong giỏ</p>
+            <p className="text-[10px] text-red-500 mt-0.5">Không thể tạo đơn — chỉ có thể lưu nháp để đặt sau.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Price changed banner */}
       {priceChangedIds.size > 0 && (
         <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
           <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-[11px] font-semibold text-amber-700">Giá sản phẩm đã thay đổi</p>
-            <p className="text-[10px] text-amber-600 mt-0.5">Giá mới đã được cập nhật. Vui lòng xem lại trước khi đặt.</p>
+            <p className="text-[10px] text-amber-600 mt-0.5">Giá mới đã được cập nhật tự động.</p>
           </div>
+          {onUpdatePrices && (
+            <button
+              onClick={onUpdatePrices}
+              disabled={updatingPrices}
+              className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-bold hover:bg-amber-600 disabled:opacity-60 transition-colors"
+            >
+              {updatingPrices
+                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <RefreshCw size={10} />}
+              Cập nhật
+            </button>
+          )}
         </div>
       )}
 
@@ -348,7 +377,7 @@ function CartPanel({
         </button>
       </div>
 
-      {/* Cart Items wrapper với flex-1 để đẩy summary xuống dưới */}
+      {/* Cart Items */}
       <div className="flex-1 overflow-y-auto px-4 py-2" ref={cartContainerRef}>
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-[#C4B9A8] gap-2">
@@ -382,7 +411,7 @@ function CartPanel({
         )}
       </div>
 
-      {/* Controls + Summary — luôn ở dưới cùng */}
+      {/* Controls + Summary */}
       {cartItems.length > 0 && (
         <div className="border-t border-[#F0EBE3] px-4 py-3 space-y-2 bg-white">
           <textarea
@@ -528,13 +557,20 @@ function CartPanel({
 
         <button
           onClick={onSubmit}
-          disabled={submitting || cartItems.length === 0 || !customer || !selectedWarehouse}
+          disabled={submitting || cartItems.length === 0 || !customer || !selectedWarehouse || hasOutOfStockItems}
           className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2
             disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-            ${priceChangedIds.size > 0 ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'btn-gold'}`}
+            ${hasOutOfStockItems
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : priceChangedIds.size > 0
+                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                : 'btn-gold'
+            }`}
         >
           {submitting ? (
             <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xử lý...</>
+          ) : hasOutOfStockItems ? (
+            <><PackageX size={15} /> Hết hàng — Chỉ được lưu nháp</>
           ) : priceChangedIds.size > 0 ? (
             <><AlertTriangle size={15} /> Xác nhận giá mới & Đặt hàng</>
           ) : (
@@ -545,6 +581,7 @@ function CartPanel({
     </div>
   );
 }
+
 
 // useCartHold — (giữ nguyên)
 function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
@@ -758,6 +795,7 @@ export default function POSPage() {
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [sortField, setSortField] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
+  const [saveDraftModalOpen, setSaveDraftModalOpen] = useState(false);
 
   const [cartItems, setCartItems] = useState([]);
   const [customer, setCustomerState] = useState(null);
@@ -985,8 +1023,7 @@ export default function POSPage() {
     setPriceChangedIds(prev => { const n = new Set(prev); n.delete(product.id); return n; });
     const unitsPerBox = (saleType === 'BOX' && product.unitsPerBox > 0) ? product.unitsPerBox : null;
     const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
-    if (stock !== null && stock <= 0) return;
-    const addQty = (stock !== null && stock < 1) ? Math.round(stock * 1000) / 1000 : 1;
+    const addQty = 1;
     const displayUnit = unitsPerBox ? 'Thùng' : (product.unit || '');
     setCartItems(prev => [...prev, {
       id: newCartId(), productId: product.id, productName: product.name, productImageUrl: product.imageUrl,
@@ -1155,43 +1192,83 @@ export default function POSPage() {
     toast(changedName ? `Giá "${changedName}" đã được cập nhật.` : 'Một số giá đã thay đổi.', 'warning');
   }, [selectedWarehouse, toast]);
 
-  const handleSaveDraft = useCallback(async () => {
+  const handleSaveDraftConfirm = useCallback(async (opts) => {
+    // opts = { type: 'DRAFT' } hoặc { type: 'SCHEDULED', scheduledAt, orderedByName, receiverName, showPrices, hideAllPrices }
+    setSaveDraftModalOpen(false);
+
     if (cartItems.length === 0) { toast('Giỏ hàng trống', 'warning'); return; }
     setSavingDraft(true);
+
     try {
       const payload = {
-        customerId: customer?.id || null, customerName: customer?.contactName || customer?.name || null,
+        customerId: customer?.id || null,
+        customerName: customer?.contactName || customer?.name || null,
         customerPhone: customer?.selectedReceiver?.receiverPhone || customer?.phone || null,
-        customerEmail: customer?.email || null, shippingAddress: customer?.selectedReceiver?.receiverAddress || null,
-        notes, paymentMethod,
-        discountRate: discountFixedAmt ? 0 : discount,
-        discountAmount: discountFixedAmt ? Math.min(discountFixedAmt, maxDiscountFixed) : null,
-        surchargeItems: surchargeItems.filter(i => Number(i.amount) > 0),
-        warehouseId: selectedWarehouse?.id || null, warehouseName: selectedWarehouse?.name || null,
-        receiverName: customer?.selectedReceiver?.receiverName || null,
+        customerEmail: customer?.email || null,
+        shippingAddress: customer?.selectedReceiver?.receiverAddress || null,
+        receiverName: opts.receiverName ?? (customer?.selectedReceiver?.receiverName || null),
         receiverPhone: customer?.selectedReceiver?.receiverPhone || null,
         receiverAddress: customer?.selectedReceiver?.receiverAddress || null,
         receiverInfoId: customer?.selectedReceiver?.id || null,
+        notes,
+        paymentMethod,
+        discountRate: discountFixedAmt ? 0 : discount,
+        discountAmount: discountFixedAmt ? Math.min(discountFixedAmt, maxDiscountFixed) : null,
+        surchargeItems: surchargeItems.filter(i => Number(i.amount) > 0),
+        warehouseId: selectedWarehouse?.id || null,
+        warehouseName: selectedWarehouse?.name || null,
+        // Chỉ dùng deliveryDatetime cho đơn thường, SCHEDULED dùng scheduledAt
+        deliveryDatetime: opts.type === 'SCHEDULED' ? null : null,
+        orderedByName: opts.orderedByName ?? null,
+        showPrices: opts.showPrices ?? true,
+        hideAllPrices: opts.hideAllPrices ?? false,
+        // ── Scheduled ──────────────────────────────────────────────────────
+        type: opts.type || 'DRAFT',
+        scheduledAt: opts.scheduledAt ?? null,
         items: cartItems.map(i => ({
-          productId: i.productId, productName: i.productName, productImageUrl: i.productImageUrl,
-          unit: i.unit, quantity: i.quantity, unitPrice: i.unitPrice, basePrice: i.basePrice,
+          productId: i.productId,
+          productName: i.productName,
+          productImageUrl: i.productImageUrl,
+          unit: i.unit,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          basePrice: i.basePrice,
           priceMode: i.priceSource === 'MANUAL' ? 'BASE' : (i.priceSource === 'TIER' ? 'TIER' : 'BASE'),
-          tierId: i.isPromo ? null : i.tierId, tierName: i.tierName, isManualPrice: i.priceSource === 'MANUAL',
-          vatRate: i.vatRate, vatMode: i.vatMode, saleType: i.saleType || 'RETAIL', unitsPerBox: i.unitsPerBox,
-          isPromo: i.isPromo, promoNote: i.promoNote, itemDiscountRate: i.itemDiscountRate || 0, notes: i.notes,
+          tierId: i.isPromo ? null : i.tierId,
+          tierName: i.tierName,
+          isManualPrice: i.priceSource === 'MANUAL',
+          vatRate: i.vatRate,
+          vatMode: i.vatMode,
+          saleType: i.saleType || 'RETAIL',
+          unitsPerBox: i.unitsPerBox,
+          isPromo: i.isPromo,
+          promoNote: i.promoNote,
+          itemDiscountRate: i.itemDiscountRate || 0,
+          notes: i.notes,
           subtotal: calcNet(i) * Number(i.quantity),
         })),
       };
+
       await cartHoldApi.release().catch(() => { });
       if (currentDraftId) await draftApi.delete(currentDraftId).catch(() => { });
+
       const res = await draftApi.save(payload);
       setCurrentDraftId(res?.data?.data?.id || null);
-      toast('Đã lưu đơn nháp thành công', 'success');
-      clearCart(); setCurrentDraftId(null);
+
+      const msg = opts.type === 'SCHEDULED'
+        ? 'Đã lưu đơn hẹn giờ thành công'
+        : 'Đã lưu đơn nháp thành công';
+      toast(msg, 'success');
+      clearCart();
+      setCurrentDraftId(null);
     } catch (err) {
       toast(err?.response?.data?.message || 'Lỗi khi lưu đơn nháp', 'error');
-    } finally { setSavingDraft(false); }
-  }, [cartItems, customer, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed, surchargeNum, selectedWarehouse, clearCart, toast, currentDraftId]);
+    } finally {
+      setSavingDraft(false);
+    }
+  }, [cartItems, customer, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed,
+    surchargeItems, selectedWarehouse, clearCart, toast, currentDraftId]);
+
 
   const handleOpenDeliveryModal = useCallback(() => {
     if (!customer) { toast('Vui lòng chọn khách hàng', 'warning'); return; }
@@ -1237,22 +1314,43 @@ export default function POSPage() {
 
       const res = await orderApi.create(payload);
       const body = res.data;
-      if (body?.code === PRICE_CHANGED_CODE) { await handlePriceChanged(body.message); return; }
-      if (body?.code !== 900 || !body?.success) { toast(body?.message || 'Lỗi khi tạo đơn hàng', 'error'); return; }
+      if (body?.code === PRICE_CHANGED_CODE) { await handlePriceChanged(body.message); return; } // ❌ không xóa draft
+      if (body?.code !== 900 || !body?.success) { toast(body?.message || 'Lỗi khi tạo đơn hàng', 'error'); return; } // ❌ không xóa draft
       await cartHoldApi.release().catch(() => { });
+      // ✅ Chỉ xóa draft khi thành công
+      if (currentDraftId) { await draftApi.delete(currentDraftId).catch(() => { }); }
       const orderCode = body?.data?.orderCode;
       toast(`Tạo đơn hàng thành công${orderCode ? ': ' + orderCode : ''}`, 'success');
       clearCart(); setMobileCartOpen(false);
+
       const fresh = await productApi.getAll({ page: 0, size: 200, warehouseId: selectedWarehouse?.id });
       if (fresh?.data?.data?.content) setProducts(fresh.data.data.content);
     } catch (err) {
       const body = err?.response?.data;
-      if (body?.code === PRICE_CHANGED_CODE) { await handlePriceChanged(body.message); return; }
+      if (body?.code === PRICE_CHANGED_CODE) { await handlePriceChanged(body.message); return; } // ❌ không xóa draft
       toast(body?.message || 'Lỗi khi tạo đơn hàng', 'error');
+      // ❌ không có draftApi.delete ở đây
     } finally { setSubmitting(false); }
   }, [customer, cartItems, notes, paymentMethod, discount, discountFixedAmt, maxDiscountFixed, surchargeNum, selectedWarehouse, clearCart, handlePriceChanged, toast]);
 
   const [pendingSaleProduct, setPendingSaleProduct] = useState(null);
+
+  const hasOutOfStockItems = useMemo(() => {
+    return cartItems.some(item => {
+      const prod = products.find(p => p.id === item.productId);
+      if (!prod) return false;
+      const effStock = calcEffectiveStock(prod);
+      return effStock !== null && effStock <= 0;
+    });
+  }, [cartItems, products, calcEffectiveStock]);
+
+  const [updatingPrices, setUpdatingPrices] = useState(false);
+
+  const handleRefreshPrices = useCallback(async () => {
+    setUpdatingPrices(true);
+    try { await handlePriceChanged(''); }
+    finally { setUpdatingPrices(false); }
+  }, [handlePriceChanged]);
 
   const cartPanelProps = {
     cartItems, customer, notes, paymentMethod, discount, surchargeItems,
@@ -1279,9 +1377,14 @@ export default function POSPage() {
     },
     onPromoToggle: togglePromo, onVatRateChange: handleVatRateChange,
     onTierSelect: handleTierSelect, onSubmit: handleOpenDeliveryModal,
-    onSaveDraft: handleSaveDraft, savingDraft, countdownSeconds,
+    onSaveDraft: () => setSaveDraftModalOpen(true), savingDraft, countdownSeconds,
     cartContainerRef,
+    hasOutOfStockItems,
+    onUpdatePrices: handleRefreshPrices,
+    updatingPrices,
   };
+
+
 
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-[#FAF7F2]">
@@ -1422,6 +1525,15 @@ export default function POSPage() {
           currentPriceSource={tierModalCartId ? cartItems.find(i => i.id === tierModalCartId)?.priceSource : 'BASE'}
           onConfirm={handleTierConfirm}
           onClose={() => { setTierModalProduct(null); setTierModalCartId(null); }}
+        />
+      )}
+
+      {saveDraftModalOpen && (
+        <SaveDraftModal
+          customer={customer}
+          hasCustomer={!!customer}
+          onClose={() => setSaveDraftModalOpen(false)}
+          onConfirm={handleSaveDraftConfirm}
         />
       )}
 

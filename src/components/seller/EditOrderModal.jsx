@@ -4,11 +4,14 @@ import {
   X, Plus, Trash2, Save, AlertTriangle, Search,
   Grid, ChevronRight, Package, Loader2, Pencil, Percent,
   Check, Gift, ChevronDown, User, Clock, CreditCard, MapPin,
+  UserCheck, UserPlus, Building2,
 } from 'lucide-react';
 import { orderApi, productApi, categoryApi } from '../../api/services';
+import api from '../../api/axios';
 import { useToast } from '../common/Toast';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 function fmt(n) {
   return new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0) + ' đ';
 }
@@ -36,21 +39,260 @@ const PAYMENT_METHODS = [
   { value: 'DEBT', label: '📋 Công nợ' },
 ];
 
-const DEFAULT_SURCHARGE_TYPES = [
-  { name: 'Thùng xốp', placeholder: '20.000' },
-  { name: 'Phí vận chuyển', placeholder: '30.000' },
-  { name: 'Gửi xe', placeholder: '10.000' },
-  { name: 'Đá khô', placeholder: '15.000' },
-];
+// ── CustomerSearchModal ───────────────────────────────────────────────────────
+function CustomerSearchModal({ open, onClose, onSelect, selected }) {
+  const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [customers, setCustomers] = useState([]);
+  const [receiverInfos, setReceiverInfos] = useState([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [loadingReceivers, setLoadingReceivers] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const searchRef = useRef(null);
 
-// ── SurchargePanel ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (open) {
+      setQ('');
+      setDebouncedQ('');
+      setSelectedCustomer(null);
+      setReceiverInfos([]);
+      setTimeout(() => searchRef.current?.focus(), 100);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoadingCustomers(true);
+    const params = { page: 0, size: 50 };
+    if (debouncedQ.trim()) params.search = debouncedQ.trim();
+    api.get('/api/seller/customers/b2b', { params })
+      .then(res => {
+        const data = res.data?.data;
+        const list = data?.content ?? data ?? [];
+        setCustomers(Array.isArray(list) ? list : []);
+      })
+      .catch(() => setCustomers([]))
+      .finally(() => setLoadingCustomers(false));
+  }, [open, debouncedQ]);
+
+  const handleSelectCustomer = async (customer) => {
+    setSelectedCustomer(customer);
+    setLoadingReceivers(true);
+    try {
+      const res = await api.get(`/api/seller/customers/${customer.id}/receiver-infos`);
+      const list = res.data?.data ?? [];
+      setReceiverInfos(Array.isArray(list) ? list : []);
+    } catch {
+      setReceiverInfos([]);
+    } finally {
+      setLoadingReceivers(false);
+    }
+  };
+
+  const handleConfirm = (receiver = null) => {
+    if (!selectedCustomer) return;
+    onSelect({
+      ...selectedCustomer,
+      selectedReceiver: receiver,
+    });
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50">
+      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE3] shrink-0">
+          <h3 className="font-bold text-[#1C1C1E] text-sm">
+            {selectedCustomer ? 'Chọn địa chỉ nhận hàng' : 'Tìm khách hàng'}
+          </h3>
+          <div className="flex items-center gap-2">
+            {selectedCustomer && (
+              <button
+                onClick={() => { setSelectedCustomer(null); setReceiverInfos([]); }}
+                className="text-[11px] text-[#C9A84C] font-semibold hover:underline"
+              >
+                ← Quay lại
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 text-[#8E8878] hover:text-red-400 rounded-xl">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {!selectedCustomer ? (
+          <>
+            <div className="px-4 py-2 shrink-0 border-b border-[#F0EBE3]">
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                <input
+                  ref={searchRef}
+                  value={q}
+                  onChange={e => setQ(e.target.value)}
+                  placeholder="Tìm theo tên, mã, SĐT..."
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-[#E8DDD0] rounded-xl outline-none focus:border-[#C9A84C]"
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {loadingCustomers ? (
+                <div className="flex items-center justify-center py-10 gap-2 text-[#8E8878]">
+                  <Loader2 size={18} className="animate-spin" />
+                  <span className="text-sm">Đang tải...</span>
+                </div>
+              ) : customers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-[#8E8878] gap-2">
+                  <Search size={28} strokeWidth={1} />
+                  <p className="text-sm">Không tìm thấy khách hàng</p>
+                </div>
+              ) : (
+                <div className="px-2 py-2 space-y-0.5">
+                  {customers.map(c => {
+                    const isSelected = selected?.id === c.id;
+                    const isCompany = c.customerType === 'COMPANY';
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => handleSelectCustomer(c)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors group
+                          ${isSelected ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30' : 'hover:bg-[#FDF8ED]'}`}
+                      >
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0
+                          ${isCompany ? 'bg-blue-50' : 'bg-[#F0EBE3]'}`}>
+                          {isCompany
+                            ? <Building2 size={16} className="text-blue-500" />
+                            : <User size={16} className="text-[#C4B9A8]" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[#1C1C1E] truncate">
+                            {c.contactName || c.name || c.companyName || 'Khách vãng lai'}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-[10px] text-[#8E8878]">{c.customerCode}</span>
+                            {c.phone && <span className="text-[10px] text-[#8E8878]">· {c.phone}</span>}
+                            {isCompany && (
+                              <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-semibold">
+                                Công ty
+                              </span>
+                            )}
+                            {isSelected && (
+                              <span className="text-[9px] bg-[#C9A84C]/20 text-[#C9A84C] px-1.5 py-0.5 rounded-full font-semibold">
+                                Đang chọn
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight size={14} className="text-[#C4B9A8] group-hover:text-[#C9A84C] shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            {/* Thông tin khách đã chọn */}
+            <div className="px-4 pt-3 pb-2 bg-[#FDF8ED] border-b border-[#F0EBE3]">
+              <div className="flex items-center gap-2">
+                <UserCheck size={14} className="text-[#C9A84C]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#1C1C1E]">
+                    {selectedCustomer.contactName || selectedCustomer.name || selectedCustomer.companyName}
+                  </p>
+                  <p className="text-[10px] text-[#8E8878]">
+                    {selectedCustomer.customerCode}
+                    {selectedCustomer.phone && ` · ${selectedCustomer.phone}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Không có địa chỉ nhận */}
+            <button
+              onClick={() => handleConfirm(null)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FDF8ED] text-left border-b border-[#F0EBE3] transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#F0EBE3] flex items-center justify-center shrink-0">
+                <UserCheck size={14} className="text-[#8E8878]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#1C1C1E]">Không chọn địa chỉ nhận</p>
+                <p className="text-[10px] text-[#8E8878]">Dùng thông tin khách hàng</p>
+              </div>
+            </button>
+
+            {/* Danh sách địa chỉ nhận */}
+            {loadingReceivers ? (
+              <div className="flex items-center justify-center py-8 gap-2 text-[#8E8878]">
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-sm">Đang tải địa chỉ...</span>
+              </div>
+            ) : receiverInfos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-[#8E8878] gap-1">
+                <MapPin size={24} strokeWidth={1} />
+                <p className="text-sm">Không có địa chỉ nhận</p>
+              </div>
+            ) : (
+              <div className="px-2 py-2 space-y-0.5">
+                {receiverInfos.map((r, idx) => (
+                  <button
+                    key={r.id}
+                    onClick={() => handleConfirm(r)}
+                    className="w-full flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-[#FDF8ED] text-left transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-[#F0EBE3] flex items-center justify-center shrink-0 mt-0.5">
+                      <MapPin size={12} className="text-[#C4B9A8]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {r.receiverName && (
+                          <p className="text-xs font-semibold text-[#1C1C1E]">{r.receiverName}</p>
+                        )}
+                        {r.isDefault && (
+                          <span className="text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full font-semibold">
+                            Mặc định
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#5C4E3D] mt-0.5 truncate">{r.receiverAddress}</p>
+                      {r.receiverPhone && (
+                        <p className="text-[10px] text-[#8E8878]">{r.receiverPhone}</p>
+                      )}
+                    </div>
+                    <Check size={14} className="text-[#C4B9A8] group-hover:text-[#C9A84C] shrink-0 mt-1" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="px-4 py-3 border-t border-[#F0EBE3] shrink-0 text-center">
+          <p className="text-[11px] text-[#8E8878]">
+            {selectedCustomer
+              ? `${receiverInfos.length} địa chỉ nhận · Nhấn để chọn`
+              : `${customers.length} khách hàng`}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── SurchargePanel ────────────────────────────────────────────────────────────
 function SurchargePanel({ surchargeItems, onChange }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customAmount, setCustomAmount] = useState('');
 
-  // Các phụ phí có sẵn để chọn nhanh
   const PRESET_SURCHARGE_TYPES = [
     { name: 'Thùng xốp', amount: 20000 },
     { name: 'Phí vận chuyển', amount: 30000 },
@@ -69,33 +311,24 @@ function SurchargePanel({ surchargeItems, onChange }) {
     const amount = parseInt(customAmount.replace(/[^0-9]/g, ''), 10) || 0;
     if (!name) return;
     if (surchargeItems.find(i => i.name === name)) {
-      setCustomName('');
-      setCustomAmount('');
-      return;
+      setCustomName(''); setCustomAmount(''); return;
     }
     onChange([...surchargeItems, { name, amount }]);
-    setCustomName('');
-    setCustomAmount('');
-    setShowAddForm(false);
+    setCustomName(''); setCustomAmount(''); setShowAddForm(false);
   };
 
   const updateAmount = (name, rawValue) => {
     const num = rawValue === '' ? 0 : parseInt(String(rawValue).replace(/[^0-9]/g, ''), 10) || 0;
-    if (num === 0) {
-      onChange(surchargeItems.filter(i => i.name !== name));
-    } else {
-      onChange(surchargeItems.map(i => i.name === name ? { ...i, amount: num } : i));
-    }
+    if (num === 0) onChange(surchargeItems.filter(i => i.name !== name));
+    else onChange(surchargeItems.map(i => i.name === name ? { ...i, amount: num } : i));
   };
 
   const removeItem = (name) => onChange(surchargeItems.filter(i => i.name !== name));
-
   const addedNames = new Set(surchargeItems.map(i => i.name));
   const availablePresets = PRESET_SURCHARGE_TYPES.filter(p => !addedNames.has(p.name));
 
   return (
     <div className="space-y-2">
-      {/* Danh sách phụ phí đã thêm */}
       {surchargeItems.map(item => (
         <div key={item.name} className="flex items-center gap-2">
           <span className="text-[11px] text-[#5C4E3D] font-medium w-28 shrink-0 truncate">{item.name}</span>
@@ -113,14 +346,12 @@ function SurchargePanel({ surchargeItems, onChange }) {
           <button
             onClick={() => removeItem(item.name)}
             className="w-5 h-5 rounded-full flex items-center justify-center text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
-            title="Xóa phụ phí"
           >
             <X size={12} />
           </button>
         </div>
       ))}
 
-      {/* Nút thêm phụ phí */}
       {!showAddForm ? (
         <button
           onClick={() => setShowAddForm(true)}
@@ -130,7 +361,6 @@ function SurchargePanel({ surchargeItems, onChange }) {
         </button>
       ) : (
         <div className="bg-[#FDF8ED] rounded-xl border border-[#C9A84C]/20 p-3 space-y-3">
-          {/* Các lựa chọn có sẵn */}
           {availablePresets.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {availablePresets.map(preset => (
@@ -144,8 +374,6 @@ function SurchargePanel({ surchargeItems, onChange }) {
               ))}
             </div>
           )}
-
-          {/* Form thêm tùy chỉnh */}
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               <input
@@ -203,17 +431,24 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
             <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Chọn loại giá</p>
             <h3 className="text-white font-bold text-sm truncate max-w-[200px]">{product?.name}</h3>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white"><X size={14} /></button>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white">
+            <X size={14} />
+          </button>
         </div>
         <div className="p-4 space-y-2">
-          <button onClick={() => onConfirm({ priceSource: 'BASE', tierId: null, tierName: null, unitPrice: product.basePrice })}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${currentPriceSource === 'BASE' ? 'border-sky-400 bg-sky-50' : 'border-[#E8DDD0] hover:border-sky-300'}`}>
+          <button
+            onClick={() => onConfirm({ priceSource: 'BASE', tierId: null, tierName: null, unitPrice: product.basePrice })}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${currentPriceSource === 'BASE' ? 'border-sky-400 bg-sky-50' : 'border-[#E8DDD0] hover:border-sky-300'}`}
+          >
             <p className="text-sm font-semibold">Giá lẻ</p>
             <p className="text-sm font-bold text-sky-600">{fmt(product?.basePrice)}</p>
           </button>
           {(product?.priceTiers ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((tier, idx) => (
-            <button key={tier.id} onClick={() => onConfirm({ priceSource: 'TIER', tierId: tier.id, tierName: tier.tierName, unitPrice: tier.price })}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${currentTierId === tier.id ? 'border-orange-400 bg-orange-50' : 'border-[#E8DDD0] hover:border-orange-300'}`}>
+            <button
+              key={tier.id}
+              onClick={() => onConfirm({ priceSource: 'TIER', tierId: tier.id, tierName: tier.tierName, unitPrice: tier.price })}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${currentTierId === tier.id ? 'border-orange-400 bg-orange-50' : 'border-[#E8DDD0] hover:border-orange-300'}`}
+            >
               <p className="text-sm font-semibold">{tier.tierName || `Sỉ ${idx + 1}`}</p>
               <p className="text-sm font-bold text-orange-600">{fmt(tier.price)}</p>
             </button>
@@ -289,28 +524,16 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
   const startEditQty = () => {
     setQtyInput(String(item.quantity));
     setIsEditingQty(true);
-    setTimeout(() => {
-      qtyInputRef.current?.focus();
-      qtyInputRef.current?.select();
-    }, 30);
+    setTimeout(() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select(); }, 30);
   };
 
   const commitQty = () => {
     let val = parseFloat(qtyInput.replace(',', '.'));
     if (isNaN(val)) val = item.quantity;
-
-    // Kiểm tra DVT: nếu là kg hoặc lít thì cho nhập lẻ (2 số thập phân), còn lại phải là số nguyên
-    if (!isDecimalUnit) {
-      val = Math.round(val);
-    } else {
-      val = Math.round(val * 100) / 100;
-    }
-
-    if (val <= 0) {
-      onRemove(item._editId);
-    } else {
-      onUpdateQty(item._editId, val);
-    }
+    if (!isDecimalUnit) val = Math.round(val);
+    else val = Math.round(val * 100) / 100;
+    if (val <= 0) onRemove(item._editId);
+    else onUpdateQty(item._editId, val);
     setIsEditingQty(false);
   };
 
@@ -342,13 +565,15 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
 
           <div className="flex items-center gap-1 flex-wrap mt-0.5">
             <button onClick={() => onTierSelect(item._editId)} className="hover:opacity-75 transition-opacity">{priceBadge}</button>
-            <button onClick={() => { if (isExclusive) setShowVatPicker(p => !p); }}
+            <button
+              onClick={() => { if (isExclusive) setShowVatPicker(p => !p); }}
               className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold border transition-colors
                 ${vatRate > 0
                   ? isExclusive ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-pointer hover:bg-emerald-100'
                     : 'bg-amber-50 text-amber-700 border-amber-200 cursor-default'
                   : isExclusive ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-pointer hover:bg-emerald-50'
-                    : 'bg-gray-50 text-gray-400 border-gray-200 cursor-default'}`}>
+                    : 'bg-gray-50 text-gray-400 border-gray-200 cursor-default'}`}
+            >
               {vatRate > 0 ? `VAT ${vatRate}% ${isExclusive ? '(ngoài)' : '(trong)'}` : isExclusive ? 'Chọn VAT' : 'Không VAT'}
               {isExclusive && <ChevronDown size={8} />}
             </button>
@@ -433,7 +658,6 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
           </button>
           <div className="flex items-center gap-1">
             <button onClick={() => onUpdateQty(item._editId, item.quantity - 1)} className="w-6 h-6 rounded-full bg-[#F0EBE3] text-sm font-bold flex items-center justify-center hover:bg-[#E8DDD0]">−</button>
-
             {isEditingQty ? (
               <input
                 ref={qtyInputRef}
@@ -453,7 +677,6 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
                 {item.quantity}
               </span>
             )}
-
             <button onClick={() => onUpdateQty(item._editId, item.quantity + 1)} className="w-6 h-6 rounded-full bg-[#F0EBE3] text-sm font-bold flex items-center justify-center hover:bg-[#E8DDD0]">+</button>
           </div>
         </div>
@@ -551,12 +774,14 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const toast = useToast();
   const idCounter = useRef(0);
   const nextId = () => { idCounter.current += 1; return idCounter.current; };
+
   const [priceDisplayOption, setPriceDisplayOption] = useState('show');
   const [orderDetail, setOrderDetail] = useState(null);
   const [fetchingDetail, setFetchingDetail] = useState(false);
   const [items, setItems] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
 
+  // Thông tin đơn hàng
   const [orderedByName, setOrderedByName] = useState('');
   const [receiverName, setReceiverName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -564,10 +789,14 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [notes, setNotes] = useState('');
 
+  // Khách hàng — state mới
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+
+  // Giảm giá & phụ phí
   const [discount, setDiscount] = useState(0);
   const [discountFixed, setDiscountFixed] = useState(null);
   const [discountFixedDisplay, setDiscountFixedDisplay] = useState('');
-
   const [surchargeItems, setSurchargeItems] = useState([]);
 
   const [showPicker, setShowPicker] = useState(false);
@@ -577,6 +806,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
 
   const surchargeNum = surchargeItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
+  // Load order detail
   useEffect(() => {
     if (!open || !orderId) return;
 
@@ -586,6 +816,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     setShowPicker(false);
     setDiscount(0); setDiscountFixed(null); setDiscountFixedDisplay('');
     setSurchargeItems([]);
+    setSelectedCustomer(null);
     setFetchingDetail(true);
 
     let cancelled = false;
@@ -593,19 +824,15 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     orderApi.getById(orderId).then(res => {
       if (cancelled) return;
       const d = res.data?.data ?? res.data;
-      const showPricesVal = d?.showPrices ?? true;
-      const hideAllPricesVal = d?.hideAllPrices ?? false;
 
-      if (hideAllPricesVal) {
-        setPriceDisplayOption('hide_all');
-      } else if (!showPricesVal) {
-        setPriceDisplayOption('hide_prices');
-      } else {
-        setPriceDisplayOption('show');
-      }
+      // Hiển thị giá
+      const hideAllPricesVal = d?.hideAllPrices ?? false;
+      const showPricesVal = d?.showPrices ?? true;
+      if (hideAllPricesVal) setPriceDisplayOption('hide_all');
+      else if (!showPricesVal) setPriceDisplayOption('hide_prices');
+      else setPriceDisplayOption('show');
 
       setOrderDetail(d);
-
       setOrderedByName(d?.orderedByName ?? '');
       setReceiverName(d?.receiverName ?? d?.customerName ?? '');
       setDeliveryAddress(d?.deliveryAddress ?? d?.shippingAddress ?? '');
@@ -613,6 +840,24 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
       setPaymentMethod(d?.paymentMethod ?? 'CASH');
       setNotes(d?.notes ?? '');
 
+      // Khôi phục khách hàng từ đơn hàng
+      if (d?.customerId) {
+        setSelectedCustomer({
+          id: d.customerId,
+          contactName: d.customerName ?? '',
+          name: d.customerName ?? '',
+          phone: d.customerPhone ?? '',
+          customerCode: '',
+          customerType: d.customerType ?? 'RETAIL',
+          selectedReceiver: d.deliveryAddress ? {
+            receiverAddress: d.deliveryAddress,
+            receiverName: d.receiverName ?? null,
+            receiverPhone: d.customerPhone ?? null,
+          } : null,
+        });
+      }
+
+      // Giảm giá
       if (Number(d?.discountRate) > 0) {
         setDiscount(Number(d.discountRate));
         setDiscountFixed(null); setDiscountFixedDisplay('');
@@ -622,6 +867,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         setDiscountFixedDisplay(new Intl.NumberFormat('vi-VN').format(Number(d.discountAmount)));
       }
 
+      // Phụ phí
       if (d?.surchargeDetail) {
         try {
           const parsed = JSON.parse(d.surchargeDetail);
@@ -633,6 +879,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         setSurchargeItems([]);
       }
 
+      // Items
       const raw = d?.items ?? d?.orderItems ?? [];
       setItems(raw.map(i => ({
         _editId: nextId(),
@@ -674,6 +921,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     return () => { cancelled = true; };
   }, [open]);
 
+  // Handlers items
   const updateQty = useCallback((editId, qty) => {
     if (qty <= 0) setItems(prev => prev.filter(i => i._editId !== editId));
     else setItems(prev => prev.map(i => i._editId === editId ? { ...i, quantity: qty } : i));
@@ -736,6 +984,23 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     toast(`Đã thêm "${product.name}"`, 'success');
   }, [toast]);
 
+  // Handler chọn khách hàng
+  const handleSelectCustomer = useCallback((customer) => {
+    setSelectedCustomer(customer);
+    // Tự động điền địa chỉ giao hàng & người nhận từ receiver được chọn
+    if (customer.selectedReceiver) {
+      if (customer.selectedReceiver.receiverAddress)
+        setDeliveryAddress(customer.selectedReceiver.receiverAddress);
+      if (customer.selectedReceiver.receiverName)
+        setReceiverName(customer.selectedReceiver.receiverName);
+    }
+  }, []);
+
+  const handleClearCustomer = useCallback(() => {
+    setSelectedCustomer(null);
+  }, []);
+
+  // Tính toán tổng
   const subtotalGross = items.reduce((s, i) => i.isPromo ? s : s + Number(i.unitPrice) * i.quantity, 0);
 
   const itemDiscountTotal = items.reduce((s, i) => {
@@ -782,18 +1047,11 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const vatDisplayTotal = vatBreakdown.reduce((s, g) => s + g.vatAmt, 0);
   const total = afterAllDiscount + exclusiveVatTotal + surchargeNum;
 
+  // Lưu
   const handleSave = async () => {
     if (items.length === 0) { toast('Đơn hàng cần có ít nhất 1 sản phẩm', 'warning'); return; }
     setSaving(true);
     try {
-      const getShowPricesValue = () => {
-        return priceDisplayOption === 'show';
-      };
-
-      const getHideAllPricesValue = () => {
-        return priceDisplayOption === 'hide_all';
-      };
-
       const payload = {
         orderedByName: orderedByName || undefined,
         receiverName: receiverName || undefined,
@@ -803,10 +1061,11 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         notes: notes || undefined,
         discountAmount: discountFixed !== null ? discountAmt : undefined,
         discountRate: discountFixed === null ? discount : undefined,
-        // QUAN TRỌNG: sửa lại 2 dòng này
-        showPrices: getShowPricesValue(),
-        hideAllPrices: getHideAllPricesValue(),
+        showPrices: priceDisplayOption === 'show',
+        hideAllPrices: priceDisplayOption === 'hide_all',
         surchargeItems: surchargeItems.filter(i => Number(i.amount) > 0),
+        // Gửi customerId nếu đã chọn khách hàng mới
+        customerId: selectedCustomer?.id ?? undefined,
         items: items.map(i => ({
           productId: i.productId,
           quantity: i.quantity,
@@ -822,12 +1081,6 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
           vatMode: i.vatMode ?? 'INCLUSIVE',
         })),
       };
-
-      console.log('Saving order with:', {
-        showPrices: payload.showPrices,
-        hideAllPrices: payload.hideAllPrices,
-        priceDisplayOption
-      });
 
       await orderApi.updateOrderItems(orderId, payload);
       toast('Đã cập nhật đơn hàng', 'success');
@@ -847,15 +1100,19 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
         <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
 
+          {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3] shrink-0">
             <div>
               <h3 className="font-bold text-[#1C1C1E] text-base">Sửa đơn hàng</h3>
               <p className="text-xs text-[#8E8878] mt-0.5">{orderCode}</p>
             </div>
-            <button onClick={onClose} className="p-1.5 text-[#8E8878] hover:text-red-400 hover:bg-red-50 rounded-xl transition-colors"><X size={18} /></button>
+            <button onClick={onClose} className="p-1.5 text-[#8E8878] hover:text-red-400 hover:bg-red-50 rounded-xl transition-colors">
+              <X size={18} />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto">
+            {/* Cảnh báo kho */}
             <div className="mx-5 mt-3 px-3 py-2 bg-amber-50 rounded-xl border border-amber-200 flex gap-2 items-start">
               <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-700">Chỉ trừ/hoàn kho theo <strong>phần thay đổi</strong>. Tăng SL → trừ thêm; Giảm SL → hoàn kho; Món mới → trừ toàn bộ.</p>
@@ -865,6 +1122,61 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
               <div className="mx-5 mt-3 bg-[#FAFAF8] rounded-xl border border-[#F0EBE3] overflow-hidden">
                 <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 pt-3 pb-2">Thông tin đơn hàng</p>
                 <div className="px-4 pb-3 space-y-2">
+
+                  {/* ── Khách hàng ── */}
+                  <div>
+                    <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1">
+                      <User size={10} />Khách hàng
+                    </label>
+                    <button
+                      onClick={() => setCustomerModalOpen(true)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-sm transition-all
+                        ${selectedCustomer
+                          ? 'border-[#C9A84C] bg-[#C9A84C]/5'
+                          : 'border-dashed border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C]'}`}
+                    >
+                      {selectedCustomer ? (
+                        <>
+                          <UserCheck size={14} className="text-[#C9A84C] shrink-0" />
+                          <div className="flex-1 text-left min-w-0">
+                            <p className="font-semibold text-xs truncate text-[#1C1C1E]">
+                              {selectedCustomer.contactName || selectedCustomer.name || 'Khách hàng'}
+                            </p>
+                            <p className="text-[10px] text-[#8E8878] truncate">
+                              {selectedCustomer.customerCode && `${selectedCustomer.customerCode} · `}{selectedCustomer.phone}
+                            </p>
+                          </div>
+                          <button
+                            onClick={e => { e.stopPropagation(); handleClearCustomer(); }}
+                            className="text-[#C4B9A8] hover:text-red-400 shrink-0 p-0.5 rounded"
+                          >
+                            <X size={12} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={14} className="shrink-0" />
+                          <span className="text-xs">
+                            {orderDetail?.customerName
+                              ? `${orderDetail.customerName}${orderDetail.customerPhone ? ' · ' + orderDetail.customerPhone : ''} (click để đổi)`
+                              : 'Chọn khách hàng'}
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Hiển thị địa chỉ nhận nếu có */}
+                    {selectedCustomer?.selectedReceiver?.receiverAddress && (
+                      <div className="mt-1 flex items-start gap-1.5 px-2">
+                        <MapPin size={10} className="text-[#C9A84C] mt-0.5 shrink-0" />
+                        <p className="text-[10px] text-[#5C4E3D] truncate">
+                          {selectedCustomer.selectedReceiver.receiverAddress}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Người đặt & Người nhận */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><User size={10} />Người đặt</label>
@@ -877,11 +1189,15 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                         className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C]" />
                     </div>
                   </div>
+
+                  {/* Địa chỉ giao */}
                   <div>
                     <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><MapPin size={10} />Địa chỉ giao hàng</label>
                     <input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Địa chỉ..."
                       className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C]" />
                   </div>
+
+                  {/* Giờ giao & Thanh toán */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-[#8E8878] font-semibold flex items-center gap-1 mb-1"><Clock size={10} />Giờ giao hàng</label>
@@ -896,18 +1212,20 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                       </select>
                     </div>
                   </div>
+
+                  {/* Ghi chú */}
                   <div>
                     <label className="text-[10px] text-[#8E8878] font-semibold mb-1 block">Ghi chú</label>
                     <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Ghi chú đơn hàng..."
                       className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C] resize-none" />
                   </div>
 
-                  {/* Thêm option hiển thị giá */}
+                  {/* Hiển thị giá */}
                   <div className="pt-2 border-t border-[#F0EBE3]">
                     <label className="block text-[10px] text-[#8E8878] font-semibold mb-1.5">💰 Hiển thị giá</label>
                     <select
                       value={priceDisplayOption}
-                      onChange={(e) => setPriceDisplayOption(e.target.value)}
+                      onChange={e => setPriceDisplayOption(e.target.value)}
                       className="w-full px-3 py-2 text-sm border border-[#E8DDD0] rounded-xl focus:outline-none focus:border-[#C9A84C] bg-white"
                     >
                       <option value="show">Hiển thị đầy đủ giá</option>
@@ -917,13 +1235,14 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                     <p className="text-[9px] text-[#8E8878] mt-1">
                       {priceDisplayOption === 'show' && '✓ Hiển thị tất cả giá trên phiếu'}
                       {priceDisplayOption === 'hide_prices' && '✓ Ẩn giá từng sản phẩm, vẫn hiển thị tổng tiền'}
-                      {priceDisplayOption === 'hide_all' && '✓ Ẩn toàn bộ số tiền trên phiếu (chỉ hiển thị tên và số lượng)'}
+                      {priceDisplayOption === 'hide_all' && '✓ Ẩn toàn bộ số tiền trên phiếu'}
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Danh sách sản phẩm */}
             <div className="px-5 py-3">
               {fetchingDetail ? (
                 <div className="flex items-center justify-center py-10 gap-2 text-[#8E8878]">
@@ -949,6 +1268,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
               )}
             </div>
 
+            {/* Tổng tiền */}
             {!fetchingDetail && items.length > 0 && (
               <div className="mx-5 mb-3 bg-[#FAFAF8] rounded-xl border border-[#F0EBE3] px-4 py-3 space-y-2">
                 {/* Giảm giá */}
@@ -976,7 +1296,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                   </div>
                 </div>
 
-                {/* Phụ phí — SurchargePanel */}
+                {/* Phụ phí */}
                 <div className="flex items-start gap-2">
                   <span className="text-xs text-[#8E8878] shrink-0 w-20 mt-1.5">Phụ phí:</span>
                   <div className="flex-1">
@@ -1006,9 +1326,9 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                     </div>
                   )}
                   {exclusiveVatTotal > 0 && <div className="flex justify-between text-xs text-[#8E8878]"><span>VAT (ngoài giá)</span><span>+{fmt(exclusiveVatTotal)}</span></div>}
-                  {vatDisplayTotal > 0 && (
+                  {vatDisplayTotal - exclusiveVatTotal > 0 && (
                     <div className="flex justify-between text-xs text-[#C4B9A8]">
-                      <span>VAT (đã trong giá)</span><span>{fmt(vatDisplayTotal - exclusiveVatTotal)}</span>
+                      <span>VAT (đã bao gồm)</span><span>{fmt(vatDisplayTotal - exclusiveVatTotal)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm font-bold text-[#1C1C1E] pt-1 border-t border-[#F0EBE3]">
@@ -1020,6 +1340,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
             )}
           </div>
 
+          {/* Footer */}
           <div className="px-5 pb-5 pt-3 border-t border-[#F0EBE3] shrink-0 flex gap-2">
             <button onClick={onClose} disabled={saving}
               className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C4E3D] font-semibold hover:bg-[#F0EBE3] transition-colors disabled:opacity-50">
@@ -1035,15 +1356,32 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         </div>
       </div>
 
-      {showPicker && <ProductPickerModal onAdd={addProduct} onClose={() => setShowPicker(false)} existingIds={existingProductIds} />}
+      {/* Modals con */}
+      {showPicker && (
+        <ProductPickerModal
+          onAdd={addProduct}
+          onClose={() => setShowPicker(false)}
+          existingIds={existingProductIds}
+        />
+      )}
 
       {tierProduct && (
-        <TierSelectModal product={tierProduct}
+        <TierSelectModal
+          product={tierProduct}
           currentTierId={items.find(i => i._editId === tierEditId)?.tierId}
           currentPriceSource={items.find(i => i._editId === tierEditId)?.priceSource ?? 'BASE'}
           onConfirm={handleTierConfirm}
-          onClose={() => { setTierEditId(null); setTierProduct(null); }} />
+          onClose={() => { setTierEditId(null); setTierProduct(null); }}
+        />
       )}
+
+      {/* CustomerSearchModal */}
+      <CustomerSearchModal
+        open={customerModalOpen}
+        onClose={() => setCustomerModalOpen(false)}
+        onSelect={handleSelectCustomer}
+        selected={selectedCustomer}
+      />
     </>
   );
 }
