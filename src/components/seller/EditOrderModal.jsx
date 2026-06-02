@@ -8,6 +8,7 @@ import {
 import { orderApi, productApi, categoryApi } from '../../api/services';
 import { useToast } from '../common/Toast';
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 function fmt(n) {
   return new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0) + ' đ';
 }
@@ -324,17 +325,11 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
       ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200">{item.tierName || 'Giá sỉ'}</span>
       : <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-sky-100 text-sky-700 border border-sky-200">Giá lẻ</span>;
 
-  const imageUrl = product.imageUrl
-    ? product.imageUrl.startsWith('http')
-      ? product.imageUrl
-      : `${BASE_URL}/api/auth${product.imageUrl}`
-    : null;
-
   return (
     <div className="py-3 border-b border-[#F0EBE3] last:border-0">
       <div className="flex items-start gap-3">
-        {imageUrl
-          ? <img src={imageUrl} alt={item.productName} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-[#F0EBE3]" />
+        {item.productImageUrl
+          ? <img src={`${BASE_URL}/api/auth${item.productImageUrl}`} alt={item.productName} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-[#F0EBE3]" />
           : <div className="w-10 h-10 rounded-lg shrink-0 bg-[#F0EBE3] flex items-center justify-center"><Package size={14} className="text-[#C4B9A8]" /></div>}
 
         <div className="flex-1 min-w-0">
