@@ -43,64 +43,59 @@ const DEFAULT_SURCHARGE_TYPES = [
 ];
 
 // ── SurchargePanel ────────────────────────────────────────────────────────────
+// ── SurchargePanel ────────────────────────────────────────────────────────────
 function SurchargePanel({ surchargeItems, onChange }) {
+  const [showAddForm, setShowAddForm] = useState(false);
   const [customName, setCustomName] = useState('');
+  const [customAmount, setCustomAmount] = useState('');
 
-  const getAmount = (name) => {
-    const found = surchargeItems.find(i => i.name === name);
-    return found ? found.amount : 0;
-  };
+  // Các phụ phí có sẵn để chọn nhanh
+  const PRESET_SURCHARGE_TYPES = [
+    { name: 'Thùng xốp', amount: 20000 },
+    { name: 'Phí vận chuyển', amount: 30000 },
+    { name: 'Gửi xe', amount: 10000 },
+    { name: 'Đá khô', amount: 15000 },
+  ];
 
-  const setAmount = (name, rawValue) => {
-    const num = rawValue === '' ? 0 : parseInt(String(rawValue).replace(/[^0-9]/g, ''), 10) || 0;
-    const exists = surchargeItems.find(i => i.name === name);
-    let next;
-    if (num === 0) {
-      next = surchargeItems.filter(i => i.name !== name);
-    } else if (exists) {
-      next = surchargeItems.map(i => i.name === name ? { ...i, amount: num } : i);
-    } else {
-      next = [...surchargeItems, { name, amount: num }];
-    }
-    onChange(next);
+  const addPreset = (preset) => {
+    if (surchargeItems.find(i => i.name === preset.name)) return;
+    onChange([...surchargeItems, { name: preset.name, amount: preset.amount }]);
+    setShowAddForm(false);
   };
 
   const addCustom = () => {
     const name = customName.trim();
+    const amount = parseInt(customAmount.replace(/[^0-9]/g, ''), 10) || 0;
     if (!name) return;
-    if (surchargeItems.find(i => i.name === name)) { setCustomName(''); return; }
-    onChange([...surchargeItems, { name, amount: 0 }]);
+    if (surchargeItems.find(i => i.name === name)) {
+      setCustomName('');
+      setCustomAmount('');
+      return;
+    }
+    onChange([...surchargeItems, { name, amount }]);
     setCustomName('');
+    setCustomAmount('');
+    setShowAddForm(false);
+  };
+
+  const updateAmount = (name, rawValue) => {
+    const num = rawValue === '' ? 0 : parseInt(String(rawValue).replace(/[^0-9]/g, ''), 10) || 0;
+    if (num === 0) {
+      onChange(surchargeItems.filter(i => i.name !== name));
+    } else {
+      onChange(surchargeItems.map(i => i.name === name ? { ...i, amount: num } : i));
+    }
   };
 
   const removeItem = (name) => onChange(surchargeItems.filter(i => i.name !== name));
 
-  const defaultNames = new Set(DEFAULT_SURCHARGE_TYPES.map(t => t.name));
-  const customItems = surchargeItems.filter(i => !defaultNames.has(i.name));
+  const addedNames = new Set(surchargeItems.map(i => i.name));
+  const availablePresets = PRESET_SURCHARGE_TYPES.filter(p => !addedNames.has(p.name));
 
   return (
-    <div className="space-y-1.5">
-      {DEFAULT_SURCHARGE_TYPES.map(type => {
-        const val = getAmount(type.name);
-        return (
-          <div key={type.name} className="flex items-center gap-2">
-            <span className="text-[11px] text-[#5C4E3D] font-medium w-28 shrink-0">{type.name}</span>
-            <div className="relative flex-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={val === 0 ? '' : new Intl.NumberFormat('vi-VN').format(val)}
-                onChange={e => setAmount(type.name, e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder={type.placeholder}
-                className="w-full rounded-lg border border-[#E8DDD0] px-2 py-1 text-xs text-right pr-6 focus:outline-none focus:border-[#C9A84C]"
-              />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
-            </div>
-          </div>
-        );
-      })}
-
-      {customItems.map(item => (
+    <div className="space-y-2">
+      {/* Danh sách phụ phí đã thêm */}
+      {surchargeItems.map(item => (
         <div key={item.name} className="flex items-center gap-2">
           <span className="text-[11px] text-[#5C4E3D] font-medium w-28 shrink-0 truncate">{item.name}</span>
           <div className="relative flex-1">
@@ -108,33 +103,90 @@ function SurchargePanel({ surchargeItems, onChange }) {
               type="text"
               inputMode="numeric"
               value={item.amount === 0 ? '' : new Intl.NumberFormat('vi-VN').format(item.amount)}
-              onChange={e => setAmount(item.name, e.target.value.replace(/[^0-9]/g, ''))}
+              onChange={e => updateAmount(item.name, e.target.value)}
               placeholder="0"
               className="w-full rounded-lg border border-[#E8DDD0] px-2 py-1 text-xs text-right pr-6 focus:outline-none focus:border-[#C9A84C]"
             />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
           </div>
-          <button onClick={() => removeItem(item.name)} className="text-[#C4B9A8] hover:text-red-400 shrink-0">
+          <button
+            onClick={() => removeItem(item.name)}
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
+            title="Xóa phụ phí"
+          >
             <X size={12} />
           </button>
         </div>
       ))}
 
-      <div className="flex items-center gap-2 pt-0.5">
-        <input
-          type="text"
-          value={customName}
-          onChange={e => setCustomName(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') addCustom(); }}
-          placeholder="+ Thêm phụ phí khác..."
-          className="flex-1 rounded-lg border border-dashed border-[#E8DDD0] px-2 py-1 text-[11px] focus:outline-none focus:border-[#C9A84C] text-[#8E8878]"
-        />
-        {customName.trim() && (
-          <button onClick={addCustom} className="px-2 py-1 rounded-lg bg-[#C9A84C] text-white text-[10px] font-semibold shrink-0">
-            Thêm
-          </button>
-        )}
-      </div>
+      {/* Nút thêm phụ phí */}
+      {!showAddForm ? (
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="flex items-center gap-1 text-[11px] text-[#C9A84C] hover:text-[#a07830] font-semibold py-1 transition-colors"
+        >
+          <Plus size={12} /> Thêm phụ phí
+        </button>
+      ) : (
+        <div className="bg-[#FDF8ED] rounded-xl border border-[#C9A84C]/20 p-3 space-y-3">
+          {/* Các lựa chọn có sẵn */}
+          {availablePresets.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {availablePresets.map(preset => (
+                <button
+                  key={preset.name}
+                  onClick={() => addPreset(preset)}
+                  className="text-[10px] px-2.5 py-1 rounded-lg bg-white border border-[#E8DDD0] text-[#5C4E3D] hover:border-[#C9A84C] hover:bg-[#FDF8ED] font-medium transition-colors"
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Form thêm tùy chỉnh */}
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customName}
+                onChange={e => setCustomName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addCustom(); if (e.key === 'Escape') setShowAddForm(false); }}
+                placeholder="Tên phụ phí..."
+                className="flex-1 rounded-lg border border-[#E8DDD0] px-2 py-1.5 text-[11px] focus:outline-none focus:border-[#C9A84C] bg-white"
+                autoFocus
+              />
+              <div className="relative w-28">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={customAmount}
+                  onChange={e => setCustomAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                  onKeyDown={e => { if (e.key === 'Enter') addCustom(); if (e.key === 'Escape') setShowAddForm(false); }}
+                  placeholder="Số tiền"
+                  className="w-full rounded-lg border border-[#E8DDD0] px-2 py-1.5 text-[11px] text-right pr-5 focus:outline-none focus:border-[#C9A84C] bg-white"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setShowAddForm(false); setCustomName(''); setCustomAmount(''); }}
+                className="px-3 py-1 rounded-lg border border-[#E8DDD0] text-[#8E8878] text-[10px] font-medium hover:bg-[#F0EBE3] transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={addCustom}
+                disabled={!customName.trim()}
+                className="px-3 py-1 rounded-lg bg-[#C9A84C] text-white text-[10px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#b8963d] transition-colors"
+              >
+                Thêm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
