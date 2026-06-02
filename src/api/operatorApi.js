@@ -42,6 +42,27 @@ export const operatorApi = {
   // ── Batches ──────────────────────────────────────────────────────────────
   submitBatch: (data) => api.post('/api/operator/batches', data),
   getMyBatches: () => api.get('/api/operator/batches'),
+
+  exportTemplate: () =>
+    api.get('/api/operator/products/export-template', { responseType: 'blob' }),
+
+  // Export full list để update
+  exportFullList: () =>
+    api.get('/api/operator/products/export-full', { responseType: 'blob' }),
+
+  // Import tạo mới
+  importProducts: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/api/operator/products/import', fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+
+  // Import cập nhật
+  importUpdateProducts: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/api/operator/products/import-update', fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 export const adminBatchApi = {

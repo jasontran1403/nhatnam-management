@@ -6,6 +6,7 @@ import { useToast } from '../../components/common/Toast';
 import {
   Plus, Trash2, X, ChevronDown, ChevronUp,
   ImagePlus, Send, Box, Search, ToggleLeft, ToggleRight,
+  Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
@@ -78,6 +79,52 @@ export default function OperatorProductBatchPage() {
   const [productSearch, setProductSearch] = useState('');
   const debouncedProductSearch = useDebounce(productSearch, 600);
   const [submitting, setSubmitting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importResult, setImportResult] = useState(null); // {imported/updated, skipped, errors}
+  const importFileRef = useRef(null);
+
+  const downloadBlob = (data, filename) => {
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
+  const handleExportTemplate = async () => {
+    setExporting(true);
+    try {
+      const res = batchType === 'CREATE'
+        ? await operatorApi.exportTemplate()
+        : await operatorApi.exportFullList();
+      downloadBlob(res.data, batchType === 'CREATE'
+        ? 'product-import-template.xlsx'
+        : 'product-update-template.xlsx');
+    } catch { toast('Không thể tải template', 'error'); }
+    finally { setExporting(false); }
+  };
+
+  const handleImportFile = async (file) => {
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = batchType === 'CREATE'
+        ? await operatorApi.importProducts(file)
+        : await operatorApi.importUpdateProducts(file);
+      const data = res.data?.data;
+      setImportResult(data);
+      const count = data?.imported ?? data?.updated ?? 0;
+      if ((data?.errors?.length ?? 0) === 0) {
+        toast(`✅ ${batchType === 'CREATE' ? 'Tạo' : 'Cập nhật'} ${count} sản phẩm thành công!`, 'success');
+      } else {
+        toast(`⚠️ ${count} thành công, ${data.skipped} dòng lỗi`, 'warning');
+      }
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi import', 'error');
+    } finally { setImporting(false); }
+  };
+
 
   useEffect(() => {
     Promise.all([
@@ -264,6 +311,37 @@ export default function OperatorProductBatchPage() {
                 </button>
               ))}
             </div>
+
+            {/* Nút Export Template */}
+            <button
+              onClick={handleExportTemplate}
+              disabled={exporting}
+              title={batchType === 'CREATE' ? 'Tải template tạo mới' : 'Tải full list để cập nhật'}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] bg-white text-[#5C5C5C] hover:border-[#C9A84C] hover:text-[#C9A84C] text-xs font-semibold transition-colors disabled:opacity-50">
+              {exporting
+                ? <div className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                : <Download size={13} />}
+              {batchType === 'CREATE' ? 'Tải template' : 'Tải full list'}
+            </button>
+
+            {/* Nút Import */}
+            <label
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] bg-white
+    text-[#5C5C5C] hover:border-emerald-400 hover:text-emerald-600 text-xs font-semibold
+    transition-colors cursor-pointer ${importing ? 'opacity-50 pointer-events-none' : ''}`}
+              title="Import từ file Excel">
+              {importing
+                ? <div className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                : <Upload size={13} />}
+              Import Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={e => { handleImportFile(e.target.files[0]); e.target.value = ''; }}
+              />
+            </label>
+
             <button onClick={handleSubmit} disabled={submitting}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#A07830] text-white text-xs font-semibold disabled:opacity-50 transition-colors">
               <Send size={13} />
@@ -292,6 +370,14 @@ export default function OperatorProductBatchPage() {
           />
         ))}
       </div>
+
+      {importResult && (
+        <ImportResultPanel
+          result={importResult}
+          batchType={batchType}
+          onClose={() => setImportResult(null)}
+        />
+      )}
 
       <ProductSearchModal
         open={showProductModal}
@@ -758,5 +844,92 @@ function IngredientSelect({ ingredients, value, onChange }) {
         document.body
       )}
     </>
+  );
+}
+
+function ImportResultPanel({ result, batchType, onClose }) {
+  const successCount = result?.imported ?? result?.updated ?? 0;
+  const skippedCount = result?.skipped ?? 0;
+  const errors = result?.errors ?? [];
+  const hasErrors = errors.length > 0;
+  const action = batchType === 'CREATE' ? 'tạo mới' : 'cập nhật';
+
+  return (
+    <div className={`rounded-2xl border p-4 space-y-3 shadow-sm
+      ${hasErrors
+        ? 'bg-amber-50 border-amber-200'
+        : 'bg-emerald-50 border-emerald-200'}`}>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {hasErrors
+            ? <span className="text-lg">⚠️</span>
+            : <span className="text-lg">✅</span>}
+          <div>
+            <p className={`text-sm font-bold ${hasErrors ? 'text-amber-800' : 'text-emerald-800'}`}>
+              Kết quả import {action}
+            </p>
+            <p className="text-xs text-[#8E8878] mt-0.5">
+              <span className="font-semibold text-emerald-700">{successCount} thành công</span>
+              {skippedCount > 0 && (
+                <span className="ml-2 font-semibold text-red-600">{skippedCount} lỗi</span>
+              )}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-[#8E8878] hover:bg-white/60 transition-colors flex-shrink-0">
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex items-center gap-2 bg-white/70 rounded-xl px-3 py-2 border border-emerald-200">
+          <CheckCircle2 size={14} className="text-emerald-600" />
+          <div>
+            <p className="text-[10px] text-[#8E8878]">
+              {batchType === 'CREATE' ? 'Đã tạo' : 'Đã cập nhật'}
+            </p>
+            <p className="text-sm font-bold text-emerald-700">{successCount} sản phẩm</p>
+          </div>
+        </div>
+        {skippedCount > 0 && (
+          <div className="flex items-center gap-2 bg-white/70 rounded-xl px-3 py-2 border border-red-200">
+            <AlertCircle size={14} className="text-red-500" />
+            <div>
+              <p className="text-[10px] text-[#8E8878]">Bỏ qua (lỗi)</p>
+              <p className="text-sm font-bold text-red-600">{skippedCount} dòng</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Error list */}
+      {hasErrors && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-amber-800">
+            Chi tiết lỗi ({errors.length} dòng):
+          </p>
+          <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+            {errors.map((err, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-2 bg-white/80 rounded-xl px-3 py-2
+                           border border-red-100 text-xs">
+                <AlertCircle size={12} className="text-red-400 flex-shrink-0 mt-0.5" />
+                <span className="text-red-700 break-words">{err}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-amber-700 italic">
+            💡 Sửa các dòng lỗi trong file Excel và import lại — các dòng đã thành công
+            sẽ báo trùng tên và bị bỏ qua an toàn (không bị tạo đôi).
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

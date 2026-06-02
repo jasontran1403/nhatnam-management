@@ -15,7 +15,7 @@ export function formatPrice(price) {
   if (isNaN(num)) return '0 đ';
   return new Intl.NumberFormat('vi-VN', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(num) + ' đ';
 }
 

@@ -32,7 +32,7 @@ function formatPrice(price) {
   const num = price || 0;
   return new Intl.NumberFormat('vi-VN', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(num) + ' đ';
 }
 
