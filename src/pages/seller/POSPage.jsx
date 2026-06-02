@@ -785,6 +785,7 @@ export default function POSPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const desktopCartRef = useRef(null);
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -835,13 +836,20 @@ export default function POSPage() {
 
   // Scroll xuống dưới khi thêm món mới
   useEffect(() => {
-    if (cartItems.length > prevCartLengthRef.current && cartContainerRef.current) {
-      // Scroll xuống dưới cùng của container
+    if (cartItems.length > prevCartLengthRef.current) {
       setTimeout(() => {
+        // Mobile: scroll trong cartContainerRef
         if (cartContainerRef.current) {
           cartContainerRef.current.scrollTo({
             top: cartContainerRef.current.scrollHeight,
-            behavior: 'smooth'
+            behavior: 'smooth',
+          });
+        }
+        // Desktop: scroll wrapper panel
+        if (desktopCartRef.current) {
+          desktopCartRef.current.scrollTo({
+            top: desktopCartRef.current.scrollHeight,
+            behavior: 'smooth',
           });
         }
       }, 100);
@@ -1494,7 +1502,7 @@ export default function POSPage() {
       </div>
 
       {/* Desktop cart panel */}
-      <div className="hidden lg:block w-80 xl:w-96 border-l border-[#E8DDD0] overflow-y-auto">
+      <div ref={desktopCartRef} className="hidden lg:block w-80 xl:w-96 border-l border-[#E8DDD0] overflow-y-auto">
         <CartPanel {...cartPanelProps} />
       </div>
 

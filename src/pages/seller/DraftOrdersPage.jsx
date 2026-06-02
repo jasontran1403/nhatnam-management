@@ -39,6 +39,43 @@ function formatPrice(n) {
 function fmt(n) {
   return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)) + ' đ';
 }
+function calcDraftTotal(draft) {
+  const items = draft.items || [];
+
+  // Tạm tính = giá gộp (unitPrice × qty, INCLUSIVE VAT đã trong giá)
+  const subtotalGross = items.reduce((s, i) => {
+    if (i.isPromo) return s;
+    return s + Number(i.unitPrice || 0) * Number(i.quantity || 0);
+  }, 0);
+
+  const itemDiscountTotal = items.reduce((s, i) => {
+    if (i.isPromo || !i.itemDiscountRate) return s;
+    return s + Number(i.unitPrice || 0) * Number(i.quantity || 0) * (i.itemDiscountRate / 100);
+  }, 0);
+
+  const netAfterItemDiscount = subtotalGross - itemDiscountTotal;
+
+  const discountAmt = Number(draft.discountRate) > 0
+    ? Math.round(netAfterItemDiscount * draft.discountRate) / 100
+    : (Number(draft.discountAmount) > 0 ? Number(draft.discountAmount) : 0);
+
+  const grossAfterAllDiscount = netAfterItemDiscount - discountAmt;
+
+  // VAT EXCLUSIVE tính thêm ngoài
+  const exclusiveVat = items.reduce((s, i) => {
+    if (i.isPromo || (i.vatMode ?? 'INCLUSIVE') !== 'EXCLUSIVE' || !i.vatRate) return s;
+    const lineGross = Number(i.unitPrice || 0) * Number(i.quantity || 0);
+    const proportion = subtotalGross > 0 ? lineGross / subtotalGross : 0;
+    const lineGrossAfterDiscount = lineGross - (itemDiscountTotal + discountAmt) * proportion;
+    return s + lineGrossAfterDiscount * (i.vatRate / 100);
+  }, 0);
+
+  const surcharge = (draft.surchargeItems || []).reduce((s, i) => s + (Number(i.amount) || 0), 0)
+    || Number(draft.surcharge || 0);
+
+  return grossAfterAllDiscount + exclusiveVat + surcharge;
+}
+
 function formatDate(ts, t) {
   if (!ts) return '—';
   const d = new Date(ts), now = new Date();
@@ -487,7 +524,7 @@ function PriceUpdateBanner({ changes, onUpdate, updating }) {
 function DraftCard({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, orderingId, invoicingId, now }) {
   const { t } = useLang();
   const items = draft.items || [];
-  const totalSubtotal = items.reduce((s, i) => s + Number(i.subtotal || 0), 0);
+  const totalSubtotal = calcDraftTotal(draft);
   const isProcessing = processingId === draft.id;
   const isOrdering = orderingId === draft.id;
   const isInvoicing = invoicingId === draft.id;
@@ -584,7 +621,7 @@ function DraftCard({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, 
 function DraftRow({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, orderingId, invoicingId, now }) {
   const { t } = useLang();
   const items = draft.items || [];
-  const totalSubtotal = items.reduce((s, i) => s + Number(i.subtotal || 0), 0);
+  const totalSubtotal = calcDraftTotal(draft);
   const isProcessing = processingId === draft.id;
   const isOrdering = orderingId === draft.id;
   const isInvoicing = invoicingId === draft.id;
@@ -977,33 +1014,61 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
     }));
   }, []);
   // Summary calculations
+  // THAY TOÀN BỘ phần summary calculations:
+
   const calcNet = (item) => calcNetPrice(item.unitPrice, item.vatRate, item.vatMode);
+
   const promoTotal = cartItems.reduce((s, i) => {
     if (!i.isPromo) return s;
-    return s + calcNetPrice(Number(i._priceBeforePromo ?? i.unitPrice), i.vatRate, i.vatMode) * Number(i.quantity);
+    return s + Number(i._priceBeforePromo ?? i.unitPrice) * Number(i.quantity);
   }, 0);
-  const subtotalNet = cartItems.reduce((s, i) => {
+
+  // Tạm tính = tổng giá gộp (unitPrice × qty), giống OrdersPage
+  const subtotalGross = cartItems.reduce((s, i) => {
     if (i.isPromo) return s;
-    const mode = i.vatMode ?? 'INCLUSIVE';
-    return s + (mode === 'INCLUSIVE' ? Number(i.unitPrice) : calcNet(i)) * Number(i.quantity);
+    return s + Number(i.unitPrice) * Number(i.quantity);
   }, 0);
+
   const itemDiscountTotal = cartItems.reduce((s, i) => {
     if (i.isPromo || !i.itemDiscountRate) return s;
-    const mode = i.vatMode ?? 'INCLUSIVE';
-    const base = mode === 'INCLUSIVE' ? Number(i.unitPrice) * Number(i.quantity) : calcNet(i) * Number(i.quantity);
-    return s + base * (i.itemDiscountRate / 100);
+    // CK món tính trên giá gộp
+    return s + Number(i.unitPrice) * Number(i.quantity) * (i.itemDiscountRate / 100);
   }, 0);
-  const subtotalAfterItemDiscount = subtotalNet - itemDiscountTotal;
+
+  const subtotalAfterItemDiscount = subtotalGross - itemDiscountTotal;
   const maxDiscountFixed = Math.round(subtotalAfterItemDiscount * 0.1);
   const discountAmt = discountFixedAmt !== null
     ? Math.min(discountFixedAmt, maxDiscountFixed)
     : Math.round(subtotalAfterItemDiscount * discount) / 100;
+
   const surchargeNum = surchargeItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
-  const exclusiveVatTotal = cartItems.reduce((s, i) => {
-    if (i.isPromo || (i.vatMode ?? 'INCLUSIVE') !== 'EXCLUSIVE' || !i.vatRate) return s;
-    const base = calcNet(i) * Number(i.quantity);
-    return s + base * (i.vatRate / 100);
+
+  // VAT EXCLUSIVE tính trên NET sau giảm giá, phân bổ theo tỷ lệ
+  const exclusiveVatTotal = (() => {
+    return cartItems.reduce((s, i) => {
+      if (i.isPromo || (i.vatMode ?? 'INCLUSIVE') !== 'EXCLUSIVE' || !i.vatRate) return s;
+      const lineGross = Number(i.unitPrice) * Number(i.quantity);
+      const proportion = subtotalGross > 0 ? lineGross / subtotalGross : 0;
+      const lineDiscountTotal = (itemDiscountTotal + discountAmt) * proportion;
+      const lineNet = calcNet(i) * Number(i.quantity) - lineDiscountTotal * calcNet(i) / (Number(i.unitPrice) || 1);
+      // Đơn giản hơn: NET sau giảm = (lineGross - phần giảm) / (1 + rate/100) cho INCLUSIVE
+      // Với EXCLUSIVE: lineNet = lineGross - phần giảm, VAT = lineNet * rate/100
+      const lineGrossAfterDiscount = lineGross - (itemDiscountTotal + discountAmt) * proportion;
+      return s + lineGrossAfterDiscount * (i.vatRate / 100);
+    }, 0);
+  })();
+
+  const inclusiveVatTotal = cartItems.reduce((s, i) => {
+    if (i.isPromo || (i.vatMode ?? 'INCLUSIVE') !== 'INCLUSIVE' || !i.vatRate) return s;
+    const lineGross = Number(i.unitPrice) * Number(i.quantity);
+    const proportion = subtotalGross > 0 ? lineGross / subtotalGross : 0;
+    const lineGrossAfterDiscount = lineGross - (itemDiscountTotal + discountAmt) * proportion;
+    // Tách VAT ra từ giá gộp sau giảm
+    return s + lineGrossAfterDiscount * i.vatRate / (100 + i.vatRate);
   }, 0);
+
+
+  // Tổng = giá gộp sau giảm + VAT exclusive + phụ phí
   const total = subtotalAfterItemDiscount - discountAmt + exclusiveVatTotal + surchargeNum;
   // Save
   const handleSave = async () => {
@@ -1235,7 +1300,7 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
           <div className="border-t border-[#F0EBE3] px-4 py-3 bg-white shrink-0 rounded-b-2xl space-y-2">
             <div className="space-y-0.5 text-xs">
               <div className="flex justify-between text-[#8E8878]">
-                <span>Tạm tính</span><span>{fmt(subtotalNet)}</span>
+                <span>Tạm tính</span><span>{fmt(subtotalGross)}</span>
               </div>
               {itemDiscountTotal > 0 && (
                 <div className="flex justify-between text-emerald-600">
@@ -1258,9 +1323,17 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
                   <span>Phụ phí</span><span>+{fmt(surchargeNum)}</span>
                 </div>
               )}
+              {/* Thay đoạn exclusiveVatTotal hiện tại bằng: */}
+              {inclusiveVatTotal > 0 && (
+                <div className="flex justify-between text-[#C4B9A8] text-[10px]">
+                  <span>VAT (đã bao gồm trong giá)</span>
+                  <span>{fmt(inclusiveVatTotal)}</span>
+                </div>
+              )}
               {exclusiveVatTotal > 0 && (
-                <div className="flex justify-between text-[#C4B9A8]">
-                  <span>VAT (ngoài giá)</span><span>+{fmt(exclusiveVatTotal)}</span>
+                <div className="flex justify-between text-[#8E8878] text-[10px]">
+                  <span>VAT (ngoài giá)</span>
+                  <span>+{fmt(exclusiveVatTotal)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-sm text-[#1C1C1E] pt-1 border-t border-[#F0EBE3]">

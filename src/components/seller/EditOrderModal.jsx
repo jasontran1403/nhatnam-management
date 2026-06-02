@@ -1,5 +1,5 @@
 // src/components/seller/EditOrderModal.jsx
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   X, Plus, Trash2, Save, AlertTriangle, Search,
   Grid, ChevronRight, Package, Loader2, Pencil, Percent,
@@ -478,8 +478,12 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
   const vatRate = item.vatRate ?? 0;
   const vatMode = item.vatMode ?? 'INCLUSIVE';
   const isExclusive = vatMode === 'EXCLUSIVE';
+
+  // ✅ FIX: Tính giá NET đúng — item.unitPrice đã là giá theo đơn vị hiển thị (thùng/kg)
+  // Chỉ cần tách thuế ra nếu INCLUSIVE
   const netPrice = calcNet(item.unitPrice, vatRate, vatMode);
   const lineNet = netPrice * item.quantity;
+
   const itemDiscount = item.itemDiscountRate ?? 0;
   const isPromo = !!item.isPromo;
   const isNew = item.originalQuantity === undefined;
@@ -489,13 +493,20 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
   const isDecimalUnit = unit === 'kg' || unit === 'kilogam' || unit === 'lít' || unit === 'lit' || unit === 'l';
 
   const startEditPrice = () => {
-    setPriceDisplay(String(item.unitPrice));
+    // Hiển thị giá NET khi sửa (giá chưa thuế)
+    setPriceDisplay(String(Math.round(netPrice)));
     setEditingPrice(true);
     setTimeout(() => { priceRef.current?.focus(); priceRef.current?.select(); }, 30);
   };
   const commitPrice = () => {
     const val = parseFloat(priceDisplay.replace(',', '.'));
-    if (!isNaN(val) && val >= 0) onPriceOverride(item._editId, val);
+    if (!isNaN(val) && val >= 0) {
+      // Người dùng nhập giá NET, cần convert về giá lưu trữ (INCLUSIVE thì nhân lại thuế)
+      const storedPrice = vatMode === 'INCLUSIVE' && vatRate > 0
+        ? val * (1 + vatRate / 100)
+        : val;
+      onPriceOverride(item._editId, storedPrice);
+    }
     setEditingPrice(false);
   };
 
@@ -565,6 +576,13 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
 
           <div className="flex items-center gap-1 flex-wrap mt-0.5">
             <button onClick={() => onTierSelect(item._editId)} className="hover:opacity-75 transition-opacity">{priceBadge}</button>
+
+            {item.saleType === 'BOX' && item.unitsPerBox > 0 && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200">
+                {item.unitsPerBox} hộp/thùng
+              </span>
+            )}
+
             <button
               onClick={() => { if (isExclusive) setShowVatPicker(p => !p); }}
               className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold border transition-colors
@@ -604,7 +622,10 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
               </div>
             ) : (
               <button onClick={startEditPrice} className="flex items-center gap-1 group">
-                <span className={`text-xs font-bold ${item.priceSource === 'MANUAL' ? 'text-purple-600' : 'text-[#C9A84C] group-hover:text-[#A07830]'}`}>{fmt(netPrice)}</span>
+                {/* Hiển thị giá NET (chưa thuế) */}
+                <span className={`text-xs font-bold ${item.priceSource === 'MANUAL' ? 'text-purple-600' : 'text-[#C9A84C] group-hover:text-[#A07830]'}`}>
+                  {fmt(netPrice)}
+                </span>
                 <Pencil size={9} className="text-[#C4B9A8] group-hover:text-[#C9A84C]" />
               </button>
             )}
@@ -689,26 +710,50 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
 function ProductPickerModal({ onAdd, onClose, existingIds }) {
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
-  const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCat, setSelectedCat] = useState('ALL');
   const [loading, setLoading] = useState(false);
   const searchRef = useRef(null);
 
   useEffect(() => { searchRef.current?.focus(); }, []);
-  useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
+
   useEffect(() => {
-    categoryApi.getAll().then(res => { const c = res.data?.data || res.data || []; setCategories(Array.isArray(c) ? c : []); }).catch(() => { });
-  }, []);
+    const t = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  // Load categories + tất cả products 1 lần khi mount
   useEffect(() => {
     setLoading(true);
-    const params = { page: 0, size: 100 };
-    if (debouncedQ.trim()) params.search = debouncedQ.trim();
-    if (selectedCat !== 'ALL') params.categoryId = selectedCat;
-    productApi.getAll(params)
-      .then(res => { const d = res.data?.data; const l = d?.content ?? d ?? res.data ?? []; setProducts(Array.isArray(l) ? l : []); })
-      .catch(() => setProducts([])).finally(() => setLoading(false));
-  }, [debouncedQ, selectedCat]);
+    Promise.all([
+      categoryApi.getAll(),
+      productApi.getAll({ page: 0, size: 200 }),
+    ]).then(([cRes, pRes]) => {
+      const cats = cRes.data?.data || cRes.data || [];
+      setCategories(Array.isArray(cats) ? cats : []);
+      const d = pRes.data?.data;
+      const l = d?.content ?? d ?? pRes.data ?? [];
+      setAllProducts(Array.isArray(l) ? l : []);
+    }).catch(() => {
+      setAllProducts([]);
+      setCategories([]);
+    }).finally(() => setLoading(false));
+  }, []); // chỉ chạy 1 lần
+
+  // Filter client-side
+  const products = useMemo(() => {
+    let list = allProducts;
+    if (selectedCat !== 'ALL') {
+      // so sánh Number vì categoryId là integer
+      list = list.filter(p => Number(p.categoryId) === Number(selectedCat));
+    }
+    if (debouncedQ.trim()) {
+      const q = debouncedQ.toLowerCase();
+      list = list.filter(p => p.name?.toLowerCase().includes(q));
+    }
+    return list;
+  }, [allProducts, selectedCat, debouncedQ]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50">
@@ -726,32 +771,60 @@ function ProductPickerModal({ onAdd, onClose, existingIds }) {
         </div>
         {categories.length > 0 && (
           <div className="flex gap-1.5 px-4 py-2 overflow-x-auto scrollbar-hide shrink-0 border-b border-[#F0EBE3]">
-            <button onClick={() => setSelectedCat('ALL')} className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors ${selectedCat === 'ALL' ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}><Grid size={10} />Tất cả</button>
+            <button
+              onClick={() => setSelectedCat('ALL')}
+              className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors
+                ${selectedCat === 'ALL' ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}
+            >
+              <Grid size={10} />Tất cả
+            </button>
             {categories.map(cat => (
-              <button key={cat.id ?? cat.name} onClick={() => setSelectedCat(cat.id ?? cat.name)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors ${selectedCat === (cat.id ?? cat.name) ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}>
-                {cat.name ?? cat}
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCat(cat.id)} // giữ nguyên integer
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors
+                  ${Number(selectedCat) === Number(cat.id) ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}
+              >
+                {cat.name}
               </button>
             ))}
           </div>
         )}
         <div className="flex-1 overflow-y-auto">
           {loading
-            ? <div className="flex items-center justify-center py-12 gap-2 text-[#8E8878]"><Loader2 size={18} className="animate-spin" /><span className="text-sm">Đang tải...</span></div>
+            ? <div className="flex items-center justify-center py-12 gap-2 text-[#8E8878]">
+              <Loader2 size={18} className="animate-spin" />
+              <span className="text-sm">Đang tải...</span>
+            </div>
             : products.length === 0
-              ? <div className="flex flex-col items-center justify-center py-12 text-[#8E8878] gap-2"><Search size={28} strokeWidth={1} /><p className="text-sm">Không tìm thấy</p></div>
+              ? <div className="flex flex-col items-center justify-center py-12 text-[#8E8878] gap-2">
+                <Search size={28} strokeWidth={1} />
+                <p className="text-sm">Không tìm thấy</p>
+              </div>
               : <div className="px-2 py-2 space-y-0.5">
                 {products.map(p => (
-                  <button key={p.id} onClick={() => onAdd(p)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#FDF8ED] text-left transition-colors group">
+                  <button key={p.id} onClick={() => onAdd(p)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#FDF8ED] text-left transition-colors group">
                     {p.imageUrl
-                      ? <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-xl object-cover shrink-0 border border-[#F0EBE3]" />
-                      : <div className="w-10 h-10 rounded-xl shrink-0 bg-[#F0EBE3] flex items-center justify-center"><Package size={14} className="text-[#C4B9A8]" /></div>}
+                      ? <img src={p.imageUrl.startsWith('http') ? p.imageUrl : `${BASE_URL}/api/auth${p.imageUrl}`}
+                        alt={p.name} className="w-10 h-10 rounded-xl object-cover shrink-0 border border-[#F0EBE3]" />
+                      : <div className="w-10 h-10 rounded-xl shrink-0 bg-[#F0EBE3] flex items-center justify-center">
+                        <Package size={14} className="text-[#C4B9A8]" />
+                      </div>}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-[#1C1C1E] truncate">{p.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-xs text-[#C9A84C] font-medium">{fmt(p.basePrice)}</p>
-                        {p.categoryName && <span className="text-[10px] bg-[#F0EBE3] text-[#8E8878] rounded-full px-1.5 py-0.5">{p.categoryName}</span>}
-                        {existingIds.has(p.id) && <span className="text-[10px] bg-sky-100 text-sky-700 rounded-full px-1.5 py-0.5 font-semibold">Đang có</span>}
+                        {p.categoryName && (
+                          <span className="text-[10px] bg-[#F0EBE3] text-[#8E8878] rounded-full px-1.5 py-0.5">
+                            {p.categoryName}
+                          </span>
+                        )}
+                        {existingIds.has(p.id) && (
+                          <span className="text-[10px] bg-sky-100 text-sky-700 rounded-full px-1.5 py-0.5 font-semibold">
+                            Đang có
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="w-7 h-7 rounded-full bg-[#C9A84C]/10 flex items-center justify-center group-hover:bg-[#C9A84C] transition-colors shrink-0">
@@ -789,7 +862,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [notes, setNotes] = useState('');
 
-  // Khách hàng — state mới
+  // Khách hàng
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
 
@@ -881,27 +954,56 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
 
       // Items
       const raw = d?.items ?? d?.orderItems ?? [];
-      setItems(raw.map(i => ({
-        _editId: nextId(),
-        productId: i.productId,
-        productName: i.productName,
-        productImageUrl: i.productImageUrl,
-        unit: i.unit,
-        quantity: Number(i.quantity),
-        originalQuantity: Number(i.quantity),
-        unitPrice: Number(i.unitPrice),
-        basePrice: Number(i.basePrice ?? i.unitPrice),
-        priceSource: i.priceMode === 'TIER' ? 'TIER' : i.priceMode === 'DISCOUNT_PERCENT' ? 'DISCOUNT_PERCENT' : i.priceMode === 'MANUAL' ? 'MANUAL' : 'BASE',
-        priceMode: i.priceMode ?? 'BASE',
-        tierId: i.tierId ?? null,
-        tierName: i.tierName ?? null,
-        vatRate: i.vatRate ?? 0,
-        vatMode: i.vatMode ?? 'INCLUSIVE',
-        itemDiscountRate: i.priceMode === 'DISCOUNT_PERCENT' ? 0 : (i.discountPercent ?? 0),
-        isPromo: false, promoNote: '',
-        saleType: i.saleType ?? 'RETAIL',
-        notes: i.notes ?? null,
-      })));
+
+      setItems(raw.map(i => {
+        const notes = i.notes || '';
+        const isPromo = notes.startsWith('[KM]');
+        let promoNote = '';
+        if (isPromo) {
+          promoNote = notes.replace('[KM]', '').trim();
+        }
+
+        // ✅ FIX: Tính giá hiển thị đúng theo đơn vị
+        // Backend luôn trả về unitPrice theo đơn vị cơ bản (hộp/kg/...)
+        // UI hiển thị theo đơn vị thùng nếu saleType === 'BOX'
+        let displayUnit = i.unit;
+        let displayQuantity = Number(i.quantity);
+        // Lưu unitPrice theo đơn vị hiển thị (thùng = hộp * unitsPerBox)
+        // Giữ nguyên vatMode — KHÔNG tách thuế ở đây, calcNet sẽ xử lý khi hiển thị
+        let displayUnitPrice = Number(i.unitPrice);
+
+        if (i.saleType === 'BOX' && i.unitsPerBox > 0) {
+          displayUnit = 'Thùng';
+          // Giá thùng = giá hộp * số hộp/thùng (vatMode giữ nguyên INCLUSIVE/EXCLUSIVE)
+          displayUnitPrice = Number(i.unitPrice) * i.unitsPerBox;
+          // Số lượng giữ nguyên (số thùng)
+          displayQuantity = Number(i.quantity);
+        }
+
+        return {
+          _editId: nextId(),
+          productId: i.productId,
+          productName: i.productName,
+          productImageUrl: i.productImageUrl,
+          unit: displayUnit,
+          quantity: displayQuantity,
+          originalQuantity: displayQuantity,
+          unitPrice: displayUnitPrice,       // giá theo đơn vị hiển thị (thùng/kg), vẫn giữ VAT gốc
+          basePrice: Number(i.basePrice ?? i.unitPrice),
+          priceSource: i.priceMode === 'TIER' ? 'TIER' : i.priceMode === 'DISCOUNT_PERCENT' ? 'DISCOUNT_PERCENT' : i.priceMode === 'MANUAL' ? 'MANUAL' : 'BASE',
+          priceMode: i.priceMode ?? 'BASE',
+          tierId: i.tierId ?? null,
+          tierName: i.tierName ?? null,
+          vatRate: i.vatRate ?? 0,
+          vatMode: i.vatMode ?? 'INCLUSIVE',  // giữ nguyên vatMode từ backend
+          itemDiscountRate: i.priceMode === 'DISCOUNT_PERCENT' ? 0 : (i.discountPercent ?? 0),
+          isPromo: isPromo,
+          promoNote: promoNote,
+          saleType: i.saleType ?? 'RETAIL',
+          unitsPerBox: i.unitsPerBox,
+          notes: isPromo ? null : notes,
+        };
+      }));
     })
       .catch(() => { if (!cancelled) toast('Không thể tải chi tiết đơn hàng', 'error'); })
       .finally(() => { if (!cancelled) setFetchingDetail(false); });
@@ -932,6 +1034,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   }, []);
 
   const priceOverride = useCallback((editId, price) => {
+    // price đã là giá lưu trữ (INCLUSIVE = có thuế, EXCLUSIVE = chưa thuế)
     setItems(prev => prev.map(i => i._editId === editId
       ? { ...i, unitPrice: price, priceSource: 'MANUAL', tierId: null, tierName: null }
       : i));
@@ -944,8 +1047,24 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const promoToggle = useCallback((editId, enable, note) => {
     setItems(prev => prev.map(i => {
       if (i._editId !== editId) return i;
-      if (enable) return { ...i, isPromo: true, promoNote: note || '', _priceBeforePromo: i._priceBeforePromo ?? i.unitPrice };
-      return { ...i, isPromo: false, promoNote: '', unitPrice: i._priceBeforePromo ?? i.unitPrice, _priceBeforePromo: undefined };
+      if (enable) {
+        return {
+          ...i,
+          isPromo: true,
+          promoNote: note || '',
+          _priceBeforePromo: i._priceBeforePromo ?? i.unitPrice,
+          unitPrice: 0
+        };
+      } else {
+        const restoredPrice = i._priceBeforePromo ?? i.basePrice ?? i.unitPrice;
+        return {
+          ...i,
+          isPromo: false,
+          promoNote: '',
+          unitPrice: restoredPrice,
+          _priceBeforePromo: undefined
+        };
+      }
     }));
   }, []);
 
@@ -963,8 +1082,26 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   }, [items, allProducts]);
 
   const handleTierConfirm = useCallback(({ priceSource, tierId, tierName, unitPrice }) => {
-    setItems(prev => prev.map(i => i._editId === tierEditId ? { ...i, priceSource, tierId, tierName, unitPrice } : i));
-    setTierEditId(null); setTierProduct(null);
+    setItems(prev => prev.map(i => {
+      if (i._editId !== tierEditId) return i;
+
+      // unitPrice từ TierSelectModal là giá hộp/đơn vị cơ bản
+      // Nếu item đang hiển thị theo thùng, nhân lên để giữ nhất quán
+      let newUnitPrice = unitPrice;
+      if (i.saleType === 'BOX' && i.unitsPerBox > 0) {
+        newUnitPrice = unitPrice * i.unitsPerBox;
+      }
+
+      return {
+        ...i,
+        priceSource,
+        tierId,
+        tierName,
+        unitPrice: newUnitPrice,
+      };
+    }));
+    setTierEditId(null);
+    setTierProduct(null);
   }, [tierEditId]);
 
   const addProduct = useCallback((product) => {
@@ -984,10 +1121,8 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     toast(`Đã thêm "${product.name}"`, 'success');
   }, [toast]);
 
-  // Handler chọn khách hàng
   const handleSelectCustomer = useCallback((customer) => {
     setSelectedCustomer(customer);
-    // Tự động điền địa chỉ giao hàng & người nhận từ receiver được chọn
     if (customer.selectedReceiver) {
       if (customer.selectedReceiver.receiverAddress)
         setDeliveryAddress(customer.selectedReceiver.receiverAddress);
@@ -1000,17 +1135,27 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     setSelectedCustomer(null);
   }, []);
 
-  // Tính toán tổng
-  const subtotalGross = items.reduce((s, i) => i.isPromo ? s : s + Number(i.unitPrice) * i.quantity, 0);
+  // ✅ FIX SUMMARY: Tính toán tổng đúng
+  // item.unitPrice là giá theo đơn vị hiển thị, với vatMode gốc (INCLUSIVE/EXCLUSIVE)
+  // "Tạm tính" hiển thị theo giá NET (chưa thuế) để nhất quán với giá hiển thị từng dòng
+  const subtotalNet = items.reduce((s, i) => {
+    if (i.isPromo) return s;
+    const net = calcNet(i.unitPrice, i.vatRate, i.vatMode);
+    return s + net * i.quantity;
+  }, 0);
 
+  // subtotalGross = tổng giá theo đơn vị hiển thị (có thể bao gồm thuế INCLUSIVE)
+  // Dùng để tính tỷ lệ phân bổ giảm giá
+  const subtotalGross = items.reduce((s, i) => {
+    if (i.isPromo) return s;
+    return s + Number(i.unitPrice) * i.quantity;
+  }, 0);
+
+  // CK món tính trên giá gộp
   const itemDiscountTotal = items.reduce((s, i) => {
     if (i.isPromo || !i.itemDiscountRate) return s;
     if (i.priceSource === 'DISCOUNT_PERCENT' || i.priceMode === 'DISCOUNT_PERCENT') return s;
-    const mode = i.vatMode ?? 'INCLUSIVE';
-    const base = mode === 'INCLUSIVE'
-      ? Number(i.unitPrice) * i.quantity
-      : calcNet(i.unitPrice, i.vatRate, mode) * i.quantity;
-    return s + base * (i.itemDiscountRate / 100);
+    return s + Number(i.unitPrice) * i.quantity * (i.itemDiscountRate / 100);
   }, 0);
 
   const subtotalAfterItemDiscount = subtotalGross - itemDiscountTotal;
@@ -1019,33 +1164,25 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
     ? Math.min(discountFixed, maxDiscountFixed)
     : Math.round(subtotalAfterItemDiscount * discount) / 100;
 
-  const afterAllDiscount = subtotalAfterItemDiscount - discountAmt;
+  // VAT EXCLUSIVE tính trên NET sau tất cả giảm giá
+  const exclusiveVatTotal = items.reduce((s, i) => {
+    if (i.isPromo || (i.vatMode ?? 'INCLUSIVE') !== 'EXCLUSIVE' || !i.vatRate) return s;
+    const lineGross = Number(i.unitPrice) * i.quantity;
+    const proportion = subtotalGross > 0 ? lineGross / subtotalGross : 0;
+    const lineGrossAfterDiscount = lineGross - (itemDiscountTotal + discountAmt) * proportion;
+    return s + lineGrossAfterDiscount * (i.vatRate / 100);
+  }, 0);
 
-  const vatBreakdown = (() => {
-    const map = {};
-    for (const i of items) {
-      if (i.isPromo || !i.vatRate) continue;
-      const rate = i.vatRate;
-      const mode = i.vatMode ?? 'INCLUSIVE';
-      const grossLine = Number(i.unitPrice) * i.quantity;
-      const itemDisc = (i.priceSource === 'DISCOUNT_PERCENT' || i.priceMode === 'DISCOUNT_PERCENT')
-        ? 0 : (i.itemDiscountRate ?? 0) / 100 * grossLine;
-      const proportion = subtotalGross > 0 ? grossLine / subtotalGross : 1;
-      const lineBillDisc = discountAmt * proportion;
-      const lineAfterDisc = grossLine - itemDisc - lineBillDisc;
-      const vatAmt = mode === 'INCLUSIVE'
-        ? lineAfterDisc * rate / (100 + rate)
-        : lineAfterDisc * rate / 100;
-      const key = `${rate}|${mode}`;
-      if (!map[key]) map[key] = { rate, mode, vatAmt: 0 };
-      map[key].vatAmt += vatAmt;
-    }
-    return Object.values(map);
-  })();
+  // VAT INCLUSIVE — chỉ để hiển thị thông tin
+  const inclusiveVatTotal = items.reduce((s, i) => {
+    if (i.isPromo || (i.vatMode ?? 'INCLUSIVE') !== 'INCLUSIVE' || !i.vatRate) return s;
+    const lineGross = Number(i.unitPrice) * i.quantity;
+    const proportion = subtotalGross > 0 ? lineGross / subtotalGross : 0;
+    const lineGrossAfterDiscount = lineGross - (itemDiscountTotal + discountAmt) * proportion;
+    return s + lineGrossAfterDiscount * i.vatRate / (100 + i.vatRate);
+  }, 0);
 
-  const exclusiveVatTotal = vatBreakdown.filter(g => g.mode === 'EXCLUSIVE').reduce((s, g) => s + g.vatAmt, 0);
-  const vatDisplayTotal = vatBreakdown.reduce((s, g) => s + g.vatAmt, 0);
-  const total = afterAllDiscount + exclusiveVatTotal + surchargeNum;
+  const total = subtotalAfterItemDiscount - discountAmt + exclusiveVatTotal + surchargeNum;
 
   // Lưu
   const handleSave = async () => {
@@ -1064,22 +1201,34 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         showPrices: priceDisplayOption === 'show',
         hideAllPrices: priceDisplayOption === 'hide_all',
         surchargeItems: surchargeItems.filter(i => Number(i.amount) > 0),
-        // Gửi customerId nếu đã chọn khách hàng mới
         customerId: selectedCustomer?.id ?? undefined,
-        items: items.map(i => ({
-          productId: i.productId,
-          quantity: i.quantity,
-          originalQuantity: i.originalQuantity ?? 0,
-          priceMode: i.isPromo ? 'BASE' : (i.priceSource === 'TIER' ? 'TIER' : 'BASE'),
-          tierId: (i.isPromo || i.priceSource !== 'TIER') ? null : i.tierId,
-          sentUnitPrice: i.isPromo ? 0 : i.unitPrice,
-          isManualPrice: i.isPromo ? true : (i.priceSource === 'MANUAL'),
-          discountPercent: (!i.isPromo && i.itemDiscountRate > 0) ? i.itemDiscountRate : undefined,
-          saleType: i.saleType ?? 'RETAIL',
-          notes: i.isPromo ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
-          vatRate: i.vatRate ?? 0,
-          vatMode: i.vatMode ?? 'INCLUSIVE',
-        })),
+        items: items.map(i => {
+          const isPromoItem = i.isPromo === true;
+
+          // ✅ FIX SAVE: Gửi giá theo đơn vị hộp (cơ bản) về backend
+          // item.unitPrice hiện đang là giá thùng (nếu BOX), cần chia lại về hộp
+          let sentPrice = i.unitPrice;
+          if (i.saleType === 'BOX' && i.unitsPerBox > 0) {
+            sentPrice = i.unitPrice / i.unitsPerBox;
+          }
+
+          const finalPrice = isPromoItem ? 0 : sentPrice;
+
+          return {
+            productId: i.productId,
+            quantity: i.quantity,
+            originalQuantity: i.originalQuantity ?? 0,
+            priceMode: isPromoItem ? 'BASE' : (i.priceSource === 'TIER' ? 'TIER' : 'BASE'),
+            tierId: (isPromoItem || i.priceSource !== 'TIER') ? null : i.tierId,
+            sentUnitPrice: finalPrice,
+            isManualPrice: isPromoItem ? true : (i.priceSource === 'MANUAL'),
+            discountPercent: (!isPromoItem && i.itemDiscountRate > 0) ? i.itemDiscountRate : undefined,
+            saleType: i.saleType ?? 'RETAIL', unitsPerBox: i.unitsPerBox, unit: i.unit,
+            notes: isPromoItem ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
+            vatRate: i.vatRate ?? 0,
+            vatMode: i.vatMode ?? 'INCLUSIVE',
+          };
+        }),
       };
 
       await orderApi.updateOrderItems(orderId, payload);
@@ -1165,7 +1314,6 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                       )}
                     </button>
 
-                    {/* Hiển thị địa chỉ nhận nếu có */}
                     {selectedCustomer?.selectedReceiver?.receiverAddress && (
                       <div className="mt-1 flex items-start gap-1.5 px-2">
                         <MapPin size={10} className="text-[#C9A84C] mt-0.5 shrink-0" />
@@ -1306,7 +1454,10 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
 
                 {/* Summary */}
                 <div className="space-y-0.5 pt-2 border-t border-[#F0EBE3]">
-                  <div className="flex justify-between text-xs text-[#8E8878]"><span>Tạm tính</span><span>{fmt(subtotalGross)}</span></div>
+                  {/* Tạm tính = tổng NET (chưa thuế) */}
+                  <div className="flex justify-between text-xs text-[#8E8878]">
+                    <span>Tạm tính</span><span>{fmt(subtotalGross)}</span>  {/* ← đổi từ subtotalGross cũ */}
+                  </div>
                   {(itemDiscountTotal > 0 || discountAmt > 0) && (
                     <div className="flex justify-between text-xs text-emerald-600">
                       <span>Giảm</span><span>-{fmt(itemDiscountTotal + discountAmt)}</span>
@@ -1325,10 +1476,14 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                       ))}
                     </div>
                   )}
-                  {exclusiveVatTotal > 0 && <div className="flex justify-between text-xs text-[#8E8878]"><span>VAT (ngoài giá)</span><span>+{fmt(exclusiveVatTotal)}</span></div>}
-                  {vatDisplayTotal - exclusiveVatTotal > 0 && (
+                  {exclusiveVatTotal > 0 && (
+                    <div className="flex justify-between text-xs text-[#8E8878]">
+                      <span>VAT (ngoài giá)</span><span>+{fmt(exclusiveVatTotal)}</span>
+                    </div>
+                  )}
+                  {inclusiveVatTotal > 0 && (
                     <div className="flex justify-between text-xs text-[#C4B9A8]">
-                      <span>VAT (đã bao gồm)</span><span>{fmt(vatDisplayTotal - exclusiveVatTotal)}</span>
+                      <span>VAT (đã bao gồm trong giá)</span><span>{fmt(inclusiveVatTotal)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm font-bold text-[#1C1C1E] pt-1 border-t border-[#F0EBE3]">
@@ -1375,7 +1530,6 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         />
       )}
 
-      {/* CustomerSearchModal */}
       <CustomerSearchModal
         open={customerModalOpen}
         onClose={() => setCustomerModalOpen(false)}
