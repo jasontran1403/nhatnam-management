@@ -35,15 +35,15 @@ function BtnSpinner({ size = 13, colorClass = 'border-current' }) {
 function StatusBadge({ status }) {
   const { t } = useLang();
   const STATUS_MAP = {
-    PENDING:         { label: t('status', 'pending'),          bg: 'bg-amber-50   text-amber-600   border-amber-200',   icon: Clock },
-    CONFIRMED:       { label: t('status', 'confirmed'),         bg: 'bg-sky-50     text-sky-600     border-sky-200',     icon: CheckCircle },
-    PREPARING:       { label: t('status', 'preparing'),         bg: 'bg-blue-50    text-blue-600    border-blue-200',    icon: Package },
-    READY:           { label: t('status', 'ready'),             bg: 'bg-indigo-50  text-indigo-600  border-indigo-200',  icon: CheckCircle },
-    DELIVERING:      { label: t('status', 'delivering_short'),  bg: 'bg-purple-50  text-purple-600  border-purple-200',  icon: Truck },
-    PENDING_PAYMENT: { label: t('status', 'pending_payment'),   bg: 'bg-orange-50  text-orange-600  border-orange-200',  icon: CreditCard },
-    COMPLETED:       { label: t('status', 'completed'),         bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
-    CANCELLED:       { label: t('status', 'cancelled'),         bg: 'bg-red-50     text-red-500     border-red-200',     icon: XCircle },
-    FAILED:          { label: t('status', 'rejected_short'),    bg: 'bg-red-50     text-red-700     border-red-300',     icon: XCircle },
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
+    CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle },
+    PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
+    READY: { label: t('status', 'ready'), bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle },
+    DELIVERING: { label: t('status', 'delivering_short'), bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
+    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CreditCard },
+    COMPLETED: { label: t('status', 'completed'), bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
+    CANCELLED: { label: t('status', 'cancelled'), bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
+    FAILED: { label: t('status', 'rejected_short'), bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
   };
   const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING;
   const Icon = cfg.icon;
@@ -57,9 +57,9 @@ function StatusBadge({ status }) {
 function PaymentMethodBadge({ method }) {
   const { t } = useLang();
   const PAYMENT_METHOD_MAP = {
-    CASH:          { label: t('payment', 'cash_icon'),          bg: 'bg-green-50  text-green-700  border-green-200' },
+    CASH: { label: t('payment', 'cash_icon'), bg: 'bg-green-50  text-green-700  border-green-200' },
     BANK_TRANSFER: { label: t('payment', 'bank_transfer_icon'), bg: 'bg-blue-50   text-blue-700   border-blue-200' },
-    DEBT:          { label: t('payment', 'debt_icon'),           bg: 'bg-orange-50 text-orange-700 border-orange-200' },
+    DEBT: { label: t('payment', 'debt_icon'), bg: 'bg-orange-50 text-orange-700 border-orange-200' },
   };
   const cfg = PAYMENT_METHOD_MAP[method];
   if (!cfg) return <span className="text-xs text-[#8E8878]">{method || '—'}</span>;
@@ -83,9 +83,9 @@ function CreatedByBadge({ name }) {
 function PaymentMethodCell({ value, onSave, disabled }) {
   const { t } = useLang();
   const PAYMENT_METHODS = [
-    { value: 'CASH',          label: t('payment', 'cash_icon') },
+    { value: 'CASH', label: t('payment', 'cash_icon') },
     { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon') },
-    { value: 'DEBT',          label: t('payment', 'debt_icon') },
+    { value: 'DEBT', label: t('payment', 'debt_icon') },
   ];
   const [open, setOpen] = useState(false);
   const handleSelect = (val) => { setOpen(false); if (val !== value) onSave(val); };
@@ -115,9 +115,9 @@ function PaymentMethodCell({ value, onSave, disabled }) {
 function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const { t } = useLang();
   const PAYMENT_METHODS = [
-    { value: 'CASH',          label: t('payment', 'cash_icon') },
+    { value: 'CASH', label: t('payment', 'cash_icon') },
     { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon') },
-    { value: 'DEBT',          label: t('payment', 'debt_icon') },
+    { value: 'DEBT', label: t('payment', 'debt_icon') },
   ];
   const finalAmount = Number(order?.finalAmount || 0);
   const alreadyPaid = Number(order?.paidAmount || 0);
@@ -300,43 +300,29 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
 }
 
 // ── StatusActionButtons ───────────────────────────────────────────────────────
-function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPayment, onCancel, loading }) {
+function StatusActionButtons({ order, onComplete, onPartialPayment, loading }) {
   const { t } = useLang();
-  const { status, paymentMethod } = order;
+  const { status } = order;
   const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
   if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
 
-  const canPendingPayment = status === 'DELIVERING' && paymentMethod === 'DEBT';
   const canComplete = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
   const canPartial = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
-  const canCancel = CANCELLABLE_STATUSES.has(status);
 
-  if (!canPendingPayment && !canComplete && !canPartial && !canCancel) return null;
+  if (!canComplete && !canPartial) return null;
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      {canPendingPayment && (
-        <button onClick={e => { e.stopPropagation(); onPendingPayment(); }} disabled={loading} title={t('status', 'pending_payment')}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
-          {loading ? <BtnSpinner size={10} colorClass="border-orange-400 !border-t-orange-600" /> : <><CreditCard size={10} /> {t('status', 'pending_payment')}</>}
-        </button>
-      )}
       {canPartial && (
-        <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading} title={t('payment', 'record_payment')}
+        <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading}
           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
           {loading ? <BtnSpinner size={10} colorClass="border-blue-400 !border-t-blue-600" /> : <><DollarSign size={10} /> {t('payment', 'collect_partial2')}</>}
         </button>
       )}
       {canComplete && (
-        <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading} title={t('order', 'complete_order_full')}
+        <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading}
           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
           {loading ? <BtnSpinner size={10} colorClass="border-emerald-400 !border-t-emerald-600" /> : <><CheckCircle size={10} /> {t('status', 'completed')}</>}
-        </button>
-      )}
-      {canCancel && (
-        <button onClick={e => { e.stopPropagation(); onCancel(); }} disabled={loading} title={t('order', 'cancel_order')}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
-          {loading ? <BtnSpinner size={10} colorClass="border-red-400 !border-t-red-500" /> : <><Ban size={10} /> {t('order', 'cancel_order_btn')}</>}
         </button>
       )}
     </div>
@@ -361,43 +347,87 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
 }
 
 // ── OrderCard mobile ──────────────────────────────────────────────────────────
-function OrderCard({ o, actionLoading, invoiceLoadingId, onPendingPayment, onComplete, onPartialPayment, onUpdatePaymentMethod, onInvoice, onCancel }) {
+function OrderCard({ o, actionLoading, invoiceLoadingId, onComplete, onPartialPayment, onUpdatePaymentMethod, onInvoice, onUploadReceipt }) {
   const { t } = useLang();
   const isCompleted = o.status === 'COMPLETED' || o.status === 'CANCELLED';
   const isActioning = actionLoading === o.id;
   const isThisInvoice = invoiceLoadingId === o.id;
+
   return (
-    <div className={`rounded-2xl border p-4 space-y-3 transition-all ${isThisInvoice ? 'bg-[#C9A84C]/5 border-[#C9A84C]/40' : 'bg-white border-[#F0EBE3]'} ${isActioning ? 'opacity-60' : ''}`}>
+    <div className={`rounded-2xl border p-4 space-y-3 transition-all
+      ${isThisInvoice ? 'bg-[#C9A84C]/5 border-[#C9A84C]/40' : 'bg-white border-[#F0EBE3]'}
+      ${isActioning ? 'opacity-60' : ''}`}>
+
+      {/* Top: mã đơn + tổng tiền */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-1.5">
             <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
-            {isThisInvoice && <span className="flex gap-0.5 items-center">{[0, 1, 2].map(i => <span key={i} className="w-1 h-1 rounded-full bg-[#C9A84C] animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>}
+            {isThisInvoice && (
+              <span className="flex gap-0.5 items-center">
+                {[0, 1, 2].map(i => <span key={i} className="w-1 h-1 rounded-full bg-[#C9A84C] animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+              </span>
+            )}
           </div>
-          <p className="text-xs font-semibold text-[#1C1C1E] mt-0.5">{o.customerName}</p>
-          <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>
+          <p className="text-sm font-semibold text-[#1C1C1E] mt-0.5">{o.customerName}</p>
+          {o.customerPhone && <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>}
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</p>
-          {o.paidAmount > 0 && <p className="text-[10px] text-emerald-600 font-medium">{t('payment', 'collected')}: {formatPrice(o.paidAmount)}</p>}
+          {o.paidAmount > 0 && (
+            <p className="text-[10px] text-emerald-600 font-medium">{t('payment', 'collected')}: {formatPrice(o.paidAmount)}</p>
+          )}
           <p className="text-[10px] text-[#8E8878] mt-0.5">{formatDateShort(o.createdAt)}</p>
         </div>
       </div>
+
+      {/* Badges: status + warehouse */}
       <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#F0EBE3]">
-        <StatusBadge status={o.status} /><WarehouseBadge name={o.warehouseName} />
-      </div>
-      <div className="flex items-center justify-between gap-2">
+        <StatusBadge status={o.status} />
+        <WarehouseBadge name={o.warehouseName} />
         <CreatedByBadge name={o.orderedByName} />
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={onInvoice} />
-          <PaymentMethodCell value={o.paymentMethod} onSave={val => onUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
-          <StatusActionButtons order={o}
-            onPendingPayment={() => onPendingPayment(o.id)} onComplete={() => onComplete(o.id)}
-            onPartialPayment={() => onPartialPayment(o)} onCancel={() => onCancel(o)}
-            loading={isActioning} />
-        </div>
       </div>
-      {isThisInvoice && <div className="flex items-center gap-2 bg-[#C9A84C]/10 rounded-lg px-3 py-2"><BtnSpinner size={11} colorClass="border-[#C9A84C] !border-t-transparent" /><span className="text-[11px] font-medium text-[#C9A84C]">{t('common', 'processing')}...</span></div>}
+
+      {/* Actions row */}
+      <div className="flex items-center gap-2 flex-wrap pt-1">
+        {/* Chứng từ */}
+        {o.receiptFileUrl ? (
+          <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            📄 {t('document', 'document')}
+          </a>
+        ) : o.status === 'PENDING_PAYMENT' ? (
+          <button onClick={() => onUploadReceipt(o.id)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-red-50 text-red-500 border border-red-200 hover:bg-red-100">
+            <Paperclip size={10} /> {t('common', 'update')}
+          </button>
+        ) : null}
+
+        {/* Phương thức thanh toán */}
+        <PaymentMethodCell
+          value={o.paymentMethod}
+          onSave={val => onUpdatePaymentMethod(o.id, val)}
+          disabled={isCompleted || isActioning || !!invoiceLoadingId}
+        />
+
+        {/* Invoice */}
+        <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={onInvoice} />
+
+        {/* Thu tiền / Hoàn thành */}
+        <StatusActionButtons
+          order={o}
+          onComplete={() => onComplete(o.id)}
+          onPartialPayment={() => onPartialPayment(o)}
+          loading={isActioning}
+        />
+      </div>
+
+      {isThisInvoice && (
+        <div className="flex items-center gap-2 bg-[#C9A84C]/10 rounded-lg px-3 py-2">
+          <BtnSpinner size={11} colorClass="border-[#C9A84C] !border-t-transparent" />
+          <span className="text-[11px] font-medium text-[#C9A84C]">{t('common', 'processing')}...</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -408,13 +438,12 @@ export default function AccountantOrdersPage() {
   const toast = useToast();
 
   const FILTER_TABS = [
-    { value: 'ALL',             label: t('common', 'all') },
-    { value: 'DELIVERING',      label: t('status', 'delivering_short') },
+    { value: 'ALL', label: t('common', 'all') },
+    { value: 'PREPARING', label: t('status', 'preparing') },
+    { value: 'DELIVERING', label: t('status', 'delivering_short') },
     { value: 'PENDING_PAYMENT', label: t('status', 'pending_payment') },
-    { value: 'COMPLETED',       label: t('status', 'completed') },
-    { value: 'PENDING',         label: t('status', 'pending') },
-    { value: 'PREPARING',       label: t('status', 'preparing') },
-    { value: 'CANCELLED',       label: t('status', 'cancelled') },
+    { value: 'COMPLETED', label: t('status', 'completed') },
+    { value: 'CANCELLED', label: t('status', 'cancelled') },
   ];
 
   const [orders, setOrders] = useState([]);
@@ -712,14 +741,16 @@ export default function AccountantOrdersPage() {
                           <td className="px-4 py-3">
                             {o.receiptFileUrl ? (
                               <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap hover:bg-emerald-100">📄 {t('document', 'document')}</a>
-                            ) : isCompleted ? (
-                              <span className="text-[10px] text-[#C4B9A8]">{t('common', 'none')}</span>
-                            ) : (
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap hover:bg-emerald-100">
+                                📄 {t('document', 'document')}
+                              </a>
+                            ) : o.status === 'PENDING_PAYMENT' ? (
                               <button onClick={e => { e.stopPropagation(); handleUploadReceipt(o.id); }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-500 border border-red-200 whitespace-nowrap hover:bg-red-100">
                                 <Paperclip size={9} /> {t('common', 'update')}
                               </button>
+                            ) : (
+                              <span className="text-[10px] text-[#C4B9A8]">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -739,10 +770,8 @@ export default function AccountantOrdersPage() {
                           </td>
                           <td className="px-4 py-3">
                             <StatusActionButtons order={o}
-                              onPendingPayment={() => handlePendingPayment(o.id)}
                               onComplete={() => handleComplete(o.id)}
                               onPartialPayment={() => setPartialOrder(o)}
-                              onCancel={() => setCancelTarget(o)}
                               loading={isActioning} />
                           </td>
                         </tr>
@@ -756,10 +785,15 @@ export default function AccountantOrdersPage() {
             {/* Mobile cards */}
             <div className="md:hidden space-y-3">
               {orders.map(o => (
-                <OrderCard key={o.id} o={o} actionLoading={actionLoading} invoiceLoadingId={invoiceLoadingId}
-                  onPendingPayment={handlePendingPayment} onComplete={handleComplete}
-                  onPartialPayment={setPartialOrder} onUpdatePaymentMethod={handleUpdatePaymentMethod}
-                  onInvoice={handleInvoice} onCancel={setCancelTarget} />
+                <OrderCard key={o.id} o={o}
+                  actionLoading={actionLoading}
+                  invoiceLoadingId={invoiceLoadingId}
+                  onComplete={handleComplete}
+                  onPartialPayment={setPartialOrder}
+                  onUpdatePaymentMethod={handleUpdatePaymentMethod}
+                  onInvoice={handleInvoice}
+                  onUploadReceipt={handleUploadReceipt}
+                />
               ))}
             </div>
           </>
