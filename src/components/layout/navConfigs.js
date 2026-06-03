@@ -62,7 +62,7 @@ export const warehouseNavRaw = [
   { to: '/warehouse/operations', labelKey: 'import_export', icon: Package },
   { to: '/warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
-  { to: '/warehouse/orders', labelKey: 'orders', icon: ShoppingCart },
+  // { to: '/warehouse/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
 ];
 
@@ -71,7 +71,7 @@ export const superWarehouseNavRaw = [
   { to: '/super-warehouse/operations', labelKey: 'import_export', icon: Package },
   { to: '/super-warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/super-warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
-  { to: '/super-warehouse/orders', labelKey: 'orders', icon: ShoppingCart },
+  // { to: '/super-warehouse/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
 ];
 

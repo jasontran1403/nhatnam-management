@@ -166,7 +166,7 @@ export default function AppRoutes() {
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
-        <Route path="orders" element={<WarehouseOrdersPage />} />
+        {/* <Route path="orders" element={<WarehouseOrdersPage />} /> */}
         <Route path="expenses" element={<ExpenseCreatePage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
       </Route>
@@ -178,7 +178,7 @@ export default function AppRoutes() {
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
-        <Route path="orders" element={<WarehouseOrdersPage />} />
+        {/* <Route path="orders" element={<WarehouseOrdersPage />} /> */}
         <Route path="expenses" element={<ExpenseCreatePage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
       </Route>
