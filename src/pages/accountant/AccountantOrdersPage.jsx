@@ -482,17 +482,25 @@ export default function AccountantOrdersPage() {
     try {
       const params = { page: p, size: pageSize };
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
-      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+
+      if (search.trim()) {
+        // Có keyword → gửi lên server, KHÔNG gửi from/to
+        params.keyword = search.trim();
+      } else {
+        // Không có keyword → filter ngày bình thường
+        if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
+        if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+      }
+
       if (productFilter) params.productId = productFilter;
       if (customerFilter) params.customerId = customerFilter;
+
       const res = await accountantApi.getOrders(params);
-      let content = res.data?.data?.content || [];
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        content = content.filter(o => o.orderCode?.toLowerCase().includes(q) || o.customerName?.toLowerCase().includes(q) || o.customerPhone?.includes(q));
-      }
-      setOrders(content); setTotal(res.data?.data?.totalItems || 0); setPage(p);
+      const content = res.data?.data?.content || [];
+      // Bỏ filter client-side — server đã xử lý
+      setOrders(content);
+      setTotal(res.data?.data?.totalItems || 0);
+      setPage(p);
     } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [statusFilter, dateRange, search, productFilter, customerFilter, pageSize]);

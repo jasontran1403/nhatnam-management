@@ -419,8 +419,14 @@ export default function OrdersPage() {
     try {
       const params = { page: p, size: pageSize };
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
-      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+      if (search.trim()) {
+        // Có keyword → gửi lên server, KHÔNG gửi from/to
+        params.keyword = search.trim();
+      } else {
+        // Không có keyword → filter ngày bình thường
+        if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
+        if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+      }
       // SELLER chỉ lấy đơn của chính mình
       const res = await orderApi.getMyOrders(params);
       let content = res.data?.data?.content || [];
