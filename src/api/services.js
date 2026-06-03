@@ -26,7 +26,22 @@ export const uploadApi = {
 // ─── Warehouses (seller) ──────────────────────────────────────────────────────
 export const warehouseApi = {
   getAll: () => api.get('/api/seller/warehouses'),
+
+  getDeliveryOrders: (params) =>
+    api.get('/api/warehouse/orders/delivery', { params }),
+  markDelivering: (id) =>
+    api.patch(`/api/warehouse/orders/${id}/deliver`),
+  confirmDelivered: (id) =>
+    api.patch(`/api/warehouse/orders/${id}/confirm-delivered`),
+  uploadReceiptFile: (id, formData) =>              // ← đổi sang /api/warehouse/
+    api.patch(`/api/warehouse/orders/${id}/receipt-file`, formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getOrderDetail: (id) =>
+    api.get(`/api/accountant/orders/${id}/detail`),
+  getOrderLogs: (id) =>
+    api.get(`/api/accountant/orders/${id}/logs`),
 };
+
 
 // ─── Products ────────────────────────────────────────────────────────────────
 export const productApi = {

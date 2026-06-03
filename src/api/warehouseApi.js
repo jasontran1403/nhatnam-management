@@ -12,12 +12,21 @@ export const getImageUrl = (path) => {
 
 export const warehouseApi = {
   // ── Kho ──────────────────────────────────────────────────────────────────
-  getAll:   ()           => api.get(BASE),
-  create:   (data)       => api.post(BASE,           data),
-  update:   (id, data)   => api.put(`${BASE}/${id}`, data),
+  getAll: () => api.get(BASE),
+  create: (data) => api.post(BASE, data),
+  update: (id, data) => api.put(`${BASE}/${id}`, data),
+
+  getOrders: (params) => api.get('/api/warehouse/orders/preparing', { params }),
+  getOrderDetail: (id) => api.get(`/api/accountant/orders/${id}/detail`),
+  getOrderLogs: (id) => api.get(`/api/accountant/orders/${id}/logs`),
+  markDelivering: (id) => api.patch(`/api/warehouse/orders/${id}/deliver`),
+  uploadReceiptFile: (id, formData) =>
+    api.patch(`/api/accountant/orders/${id}/receipt-file`, formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }),
+
 
   // ── Categories & SubCategories ────────────────────────────────────────────
-  getCategories:      () => api.get(`${BASE}/categories`),
+  getCategories: () => api.get(`${BASE}/categories`),
   getAllSubCategories: () => api.get(`${BASE}/subcategories`),
 
   // ── Nguyên liệu ───────────────────────────────────────────────────────────
@@ -27,10 +36,10 @@ export const warehouseApi = {
   getStock: (warehouseId) => api.get(`${BASE}/${warehouseId}/stock`),
 
   // ── Thao tác — luôn gửi warehouseId trong body ───────────────────────────
-  import:   (data) => api.post(`${BASE}/import`,   data),
-  export:   (data) => api.post(`${BASE}/export`,   data),
+  import: (data) => api.post(`${BASE}/import`, data),
+  export: (data) => api.post(`${BASE}/export`, data),
   transfer: (data) => api.post(`${BASE}/transfer`, data),
-  adjust:   (data) => api.post(`${BASE}/adjust`,   data),
+  adjust: (data) => api.post(`${BASE}/adjust`, data),
 
   // ── Lịch sử — gửi warehouseId qua query param ────────────────────────────
   getHistory: (tab, warehouseId, page = 0, size = 20, extra = {}) =>
@@ -44,14 +53,14 @@ export const warehouseApi = {
     api.get(`${BASE}/orders/preparing`, {
       params: { warehouseId: warehouseId || undefined },
     }),
-  markDelivering:  (id)          => api.patch(`${BASE}/orders/${id}/deliver`),
-  cancelOrder:     (id, reason)  => api.patch(`${BASE}/orders/${id}/cancel`, { reason }),
-  getInvoice:      (id)          => api.get(`${BASE}/orders/${id}/invoice`, { responseType: 'blob' }),
+  markDelivering: (id) => api.patch(`${BASE}/orders/${id}/deliver`),
+  cancelOrder: (id, reason) => api.patch(`${BASE}/orders/${id}/cancel`, { reason }),
+  getInvoice: (id) => api.get(`${BASE}/orders/${id}/invoice`, { responseType: 'blob' }),
   setOrderDrivers: (id, driverIds) => api.patch(`${BASE}/orders/${id}/drivers`, { driverIds }),
 
   // ── Drivers ───────────────────────────────────────────────────────────────
-  getDrivers:   (q = '')  => api.get(`${BASE}/drivers`, { params: { q } }),
-  createDriver: (name)    => api.post(`${BASE}/drivers`, { name }),
+  getDrivers: (q = '') => api.get(`${BASE}/drivers`, { params: { q } }),
+  createDriver: (name) => api.post(`${BASE}/drivers`, { name }),
 };
 
 export const uploadInventoryImage = (file) => {

@@ -153,7 +153,8 @@
     "factory_batches": "Nhập mẻ SX",
     "batch_history": "Lịch sử mẻ",
     "warehouse_receipts": "Phiếu nhập kho",
-    "quotation": "Báo giá"
+    "quotation": "Báo giá",
+    "delivering": "Quản lý giao hàng"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

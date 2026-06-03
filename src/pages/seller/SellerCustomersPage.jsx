@@ -402,10 +402,10 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
         phone: form.phone || null,
         email: form.email || null,
         taxCode: form.taxCode || null,
-        companyName: isCompany ? (toCamelCase(form.companyName) || null) : null,
+        companyName: isCompany ? (form.companyName || null) : null,
         companyPhone: isCompany ? (form.companyPhone || null) : null,
-        companyAddress: isCompany ? (toCamelCase(form.companyAddress) || null) : null,
-        contactName: isCompany ? (toCamelCase(form.contactName) || null) : null,
+        companyAddress: isCompany ? (form.companyAddress || null) : null,
+        contactName: isCompany ? (form.contactName || null) : null,
         categoryId: category ? category.id : null,
         discountRate: form.discountRate ?? 0,
         invoiceDays: form.invoiceDays ?? -1,
@@ -718,10 +718,6 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
               onReceiverChange={handleReceiverChange}
             />
           </div>
-
-          <p className="text-[10px] text-[#B0A090] bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#C9A84C]/15">
-            💡 Tên nhập IN HOA sẽ tự động chuyển thành chữ thường đúng chuẩn khi lưu.
-          </p>
         </div>
 
         {/* Footer — chỉ 1 nút Lưu thay đổi duy nhất */}

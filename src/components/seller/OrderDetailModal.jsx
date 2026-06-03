@@ -73,7 +73,7 @@ function buildVatBreakdownFromItems(items) {
 function VatBreakdownBlock({ groups, total, light }) {
   if (!groups?.length) return null;
   const textMuted = light ? 'text-white/40' : 'text-[#C4B9A8]';
-  const textMain  = light ? 'text-white/50' : 'text-[#C4B9A8]';
+  const textMain = light ? 'text-white/50' : 'text-[#C4B9A8]';
   return (
     <div className="border-t border-white/10 pt-1.5 mt-1.5">
       <div className="flex justify-between">
@@ -306,7 +306,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
 
   const handleActionSuccess = () => { onRefresh?.(); onClose(); };
 
-  const deliveryAddr  = o.deliveryAddress || o.shippingAddress || '—';
+  const deliveryAddr = o.deliveryAddress || o.shippingAddress || '—';
   const recipientName = o.contactName || o.receiverName || o.customerName || '—';
   const orderedByName = o.orderedByName || o.contactName || '—';
 
@@ -317,12 +317,12 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
   const subtotalDisplay = Number(o.subtotal) > 0
     ? Number(o.subtotal)
     : (o.items ?? []).reduce((s, item) => {
-        const isBox = item.saleType === 'BOX' && item.unitsPerBox > 0;
-        const price = isBox
-          ? Number(item.unitPrice) * item.unitsPerBox
-          : Number(item.unitPrice ?? 0);
-        return s + price * Number(item.quantity ?? 1);
-      }, 0);
+      const isBox = item.saleType === 'BOX' && item.unitsPerBox > 0;
+      const price = isBox
+        ? Number(item.unitPrice) * item.unitsPerBox
+        : Number(item.unitPrice ?? 0);
+      return s + price * Number(item.quantity ?? 1);
+    }, 0);
 
   return (
     <>
@@ -515,6 +515,23 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                 </>
               )}
             </div>
+
+            {/* Tài xế giao hàng */}
+            {o.drivers && o.drivers.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  🚚 Tài xế giao hàng
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {o.drivers.map(d => (
+                    <span key={d.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200">
+                      🧑‍✈️ {d.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Lịch sử thao tác */}
             {o.logs && o.logs.length > 0 && (

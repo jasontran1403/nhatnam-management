@@ -50,6 +50,7 @@ import OperationsPage from '../pages/warehouse/OperationsPage';
 import HistoryPage from '../pages/warehouse/HistoryPage';
 import WarehouseOrdersPage from '../pages/warehouse/WarehouseOrdersPage';
 import ExpenseCreatePage from '../pages/super_accountant/ExpenseCreatePage';
+import WarehouseDeliveryPage from '../pages/warehouse/WarehouseDeliveryPage';
 
 // Accountant
 import AccountantDashboardPage from '../pages/accountant/AccountantDashboardPage';
@@ -73,7 +74,7 @@ import QuotationPage from '../pages/seller/QuotationPage';
 // ── Root redirect ─────────────────────────────────────────────────────────────
 function RootRedirect() {
   let user = null;
-  try { user = JSON.parse(localStorage.getItem('user')); } catch {}
+  try { user = JSON.parse(localStorage.getItem('user')); } catch { }
   const path = user?.role ? (ROLE_DEFAULT_PATH[user.role] || '/seller/pos') : '/login';
   return <Navigate to={path} replace />;
 }
@@ -100,73 +101,74 @@ export default function AppRoutes() {
       <Route path="/hr"
         element={<TranslatedLayout rawNav={hrNavRaw} allowedRoles={['HR']} />}>
         <Route index element={<Navigate to="/hr/manage" replace />} />
-        <Route path="manage"   element={<HrPage />} />
+        <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
       </Route>
 
       {/* ── SELLER */}
       <Route path="/seller"
-        element={<TranslatedLayout rawNav={sellerNavRaw} allowedRoles={['ADMIN','OWNER','SELLER','SUPER_SELLER']} />}>
+        element={<TranslatedLayout rawNav={sellerNavRaw} allowedRoles={['ADMIN', 'OWNER', 'SELLER', 'SUPER_SELLER']} />}>
         <Route index element={<Navigate to="/seller/pos" replace />} />
-        <Route path="pos"           element={<POSPage />} />
-        <Route path="orders"        element={<OrdersPage />} />
-        <Route path="drafts"        element={<DraftOrdersPage />} />
-        <Route path="customers"     element={<SellerCustomersPage />} />
+        <Route path="pos" element={<POSPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="drafts" element={<DraftOrdersPage />} />
+        <Route path="customers" element={<SellerCustomersPage />} />
         <Route path="orders-manage" element={<AccountantOrdersPage />} />
-        <Route path="quotation"     element={<QuotationPage />} />
+        <Route path="quotation" element={<QuotationPage />} />
       </Route>
 
       {/* ── OWNER */}
       <Route path="/owner"
         element={<TranslatedLayout rawNav={ownerNavRaw} allowedRoles={['OWNER']} />}>
         <Route index element={<Navigate to="/owner/dashboard" replace />} />
-        <Route path="dashboard"            element={<AdminDashboard />} />
-        <Route path="pos"                  element={<AdminPOSPage />} />
-        <Route path="drafts"               element={<DraftOrdersPage />} />
-        <Route path="orders"               element={<AdminOrders />} />
-        <Route path="customers"            element={<AdminCustomers />} />
-        <Route path="users"                element={<AdminUsers />} />
-        <Route path="employees"            element={<OwnerEmployeesPage />} />
-        <Route path="warehouses"           element={<AdminWarehouses />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="pos" element={<AdminPOSPage />} />
+        <Route path="drafts" element={<DraftOrdersPage />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="customers" element={<AdminCustomers />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="employees" element={<OwnerEmployeesPage />} />
+        <Route path="warehouses" element={<AdminWarehouses />} />
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
-        <Route path="ingredients"          element={<AdminIngredients />} />
-        <Route path="expenses"             element={<ExpenseVoucherPage />} />
-        <Route path="incomes"              element={<IncomeVoucherPage />} />
-        <Route path="debt-orders"          element={<DebtOrdersPage />} />
-        <Route path="sale-kpi"             element={<SaleKpiPage />} />
-        <Route path="analytics"            element={<OwnerAnalyticsPage />} />
-        <Route path="production"           element={<OwnerProductionPage />} />
+        <Route path="ingredients" element={<AdminIngredients />} />
+        <Route path="expenses" element={<ExpenseVoucherPage />} />
+        <Route path="incomes" element={<IncomeVoucherPage />} />
+        <Route path="debt-orders" element={<DebtOrdersPage />} />
+        <Route path="sale-kpi" element={<SaleKpiPage />} />
+        <Route path="analytics" element={<OwnerAnalyticsPage />} />
+        <Route path="production" element={<OwnerProductionPage />} />
       </Route>
 
       {/* ── ADMIN */}
       <Route path="/admin"
         element={<TranslatedLayout rawNav={adminNavRaw} allowedRoles={['ADMIN']} />}>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="dashboard"            element={<AdminDashboard />} />
-        <Route path="orders"               element={<AdminOrders />} />
-        <Route path="customers"            element={<AdminCustomers />} />
-        <Route path="users"                element={<AdminUsers />} />
-        <Route path="warehouses"           element={<AdminWarehouses />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="customers" element={<AdminCustomers />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="warehouses" element={<AdminWarehouses />} />
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
-        <Route path="ingredients"          element={<AdminIngredients />} />
-        <Route path="batches"              element={<AdminBatchApproval />} />
-        <Route path="expenses"             element={<ExpenseVoucherPage />} />
-        <Route path="incomes"              element={<IncomeVoucherPage />} />
-        <Route path="debt-orders"          element={<DebtOrdersPage />} />
-        <Route path="sale-kpi"             element={<SaleKpiPage />} />
-        <Route path="analytics"            element={<OwnerAnalyticsPage />} />
-        <Route path="production"           element={<OwnerProductionPage />} />
+        <Route path="ingredients" element={<AdminIngredients />} />
+        <Route path="batches" element={<AdminBatchApproval />} />
+        <Route path="expenses" element={<ExpenseVoucherPage />} />
+        <Route path="incomes" element={<IncomeVoucherPage />} />
+        <Route path="debt-orders" element={<DebtOrdersPage />} />
+        <Route path="sale-kpi" element={<SaleKpiPage />} />
+        <Route path="analytics" element={<OwnerAnalyticsPage />} />
+        <Route path="production" element={<OwnerProductionPage />} />
       </Route>
 
       {/* ── WAREHOUSE */}
       <Route path="/warehouse"
-        element={<TranslatedLayout rawNav={warehouseNavRaw} allowedRoles={['ADMIN','WAREHOUSE']} />}>
+        element={<TranslatedLayout rawNav={warehouseNavRaw} allowedRoles={['ADMIN', 'WAREHOUSE']} />}>
         <Route index element={<Navigate to="/warehouse/management" replace />} />
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
-        <Route path="history"    element={<HistoryPage />} />
-        <Route path="orders"     element={<WarehouseOrdersPage />} />
-        <Route path="expenses"   element={<ExpenseCreatePage />} />
+        <Route path="history" element={<HistoryPage />} />
+        <Route path="orders" element={<WarehouseOrdersPage />} />
+        <Route path="expenses" element={<ExpenseCreatePage />} />
+        <Route path="delivery" element={<WarehouseDeliveryPage />} />
       </Route>
 
       {/* ── SUPER WAREHOUSE */}
@@ -175,43 +177,44 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="/super-warehouse/management" replace />} />
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
-        <Route path="history"    element={<HistoryPage />} />
-        <Route path="orders"     element={<WarehouseOrdersPage />} />
-        <Route path="expenses"   element={<ExpenseCreatePage />} />
+        <Route path="history" element={<HistoryPage />} />
+        <Route path="orders" element={<WarehouseOrdersPage />} />
+        <Route path="expenses" element={<ExpenseCreatePage />} />
+        <Route path="delivery" element={<WarehouseDeliveryPage />} />
       </Route>
 
       {/* ── ACCOUNTANT */}
       <Route path="/accountant"
-        element={<TranslatedLayout rawNav={accountantNavRaw} allowedRoles={['ADMIN','OWNER','ACCOUNTANT','SUPER_ACCOUNTANT']} />}>
+        element={<TranslatedLayout rawNav={accountantNavRaw} allowedRoles={['ADMIN', 'OWNER', 'ACCOUNTANT', 'SUPER_ACCOUNTANT']} />}>
         <Route index element={<Navigate to="/accountant/dashboard" replace />} />
-        <Route path="dashboard"   element={<AccountantDashboardPage />} />
-        <Route path="orders"      element={<AccountantOrdersPage />} />
+        <Route path="dashboard" element={<AccountantDashboardPage />} />
+        <Route path="orders" element={<AccountantOrdersPage />} />
         <Route path="debt-orders" element={<DebtOrdersPage />} />
-        <Route path="customers"   element={<AccountantCustomersPage />} />
-        <Route path="suppliers"   element={<SupplierManagementPage />} />
-        <Route path="incomes"     element={<IncomeCreatePage />} />
+        <Route path="customers" element={<AccountantCustomersPage />} />
+        <Route path="suppliers" element={<SupplierManagementPage />} />
+        <Route path="incomes" element={<IncomeCreatePage />} />
       </Route>
 
       {/* ── SUPER ACCOUNTANT */}
       <Route path="/super-accountant"
         element={<TranslatedLayout rawNav={superAccountantNavRaw} allowedRoles={['SUPER_ACCOUNTANT']} />}>
         <Route index element={<Navigate to="/super-accountant/dashboard" replace />} />
-        <Route path="dashboard"          element={<AccountantDashboardPage />} />
-        <Route path="history"            element={<AccountantOrdersPage />} />
-        <Route path="expenses"           element={<ExpenseCreatePage />} />
-        <Route path="incomes"            element={<IncomeCreatePage />} />
-        <Route path="suppliers"          element={<SupplierManagementPage />} />
+        <Route path="dashboard" element={<AccountantDashboardPage />} />
+        <Route path="history" element={<AccountantOrdersPage />} />
+        <Route path="expenses" element={<ExpenseCreatePage />} />
+        <Route path="incomes" element={<IncomeCreatePage />} />
+        <Route path="suppliers" element={<SupplierManagementPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
       </Route>
 
       {/* ── OPERATOR */}
       <Route path="/operator"
-        element={<TranslatedLayout rawNav={operatorNavRaw} allowedRoles={['OPERATOR','ADMIN','OWNER']} />}>
+        element={<TranslatedLayout rawNav={operatorNavRaw} allowedRoles={['OPERATOR', 'ADMIN', 'OWNER']} />}>
         <Route index element={<Navigate to="/operator/products" replace />} />
-        <Route path="categories"  element={<OperatorCategoriesPage />} />
+        <Route path="categories" element={<OperatorCategoriesPage />} />
         <Route path="ingredients" element={<OperatorIngredientsPage />} />
-        <Route path="products"    element={<OperatorProductBatchPage />} />
-        <Route path="batches"     element={<OperatorMyBatchesPage />} />
+        <Route path="products" element={<OperatorProductBatchPage />} />
+        <Route path="batches" element={<OperatorMyBatchesPage />} />
         <Route path="landingpage" element={<OperatorLandingpagePage />} />
       </Route>
 
@@ -220,8 +223,8 @@ export default function AppRoutes() {
         element={<TranslatedLayout rawNav={factoryWorkerNavRaw} allowedRoles={['FACTORY_WORKER']} />}>
         <Route index element={<Navigate to="/factory/dashboard" replace />} />
         <Route path="dashboard" element={<FactoryDashboardPage />} />
-        <Route path="batches"   element={<FactoryCreateBatchPage />} />
-        <Route path="history"   element={<FactoryHistoryPage />} />
+        <Route path="batches" element={<FactoryCreateBatchPage />} />
+        <Route path="history" element={<FactoryHistoryPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

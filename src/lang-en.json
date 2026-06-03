@@ -153,7 +153,8 @@
     "factory_batches": "Enter Production Batch",
     "batch_history": "Batch History",
     "warehouse_receipts": "Warehouse Receipts",
-    "quotation": "Quotation"
+    "quotation": "Quotation",
+    "delivering": "Delivery Management"
   },
   "profile": {
     "my_profile": "My Profile",

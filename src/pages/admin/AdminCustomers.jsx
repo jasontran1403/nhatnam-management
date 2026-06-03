@@ -27,7 +27,7 @@ function getDebtUrgency(customer) {
   if (!ms) return null;
   const days = Math.ceil((ms - Date.now()) / 86400000);
   if (days < 0 || days <= 3) return 'critical';
-  if (days <= 6)              return 'warning';
+  if (days <= 6) return 'warning';
   return null;
 }
 
@@ -56,32 +56,32 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
   const resetForm = () => setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
 
   const handleAdd = async () => {
-    if (!form.receiverAddress.trim()) { toast(t('delivery','shipping_address_req'), 'error'); return; }
+    if (!form.receiverAddress.trim()) { toast(t('delivery', 'shipping_address_req'), 'error'); return; }
     setSaving(true);
     try {
       await api.post(`${apiPrefix}/customers/${customerId}/receiver-infos`, form);
       toast(t('common', 'success'), 'success');
       setAdding(false); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common', 'error'), 'error'); }
     finally { setSaving(false); }
   };
 
   const handleUpdate = async (id) => {
-    if (!form.receiverAddress.trim()) { toast(t('delivery','shipping_address_req'), 'error'); return; }
+    if (!form.receiverAddress.trim()) { toast(t('delivery', 'shipping_address_req'), 'error'); return; }
     setSaving(true);
     try {
       await api.put(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}`, form);
-      toast(t('common','success'), 'success');
+      toast(t('common', 'success'), 'success');
       setEditingId(null); resetForm(); load();
-    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common', 'error'), 'error'); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm(t('misc','confirm_delete'))) return;
+    if (!window.confirm(t('misc', 'confirm_delete'))) return;
     try {
       await api.delete(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}`);
-      toast(t('common','success'), 'success'); load();
+      toast(t('common', 'success'), 'success'); load();
     } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi xóa', 'error'); }
   };
 
@@ -89,7 +89,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
     try {
       await api.patch(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}/set-default`);
       toast('Đã đặt làm mặc định', 'success'); load();
-    } catch (e) { toast(e?.response?.data?.message || t('common','error'), 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('common', 'error'), 'error'); }
   };
 
   const startEdit = (r) => {
@@ -498,7 +498,7 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         <div className="flex justify-end gap-2">
           <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
           <PrimaryButton onClick={handleSave} loading={saving}>
-            {isEdit ? 'Lưu thay đổi': t('customer','create_customer')}
+            {isEdit ? 'Lưu thay đổi' : t('customer', 'create_customer')}
           </PrimaryButton>
         </div>
       }>
@@ -598,6 +598,11 @@ export default function AdminCustomers() {
   const [loading, setLoading] = useMinLoading();
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [historyCustomerId, setHistoryCustomerId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
 
   const [discountOpen, setDiscountOpen] = useState(false);
   const [discountTarget, setDiscountTarget] = useState(null);
@@ -615,12 +620,25 @@ export default function AdminCustomers() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState(null);
 
+  const handleDelete = async () => {
+    if (!deletePassword.trim()) { setDeleteError('Vui lòng nhập mật khẩu'); return; }
+    setDeleting(true); setDeleteError('');
+    try {
+      await adminCustomerApi.softDelete(deleteTarget.id, deletePassword);
+      setDeleteTarget(null);
+      setDeletePassword('');
+      load();
+    } catch (e) {
+      setDeleteError(e?.response?.data?.message || e?.message || 'Mật khẩu không đúng hoặc có lỗi xảy ra');
+    } finally { setDeleting(false); }
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, size: 20, sort: 'id,desc' };
-      if (debouncedQ)              params.q        = debouncedQ;
-      if (filters.type)            params.type     = filters.type;
+      if (debouncedQ) params.q = debouncedQ;
+      if (filters.type) params.type = filters.type;
       if (filters.isActive !== '') params.isActive = filters.isActive;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       const res = await adminCustomerApi.list(params);
@@ -644,11 +662,11 @@ export default function AdminCustomers() {
 
   const allChecked = data.content.length > 0 && data.content.every(c => selectedIds.has(c.id));
   const anyChecked = selectedIds.size > 0;
-  const toggleOne  = (id) => { const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
-  const toggleAll  = () => { allChecked ? setSelectedIds(new Set()) : setSelectedIds(new Set(data.content.map(c => c.id))); };
+  const toggleOne = (id) => { const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
+  const toggleAll = () => { allChecked ? setSelectedIds(new Set()) : setSelectedIds(new Set(data.content.map(c => c.id))); };
 
   const openDiscountSingle = (c) => { setDiscountTarget(c); setDiscountValue(c.discountRate || 0); setDiscountOpen(true); };
-  const openDiscountBulk   = () => { if (!anyChecked) return; setDiscountTarget(null); setDiscountValue(0); setDiscountOpen(true); };
+  const openDiscountBulk = () => { if (!anyChecked) return; setDiscountTarget(null); setDiscountValue(0); setDiscountOpen(true); };
   const openDebtDays = (c, e) => { e.stopPropagation(); setDebtDaysTarget(c); setDebtDaysValue(c.debtDays || 0); setDebtDaysOpen(true); };
   const openAssign = (c, e) => {
     e.stopPropagation();
@@ -826,7 +844,7 @@ export default function AdminCustomers() {
                         <td className="px-4 py-3"><p className="text-[#1C1C1E]">{c.phone}</p></td>
                         <td className="px-4 py-3">
                           <Badge className={isCompany ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}>
-                            {isCompany ? 'Công ty': t('customer','individual')}
+                            {isCompany ? 'Công ty' : t('customer', 'individual')}
                           </Badge>
                           {c.pricingType === 'WHOLESALE_PRICE'
                             ? <Badge className="bg-purple-50 text-purple-700 ring-purple-200 mt-0.5">Sỉ</Badge>
@@ -893,6 +911,17 @@ export default function AdminCustomers() {
                               className={`p-2 rounded-lg transition-colors ${c.isActive ? 'text-[#8E8878] hover:bg-red-50 hover:text-red-600' : 'text-[#8E8878] hover:bg-emerald-50 hover:text-emerald-600'}`}>
                               {c.isActive ? <Lock size={15} /> : <Unlock size={15} />}
                             </button>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                setDeleteTarget(c);
+                                setDeletePassword('');
+                                setDeleteError('');
+                              }}
+                              className="p-2 rounded-lg text-[#8E8878] hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Xóa khách hàng">
+                              <Trash2 size={15} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -942,7 +971,17 @@ export default function AdminCustomers() {
                       <button onClick={e => openDebtDays(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-50 text-orange-600">CN</button>
                       <button onClick={() => setActiveConfirm({ mode: 'single', lock: c.isActive, customer: c })}
                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${c.isActive ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {c.isActive ? 'Khóa': 'Mở'}
+                        {c.isActive ? 'Khóa' : 'Mở'}
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setDeleteTarget(c);
+                          setDeletePassword('');
+                          setDeleteError('');
+                        }}
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-50 text-red-600">
+                        Xóa
                       </button>
                     </div>
                   </div>
@@ -992,6 +1031,60 @@ export default function AdminCustomers() {
             : <>Bạn có chắc muốn {activeConfirm?.lock ? 'khóa bán' : 'mở bán'} khách <span className="font-semibold">{activeConfirm?.customer?.customerType === 'COMPANY' ? activeConfirm?.customer?.companyName : activeConfirm?.customer?.name}</span>?</>
           }
         </p>
+      </Modal>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => { if (!deleting) { setDeleteTarget(null); setDeletePassword(''); setDeleteError(''); } }}
+        title="Xóa khách hàng"
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <SecondaryButton
+              onClick={() => { setDeleteTarget(null); setDeletePassword(''); setDeleteError(''); }}
+              disabled={deleting}>
+              Hủy
+            </SecondaryButton>
+            <DangerButton onClick={handleDelete} loading={deleting}>
+              Xác nhận xóa
+            </DangerButton>
+          </div>
+        }>
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-red-400 font-medium mb-0.5">Sẽ xóa khách hàng</p>
+            <p className="text-sm font-semibold text-red-700">
+              {deleteTarget?.customerType === 'COMPANY'
+                ? deleteTarget?.companyName
+                : deleteTarget?.name}
+              {deleteTarget?.customerCode && (
+                <span className="font-normal text-red-400 ml-1.5">
+                  #{deleteTarget.customerCode}
+                </span>
+              )}
+            </p>
+          </div>
+
+          <p className="text-sm text-[#5C4E3D]">
+            Khách hàng sẽ <span className="font-semibold">không hiển thị</span> trên
+            hệ thống sau khi xóa. Hành động này <span className="font-semibold text-red-600">không thể hoàn tác</span>.
+          </p>
+
+          <Field label="Nhập mật khẩu đăng nhập của bạn để xác nhận" required>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={e => { setDeletePassword(e.target.value); setDeleteError(''); }}
+              onKeyDown={e => e.key === 'Enter' && !deleting && handleDelete()}
+              className={`${inputCls} ${deleteError ? 'border-red-400' : ''}`}
+              placeholder="••••••••"
+              autoFocus
+            />
+            {deleteError && (
+              <p className="text-xs text-red-500 mt-1">{deleteError}</p>
+            )}
+          </Field>
+        </div>
       </Modal>
 
       <CreateEditCustomerModal

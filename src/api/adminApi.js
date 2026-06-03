@@ -54,6 +54,8 @@ export const adminCustomerApi = {
   getById: (id) => api.get(`/api/admin/customers/${id}`).then(unwrap),
   create: (data) => api.post('/api/admin/customers', data).then(unwrap),
   update: (id, data) => api.put(`/api/admin/customers/${id}`, data).then(unwrap),
+  softDelete: (id, password) =>                                          // ← thêm
+    api.delete(`/api/admin/customers/${id}`, { data: { password } }).then(unwrap),
   updateDiscount: (id, discountRate) => api.put(`/api/admin/customers/${id}/discount`, { discountRate }).then(unwrap),
   bulkDiscount: (customerIds, discountRate) => api.put('/api/admin/customers/bulk-discount', { customerIds, discountRate }).then(unwrap),
   setActive: (id, value) => api.put(`/api/admin/customers/${id}/active`, null, { params: { value } }).then(unwrap),
