@@ -21,7 +21,7 @@ export function presetToRange(key) {
     case 'week':
       return {
         from: startOfWeek(now, { weekStartsOn: 1 }).getTime(),
-        to:   endOfWeek(now,   { weekStartsOn: 1 }).getTime(),
+        to: endOfWeek(now, { weekStartsOn: 1 }).getTime(),
       };
     case 'month':
       return { from: startOfMonth(now).getTime(), to: endOfMonth(now).getTime() };
@@ -34,22 +34,24 @@ export function presetToRange(key) {
 
 function getPresets(t) {
   return [
-    { key: 'today',  label: t('common', 'today')      },
-    { key: 'week',   label: t('common', 'this_week')  },
-    { key: 'month',  label: t('common', 'this_month') },
-    { key: 'year',   label: t('common', 'this_year')  },
+    { key: 'today', label: t('common', 'today') },
+    { key: 'week', label: t('common', 'this_week') },
+    { key: 'month', label: t('common', 'this_month') },
+    { key: 'year', label: t('common', 'this_year') },
     { key: 'custom', label: t('common', 'date_range') },
   ];
 }
 
 // ── Calendar dropdown ─────────────────────────────────────────────────────────
-function CalendarDropdown({ selection, onSelect, onApply, onCancel, t }) {
+function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, align = 'left' }) {
   return (
     <div
-      className="absolute top-full left-0 mt-2 z-50 bg-white rounded-2xl shadow-2xl
-        border border-[#E8DDD0] overflow-hidden"
+      className={`absolute top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl
+        border border-[#E8DDD0] overflow-hidden
+        ${align === 'right' ? 'right-0' : 'left-0'}`}
       style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.12))' }}
     >
+
       <DateRange
         ranges={[selection]}
         onChange={onSelect}
@@ -96,8 +98,8 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState({
     startDate: new Date(),
-    endDate:   new Date(),
-    key:       'selection',
+    endDate: new Date(),
+    key: 'selection',
   });
   const ref = useRef(null);
 
@@ -121,7 +123,7 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
 
   const handleApply = () => {
     const from = startOfDay(selection.startDate).getTime();
-    const to   = endOfDay(selection.endDate).getTime();
+    const to = endOfDay(selection.endDate).getTime();
     onRangeChange({ from, to });
     setOpen(false);
   };
@@ -164,12 +166,12 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
 }
 
 // ── SIMPLE MODE ───────────────────────────────────────────────────────────────
-function SimplePicker({ from, to, onChange, placeholder }) {
+function SimplePicker({ from, to, onChange, placeholder, align = 'left' }) {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState(() => ({
     startDate: from ? new Date(from) : new Date(),
-    endDate:   to   ? new Date(to)   : new Date(),
+    endDate: to ? new Date(to) : new Date(),
     key: 'selection',
   }));
   const ref = useRef(null);
@@ -177,7 +179,7 @@ function SimplePicker({ from, to, onChange, placeholder }) {
   useEffect(() => {
     setSelection({
       startDate: from ? new Date(from) : new Date(),
-      endDate:   to   ? new Date(to)   : new Date(),
+      endDate: to ? new Date(to) : new Date(),
       key: 'selection',
     });
   }, [from, to]);
@@ -241,6 +243,7 @@ function SimplePicker({ from, to, onChange, placeholder }) {
           onApply={handleApply}
           onCancel={() => setOpen(false)}
           t={t}
+          align={align}
         />
       )}
     </div>
@@ -256,6 +259,7 @@ export default function DateRangePicker(props) {
         to={props.to}
         onChange={props.onChange}
         placeholder={props.placeholder}
+        align={props.align || 'left'}
       />
     );
   }

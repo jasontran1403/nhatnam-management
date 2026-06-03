@@ -386,7 +386,7 @@ function SellerFilterDropdown({ value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-64 bg-white rounded-xl border border-black/10 shadow-xl overflow-hidden">
+        <div className="absolute top-full left-0 mt-1 z-50 w-80 sm:w-96 bg-white rounded-xl border border-black/10 shadow-xl overflow-hidden">
           <div className="p-2 border-b border-[#F0EBE3]">
             <input
               autoFocus value={q} onChange={e => setQ(e.target.value)}
@@ -394,18 +394,18 @@ function SellerFilterDropdown({ value, onChange }) {
               className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]"
             />
           </div>
-          <div className="max-h-48 overflow-y-auto py-1">
+          <div className="max-h-64 overflow-y-auto py-1">
             <button
               onClick={() => { onChange('0'); setSelectedName('Chưa gán'); setOpen(false); }}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-[#FAF7F2] text-[#5C4E3D]">
+              className="w-full px-3 py-2.5 text-left text-sm hover:bg-[#FAF7F2] text-[#5C4E3D]">
               Chưa gán NV
             </button>
             {loading ? (
-              <p className="text-xs text-center text-[#8E8878] py-3">Đang tìm...</p>
+              <p className="text-xs text-center text-[#8E8878] py-4">Đang tìm...</p>
             ) : sellers.map(s => (
               <button key={s.id} onClick={() => select(s)}
-                className={`w-full px-3 py-2 text-left hover:bg-[#FAF7F2] transition-colors
-                  ${value === String(s.id) ? 'bg-[#C9A84C]/10 text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+                className={`w-full px-3 py-2.5 text-left hover:bg-[#FAF7F2] transition-colors
+                        ${value === String(s.id) ? 'bg-[#C9A84C]/10 text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
                 <p className="text-sm font-medium truncate">{s.fullName}</p>
                 <p className="text-xs text-[#8E8878]">@{s.username}</p>
               </button>
@@ -760,11 +760,11 @@ export default function AdminCustomers() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs text-[#8E8878] font-medium shrink-0">Lọc theo NV KD:</span>
+          <span className="text-xs text-[#8E8878] font-medium shrink-0">Lọc theo NV Kinh Doanh:</span>
           <button
             onClick={() => { setFilters(f => ({ ...f, sellerId: '' })); setPage(0); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors border
-              ${filters.sellerId === ''
+            className={`px-3 h-[38px] rounded-xl text-xs font-medium transition-colors border
+            ${filters.sellerId === ''
                 ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
                 : 'border-[#E8DDD0] text-[#5C4E3D] hover:bg-[#F0EBE3]'}`}>
             Tất cả
