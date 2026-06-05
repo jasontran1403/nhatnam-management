@@ -360,6 +360,10 @@ export default function OrdersPage() {
   const [showIngredientModal, setShowIngredientModal] = useState(false);
   const [ingredientDateRange, setIngredientDateRange] = useState({ from: null, to: null });
   const [exportingIngredients, setExportingIngredients] = useState(false);
+  const [showCustomerProductModal, setShowCustomerProductModal] = useState(false);
+  const [customerProductDateRange, setCustomerProductDateRange] = useState({ from: null, to: null });
+  const [exportingCustomerProduct, setExportingCustomerProduct] = useState(false);
+
 
   const STATUS_MAP = {
     PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
@@ -476,6 +480,27 @@ export default function OrdersPage() {
     finally { setExportingIngredients(false); }
   };
 
+  const handleCustomerProductExport = async () => {
+    setExportingCustomerProduct(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const from = customerProductDateRange.from
+        ? new Date(customerProductDateRange.from).toISOString().slice(0, 10)
+        : today;
+      const to = customerProductDateRange.to
+        ? new Date(customerProductDateRange.to).toISOString().slice(0, 10)
+        : today;
+      const res = await orderApi.exportCustomerProductReport({ from, to });
+      downloadBlob(res.data, `bao-cao-kh-sp-${from}_${to}.xlsx`);
+      setShowCustomerProductModal(false);
+      setCustomerProductDateRange({ from: null, to: null });
+    } catch {
+      toast('Không thể xuất báo cáo KH×SP', 'error');
+    } finally {
+      setExportingCustomerProduct(false);
+    }
+  };
+
   const handleInvoice = async (orderId, e) => {
     if (e) e.stopPropagation(); if (invoiceLoadingId) return; setInvoiceLoadingId(orderId);
     try { const res = await accountantApi.getInvoice(orderId); const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); window.open(url, '_blank'); }
@@ -570,12 +595,20 @@ export default function OrdersPage() {
 
           {/* Export nguyên liệu — chỉ hiện cho thuytm */}
           {isThuytm && (
-            <button
-              onClick={() => setShowIngredientModal(true)}
-              title="Xuất báo cáo nguyên liệu"
-              className="p-2 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors shrink-0">
-              <List size={14} />
-            </button>
+            <>
+              <button
+                onClick={() => setShowIngredientModal(true)}
+                title="Xuất báo cáo nguyên liệu"
+                className="p-2 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors shrink-0">
+                <List size={14} />
+              </button>
+              <button
+                onClick={() => setShowCustomerProductModal(true)}
+                title="Báo cáo KH × Sản phẩm"
+                className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors shrink-0">
+                <FileText size={14} />
+              </button>
+            </>
           )}
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
@@ -827,6 +860,46 @@ export default function OrdersPage() {
                 disabled={exportingIngredients || !ingredientDateRange.from || !ingredientDateRange.to}
                 className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-600 disabled:opacity-50 flex items-center justify-center gap-2">
                 {exportingIngredients ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><List size={14} /> Xuất báo cáo</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCustomerProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCustomerProductModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xuất báo cáo</p>
+                <h2 className="font-bold text-[#1C1C1E]">Khách hàng × Sản phẩm</h2>
+              </div>
+              <button onClick={() => setShowCustomerProductModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-[#8E8878]">
+              Tổng hợp sản lượng và doanh thu theo từng khách hàng. Không tính đơn hủy.
+              Nếu không chọn ngày, mặc định là <strong>hôm nay</strong>.
+            </p>
+            <DateRangePicker
+              from={customerProductDateRange.from}
+              to={customerProductDateRange.to}
+              onChange={r => setCustomerProductDateRange(r)}
+              placeholder="Mặc định: hôm nay"
+            />
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => { setShowCustomerProductModal(false); setCustomerProductDateRange({ from: null, to: null }); }}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">
+                Huỷ
+              </button>
+              <button
+                onClick={handleCustomerProductExport}
+                disabled={exportingCustomerProduct}
+                className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                {exportingCustomerProduct
+                  ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
+                  : <><Download size={14} /> Xuất Excel</>}
               </button>
             </div>
           </div>

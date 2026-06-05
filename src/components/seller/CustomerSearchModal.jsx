@@ -302,6 +302,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
   const [errors, setErrors] = useState({});
   const [receiverErrors, setReceiverErrors] = useState([{}]);
   const [saving, setSaving] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
+
   const isCompany = customerType === 'COMPANY';
 
   const setField = (key, val) => {
@@ -418,6 +420,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
         companyAddress: form.companyAddress.trim() || null,
         pricingType: form.pricingType || 'RETAIL_PRICE',
         discountRate: 0,
+        assignPrivate: !isCompany && isPrivate,
         receiverInfos: validReceivers.map((r, i) => ({
           receiverName: r.receiverName.trim(),
           receiverPhone: r.receiverPhone.trim(),
@@ -450,7 +453,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
             ['COMPANY', <Building2 size={11} />, t('customer', 'company')],
           ].map(([type, icon, label], i) => (
             <button key={type} type="button"
-              onClick={() => { setCustomerType(type); setErrors({}); setReceiverErrors([{}]); }}
+              onClick={() => { setCustomerType(type); setErrors({}); setReceiverErrors([{}]); setIsPrivate(false); }}
               className={`flex-1 py-2 font-medium transition-colors flex items-center justify-center gap-1.5
                 ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
                 ${customerType === type ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
@@ -506,6 +509,21 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
           </>) : (
           <>
             <SectionLabel>Thông tin khách hàng</SectionLabel>
+            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+              {[
+                { val: false, label: '👥 Khách chung', hint: 'Mọi seller đều thấy' },
+                { val: true, label: '🔒 Khách riêng', hint: 'Chỉ bạn quản lý' },
+              ].map(({ val, label, hint }, i) => (
+                <button key={String(val)} type="button"
+                  onClick={() => setIsPrivate(val)}
+                  className={`flex-1 py-2 font-medium transition-colors flex flex-col items-center gap-0.5
+        ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
+        ${isPrivate === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                  <span>{label}</span>
+                  <span className={`text-[9px] font-normal ${isPrivate === val ? 'text-white/80' : 'text-[#C4B9A8]'}`}>{hint}</span>
+                </button>
+              ))}
+            </div>
             <Field label="Họ tên" error={errors.name}
               placeholder="Nguyễn Văn A (tuỳ chọn)"
               value={form.name} onChange={e => setField('name', e.target.value)} />

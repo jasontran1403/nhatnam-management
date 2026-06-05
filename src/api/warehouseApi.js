@@ -12,6 +12,8 @@ export const getImageUrl = (path) => {
 
 export const warehouseApi = {
   // ── Kho ──────────────────────────────────────────────────────────────────
+  exportInventoryCheck: (body) =>
+    api.post('/api/warehouse/export-inventory-check', body, { responseType: 'blob' }),
   getAll: () => api.get(BASE),
   create: (data) => api.post(BASE, data),
   update: (id, data) => api.put(`${BASE}/${id}`, data),

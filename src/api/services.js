@@ -95,6 +95,8 @@ export const customerApi = {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 export const orderApi = {
+  exportCustomerProductReport: (params) =>
+    api.get('/api/seller/customer-product-report', { params, responseType: 'blob' }),
   create: (data) => api.post('/api/seller/orders', data),
   getById: (id) => api.get(`/api/seller/orders/${id}`),
   getMyOrders: (params) => api.get('/api/seller/orders', { params }),

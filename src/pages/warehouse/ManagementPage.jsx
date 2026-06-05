@@ -10,7 +10,8 @@ import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
 import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
-import { ChevronRight, ChevronDown, Layers } from 'lucide-react';
+import { ChevronRight, ChevronDown, Layers, ClipboardList } from 'lucide-react';
+import InventoryCheckExportModal from '../../components/warehouse/InventoryCheckExportModal.jsx';
 
 const TODAY = new Date();
 TODAY.setHours(0, 0, 0, 0);
@@ -87,7 +88,7 @@ function ExpiryCell({ expiryList }) {
             borderRadius: 99, padding: '2px 8px',
             fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
           }}>
-            {t('warehouse','lot_expiring_soon').replace('{n}',soonCount)}
+            {t('warehouse', 'lot_expiring_soon').replace('{n}', soonCount)}
           </span>
         )}
         <span style={{
@@ -96,7 +97,7 @@ function ExpiryCell({ expiryList }) {
           borderRadius: 99, padding: '2px 8px',
           fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
         }}>
-          {t('warehouse','lots_label').replace('{n}',dated.length)} ▾
+          {t('warehouse', 'lots_label').replace('{n}', dated.length)} ▾
         </span>
       </button>
 
@@ -117,7 +118,7 @@ function ExpiryCell({ expiryList }) {
             fontSize: 11, fontWeight: 700, color: 'var(--wh-muted)',
             textTransform: 'uppercase', letterSpacing: '.5px',
           }}>
-            {t('warehouse','lot_list')}
+            {t('warehouse', 'lot_list')}
           </div>
           {dated.map((e, i) => {
             const days = daysUntil(e.expiryDate);
@@ -140,7 +141,7 @@ function ExpiryCell({ expiryList }) {
                   )}
                   {isSoon && !isExpired && (
                     <span style={{ fontSize: 10, background: 'rgba(234,88,12,.1)', color: 'var(--wh-warn)', borderRadius: 4, padding: '1px 5px' }}>
-                      {days === 0 ? t('common','today'): `${days} ${t('common','date').toLowerCase()}`}
+                      {days === 0 ? t('common', 'today') : `${days} ${t('common', 'date').toLowerCase()}`}
                     </span>
                   )}
                 </div>
@@ -200,7 +201,7 @@ function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
           background: 'rgba(201,168,76,.1)', borderRadius: 99,
           padding: '2px 8px', fontWeight: 600,
         }}>
-          {t('warehouse','ingredient_count').replace('{n}',ingredients.length)}
+          {t('warehouse', 'ingredient_count').replace('{n}', ingredients.length)}
         </span>
         <span style={{ color: 'var(--wh-muted)', fontSize: 14 }}>
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -332,7 +333,7 @@ function UncategorizedSection({ ingredients }) {
         <span style={{ fontSize: 18 }}>📦</span>
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--wh-text)', flex: 1 }}>Chưa phân loại</span>
         <span style={{ fontSize: 11, color: 'var(--wh-muted)', background: 'rgba(0,0,0,.06)', borderRadius: 99, padding: '2px 8px', fontWeight: 600 }}>
-          {t('warehouse','ingredient_count').replace('{n}',ingredients.length)}
+          {t('warehouse', 'ingredient_count').replace('{n}', ingredients.length)}
         </span>
         {expanded ? <ChevronDown size={16} style={{ color: 'var(--wh-muted)' }} /> : <ChevronRight size={16} style={{ color: 'var(--wh-muted)' }} />}
       </div>
@@ -357,6 +358,7 @@ export default function ManagementPage() {
   const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [warehouseInfo, setWarehouseInfo] = useState(null);
+  const [showInventoryExport, setShowInventoryExport] = useState(false);
 
   const warehouseId = activeWarehouseId || user?.warehouseId || user?.warehouse?.id;
 
@@ -454,7 +456,25 @@ export default function ManagementPage() {
           )}
         </div>
         {/* Chọn kho — chỉ hiển thị nếu quản lý nhiều kho, hoặc luôn hiển thị để biết đang ở kho nào */}
-        <WarehouseSelector />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <WarehouseSelector />
+          <button
+            onClick={() => setShowInventoryExport(true)}
+            title="Xuất phiếu kiểm kho"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 12,
+              background: '#1A3C6E', color: '#fff',
+              border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600,
+              boxShadow: '0 2px 8px rgba(26,60,110,0.25)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <ClipboardList size={15} />
+            Phiếu kiểm kho
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -538,6 +558,17 @@ export default function ManagementPage() {
           })}
           <UncategorizedSection ingredients={uncategorized} />
         </div>
+      )}
+
+      {showInventoryExport && (
+        <InventoryCheckExportModal
+          stocks={stocks}
+          categories={categories}
+          ingredientMeta={ingredientMeta}
+          warehouseId={warehouseId}
+          warehouseName={warehouseInfo?.name}
+          onClose={() => setShowInventoryExport(false)}
+        />
       )}
     </div>
   );

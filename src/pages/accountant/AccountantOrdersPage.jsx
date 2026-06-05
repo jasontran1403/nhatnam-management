@@ -518,8 +518,13 @@ export default function AccountantOrdersPage() {
     try {
       const params = {};
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
-      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+      if (search.trim()) {
+        // Đang search → export theo keyword, bỏ filter ngày
+        params.keyword = search.trim();
+      } else {
+        if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
+        if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+      }
       if (productFilter) params.productId = productFilter;
       if (customerFilter) params.customerId = customerFilter;
       const res = await accountantApi.exportOrders(params);
