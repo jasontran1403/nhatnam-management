@@ -249,6 +249,7 @@
     "debt_orders": "Total debt orders",
     "order_number": "Order no.",
     "orderer": "Ordered by",
+    "ordererCreatedBy": "Order created by",
     "orderer_full": "Ordered by",
     "recipient": "Recipient",
     "creator": "Created by",

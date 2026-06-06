@@ -29,17 +29,17 @@ function parseVND(str) {
 
 function getPaymentMethods(t) {
   return [
-    { value: 'CASH',          label: t('payment', 'cash_icon'),          needsBank: false },
-    { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon'), needsBank: true  },
-    { value: 'DEBT',          label: t('payment', 'debt_icon'),           needsBank: false },
+    { value: 'CASH', label: t('payment', 'cash_icon'), needsBank: false },
+    { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon'), needsBank: true },
+    { value: 'DEBT', label: t('payment', 'debt_icon'), needsBank: false },
   ];
 }
 
 function getTxMethodLabel(t) {
   return {
-    CASH:          t('payment', 'cash_icon'),
+    CASH: t('payment', 'cash_icon'),
     BANK_TRANSFER: t('payment', 'bank_transfer_icon'),
-    DEBT:          t('payment', 'debt_icon'),
+    DEBT: t('payment', 'debt_icon'),
   };
 }
 
@@ -85,8 +85,9 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
   };
 
   const fillRemaining = () => {
-    setAmount(String(Math.ceil(remaining)));
-    setAmountDisplay(formatPrice(remaining).replace(' đ', ''));
+    const rounded = Math.round(remaining);
+    setAmount(String(rounded));
+    setAmountDisplay(formatVND(String(rounded))); // ← dùng số đã làm tròn
   };
 
   const handleSubmit = async () => {
@@ -111,11 +112,11 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
         needsBank ? bankName.trim() : undefined,
         needsBank ? txRef.trim() : undefined,
       );
-      toast(t('payment','record_success'), 'success');
+      toast(t('payment', 'record_success'), 'success');
       if (onSuccess) onSuccess();
       onClose();
     } catch (e) {
-      toast(e.response?.data?.message || t('payment','record_error'), 'error');
+      toast(e.response?.data?.message || t('payment', 'record_error'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +129,7 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
           <div className="flex items-center gap-2">
             <DollarSign size={16} className="text-[#C9A84C]" />
-            <h2 className="text-sm font-bold text-[#1C1C1E]">{t('payment','record_payment')}</h2>
+            <h2 className="text-sm font-bold text-[#1C1C1E]">{t('payment', 'record_payment')}</h2>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-xl flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3]">
             <X size={15} />
@@ -139,7 +140,7 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
           {/* Order summary */}
           <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 grid grid-cols-2 gap-2 text-xs">
             <div>
-              <p className="text-[#8E8878]">{t('order','order')}</p>
+              <p className="text-[#8E8878]">{t('order', 'order')}</p>
               <p className="font-bold text-[#1C1C1E]">{order?.orderCode}</p>
             </div>
             <div>
@@ -191,11 +192,10 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
                 <button
                   key={m.value}
                   onClick={() => setMethod(m.value)}
-                  className={`py-2 px-2 rounded-xl text-[11px] font-semibold border-2 transition-all text-center ${
-                    method === m.value
+                  className={`py-2 px-2 rounded-xl text-[11px] font-semibold border-2 transition-all text-center ${method === m.value
                       ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#8B6914]'
                       : 'border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C]/50'
-                  }`}
+                    }`}
                 >
                   {m.label}
                 </button>
@@ -301,7 +301,7 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
           <button onClick={handleSubmit} disabled={submitting || !amount}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#C9A84C] text-white rounded-xl text-sm font-semibold hover:bg-[#A07830] transition-colors disabled:opacity-50">
             {submitting ? <Loader2 size={14} className="animate-spin" /> : <Banknote size={14} />}
-{submitting ? t('common', 'processing') : t('common', 'confirm')}
+            {submitting ? t('common', 'processing') : t('common', 'confirm')}
           </button>
         </div>
       </div>

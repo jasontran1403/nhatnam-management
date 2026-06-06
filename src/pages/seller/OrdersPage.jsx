@@ -628,7 +628,7 @@ export default function OrdersPage() {
                       <tr>
                         <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.size === orders.length && orders.length > 0} onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} /></th>
                         {[t('order', 'order_code'), 'Thời gian', t('customer', 'customer'), 'Kho', t('common', 'status'), 'PT Thanh toán',
-                          'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hoá đơn', t('common', 'actions')]
+                          'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hóa đơn', t('common', 'actions')]
                           .map(h => (
                             <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                           ))}

@@ -1,6 +1,3 @@
-// src/hooks/useWebSocket.js
-// Mục 2 fix: subscribe /topic/notifications/{role}/{userId}
-// Singleton WS — 1 kết nối duy nhất dù nhiều component dùng hook này
 import { useEffect, useRef } from 'react';
 
 let _SockJS = null;
@@ -38,8 +35,15 @@ const RETRY_MS  = 6000;
 
 const _subscribers = new Map();
 let _subIdSeq = 0;
+const _seenIds = new Set();
 
 function broadcast(msg) {
+  const key = msg.id;
+  if (key) {
+    if (_seenIds.has(key)) return;
+    _seenIds.add(key);
+    setTimeout(() => _seenIds.delete(key), 10000);
+  }
   _subscribers.forEach(cb => { try { cb(msg); } catch (_) {} });
 }
 
@@ -50,10 +54,10 @@ async function connect(role, token) {
   try {
     await loadLibs();
 
-    // Lấy userId hiện tại
     let userId = null;
     try {
       const me = JSON.parse(localStorage.getItem('user'));
+      console.log('[useWebSocket] current user:', me);
       userId = me?.userId;
     } catch (_) {}
 
@@ -64,24 +68,21 @@ async function connect(role, token) {
     client.connect(
       { Authorization: `Bearer ${token}` },
       () => {
-        _retries   = 0;
-        _client    = client;
+        _retries    = 0;
+        _client     = client;
         _connecting = false;
 
-        // Subscribe topic chính: role/userId (đúng role, đúng user)
         if (userId) {
           client.subscribe(`/topic/notifications/${role.toLowerCase()}/${userId}`, frame => {
             try { broadcast(JSON.parse(frame.body)); } catch (_) {}
           });
         }
-
-        // Subscribe broadcast topic của role (sendToRole — không có userId)
         client.subscribe(`/topic/notifications/${role.toLowerCase()}`, frame => {
           try { broadcast(JSON.parse(frame.body)); } catch (_) {}
         });
       },
       () => {
-        _client    = null;
+        _client     = null;
         _connecting = false;
         _retries++;
         if (_retries < MAX_RETRY) setTimeout(() => connect(role, token), RETRY_MS);
@@ -94,11 +95,11 @@ async function connect(role, token) {
 
 function disconnect() {
   try { _client?.disconnect?.(); } catch (_) {}
-  _client    = null;
+  _client     = null;
   _connecting = false;
-  _retries   = 0;
-  _connRole  = null;
-  _connToken = null;
+  _retries    = 0;
+  _connRole   = null;
+  _connToken  = null;
 }
 
 export default function useWebSocket(role, token, onMessage) {
@@ -108,6 +109,7 @@ export default function useWebSocket(role, token, onMessage) {
   useEffect(() => {
     if (!role || !token) return;
 
+    // Chỉ reconnect khi role/token thực sự thay đổi
     if (_connRole !== role || _connToken !== token) {
       disconnect();
       _connRole  = role;
@@ -117,12 +119,12 @@ export default function useWebSocket(role, token, onMessage) {
     const id = ++_subIdSeq;
     _subscribers.set(id, msg => onMsgRef.current?.(msg));
 
-    const timer = setTimeout(() => connect(role, token), 150);
+    connect(role, token);
 
     return () => {
-      clearTimeout(timer);
       _subscribers.delete(id);
-      if (_subscribers.size === 0) disconnect();
+      // KHÔNG disconnect ở đây — giữ connection sống
+      // Chỉ disconnect khi role/token đổi (xử lý ở lần effect tiếp theo)
     };
   }, [role, token]);
 }

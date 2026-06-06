@@ -121,7 +121,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   ];
   const finalAmount = Number(order?.finalAmount || 0);
   const alreadyPaid = Number(order?.paidAmount || 0);
-  const remaining = finalAmount - alreadyPaid;
+  const remaining = Math.round(finalAmount - alreadyPaid);
   const [amountInput, setAmountInput] = useState('');
   const [hasDeadline, setHasDeadline] = useState(false);
   const [deadlineDays, setDeadlineDays] = useState('');
@@ -191,7 +191,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] text-xs font-medium">₫</span>
               <input type="text" inputMode="numeric" value={amountInput} onChange={handleAmountChange} placeholder="0" autoFocus
                 className="w-full pl-7 pr-28 py-3 border border-[#E8DDD0] rounded-xl text-sm font-bold text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/20" />
-              <button onClick={() => setAmountInput(new Intl.NumberFormat('vi-VN').format(remaining))}
+              <button onClick={() => setAmountInput(new Intl.NumberFormat('vi-VN').format(Math.round(remaining)))}
                 className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] font-semibold hover:bg-[#C9A84C]/20 transition-colors">
                 {t('common', 'all')}
               </button>
@@ -333,13 +333,17 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
   const { t } = useLang();
   const isThisLoading = invoiceLoadingId === order.id;
   const isOtherLoading = !!invoiceLoadingId && !isThisLoading;
+  const isCompleted = order.status === 'COMPLETED';  // ← thêm dòng này
+
   return (
-    <button onClick={e => { e.stopPropagation(); onInvoice(order.id, e); }} disabled={!!invoiceLoadingId}
-      title={isThisLoading ? t('common', 'processing') : isOtherLoading ? t('status', 'pending_other') : t('document', 'invoice')}
+    <button onClick={e => { e.stopPropagation(); onInvoice(order.id, e); }}
+      disabled={!!invoiceLoadingId || isCompleted}  // ← thêm isCompleted
+      title={isThisLoading ? t('common', 'processing') : isOtherLoading ? t('status', 'pending_other') : isCompleted ? t('status', 'completed') : t('document', 'invoice')}
       className={`relative p-1.5 rounded-lg border transition-all duration-200
         ${isThisLoading ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1'
           : isOtherLoading ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
-            : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
+            : isCompleted ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'  // ← thêm case này
+              : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
       {isThisLoading ? <BtnSpinner size={13} colorClass="border-[#C9A84C] !border-t-transparent" /> : <FileText size={13} />}
       {isThisLoading && <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md pointer-events-none z-10">{t('common', 'processing')}</span>}
     </button>
@@ -707,7 +711,7 @@ export default function AccountantOrdersPage() {
                           checked={selectedIds.size === orders.length && orders.length > 0}
                           onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} />
                       </th>
-                      {[t('order', 'order_code'), t('common', 'date'), t('customer', 'customer'), t('warehouse', 'warehouse'), t('common', 'status'), t('payment', 'payment_method'), t('order', 'total_paid'), t('order', 'orderer'), t('document', 'document'), t('document', 'invoice'), t('common', 'actions')].map(h => (
+                      {[t('order', 'order_code'), t('common', 'date'), t('customer', 'customer'), t('warehouse', 'warehouse'), t('common', 'status'), t('payment', 'payment_method'), t('order', 'total_paid'), t('order', 'ordererCreatedBy'), t('document', 'document'), t('document', 'invoice'), t('common', 'actions')].map(h => (
                         <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>

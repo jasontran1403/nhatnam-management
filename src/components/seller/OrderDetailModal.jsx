@@ -202,7 +202,7 @@ function PartialPaymentModal({ order, onClose, onSuccess }) {
   const [rawInput, setRawInput] = useState('');
   const alreadyPaid = Number(order.paidAmount || 0);
   const finalAmount = Number(order.finalAmount || 0);
-  const remaining = finalAmount - alreadyPaid;
+  const remaining = Math.round(finalAmount - alreadyPaid);
   const handleInput = (e) => { const digits = e.target.value.replace(/\D/g, ''); setRawInput(digits); };
   const paidAmount = Number(rawInput) || 0;
   const afterPay = alreadyPaid + paidAmount;

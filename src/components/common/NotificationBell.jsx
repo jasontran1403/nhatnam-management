@@ -73,6 +73,7 @@ export default function NotificationBell({ role, token }) {
 
   // WebSocket: nhận thông báo realtime
   useWebSocket(role, token, (msg) => {
+    console.log('[NotificationBell] received msg:', msg);
     // Add to top of list
     setNotifications(prev => [{
       id: msg.id || Date.now(),
