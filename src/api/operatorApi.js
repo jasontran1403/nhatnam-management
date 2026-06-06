@@ -8,6 +8,17 @@ export const operatorApi = {
   updateCategory: (id, data) => api.put(`/api/operator/categories/${id}`, data),
   deleteCategory: (id) => api.delete(`/api/operator/categories/${id}`),
 
+  getIngredientWarehouses: () => api.get('/api/operator/ingredient-warehouses'),
+  getWarehousesOfIngredient: (id) => api.get(`/api/operator/ingredients/${id}/warehouses`),
+  assignIngredientWarehouses: (id, warehouseIds) => api.put(`/api/operator/ingredients/${id}/warehouses`, warehouseIds),
+  addIngredientToWarehouse: (id, warehouseId) => api.post(`/api/operator/ingredients/${id}/warehouses/${warehouseId}`),
+  removeIngredientFromWarehouse: (id, warehouseId) => api.delete(`/api/operator/ingredients/${id}/warehouses/${warehouseId}`),
+  getIngredientsByWarehouse: (warehouseId) => api.get(`/api/operator/warehouses/${warehouseId}/ingredients`),
+  getWarehouses: () => api.get('/api/operator/warehouses'),
+
+  // Warehouses (nếu chưa có)
+  getWarehouses: () => api.get('/api/operator/warehouses'),
+
   // ── SubCategories (bảng sub_categories riêng) ───────────────────────────
   // data: { name, categoryId, imageUrl }
   getAllSubCategories: () => api.get('/api/operator/subcategories'),
