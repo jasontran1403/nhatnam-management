@@ -38,6 +38,7 @@ import HrPage from '../pages/hr/HrPage';
 import HrSalaryStatusPage from '../pages/hr/HrSalaryStatusPage';
 
 // Seller
+import SellerDashboardPage from '../pages/seller/SellerDashboardPage';
 import POSPage from '../pages/seller/POSPage';
 import OrdersPage from '../pages/seller/OrdersPage';
 import DraftOrdersPage from '../pages/seller/DraftOrdersPage';
@@ -75,7 +76,7 @@ import QuotationPage from '../pages/seller/QuotationPage';
 function RootRedirect() {
   let user = null;
   try { user = JSON.parse(localStorage.getItem('user')); } catch { }
-  const path = user?.role ? (ROLE_DEFAULT_PATH[user.role] || '/seller/pos') : '/login';
+  const path = user?.role ? (ROLE_DEFAULT_PATH[user.role] || '/seller/dashboard') : '/login';
   return <Navigate to={path} replace />;
 }
 
@@ -108,7 +109,8 @@ export default function AppRoutes() {
       {/* ── SELLER */}
       <Route path="/seller"
         element={<TranslatedLayout rawNav={sellerNavRaw} allowedRoles={['ADMIN', 'OWNER', 'SELLER', 'SUPER_SELLER']} />}>
-        <Route index element={<Navigate to="/seller/pos" replace />} />
+        <Route index element={<Navigate to="/seller/dashboard" replace />} />
+        <Route path="dashboard" element={<SellerDashboardPage />} />
         <Route path="pos" element={<POSPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="drafts" element={<DraftOrdersPage />} />

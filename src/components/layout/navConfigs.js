@@ -50,6 +50,7 @@ export const hrNavRaw = [
 ];
 
 export const sellerNavRaw = [
+  { to: '/seller/dashboard', labelKey: 'seller_dashboard', icon: LayoutDashboard },
   { to: '/seller/pos', labelKey: 'pos', icon: ShoppingCart },
   { to: '/seller/orders', labelKey: 'orders', icon: ClipboardCheck },
   { to: '/seller/drafts', labelKey: 'drafts', icon: FileClock },
@@ -138,7 +139,7 @@ export const ROLE_DEFAULT_PATH = {
   OPERATOR: '/operator/products',
   SHIPPER: '/shipper/dashboard',
   FACTORY_WORKER: '/factory/dashboard',
-  SELLER: '/seller/pos',
-  SUPER_SELLER: '/seller/pos',
+  SELLER: '/seller/dashboard',
+  SUPER_SELLER: '/seller/dashboard',
   HR: '/hr/manage',
 };

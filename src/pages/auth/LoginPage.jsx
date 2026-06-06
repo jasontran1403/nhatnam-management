@@ -40,7 +40,7 @@ function getRedirectPath(role) {
     case 'OPERATOR':         return '/operator/products';
     case 'SHIPPER':          return '/shipper/dashboard';
     case 'HR':               return '/hr/manage';
-    default:                 return '/seller/pos';
+    default:                 return '/seller/dashboard';
   }
 }
 

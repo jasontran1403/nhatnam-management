@@ -57,7 +57,6 @@ async function connect(role, token) {
     let userId = null;
     try {
       const me = JSON.parse(localStorage.getItem('user'));
-      console.log('[useWebSocket] current user:', me);
       userId = me?.userId;
     } catch (_) {}
 

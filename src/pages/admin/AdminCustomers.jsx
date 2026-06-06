@@ -34,7 +34,7 @@ function getDebtUrgency(customer) {
 // ─── Receiver Infos Section (dùng chung cho cả admin và seller) ──────────────
 function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
   const toast = useToast();
-  const [receivers, setReceivers] = useState([]);
+  const [receiverInfos, setReceiverInfos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -46,7 +46,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
     setLoading(true);
     try {
       const res = await api.get(`${apiPrefix}/customers/${customerId}/receiver-infos`);
-      setReceivers(res.data?.data || []);
+      setReceiverInfos(res.data?.data.receiverInfos || []);
     } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [customerId, apiPrefix]);
@@ -144,7 +144,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-[#5C5C5C]">
-          Địa chỉ nhận hàng {receivers.length > 0 && `(${receivers.length})`}
+          Địa chỉ nhận hàng {receiverInfos.length > 0 && `(${receiverInfos.length})`}
         </label>
         {!adding && editingId === null && (
           <button
@@ -167,13 +167,13 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
 
       {loading ? (
         <div className="text-xs text-[#8E8878] text-center py-2">Đang tải...</div>
-      ) : receivers.length === 0 && !adding ? (
+      ) : receiverInfos.length === 0 && !adding ? (
         <div className="text-xs text-[#C4B9A8] text-center py-2 italic border border-dashed border-[#E8DDD0] rounded-xl">
           Chưa có địa chỉ nhận hàng
         </div>
       ) : (
         <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-          {receivers.map(r => (
+          {receiverInfos.map(r => (
             <div
               key={r.id}
               className={`rounded-xl border p-2.5 transition-colors

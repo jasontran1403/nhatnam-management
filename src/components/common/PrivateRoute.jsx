@@ -10,7 +10,7 @@ export default function PrivateRoute({ children, allowedRoles }) {
   if (allowedRoles) {
     const role = user.role ?? user.roles?.[0] ?? '';
     if (!allowedRoles.includes(role)) {
-      return <Navigate to={ROLE_DEFAULT_PATH[role] || '/seller/pos'} replace />;
+      return <Navigate to={ROLE_DEFAULT_PATH[role] || '/seller/dashboard'} replace />;
     }
   }
 
