@@ -40,12 +40,12 @@ function CategoryCombobox({ label, options, value, onChange, onCreateNew, placeh
       {label && <label className="block text-xs font-medium text-[#5C5C5C] mb-1">{label}</label>}
       <div className="flex items-center gap-1.5">
         <div onClick={handleOpen}
-          className={`flex-1 flex items-center gap-2 px-3 py-2.5 text-sm rounded-xl border cursor-pointer transition-all
-            ${disabled ? 'opacity-50 cursor-not-allowed bg-[#FAF7F2]' : 'bg-white hover:border-[#C9A84C]'}
-            ${open ? 'border-[#C9A84C] ring-1 ring-[#C9A84C]/20' : 'border-[#E8DDD0]'}`}>
+          className={`flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 text-sm rounded-xl border cursor-pointer transition-all
+    ${disabled ? 'opacity-50 cursor-not-allowed bg-[#FAF7F2]' : 'bg-white hover:border-[#C9A84C]'}
+    ${open ? 'border-[#C9A84C] ring-1 ring-[#C9A84C]/20' : 'border-[#E8DDD0]'}`}>
           {selected
             ? <><span className="flex-1 text-[#1C1C1E] truncate">{selected.name}</span>
-                <button onClick={handleClear} className="text-[#C4B9A8] hover:text-[#5C5C5C]"><X size={13} /></button></>
+              <button onClick={handleClear} className="text-[#C4B9A8] hover:text-[#5C5C5C]"><X size={13} /></button></>
             : <span className="flex-1 text-[#C4B9A8]">{placeholder}</span>}
           <Search size={13} className="text-[#C4B9A8] flex-shrink-0" />
         </div>
@@ -70,14 +70,14 @@ function CategoryCombobox({ label, options, value, onChange, onCreateNew, placeh
           <div className="overflow-y-auto" style={{ maxHeight: 196 }}>
             {filtered.length === 0
               ? <div className="px-3 py-3 text-xs text-[#C4B9A8] text-center">
-                  Không tìm thấy
-                  {query && onCreateNew && (
-                    <button onClick={() => { onCreateNew(query); setOpen(false); }}
-                      className="block mx-auto mt-1.5 text-[#C9A84C] font-medium hover:underline">
-                      + Tạo "{query}"
-                    </button>
-                  )}
-                </div>
+                Không tìm thấy
+                {query && onCreateNew && (
+                  <button onClick={() => { onCreateNew(query); setOpen(false); }}
+                    className="block mx-auto mt-1.5 text-[#C9A84C] font-medium hover:underline">
+                    + Tạo "{query}"
+                  </button>
+                )}
+              </div>
               : filtered.map(opt => (
                 <button key={opt.id} onClick={() => handleSelect(opt)}
                   className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-[#FAF7F2] transition-colors
@@ -596,12 +596,12 @@ export default function OperatorIngredientsPage() {
       operatorApi.getCategories().then(r => {
         setCategories(r.data?.data || []);
         if (created?.id) setForm(f => ({ ...f, categoryId: String(created.id), subCategoryId: '' }));
-      }).catch(() => {});
+      }).catch(() => { });
     } else {
       operatorApi.getAllSubCategories().then(r => {
         setSubCategories(r.data?.data || []);
         if (created?.id) setForm(f => ({ ...f, subCategoryId: String(created.id) }));
-      }).catch(() => {});
+      }).catch(() => { });
     }
   };
 
@@ -651,7 +651,7 @@ export default function OperatorIngredientsPage() {
 
             <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
               <Upload size={14} /> Import
-              <input type="file" accept=".xlsx,.csv" className="hidden" onChange={() => {}} />
+              <input type="file" accept=".xlsx,.csv" className="hidden" onChange={() => { }} />
             </label>
             <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
               <Download size={14} /> Export
