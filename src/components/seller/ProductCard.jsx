@@ -26,7 +26,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
     : null;
 
   const stock = product.stockQuantity != null ? Number(product.stockQuantity) : null;
-  const isOutOfStock = stock !== null && stock <= 0;
+  const isOutOfStock = stock !== null && stock == 0;
   // NOTE: No longer disabled when out of stock — allow adding to draft/cart
   // The order button in CartPanel will be disabled instead
   const remaining = stock !== null ? Math.max(0, stock) : null;

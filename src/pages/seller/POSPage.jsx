@@ -584,7 +584,7 @@ function CartPanel({
 
 
 // useCartHold — (giữ nguyên)
-function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
+function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired, setProducts) {
   const [heldByAll, setHeldByAll] = useState({});
   const wsRef = useRef(null);
   const subscriptionsRef = useRef([]);
@@ -605,8 +605,32 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
         wsRef.current = client;
         const stockSub = client.subscribe(`/topic/stock/${warehouseId}`, (frame) => {
           try {
-            const { ingredientId, heldQty } = JSON.parse(frame.body);
-            setHeldByAll(prev => ({ ...prev, [String(ingredientId)]: Number(heldQty) || 0 }));
+            const { ingredientId, heldQty, stockQuantity } = JSON.parse(frame.body);
+
+            // Cập nhật heldByAll như cũ
+            setHeldByAll(prev => ({
+              ...prev,
+              [String(ingredientId)]: Number(heldQty) || 0
+            }));
+
+            // Cập nhật stockQuantity thực tế trong products nếu server gửi kèm
+            if (stockQuantity != null && setProducts) {
+              setProducts(prev => prev.map(p => {
+                if (!p.ingredients?.length) return p;
+                const hasIng = p.ingredients.some(
+                  ing => String(ing.ingredientId) === String(ingredientId)
+                );
+                if (!hasIng) return p;
+                return {
+                  ...p,
+                  ingredients: p.ingredients.map(ing =>
+                    String(ing.ingredientId) === String(ingredientId)
+                      ? { ...ing, stockQuantity: Number(stockQuantity) }
+                      : ing
+                  )
+                };
+              }));
+            }
           } catch (_) { }
         });
         const storedUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
@@ -673,7 +697,7 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
   }, [warehouseId, cartItems, products]);
 
   useEffect(() => { return () => { cartHoldApi.release().catch(() => { }); }; }, []);
-  return { heldByAll };
+  return { heldByAll, setHeldByAll };
 }
 
 // Thay thế phần switch trong DeliveryTimeModal bằng dropdown
@@ -891,7 +915,14 @@ export default function POSPage() {
     }
   }, [toast, currentDraftId, navigate]);
 
-  const { heldByAll } = useCartHold(selectedWarehouse?.id, cartItems, products, user?.userId, handleCartExpired);
+  const { heldByAll, setHeldByAll } = useCartHold(
+    selectedWarehouse?.id,
+    cartItems,
+    products,
+    user?.userId,
+    handleCartExpired,
+    setProducts
+  );
 
   const ingStockMap = useMemo(() => {
     const map = {};
@@ -902,7 +933,8 @@ export default function POSPage() {
         if (map[key] == null) {
           const actualStock = Number(ing.stockQuantity);
           const held = Number(heldByAll[key] || 0);
-          map[key] = Math.max(0, actualStock - held);
+          // Cap held tối đa bằng actualStock để không âm khi qty > tồn
+          map[key] = actualStock - Math.min(held, actualStock);
         }
       }
     }
@@ -917,7 +949,7 @@ export default function POSPage() {
       const qtyPerProduct = Number(ing.quantity) || 1;
       const ingKey = String(ing.ingredientId);
       const ingAvailable = ingStockMap[ingKey] ?? 0;
-      const canMake = Math.floor((Math.max(0, ingAvailable) / qtyPerProduct) * 1000) / 1000;
+      const canMake = ingAvailable / qtyPerProduct;  // ← bỏ Math.max và Math.floor
       minCanMake = Math.min(minCanMake, canMake);
     }
     return minCanMake === Infinity ? Number(product.stockQuantity) : minCanMake;
@@ -1069,7 +1101,14 @@ export default function POSPage() {
       if (i.id !== cartId) return i;
       const prod = productsRef.current.find((p) => p.id === i.productId);
       let cappedQty = qty;
-      if (prod) { const effStock = calcEffectiveStock(prod); if (effStock !== null) cappedQty = Math.min(qty, Math.round((effStock + i.quantity) * 1000) / 1000); }
+      if (prod) {
+        const effStock = calcEffectiveStock(prod);
+        // CŨ: if (effStock !== null) cappedQty = Math.min(qty, Math.round((effStock + i.quantity) * 1000) / 1000);
+        // MỚI: chỉ cap khi effStock > 0, còn âm/0 thì cho nhập thoải mái (sẽ block ở nút tạo đơn)
+        if (effStock !== null && effStock > 0) {
+          cappedQty = Math.min(qty, Math.round((effStock + i.quantity) * 1000) / 1000);
+        }
+      }
       return { ...i, quantity: cappedQty };
     }));
   }, [calcEffectiveStock]);
@@ -1096,10 +1135,57 @@ export default function POSPage() {
   const removeItem = useCallback((cartId) => {
     setCartItems((prev) => {
       const item = prev.find(i => i.id === cartId);
-      if (item) { const remaining = prev.filter(i => i.id !== cartId && i.productId === item.productId); if (remaining.length === 0) setPriceChangedIds(ids => { const n = new Set(ids); n.delete(item.productId); return n; }); }
-      return prev.filter((i) => i.id !== cartId);
+      if (item) {
+        const remaining = prev.filter(i => i.id !== cartId && i.productId === item.productId);
+        if (remaining.length === 0) {
+          setPriceChangedIds(ids => { const n = new Set(ids); n.delete(item.productId); return n; });
+        }
+      }
+      const next = prev.filter((i) => i.id !== cartId);
+
+      // Tính lại held từ next cart cho TẤT CẢ ingredients
+      const newIngMap = {};
+      for (const ci of next) {
+        const prod = productsRef.current.find(p => p.id === ci.productId);
+        if (!prod?.ingredients?.length) continue;
+        const effectiveQty = (ci.saleType === 'BOX' && ci.unitsPerBox > 0)
+          ? ci.quantity * ci.unitsPerBox : ci.quantity;
+        for (const ing of prod.ingredients) {
+          const k = String(ing.ingredientId);
+          newIngMap[k] = (newIngMap[k] || 0) + effectiveQty * (Number(ing.quantity) || 1);
+        }
+      }
+
+      // Update heldByAll local ngay — không chờ WS round-trip
+      // Chỉ update các ingredient liên quan đến món bị xóa
+      const deletedProd = productsRef.current.find(p => p.id === item?.productId);
+      if (deletedProd?.ingredients?.length) {
+        setHeldByAll(prev => {
+          const updated = { ...prev };
+          for (const ing of deletedProd.ingredients) {
+            const k = String(ing.ingredientId);
+            // Set về giá trị mới từ next cart, hoặc 0 nếu không còn
+            updated[k] = newIngMap[k] ?? 0;
+          }
+          return updated;
+        });
+      }
+
+      // Flush server để đồng bộ
+      const holdItems = Object.entries(newIngMap).map(([ingredientId, qty]) => ({
+        ingredientId: Number(ingredientId), qty
+      }));
+      setTimeout(() => {
+        if (holdItems.length > 0) {
+          cartHoldApi.update(selectedWarehouse?.id, holdItems).catch(() => { });
+        } else {
+          cartHoldApi.release().catch(() => { });
+        }
+      }, 0);
+
+      return next;
     });
-  }, []);
+  }, [selectedWarehouse, setHeldByAll]);
 
   const clearCart = useCallback(() => {
     setCartItems([]); setCustomerState(null); setNotes(''); setDiscount(0);
@@ -1346,11 +1432,23 @@ export default function POSPage() {
   const hasOutOfStockItems = useMemo(() => {
     return cartItems.some(item => {
       const prod = products.find(p => p.id === item.productId);
-      if (!prod) return false;
-      const effStock = calcEffectiveStock(prod);
-      return effStock !== null && effStock <= 0;
+      if (!prod?.ingredients?.length) return false;
+      // Kiểm tra từng ingredient — so sánh actualStock với tổng held của mình
+      for (const ing of prod.ingredients) {
+        const key = String(ing.ingredientId);
+        const actualStock = Number(ing.stockQuantity);
+        const heldByOthers = Number(heldByAll[key] || 0);
+        // held của mình = qty trong giỏ * qtyPerUnit
+        const effectiveQty = (item.saleType === 'BOX' && item.unitsPerBox > 0)
+          ? item.quantity * item.unitsPerBox : item.quantity;
+        const myHeld = effectiveQty * (Number(ing.quantity) || 1);
+        // Tồn thực tế cho item này = actualStock - (heldByOthers - myHeld)
+        // Nếu myHeld > actualStock thì không đủ
+        if (myHeld > actualStock) return true;
+      }
+      return false;
     });
-  }, [cartItems, products, calcEffectiveStock]);
+  }, [cartItems, products, heldByAll]);
 
   const [updatingPrices, setUpdatingPrices] = useState(false);
 
