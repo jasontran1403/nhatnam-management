@@ -548,30 +548,42 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
             </div>
 
             {/* Tài xế giao hàng */}
-            {o.drivers && o.drivers.length > 0 && (
+            {o.deliveryInfo && o.deliveryInfo.length > 0 && (
               <div>
-                <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <p className="text-l font-bold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   🚚 Tài xế giao hàng
                 </p>
 
-                {/* Thời gian bắt đầu giao — lấy từ log DELIVERING */}
                 {(() => {
                   const deliveryTime = getDeliveryTimeFromLogs(o.logs);
                   return deliveryTime ? (
-                    <p className="text-xs text-[#8E8878] mb-2">
+                    <p className="text-md text-[#8E8878] mb-1">
                       ⏱️ Bắt đầu giao: <span className="font-medium text-[#1C1C1E]">{deliveryTime}</span>
                     </p>
                   ) : null;
                 })()}
 
-                <div className="flex flex-wrap gap-2">
-                  {o.drivers.flatMap(d => parseDriverName(d.name)).map((entry, i) => (
-                    <span key={i}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200">
-                      🧑‍✈️ {entry.count > 1 ? `${entry.name} x${entry.count} lượt` : entry.name}
-                    </span>
-                  ))}
-                </div>
+                {/* Nhóm theo loại xe */}
+                {Object.entries(
+                  o.deliveryInfo.reduce((acc, d) => {
+                    const key = d.type === 'TRUCK' ? 'Xe tải' : 'Xe máy';
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(d);
+                    return acc;
+                  }, {})
+                ).map(([type, drivers]) => (
+                  <div key={type} className="mt-1.5">
+                    <p className="text-md text-[#8E8878] mb-1.5">{type === 'Xe tải' ? '🚛' : '🛵'} Loại: <span className="font-semibold text-[#1C1C1E]">{type}</span></p>
+                    <div className="flex flex-wrap gap-2">
+                      {drivers.map((d, i) => (
+                        <span key={i}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200">
+                          {d.trips > 1 ? `${d.name} x${d.trips} lượt` : d.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

@@ -218,7 +218,7 @@ export function Tr({ children, onClick, className = '' }) {
 // ── Format helpers ────────────────────────────────────────────────────────────
 
 export const formatCurrency = (v) =>
-  new Intl.NumberFormat('vi-VN').format(Number(v || 0)) + '₫';
+  new Intl.NumberFormat('vi-VN').format(Math.round(Number(v || 0))) + '₫';
 
 export const formatNumber = (v) =>
   new Intl.NumberFormat('vi-VN').format(Number(v || 0));
