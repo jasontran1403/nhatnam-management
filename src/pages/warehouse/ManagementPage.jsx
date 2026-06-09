@@ -319,6 +319,7 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
 
 // ── Uncategorized section ─────────────────────────────────────────────────────
 function UncategorizedSection({ ingredients }) {
+  const { t } = useLang();
   const [expanded, setExpanded] = useState(true);
   if (ingredients.length === 0) return null;
   return (

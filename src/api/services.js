@@ -117,7 +117,8 @@ export const orderApi = {
     api.put(`/api/seller/orders/${id}/items`, data),
   exportIngredients: (params) =>
     api.get('/api/seller/orders/export-ingredients', { params, responseType: 'blob' }),
-
+  exportDeliveryReport: (params) =>
+    api.get('/api/seller/orders/export-delivery-report', { params, responseType: 'blob' }),
 };
 
 // ─── Draft Order API ──────────────────────────────────────────────────────────

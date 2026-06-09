@@ -324,6 +324,37 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
       return s + price * Number(item.quantity ?? 1);
     }, 0);
 
+  function parseDriverName(rawName) {
+    if (!rawName?.trim()) return [];
+
+    // Split bằng + hoặc - (có hoặc không có khoảng trắng)
+    const parts = rawName.split(/\s*[-+]\s*/).map(p => p.trim()).filter(Boolean);
+
+    if (parts.length === 0) return [];
+    if (parts.length === 1) return [{ name: parts[0], count: 1 }];
+
+    // Kiểm tra tất cả các phần có giống nhau không (case-insensitive)
+    const normalized = parts.map(p => p.toLowerCase());
+    const allSame = normalized.every(p => p === normalized[0]);
+
+    if (allSame) {
+      // Capitalize first letter
+      const name = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+      return [{ name, count: parts.length }];
+    }
+
+    // Khác nhau → từng người 1 lượt
+    return parts.map(p => ({ name: p, count: 1 }));
+  }
+
+  // ── Helper: lấy thời gian giao từ logs (action = DELIVERING) ─────────────────
+  function getDeliveryTimeFromLogs(logs) {
+    if (!logs?.length) return null;
+    const deliveringLog = logs.find(l => l.action === 'DELIVERING');
+    if (!deliveringLog?.createdAt) return null;
+    return formatLogDate(deliveringLog.createdAt);
+  }
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -522,11 +553,22 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                 <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   🚚 Tài xế giao hàng
                 </p>
+
+                {/* Thời gian bắt đầu giao — lấy từ log DELIVERING */}
+                {(() => {
+                  const deliveryTime = getDeliveryTimeFromLogs(o.logs);
+                  return deliveryTime ? (
+                    <p className="text-xs text-[#8E8878] mb-2">
+                      ⏱️ Bắt đầu giao: <span className="font-medium text-[#1C1C1E]">{deliveryTime}</span>
+                    </p>
+                  ) : null;
+                })()}
+
                 <div className="flex flex-wrap gap-2">
-                  {o.drivers.map(d => (
-                    <span key={d.id}
+                  {o.drivers.flatMap(d => parseDriverName(d.name)).map((entry, i) => (
+                    <span key={i}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200">
-                      🧑‍✈️ {d.name}
+                      🧑‍✈️ {entry.count > 1 ? `${entry.name} x${entry.count} lượt` : entry.name}
                     </span>
                   ))}
                 </div>

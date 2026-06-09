@@ -1,15 +1,4 @@
 // src/pages/seller/OrdersPage.jsx
-// DIFF vs original: thêm nút hủy đơn
-// 1. import Ban, CancelOrderModal
-// 2. CANCELLABLE_STATUSES
-// 3. state cancelTarget, cancelLoading
-// 4. handleCancelConfirm
-// 5. StatusActionButtons: thêm onCancel + nút Hủy đơn
-// 6. Desktop table: onCancel → setCancelTarget(o)
-// 7. Mobile cards: onCancel → setCancelTarget(o)
-// 8. Chứng từ seller: bỏ text "Chưa có" → span rỗng
-// 9. <CancelOrderModal> ở cuối
-
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
@@ -24,7 +13,7 @@ import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
   ChevronDown, DollarSign, X, AlertCircle, Calendar,
-  Download, FileText, List, Ban, Edit2,
+  Download, FileText, List, Ban, Edit2, FileBarChart,
 } from 'lucide-react';
 import EditOrderModal from '../../components/seller/EditOrderModal';
 
@@ -39,8 +28,6 @@ function formatDateShort(ts) {
   return new Date(ts).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 function parseVND(str) { return Number(String(str).replace(/[^0-9]/g, '')); }
-
-
 
 function BtnSpinner({ size = 13, colorClass = 'border-current' }) {
   return <div style={{ width: size, height: size }} className={`border-2 ${colorClass} border-t-transparent rounded-full animate-spin flex-shrink-0`} />;
@@ -132,7 +119,7 @@ function PaymentMethodCell({ value, onSave, disabled }) {
   );
 }
 
-// ── PartialPaymentModal — giữ nguyên từ original (document 23) ───────────────
+// ── PartialPaymentModal — giữ nguyên ───────────────
 function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const finalAmount = Number(order?.finalAmount || 0); const alreadyPaid = Number(order?.paidAmount || 0); const remaining = finalAmount - alreadyPaid;
   const [amountInput, setAmountInput] = useState(''); const [hasDeadline, setHasDeadline] = useState(false);
@@ -150,7 +137,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
 
   const handleAmountChange = (e) => { const raw = e.target.value.replace(/[^0-9]/g, ''); setAmountInput(raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : ''); setError(''); };
   const handleConfirm = () => {
-    if (!paidNum || paidNum <= 0) { setError(t('payment', 'enter_paid_amount_required')); return; }
+    if (!paidNum || paidNum <= 0) { setError('Vui lòng nhập số tiền thu được'); return; }
     if (paidNum > remaining) { setError(`Số tiền không được vượt quá số còn lại (${formatPrice(remaining)})`); return; }
     if (hasDeadline && (!deadlineDays || Number(deadlineDays) <= 0)) { setError('Vui lòng nhập số ngày hạn thanh toán hợp lệ'); return; }
     if (isBankTransfer && !bankName.trim()) { setError('Vui lòng nhập tên ngân hàng'); return; }
@@ -197,7 +184,11 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-[#1C1C1E]">Phương thức thanh toán lần này</label>
             <div className="grid grid-cols-3 gap-2">
-              {PAYMENT_METHODS.map(m => <button key={m.value} onClick={() => setPaymentMethod(m.value)} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${paymentMethod === m.value ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C]'}`}>{m.label}</button>)}
+              {[
+                { value: 'CASH', label: 'Tiền mặt' },
+                { value: 'BANK_TRANSFER', label: 'Chuyển khoản' },
+                { value: 'DEBT', label: 'Công nợ' },
+              ].map(m => <button key={m.value} onClick={() => setPaymentMethod(m.value)} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${paymentMethod === m.value ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C]'}`}>{m.label}</button>)}
             </div>
           </div>
           {isBankTransfer && (
@@ -243,31 +234,6 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   );
 }
 
-// ── StatusActionButtons — THÊM onCancel + onEdit ──────────────────────────────
-// function StatusActionButtons({ order, onPendingPayment, onComplete, onPartialPayment, onCancel, onEdit, loading }) {
-//   const { status, paymentMethod } = order;
-//   const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
-//   if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
-
-//   const canPendingPayment = status === 'DELIVERING' && paymentMethod === 'DEBT';
-//   const canComplete = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
-//   const canPartial = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
-//   const canCancel = CANCELLABLE_STATUSES.has(status);
-//   const canEdit = status === 'PREPARING';
-
-//   if (!canPendingPayment && !canComplete && !canPartial && !canCancel && !canEdit) return null;
-
-//   return (
-//     <div className="flex items-center gap-1.5 flex-wrap">
-//       {canEdit && <button onClick={e => { e.stopPropagation(); onEdit?.(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-indigo-400 !border-t-indigo-600" /> : <><Edit2 size={10} /> Sửa đơn</>}</button>}
-//       {canPendingPayment && <button onClick={e => { e.stopPropagation(); onPendingPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-orange-400 !border-t-orange-600" /> : <><CreditCard size={10} /> Chờ TT</>}</button>}
-//       {canPartial && <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-blue-400 !border-t-blue-600" /> : <><DollarSign size={10} /> Thu tiền</>}</button>}
-//       {canComplete && <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-emerald-400 !border-t-emerald-600" /> : <><CheckCircle size={10} /> Hoàn thành</>}</button>}
-//       {canCancel && <button onClick={e => { e.stopPropagation(); onCancel(); }} disabled={loading} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">{loading ? <BtnSpinner size={10} colorClass="border-red-400 !border-t-red-500" /> : <><Ban size={10} /> Hủy đơn</>}</button>}
-//     </div>
-//   );
-// }
-
 function StatusActionButtons({ order, onCancel, onEdit, loading, disabled }) {
   const { status } = order;
   const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
@@ -278,7 +244,6 @@ function StatusActionButtons({ order, onCancel, onEdit, loading, disabled }) {
 
   if (!canEdit && !canCancel) return null;
 
-  // Không có quyền thao tác → hiện badge xem thôi
   if (disabled) return <span className="text-[10px] text-[#C4B9A8] italic">Chỉ xem</span>;
 
   return (
@@ -356,14 +321,11 @@ export default function OrdersPage() {
   const [exportDateRange, setExportDateRange] = useState({ from: null, to: null });
   const [showExportPicker, setShowExportPicker] = useState(false);
 
-  // Ingredient export (chỉ cho thuytm)
-  const [showIngredientModal, setShowIngredientModal] = useState(false);
-  const [ingredientDateRange, setIngredientDateRange] = useState({ from: null, to: null });
-  const [exportingIngredients, setExportingIngredients] = useState(false);
-  const [showCustomerProductModal, setShowCustomerProductModal] = useState(false);
-  const [customerProductDateRange, setCustomerProductDateRange] = useState({ from: null, to: null });
-  const [exportingCustomerProduct, setExportingCustomerProduct] = useState(false);
-
+  // NEW: Report modal state (gộp 3 loại báo cáo)
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState('INGREDIENT'); // 'INGREDIENT', 'CUSTOMER_PRODUCT', 'DELIVERY'
+  const [reportDateRange, setReportDateRange] = useState({ from: null, to: null });
+  const [exportingReport, setExportingReport] = useState(false);
 
   const STATUS_MAP = {
     PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
@@ -371,21 +333,11 @@ export default function OrdersPage() {
     PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
     READY: { label: t('status', 'ready'), bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle },
     DELIVERING: { label: t('status', 'delivering_short'), bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
-    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CreditCard },
+    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50 text-orange-600 border-orange-200', icon: CreditCard },
     COMPLETED: { label: t('status', 'completed'), bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle },
     CANCELLED: { label: t('status', 'cancelled'), bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
     FAILED: { label: t('status', 'rejected_short'), bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
   };
-  const PAYMENT_METHOD_MAP = {
-    CASH: { label: t('payment', 'cash_icon'), bg: 'bg-green-50  text-green-700  border-green-200' },
-    BANK_TRANSFER: { label: t('payment', 'bank_transfer_icon'), bg: 'bg-blue-50   text-blue-700   border-blue-200' },
-    DEBT: { label: t('payment', 'debt_icon'), bg: 'bg-orange-50 text-orange-700 border-orange-200' },
-  };
-  const PAYMENT_METHODS = [
-    { value: 'CASH', label: t('payment', 'cash_icon') },
-    { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon') },
-    { value: 'DEBT', label: t('payment', 'debt_icon') },
-  ];
   const FILTER_TABS = [
     { value: 'ALL', label: t('common', 'all') },
     { value: 'DELIVERING', label: t('status', 'delivering_short') },
@@ -396,7 +348,6 @@ export default function OrdersPage() {
     { value: 'CANCELLED', label: t('status', 'cancelled') },
   ];
 
-  // ── THÊM ─────────────────────────────────────────────────────────────────
   const [cancelTarget, setCancelTarget] = useState(null); const [cancelLoading, setCancelLoading] = useMinLoading();
   const [editTarget, setEditTarget] = useState(null);
 
@@ -408,7 +359,7 @@ export default function OrdersPage() {
   }, []);
 
   const currentId = currentUser.userId || 0;
-  const isThuytm = currentId === 15; // Replace 1 with the actual user ID for thuytm if different
+  const isThuytm = currentId === 15;
 
   const isSuperSeller = currentUser.role === 'SUPER_SELLER';
 
@@ -417,21 +368,17 @@ export default function OrdersPage() {
     return o.createdByUserId === currentUser.userId;
   }, [isSuperSeller, currentUser.userId]);
 
-
   const fetchOrders = useCallback(async (p = 0) => {
     setLoading(true);
     try {
       const params = { page: p, size: pageSize };
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (search.trim()) {
-        // Có keyword → gửi lên server, KHÔNG gửi from/to
         params.keyword = search.trim();
       } else {
-        // Không có keyword → filter ngày bình thường
         if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
         if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
       }
-      // SELLER chỉ lấy đơn của chính mình
       const res = await orderApi.getMyOrders(params);
       let content = res.data?.data?.content || [];
       if (search.trim()) { const q = search.toLowerCase(); content = content.filter(o => o.orderCode?.toLowerCase().includes(q) || o.customerName?.toLowerCase().includes(q) || o.customerPhone?.includes(q)); }
@@ -444,7 +391,6 @@ export default function OrdersPage() {
   useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 500); return () => clearTimeout(t); }, [searchInput]);
 
   const handleExport = async () => {
-    // Nếu chưa chọn ngày → mở picker trước
     if (!exportDateRange.from || !exportDateRange.to) {
       setShowExportPicker(true);
       return;
@@ -461,43 +407,53 @@ export default function OrdersPage() {
     finally { setExporting(false); setShowExportPicker(false); }
   };
 
-  const handleIngredientExport = async () => {
-    if (!ingredientDateRange.from || !ingredientDateRange.to) {
+  // NEW: Hàm xử lý xuất báo cáo tổng hợp
+  const handleReportExport = async () => {
+    if (!reportDateRange.from || !reportDateRange.to) {
       toast('Vui lòng chọn khoảng thời gian', 'error');
       return;
     }
-    setExportingIngredients(true);
+    setExportingReport(true);
     try {
-      const params = {
-        from: new Date(ingredientDateRange.from).setHours(0, 0, 0, 0),
-        to: new Date(ingredientDateRange.to).setHours(23, 59, 59, 999),
-      };
-      const res = await orderApi.exportIngredients(params);
-      downloadBlob(res.data, `nguyen-lieu-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
-      setShowIngredientModal(false);
-      setIngredientDateRange({ from: null, to: null });
-    } catch { toast('Không thể xuất báo cáo nguyên liệu', 'error'); }
-    finally { setExportingIngredients(false); }
-  };
+      const fromDate = new Date(reportDateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      const toDate = new Date(reportDateRange.to);
+      toDate.setHours(23, 59, 59, 999);
 
-  const handleCustomerProductExport = async () => {
-    setExportingCustomerProduct(true);
-    try {
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const from = customerProductDateRange.from
-        ? new Date(customerProductDateRange.from).toISOString().slice(0, 10)
-        : today;
-      const to = customerProductDateRange.to
-        ? new Date(customerProductDateRange.to).toISOString().slice(0, 10)
-        : today;
-      const res = await orderApi.exportCustomerProductReport({ from, to });
-      downloadBlob(res.data, `bao-cao-kh-sp-${from}_${to}.xlsx`);
-      setShowCustomerProductModal(false);
-      setCustomerProductDateRange({ from: null, to: null });
-    } catch {
-      toast('Không thể xuất báo cáo KH×SP', 'error');
+      let res;
+      let filename = '';
+
+      if (reportType === 'INGREDIENT') {
+        res = await orderApi.exportIngredients({
+          from: fromDate.getTime(),
+          to: toDate.getTime(),
+        });
+        filename = `nguyen-lieu-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
+      } else if (reportType === 'CUSTOMER_PRODUCT') {
+        res = await orderApi.exportCustomerProductReport({
+          from: fromDate.toISOString().slice(0, 10),
+          to: toDate.toISOString().slice(0, 10),
+        });
+        filename = `bao-cao-kh-sp-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
+      } else if (reportType === 'DELIVERY') {
+        res = await orderApi.exportDeliveryReport({
+          from: fromDate.getTime(),
+          to: toDate.getTime(),
+        });
+        filename = `bao-cao-giao-hang-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
+      }
+
+      if (res) {
+        downloadBlob(res.data, filename);
+        toast('Xuất báo cáo thành công', 'success');
+      }
+      setShowReportModal(false);
+      setReportDateRange({ from: null, to: null });
+    } catch (err) {
+      console.error(err);
+      toast('Không thể xuất báo cáo', 'error');
     } finally {
-      setExportingCustomerProduct(false);
+      setExportingReport(false);
     }
   };
 
@@ -550,7 +506,6 @@ export default function OrdersPage() {
     } catch (e) { toast(e?.response?.data?.message || 'Lỗi cập nhật', 'error'); } finally { setActionLoading(null); }
   };
 
-  // ── THÊM: hủy đơn ─────────────────────────────────────────────────────────
   const handleCancelConfirm = async (reason) => {
     if (!cancelTarget) return;
     setCancelLoading(true);
@@ -593,22 +548,14 @@ export default function OrdersPage() {
             {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
           </button>
 
-          {/* Export nguyên liệu — chỉ hiện cho thuytm */}
-          {isThuytm && (
-            <>
-              <button
-                onClick={() => setShowIngredientModal(true)}
-                title="Xuất báo cáo nguyên liệu"
-                className="p-2 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors shrink-0">
-                <List size={14} />
-              </button>
-              <button
-                onClick={() => setShowCustomerProductModal(true)}
-                title="Báo cáo KH × Sản phẩm"
-                className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors shrink-0">
-                <FileText size={14} />
-              </button>
-            </>
+          {/* NEW: Nút Báo cáo tổng hợp - thay thế 2 nút cũ */}
+          {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).userId === 15 && (
+            <button
+              onClick={() => setShowReportModal(true)}
+              title="Xuất báo cáo"
+              className="p-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors shrink-0">
+              <FileBarChart size={14} />
+            </button>
           )}
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
@@ -660,7 +607,6 @@ export default function OrdersPage() {
                             <td className="px-4 py-3">
                               <SellerBadge name={o.createdByName} />
                             </td>
-                            {/* Seller: chỉ xem chứng từ, không upload, không hiện text "Chưa có" */}
                             <td className="px-4 py-3">
                               {o.receiptFileUrl ? (
                                 <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
@@ -674,13 +620,11 @@ export default function OrdersPage() {
                                   onClick={async (e) => {
                                     e.stopPropagation();
                                     setDetailLoading(o.id);
-
                                     try {
                                       const [dr, lr] = await Promise.all([
                                         accountantApi.getOrderDetail(o.id),
                                         accountantApi.getOrderLogs(o.id),
                                       ]);
-
                                       setSelectedOrder({
                                         ...(dr.data?.data || o),
                                         logs: lr.data?.data || [],
@@ -694,10 +638,7 @@ export default function OrdersPage() {
                                   className="relative p-1.5 rounded-lg border bg-sky-50 text-sky-600 border-transparent hover:bg-sky-100 hover:scale-105 active:scale-95 transition-all duration-200"
                                 >
                                   {detailLoading === o.id ? (
-                                    <BtnSpinner
-                                      size={13}
-                                      colorClass="border-sky-400 !border-t-transparent"
-                                    />
+                                    <BtnSpinner size={13} colorClass="border-sky-400 !border-t-transparent" />
                                   ) : (
                                     <Search size={13} />
                                   )}
@@ -705,13 +646,6 @@ export default function OrdersPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                              {/* <StatusActionButtons order={o}
-                                onPendingPayment={() => handlePendingPayment(o.id)}
-                                onComplete={() => handleComplete(o.id)}
-                                onPartialPayment={() => setPartialOrder(o)}
-                                onCancel={() => setCancelTarget(o)}
-                                onEdit={() => setEditTarget(o)}
-                                loading={isActioning} /> */}
                               <StatusActionButtons
                                 order={o}
                                 onCancel={() => setCancelTarget(o)}
@@ -745,13 +679,6 @@ export default function OrdersPage() {
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                           <PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
-                          {/* <StatusActionButtons order={o}
-                            onPendingPayment={() => handlePendingPayment(o.id)}
-                            onComplete={() => handleComplete(o.id)}
-                            onPartialPayment={() => setPartialOrder(o)}
-                            onCancel={() => setCancelTarget(o)}
-                            onEdit={() => setEditTarget(o)}
-                            loading={isActioning} /> */}
                           <StatusActionButtons
                             order={o}
                             onCancel={() => setCancelTarget(o)}
@@ -834,79 +761,71 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Modal Export nguyên liệu (chỉ thuytm) */}
-      {showIngredientModal && (
+      {/* NEW: Modal báo cáo tổng hợp (thay thế 2 modal cũ) */}
+      {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowIngredientModal(false)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xuất báo cáo</p>
-                <h2 className="font-bold text-[#1C1C1E]">Nguyên liệu bán ra</h2>
+                <h2 className="font-bold text-[#1C1C1E]">Chọn loại báo cáo</h2>
               </div>
-              <button onClick={() => setShowIngredientModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+              <button onClick={() => setShowReportModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
             </div>
-            <p className="text-xs text-[#8E8878]">Tổng hợp nguyên liệu từ tất cả đơn hàng (không tính đơn hủy) trong khoảng thời gian đã chọn.</p>
-            <DateRangePicker
-              from={ingredientDateRange.from}
-              to={ingredientDateRange.to}
-              onChange={r => setIngredientDateRange(r)}
-              placeholder="Chọn khoảng ngày"
-            />
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => { setShowIngredientModal(false); setIngredientDateRange({ from: null, to: null }); }} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
+
+            {/* 3 lựa chọn báo cáo */}
+            <div className="grid grid-cols-3 gap-2">
               <button
-                onClick={handleIngredientExport}
-                disabled={exportingIngredients || !ingredientDateRange.from || !ingredientDateRange.to}
-                className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-600 disabled:opacity-50 flex items-center justify-center gap-2">
-                {exportingIngredients ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><List size={14} /> Xuất báo cáo</>}
+                onClick={() => setReportType('INGREDIENT')}
+                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${reportType === 'INGREDIENT' ? 'bg-violet-500 text-white border-violet-500' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-violet-300'}`}>
+                📦 Nguyên liệu
+              </button>
+              <button
+                onClick={() => setReportType('CUSTOMER_PRODUCT')}
+                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${reportType === 'CUSTOMER_PRODUCT' ? 'bg-rose-500 text-white border-rose-500' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-rose-300'}`}>
+                👥 KH × Sản phẩm
+              </button>
+              <button
+                onClick={() => setReportType('DELIVERY')}
+                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${reportType === 'DELIVERY' ? 'bg-blue-500 text-white border-blue-500' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-blue-300'}`}>
+                🚚 Giao hàng
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {showCustomerProductModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCustomerProductModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xuất báo cáo</p>
-                <h2 className="font-bold text-[#1C1C1E]">Khách hàng × Sản phẩm</h2>
-              </div>
-              <button onClick={() => setShowCustomerProductModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+            <div className="pt-2">
+              <p className="text-xs text-[#8E8878] mb-2">
+                {reportType === 'INGREDIENT' && 'Tổng hợp nguyên liệu từ tất cả đơn hàng (không tính đơn hủy).'}
+                {reportType === 'CUSTOMER_PRODUCT' && 'Tổng hợp sản lượng và doanh thu theo từng khách hàng.'}
+                {reportType === 'DELIVERY' && 'Báo cáo giao hàng theo tài xế, thời gian giao hàng thực tế.'}
+              </p>
+              <DateRangePicker
+                from={reportDateRange.from}
+                to={reportDateRange.to}
+                onChange={r => setReportDateRange(r)}
+                placeholder="Chọn khoảng ngày (mặc định: hôm nay)"
+              />
             </div>
-            <p className="text-xs text-[#8E8878]">
-              Tổng hợp sản lượng và doanh thu theo từng khách hàng. Không tính đơn hủy.
-              Nếu không chọn ngày, mặc định là <strong>hôm nay</strong>.
-            </p>
-            <DateRangePicker
-              from={customerProductDateRange.from}
-              to={customerProductDateRange.to}
-              onChange={r => setCustomerProductDateRange(r)}
-              placeholder="Mặc định: hôm nay"
-            />
+
             <div className="flex gap-2 pt-2">
               <button
-                onClick={() => { setShowCustomerProductModal(false); setCustomerProductDateRange({ from: null, to: null }); }}
+                onClick={() => { setShowReportModal(false); setReportDateRange({ from: null, to: null }); }}
                 className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">
                 Huỷ
               </button>
               <button
-                onClick={handleCustomerProductExport}
-                disabled={exportingCustomerProduct}
-                className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 disabled:opacity-50 flex items-center justify-center gap-2">
-                {exportingCustomerProduct
+                onClick={handleReportExport}
+                disabled={exportingReport || !reportDateRange.from || !reportDateRange.to}
+                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] disabled:opacity-50 flex items-center justify-center gap-2">
+                {exportingReport
                   ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
-                  : <><Download size={14} /> Xuất Excel</>}
+                  : <><Download size={14} /> Xuất báo cáo</>}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* THÊM: Modal hủy đơn */}
       {cancelTarget && (
         <CancelOrderModal
           order={cancelTarget}
@@ -916,7 +835,6 @@ export default function OrdersPage() {
         />
       )}
 
-      {/* THÊM: Modal sửa đơn hàng PREPARING */}
       <EditOrderModal
         open={!!editTarget}
         orderId={editTarget?.id}

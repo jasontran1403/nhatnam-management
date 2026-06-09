@@ -1,4 +1,5 @@
 // src/pages/operator/OperatorIngredientsPage.jsx
+// THAY ĐỔI: thêm nút xóa ingredient + confirm dialog
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -6,11 +7,54 @@ import { operatorApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
 import {
   Plus, Edit2, Search, X, Leaf, ImagePlus,
-  Download, Upload, Warehouse, Check, ChevronRight, ChevronDown, FolderOpen, Folder,
+  Download, Upload, Warehouse, Check, ChevronRight, ChevronDown,
+  FolderOpen, Folder, Trash2, AlertTriangle,
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const UNITS = ['kg', 'gram', 'lít', 'ml', 'cái', 'hộp', 'túi', 'chai'];
+
+// ── ConfirmDeleteModal ────────────────────────────────────────────────────────
+function ConfirmDeleteModal({ open, onClose, onConfirm, itemName, deleting }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={18} className="text-red-500" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#1C1C1E]">Xác nhận xóa</h3>
+              <p className="text-xs text-[#8E8878] mt-0.5">Hành động này không thể hoàn tác</p>
+            </div>
+          </div>
+          <p className="text-sm text-[#5C5C5C]">
+            Bạn có chắc muốn xóa nguyên liệu <strong>"{itemName}"</strong>?
+            <br />
+            <span className="text-xs text-[#8E8878]">
+              Các đơn hàng và giao dịch kho cũ vẫn giữ nguyên thông tin.
+            </span>
+          </p>
+        </div>
+        <div className="px-6 pb-6 flex gap-2">
+          <button onClick={onClose} disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2] disabled:opacity-50">
+            Huỷ
+          </button>
+          <button onClick={onConfirm} disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+            {deleting
+              ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <Trash2 size={14} />}
+            {deleting ? 'Đang xóa...' : 'Xóa nguyên liệu'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── CategoryCombobox ──────────────────────────────────────────────────────────
 function CategoryCombobox({ label, options, value, onChange, onCreateNew, placeholder = 'Tìm hoặc chọn...', disabled = false }) {
@@ -253,7 +297,8 @@ function WarehouseModal({ open, onClose, ingredient, warehouses, onSaved }) {
 }
 
 // ── IngredientRow ─────────────────────────────────────────────────────────────
-function IngredientRow({ ingredient, warehouses, onEdit, onManageWarehouse, imgSrc }) {
+// THAY ĐỔI: thêm prop onDelete + nút Xóa
+function IngredientRow({ ingredient, warehouses, onEdit, onManageWarehouse, onDelete, imgSrc }) {
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#FAF7F2] transition-colors group">
       <div className="w-7 h-7 rounded-lg border border-[#F0EBE3] bg-[#FAF7F2] flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -262,7 +307,6 @@ function IngredientRow({ ingredient, warehouses, onEdit, onManageWarehouse, imgS
           : <Leaf size={12} className="text-[#D3CFC8]" />}
       </div>
 
-      {/* Tên + mã hàng */}
       <div className="flex-1 min-w-0">
         <span className="text-sm font-medium text-[#1C1C1E]">{ingredient.name}</span>
         {ingredient.itemCode && (
@@ -272,19 +316,24 @@ function IngredientRow({ ingredient, warehouses, onEdit, onManageWarehouse, imgS
         )}
       </div>
 
-      {/* Đơn vị — cách bằng margin */}
       <span className="text-xs text-[#8E8878] flex-shrink-0 min-w-[40px] text-center">
         {ingredient.unit.toUpperCase()}
       </span>
 
-      {/* Spacer */}
       <div className="w-px h-4 bg-[#E8DDD0] flex-shrink-0" />
 
-      {/* Nút sửa */}
       <div className="flex items-center gap-1 flex-shrink-0">
         <button onClick={() => onEdit(ingredient)}
           className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all">
           <Edit2 size={10} /> Sửa
+        </button>
+        {/* [NEW] Nút xóa — ẩn mặc định, hiện khi hover row */}
+        <button
+          onClick={() => onDelete(ingredient)}
+          className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-transparent
+            text-[#C4B9A8] hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all
+            opacity-0 group-hover:opacity-100">
+          <Trash2 size={10} /> Xóa
         </button>
       </div>
     </div>
@@ -292,15 +341,16 @@ function IngredientRow({ ingredient, warehouses, onEdit, onManageWarehouse, imgS
 }
 
 // ── CategoryTree ──────────────────────────────────────────────────────────────
+// THAY ĐỔI: truyền onDelete xuống IngredientRow
 function CategoryTree({ categories, subCategories, ingredients, warehouses, search,
-  onEdit, onManageWarehouse, imgSrc }) {
+  onEdit, onManageWarehouse, onDelete, imgSrc }) {
 
   const [expandedCatId, setExpandedCatId] = useState(null);
   const [expandedSubIds, setExpandedSubIds] = useState(new Set());
 
   const toggleCat = (catId) => {
     setExpandedCatId(prev => prev === catId ? null : catId);
-    setExpandedSubIds(new Set()); // collapse tất cả sub khi đổi cat
+    setExpandedSubIds(new Set());
   };
 
   const toggleSub = (subId) => {
@@ -311,40 +361,36 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
     });
   };
 
-  // Lọc ingredient theo search
   const matchSearch = (ing) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return ing.name?.toLowerCase().includes(q) || ing.itemCode?.toLowerCase().includes(q);
   };
 
-  // Ingredient thuộc category nhưng không có subCategory
   const ingsOfCat = (catId) => ingredients.filter(i =>
     String(i.categoryId) === String(catId) && !i.subCategoryId && matchSearch(i)
   );
-
-  // Ingredient thuộc subCategory
   const ingsOfSub = (subId) => ingredients.filter(i =>
     String(i.subCategoryId) === String(subId) && matchSearch(i)
   );
-
-  // Ingredient không có category
   const ingsNoCat = ingredients.filter(i => !i.categoryId && matchSearch(i));
-
-  // SubCategories của 1 category
   const subsOfCat = (catId) => subCategories.filter(s => String(s.categoryId) === String(catId));
 
-  // Đếm tổng ingredient của category (bao gồm sub)
   const countCat = (catId) => {
     const direct = ingredients.filter(i => String(i.categoryId) === String(catId) && !i.subCategoryId && matchSearch(i)).length;
     const fromSubs = subsOfCat(catId).reduce((acc, s) => acc + ingsOfSub(s.id).length, 0);
     return direct + fromSubs;
   };
 
+  // Shared row renderer
+  const renderRow = (ing) => (
+    <IngredientRow key={ing.id} ingredient={ing} warehouses={warehouses}
+      onEdit={onEdit} onManageWarehouse={onManageWarehouse}
+      onDelete={onDelete} imgSrc={imgSrc} />
+  );
+
   return (
     <div className="bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden">
-
-      {/* Danh mục có tên */}
       {categories.map(cat => {
         const isExpanded = expandedCatId === cat.id;
         const subs = subsOfCat(cat.id);
@@ -353,7 +399,6 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
 
         return (
           <div key={cat.id} className="border-b border-[#F0EBE3] last:border-b-0">
-            {/* Category header */}
             <button onClick={() => toggleCat(cat.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
                 ${isExpanded ? 'bg-[#FAF7F2]' : 'hover:bg-[#FAF7F2]/60'}`}>
@@ -367,9 +412,7 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
                 </div>
               ) : (
                 <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                  {isExpanded
-                    ? <FolderOpen size={15} className="text-[#C9A84C]" />
-                    : <Folder size={15} className="text-[#8E8878]" />}
+                  {isExpanded ? <FolderOpen size={15} className="text-[#C9A84C]" /> : <Folder size={15} className="text-[#8E8878]" />}
                 </div>
               )}
               <span className={`flex-1 text-sm font-semibold ${isExpanded ? 'text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
@@ -380,15 +423,11 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
               </span>
             </button>
 
-            {/* Expanded: subs + direct ingredients */}
             {isExpanded && (
               <div className="border-t border-[#F0EBE3]/60">
-
-                {/* Sub categories */}
                 {subs.map(sub => {
                   const isSubExpanded = expandedSubIds.has(sub.id);
                   const subIngs = ingsOfSub(sub.id);
-
                   return (
                     <div key={sub.id}>
                       <button onClick={() => toggleSub(sub.id)}
@@ -404,9 +443,7 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
                           </div>
                         ) : (
                           <div className="w-5 h-5 flex items-center justify-center">
-                            {isSubExpanded
-                              ? <FolderOpen size={13} className="text-[#C9A84C]" />
-                              : <Folder size={13} className="text-[#8E8878]" />}
+                            {isSubExpanded ? <FolderOpen size={13} className="text-[#C9A84C]" /> : <Folder size={13} className="text-[#8E8878]" />}
                           </div>
                         )}
                         <span className={`flex-1 text-xs font-medium ${isSubExpanded ? 'text-[#C9A84C]' : 'text-[#5C5C5C]'}`}>
@@ -416,22 +453,17 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
                           {subIngs.length}
                         </span>
                       </button>
-
                       {isSubExpanded && (
                         <div className="pl-14 border-t border-[#F0EBE3]/40">
                           {subIngs.length === 0
                             ? <p className="px-4 py-3 text-xs text-[#C4B9A8]">Không có nguyên liệu</p>
-                            : subIngs.map(ing => (
-                              <IngredientRow key={ing.id} ingredient={ing} warehouses={warehouses}
-                                onEdit={onEdit} onManageWarehouse={onManageWarehouse} imgSrc={imgSrc} />
-                            ))}
+                            : subIngs.map(renderRow)}
                         </div>
                       )}
                     </div>
                   );
                 })}
 
-                {/* Direct ingredients (không thuộc sub nào) */}
                 {directIngs.length > 0 && (
                   <div className={`pl-10 ${subs.length > 0 ? 'border-t border-[#F0EBE3]/40' : ''}`}>
                     {subs.length > 0 && (
@@ -439,14 +471,10 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
                         <span className="text-[10px] text-[#C4B9A8] font-medium uppercase tracking-wide">Chung</span>
                       </div>
                     )}
-                    {directIngs.map(ing => (
-                      <IngredientRow key={ing.id} ingredient={ing} warehouses={warehouses}
-                        onEdit={onEdit} onManageWarehouse={onManageWarehouse} imgSrc={imgSrc} />
-                    ))}
+                    {directIngs.map(renderRow)}
                   </div>
                 )}
 
-                {/* Empty */}
                 {directIngs.length === 0 && subs.every(s => ingsOfSub(s.id).length === 0) && (
                   <p className="pl-10 px-4 py-3 text-xs text-[#C4B9A8]">Không có nguyên liệu</p>
                 )}
@@ -456,7 +484,6 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
         );
       })}
 
-      {/* Không có danh mục */}
       {ingsNoCat.length > 0 && (
         <div className="border-t border-[#F0EBE3]">
           <div className="flex items-center gap-3 px-4 py-3 bg-[#FAF7F2]/40">
@@ -464,10 +491,7 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
             <span className="text-sm font-semibold text-[#8E8878]">Chưa phân loại</span>
             <span className="text-xs text-[#C4B9A8] bg-[#F0EBE3] px-2 py-0.5 rounded-full ml-auto">{ingsNoCat.length}</span>
           </div>
-          {ingsNoCat.map(ing => (
-            <IngredientRow key={ing.id} ingredient={ing} warehouses={warehouses}
-              onEdit={onEdit} onManageWarehouse={onManageWarehouse} imgSrc={imgSrc} />
-          ))}
+          {ingsNoCat.map(renderRow)}
         </div>
       )}
     </div>
@@ -495,6 +519,10 @@ export default function OperatorIngredientsPage() {
   const [warehouseModal, setWarehouseModal] = useState({ open: false, ingredient: null });
   const [quickCreate, setQuickCreate] = useState({ open: false, parentId: null, parentName: '', prefill: '', target: null });
 
+  // [NEW] Delete state
+  const [deleteModal, setDeleteModal] = useState({ open: false, ingredient: null });
+  const [deleting, setDeleting] = useState(false);
+
   const fetchData = () => {
     setLoading(true);
     Promise.allSettled([
@@ -507,9 +535,6 @@ export default function OperatorIngredientsPage() {
       if (catRes.status === 'fulfilled') setCategories(catRes.value.data?.data || []);
       if (subCatRes.status === 'fulfilled') setSubCategories(subCatRes.value.data?.data || []);
       if (whRes.status === 'fulfilled') setWarehouses(whRes.value.data?.data || []);
-      [ingRes, catRes, subCatRes, whRes].forEach((r, i) => {
-        if (r.status === 'rejected') console.error(`fetchData[${i}] failed:`, r.reason);
-      });
     }).finally(() => setLoading(false));
   };
   useEffect(() => { fetchData(); }, []);
@@ -531,6 +556,26 @@ export default function OperatorIngredientsPage() {
       warehouseIds: i.warehouseIds || [],
     });
     setModal({ open: true, item: i });
+  };
+
+  // [NEW] Handle delete
+  const handleDeleteClick = (ingredient) => {
+    setDeleteModal({ open: true, ingredient });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.ingredient) return;
+    setDeleting(true);
+    try {
+      await operatorApi.deleteIngredient(deleteModal.ingredient.id);
+      toast(`Đã xóa nguyên liệu "${deleteModal.ingredient.name}"`, 'success');
+      setDeleteModal({ open: false, ingredient: null });
+      fetchData();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi xóa nguyên liệu', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleUpload = async (file) => {
@@ -610,7 +655,6 @@ export default function OperatorIngredientsPage() {
     return url.startsWith('http') ? url : `${BASE_URL}/api/auth${url}`;
   };
 
-  // Filter theo kho + search
   const filteredIngredients = useMemo(() => {
     let list = ingredients;
     if (filterWarehouseId)
@@ -636,19 +680,16 @@ export default function OperatorIngredientsPage() {
             <p className="text-xs text-[#8E8878]">{totalFiltered}/{ingredients.length} nguyên liệu</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Filter theo kho */}
             <select value={filterWarehouseId} onChange={e => setFilterWarehouseId(e.target.value)}
               className="px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] text-[#5C5C5C]">
               <option value="">Tất cả kho</option>
               {warehouses.map(wh => <option key={wh.id} value={String(wh.id)}>{wh.name}</option>)}
             </select>
-
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên, mã hàng..."
                 className="pl-8 pr-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] w-44" />
             </div>
-
             <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
               <Upload size={14} /> Import
               <input type="file" accept=".xlsx,.csv" className="hidden" onChange={() => { }} />
@@ -678,6 +719,7 @@ export default function OperatorIngredientsPage() {
             search={search}
             onEdit={openEdit}
             onManageWarehouse={(ing) => setWarehouseModal({ open: true, ingredient: ing })}
+            onDelete={handleDeleteClick}  // [NEW]
             imgSrc={imgSrc}
           />
         )}
@@ -692,21 +734,18 @@ export default function OperatorIngredientsPage() {
               <button onClick={() => setModal({ open: false, item: null })} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
-              {/* Name */}
               <div>
                 <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Tên nguyên liệu *</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="Nhập tên nguyên liệu"
                   className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]" />
               </div>
-              {/* Item code */}
               <div>
                 <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Mã hàng</label>
                 <input value={form.itemCode} onChange={e => setForm(f => ({ ...f, itemCode: e.target.value }))}
                   placeholder="VD: NL-001"
                   className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] font-mono" />
               </div>
-              {/* Category */}
               <CategoryCombobox label="Danh mục" options={rootCats} value={form.categoryId}
                 onChange={v => setForm(f => ({ ...f, categoryId: v, subCategoryId: '' }))}
                 onCreateNew={handleQuickCreateCategory} placeholder="Chọn hoặc tìm danh mục..." />
@@ -716,7 +755,6 @@ export default function OperatorIngredientsPage() {
                   onCreateNew={handleQuickCreateSubCategory}
                   placeholder={formSubCats.length === 0 ? 'Chưa có danh mục con — nhấn + để tạo' : 'Chọn danh mục con...'} />
               )}
-              {/* Unit */}
               <div>
                 <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Đơn vị *</label>
                 <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
@@ -724,7 +762,6 @@ export default function OperatorIngredientsPage() {
                   {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
-              {/* Kho */}
               <div>
                 <label className="block text-xs font-medium text-[#5C5C5C] mb-2">Kho chứa nguyên liệu</label>
                 {warehouses.length === 0
@@ -770,6 +807,15 @@ export default function OperatorIngredientsPage() {
         onClose={() => setQuickCreate(q => ({ ...q, open: false }))}
         onCreated={handleQuickCreated} parentId={quickCreate.parentId}
         parentName={quickCreate.parentName} prefill={quickCreate.prefill} />
+
+      {/* [NEW] Delete confirm modal */}
+      <ConfirmDeleteModal
+        open={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, ingredient: null })}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteModal.ingredient?.name || ''}
+        deleting={deleting}
+      />
     </div>
   );
 }
