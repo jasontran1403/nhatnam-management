@@ -38,12 +38,22 @@ function handleSessionExpired(message) {
   }, 3000);
 }
 
+// Các code lỗi business (server trả HTTP 200 nhưng là lỗi thực sự)
+const BUSINESS_ERROR_CODES = new Set([921, 922, 924, 925, 926, 927, 928, 929, 930]);
+
 api.interceptors.response.use(
   (res) => {
     // Backend luôn trả HTTP 200 — check business code trong body
     const code = res.data?.code;
     if (code && SESSION_EXPIRED_CODES.has(code)) {
       handleSessionExpired(res.data?.message);
+    }
+    // Throw business errors so catch blocks in components work normally
+    if (code && BUSINESS_ERROR_CODES.has(code)) {
+      const err = new Error(res.data?.message || 'Có lỗi xảy ra');
+      err.response = res;  // giữ lại response để catch có thể đọc
+      err.businessCode = code;
+      return Promise.reject(err);
     }
     return res;
   },

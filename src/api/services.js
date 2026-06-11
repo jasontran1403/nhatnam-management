@@ -197,6 +197,9 @@ export const expenseApi = {
   create: (data) => api.post('/api/expense-vouchers', data),
   listMy: (params) => api.get('/api/expense-vouchers/my', { params }),
   listAll: (params) => api.get('/api/expense-vouchers', { params }),
+  listByDate: (from, to, params) => api.get('/api/expense-vouchers/by-date', { params: { from, to, ...params } }),
+  search: (q, from, to, params) =>
+    api.get('/api/expense-vouchers/search', { params: { q, from, to, ...params } }),
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
@@ -211,9 +214,9 @@ export const incomeApi = {
   create: (data) => api.post('/api/income-vouchers', data),
   listMy: (params) => api.get('/api/income-vouchers/my', { params }),
   listAll: (params) => api.get('/api/income-vouchers', { params }),
+  listByDate: (from, to, params) => api.get('/api/income-vouchers/by-date', { params: { from, to, ...params } }),
+  search: (q, params) => api.get('/api/income-vouchers/search', { params: { q, ...params } }),
   getById: (id) => api.get(`/api/income-vouchers/${id}`),
-  approve: (id, note) => api.post(`/api/income-vouchers/${id}/approve`, { note }),
-  reject: (id, reason) => api.post(`/api/income-vouchers/${id}/reject`, { reason }),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
     return api.post('/api/upload/income-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });

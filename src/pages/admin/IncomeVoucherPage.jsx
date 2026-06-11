@@ -78,6 +78,7 @@ function SummaryCard({ icon: Icon, label, value, accent }) {
 
 // ── Row ───────────────────────────────────────────────────────────────────────
 function VoucherRow({ v, onOpenLightbox, onOpenDetail }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const total = v.totalAmount ?? v.items?.reduce((s, i) => s + Number(i.amount), 0) ?? 0;
 

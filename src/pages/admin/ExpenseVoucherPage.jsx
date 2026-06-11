@@ -101,8 +101,8 @@ function Lightbox({ images, index, onClose, onPrev, onNext }) {
   );
 }
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING;
+function StatusBadge({ status, statusMap }) {
+  const cfg = (statusMap || {})[status] || { label: status, cls: 'bg-gray-50 text-gray-600 border-gray-200', icon: Clock };
   const Icon = cfg.icon;
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${cfg.cls}`}>
@@ -129,7 +129,8 @@ function SummaryCard({ icon: Icon, label, value, accent }) {
   );
 }
 
-function VoucherRow({ v, onApprove, onReject, onOpenLightbox }) {
+function VoucherRow({ v, onApprove, onReject, onOpenLightbox, statusMap }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const total = v.totalAmount ?? v.items?.reduce((s, i) => s + Number(i.amount), 0) ?? 0;
 
@@ -145,7 +146,7 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox }) {
         <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.createdByName}</td>
         <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.requestedByName || v.createdByName}</td>
         <td className="px-3 py-3 text-right font-bold text-[#C9A84C] whitespace-nowrap">{formatCurrency(total)}</td>
-        <td className="px-3 py-3 whitespace-nowrap"><StatusBadge status={v.status} /></td>
+        <td className="px-3 py-3 whitespace-nowrap"><StatusBadge status={v.status} statusMap={statusMap} /></td>
         <td className="px-3 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDateTime(v.createdAt)}</td>
         <td className="px-3 py-3">
           {v.status === 'PENDING' && (
@@ -174,7 +175,7 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox }) {
           <td colSpan={9} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">{t('admin', 'expense_items_label')}</p>
+                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">Các khoản chi</p>
                 <div className="space-y-1">
                   {(v.items || []).map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
@@ -357,7 +358,8 @@ export default function ExpenseVoucherPage() {
                   <VoucherRow key={v.id} v={v}
                     onApprove={handleApprove}
                     onReject={(id) => { setRejectModal(id); setRejectReason(''); }}
-                    onOpenLightbox={openLightbox} />
+                    onOpenLightbox={openLightbox}
+                    statusMap={STATUS_MAP} />
                 ))}
               </tbody>
             </table>

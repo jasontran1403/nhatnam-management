@@ -1,6 +1,5 @@
 /**
  * routes/index.jsx — tất cả routes tập trung một chỗ.
- * Nav labels được dịch live qua useLang() + buildNav().
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from '../components/common/PrivateRoute';
@@ -33,6 +32,18 @@ import OwnerProductionPage from '../pages/owner/OwnerProductionPage';
 import OwnerEmployeesPage from '../pages/owner/OwnerEmployeesPage';
 import DebtOrdersPage from '../pages/shared/DebtOrdersPage';
 
+// Production v2 — Owner
+import OwnerProductionDashboard from '../pages/owner/OwnerProductionDashboard';
+import OwnerPlanDetailPage from '../pages/owner/OwnerPlanDetailPage';
+import OwnerWorkOrderDetailPage from '../pages/owner/OwnerWorkOrderDetailPage';
+
+// Production legacy — Owner (giữ lại cho các route cũ còn trong nav)
+import OwnerMachinePage from '../pages/owner/OwnerMachinePage';
+import OwnerMaintenancePage from '../pages/owner/OwnerMaintenancePage';
+import OwnerAnnualMpsPage from '../pages/owner/OwnerAnnualMpsPage';
+import OwnerWorkOrderPage from '../pages/owner/OwnerWorkOrderPage';
+import OwnerBatchReviewPage from '../pages/owner/OwnerBatchReviewPage';
+
 // HR
 import HrPage from '../pages/hr/HrPage';
 import HrSalaryStatusPage from '../pages/hr/HrSalaryStatusPage';
@@ -57,8 +68,9 @@ import WarehouseDeliveryPage from '../pages/warehouse/WarehouseDeliveryPage';
 import AccountantDashboardPage from '../pages/accountant/AccountantDashboardPage';
 import AccountantCustomersPage from '../pages/accountant/AccountantCustomersPage';
 import SupplierManagementPage from '../pages/accountant/SupplierManagementPage';
-import IncomeCreatePage from '../pages/super_accountant/IncomeCreatePage';
 import AccountantWarehouseReceiptsPage from '../pages/accountant/AccountantWarehouseReceiptsPage';
+import ExpenseListPage from '../pages/accountant/ExpenseListPage';
+import IncomeListPage from '../pages/accountant/IncomeListPage';
 
 // Operator
 import OperatorCategoriesPage from '../pages/operator/OperatorCategoriesPage';
@@ -70,7 +82,11 @@ import OperatorLandingpagePage from '../pages/operator/OperatorLandingpagePage';
 // Factory Worker
 import { FactoryDashboardPage, FactoryHistoryPage } from '../pages/factory_worker/FactoryWorkerPages';
 import FactoryCreateBatchPage from '../pages/factory_worker/FactoryCreateBatchPage';
+import FactoryOrdersPage from '../pages/factory_worker/FactoryOrdersPage';
+import FactoryMachinePage from '../pages/factory_worker/FactoryMachinePage';
+
 import QuotationPage from '../pages/seller/QuotationPage';
+import SuperAccountantCustomers from '../pages/accountant/SuperAccountantCustomers';
 
 // ── Root redirect ─────────────────────────────────────────────────────────────
 function RootRedirect() {
@@ -138,7 +154,19 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
-        <Route path="production" element={<OwnerProductionPage />} />
+
+        {/* Production v2 — Dashboard chính + detail lệnh */}
+        <Route path="production" element={<OwnerProductionDashboard />} />
+        <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
+        <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
+
+        {/* Production legacy — vẫn giữ để backward compat với nav cũ */}
+        <Route path="production/old" element={<OwnerProductionPage />} />
+        <Route path="production/machines" element={<OwnerMachinePage />} />
+        <Route path="production/maintenance" element={<OwnerMaintenancePage />} />
+        <Route path="production/mps" element={<OwnerAnnualMpsPage />} />
+        <Route path="production/work-orders" element={<OwnerWorkOrderPage />} />
+        <Route path="production/batches" element={<OwnerBatchReviewPage />} />
       </Route>
 
       {/* ── ADMIN */}
@@ -158,7 +186,9 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
-        <Route path="production" element={<OwnerProductionPage />} />
+        <Route path="production" element={<OwnerProductionDashboard />} />
+        <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
+        <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
       </Route>
 
       {/* ── WAREHOUSE */}
@@ -168,7 +198,6 @@ export default function AppRoutes() {
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
-        {/* <Route path="orders" element={<WarehouseOrdersPage />} /> */}
         <Route path="expenses" element={<ExpenseCreatePage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
       </Route>
@@ -180,7 +209,6 @@ export default function AppRoutes() {
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
-        {/* <Route path="orders" element={<WarehouseOrdersPage />} /> */}
         <Route path="expenses" element={<ExpenseCreatePage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
       </Route>
@@ -194,7 +222,8 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="customers" element={<AccountantCustomersPage />} />
         <Route path="suppliers" element={<SupplierManagementPage />} />
-        <Route path="incomes" element={<IncomeCreatePage />} />
+        <Route path="incomes" element={<IncomeListPage />} />
+        <Route path="expenses" element={<ExpenseListPage />} />
       </Route>
 
       {/* ── SUPER ACCOUNTANT */}
@@ -203,8 +232,9 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="/super-accountant/dashboard" replace />} />
         <Route path="dashboard" element={<AccountantDashboardPage />} />
         <Route path="history" element={<AccountantOrdersPage />} />
-        <Route path="expenses" element={<ExpenseCreatePage />} />
-        <Route path="incomes" element={<IncomeCreatePage />} />
+        <Route path="customers" element={<SuperAccountantCustomers />} />
+        <Route path="expenses" element={<ExpenseListPage />} />
+        <Route path="incomes" element={<IncomeListPage />} />
         <Route path="suppliers" element={<SupplierManagementPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
       </Route>
@@ -225,8 +255,10 @@ export default function AppRoutes() {
         element={<TranslatedLayout rawNav={factoryWorkerNavRaw} allowedRoles={['FACTORY_WORKER']} />}>
         <Route index element={<Navigate to="/factory/dashboard" replace />} />
         <Route path="dashboard" element={<FactoryDashboardPage />} />
+        <Route path="orders" element={<FactoryOrdersPage />} />
         <Route path="batches" element={<FactoryCreateBatchPage />} />
         <Route path="history" element={<FactoryHistoryPage />} />
+        <Route path="machines" element={<FactoryMachinePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

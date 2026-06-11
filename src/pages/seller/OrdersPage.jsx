@@ -119,7 +119,7 @@ function PaymentMethodCell({ value, onSave, disabled }) {
   );
 }
 
-// ── PartialPaymentModal — giữ nguyên ───────────────
+// ── PartialPaymentModal ─────────────────────────────────────────────────────
 function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const finalAmount = Number(order?.finalAmount || 0); const alreadyPaid = Number(order?.paidAmount || 0); const remaining = finalAmount - alreadyPaid;
   const [amountInput, setAmountInput] = useState(''); const [hasDeadline, setHasDeadline] = useState(false);
@@ -243,7 +243,6 @@ function StatusActionButtons({ order, onCancel, onEdit, loading, disabled }) {
   const canCancel = CANCELLABLE_STATUSES.has(status);
 
   if (!canEdit && !canCancel) return null;
-
   if (disabled) return <span className="text-[10px] text-[#C4B9A8] italic">Chỉ xem</span>;
 
   return (
@@ -316,14 +315,13 @@ export default function OrdersPage() {
   const [invoiceLoadingId, setInvoiceLoadingId] = useState(null);
   const [partialOrder, setPartialOrder] = useState(null); const [partialLoading, setPartialLoading] = useMinLoading();
   const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkConfirm, setBulkConfirm] = useState(null);
-  const [bulkLoading, setBulkLoading] = useMinLoading(); const [pageSize, setPageSize] = useState(20);
+  const [bulkLoading, setBulkLoading] = useMinLoading(); const [pageSize, setPageSize] = useState(100);
 
   const [exportDateRange, setExportDateRange] = useState({ from: null, to: null });
   const [showExportPicker, setShowExportPicker] = useState(false);
 
-  // NEW: Report modal state (gộp 3 loại báo cáo)
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportType, setReportType] = useState('INGREDIENT'); // 'INGREDIENT', 'CUSTOMER_PRODUCT', 'DELIVERY'
+  const [reportType, setReportType] = useState('INGREDIENT');
   const [reportDateRange, setReportDateRange] = useState({ from: null, to: null });
   const [exportingReport, setExportingReport] = useState(false);
 
@@ -360,13 +358,16 @@ export default function OrdersPage() {
 
   const currentId = currentUser.userId || 0;
   const isThuytm = currentId === 15;
-
   const isSuperSeller = currentUser.role === 'SUPER_SELLER';
 
   const canActOnOrder = useCallback((o) => {
     if (isSuperSeller) return true;
     return o.createdByUserId === currentUser.userId;
   }, [isSuperSeller, currentUser.userId]);
+
+  // label ngày hôm nay cho nút mobile
+  const todayLabel = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const hasDateFilter = !!(dateRange.from || dateRange.to);
 
   const fetchOrders = useCallback(async (p = 0) => {
     setLoading(true);
@@ -388,13 +389,10 @@ export default function OrdersPage() {
   }, [statusFilter, dateRange, search, pageSize]);
 
   useEffect(() => { fetchOrders(0); }, [fetchOrders]);
-  useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 500); return () => clearTimeout(t); }, [searchInput]);
+  useEffect(() => { const ti = setTimeout(() => setSearch(searchInput), 500); return () => clearTimeout(ti); }, [searchInput]);
 
   const handleExport = async () => {
-    if (!exportDateRange.from || !exportDateRange.to) {
-      setShowExportPicker(true);
-      return;
-    }
+    if (!exportDateRange.from || !exportDateRange.to) { setShowExportPicker(true); return; }
     setExporting(true);
     try {
       const params = { excludeCancelled: true };
@@ -407,54 +405,27 @@ export default function OrdersPage() {
     finally { setExporting(false); setShowExportPicker(false); }
   };
 
-  // NEW: Hàm xử lý xuất báo cáo tổng hợp
   const handleReportExport = async () => {
-    if (!reportDateRange.from || !reportDateRange.to) {
-      toast('Vui lòng chọn khoảng thời gian', 'error');
-      return;
-    }
+    if (!reportDateRange.from || !reportDateRange.to) { toast('Vui lòng chọn khoảng thời gian', 'error'); return; }
     setExportingReport(true);
     try {
-      const fromDate = new Date(reportDateRange.from);
-      fromDate.setHours(0, 0, 0, 0);
-      const toDate = new Date(reportDateRange.to);
-      toDate.setHours(23, 59, 59, 999);
-
-      let res;
-      let filename = '';
-
+      const fromDate = new Date(reportDateRange.from); fromDate.setHours(0, 0, 0, 0);
+      const toDate = new Date(reportDateRange.to); toDate.setHours(23, 59, 59, 999);
+      let res; let filename = '';
       if (reportType === 'INGREDIENT') {
-        res = await orderApi.exportIngredients({
-          from: fromDate.getTime(),
-          to: toDate.getTime(),
-        });
+        res = await orderApi.exportIngredients({ from: fromDate.getTime(), to: toDate.getTime() });
         filename = `nguyen-lieu-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
       } else if (reportType === 'CUSTOMER_PRODUCT') {
-        res = await orderApi.exportCustomerProductReport({
-          from: fromDate.toISOString().slice(0, 10),
-          to: toDate.toISOString().slice(0, 10),
-        });
+        res = await orderApi.exportCustomerProductReport({ from: fromDate.toISOString().slice(0, 10), to: toDate.toISOString().slice(0, 10) });
         filename = `bao-cao-kh-sp-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
       } else if (reportType === 'DELIVERY') {
-        res = await orderApi.exportDeliveryReport({
-          from: fromDate.getTime(),
-          to: toDate.getTime(),
-        });
+        res = await orderApi.exportDeliveryReport({ from: fromDate.getTime(), to: toDate.getTime() });
         filename = `bao-cao-giao-hang-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
       }
-
-      if (res) {
-        downloadBlob(res.data, filename);
-        toast('Xuất báo cáo thành công', 'success');
-      }
-      setShowReportModal(false);
-      setReportDateRange({ from: null, to: null });
-    } catch (err) {
-      console.error(err);
-      toast('Không thể xuất báo cáo', 'error');
-    } finally {
-      setExportingReport(false);
-    }
+      if (res) { downloadBlob(res.data, filename); toast('Xuất báo cáo thành công', 'success'); }
+      setShowReportModal(false); setReportDateRange({ from: null, to: null });
+    } catch (err) { console.error(err); toast('Không thể xuất báo cáo', 'error'); }
+    finally { setExportingReport(false); }
   };
 
   const handleInvoice = async (orderId, e) => {
@@ -507,15 +478,23 @@ export default function OrdersPage() {
   };
 
   const handleCancelConfirm = async (reason) => {
-    if (!cancelTarget) return;
-    setCancelLoading(true);
+    if (!cancelTarget) return; setCancelLoading(true);
     try {
       await accountantApi.cancelOrder(cancelTarget.id, reason);
       setOrders(prev => prev.map(o => o.id === cancelTarget.id ? { ...o, status: 'CANCELLED' } : o));
-      setCancelTarget(null);
-      toast('Đã hủy đơn hàng thành công', 'success');
+      setCancelTarget(null); toast('Đã hủy đơn hàng thành công', 'success');
     } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi hủy đơn', 'error'); }
     finally { setCancelLoading(false); }
+  };
+
+  // Mobile detail handler
+  const handleMobileDetail = async (orderId) => {
+    setDetailLoading(orderId);
+    try {
+      const [dr, lr] = await Promise.all([accountantApi.getOrderDetail(orderId), accountantApi.getOrderLogs(orderId)]);
+      setSelectedOrder({ ...(dr.data?.data || orders.find(o => o.id === orderId)), logs: lr.data?.data || [] });
+    } catch { setSelectedOrder(orders.find(o => o.id === orderId)); }
+    finally { setDetailLoading(null); }
   };
 
   const executeBulkComplete = async (mode) => {
@@ -532,53 +511,137 @@ export default function OrdersPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#FAF7F2]">
-      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 min-w-0"><h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">Đơn hàng</h1><p className="text-[10px] sm:text-xs text-[#8E8878]">{total} đơn hàng</p></div>
-          <div className="relative hidden sm:block"><Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" /><input type="text" placeholder="Tìm đơn, khách hàng..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C] w-48 lg:w-56" /></div>
-          <div className="hidden sm:flex items-center gap-1.5"><DateRangePicker from={dateRange.from} to={dateRange.to} onChange={r => { setDateRange(r); setPage(0); }} placeholder="Khoảng ngày" /></div>
-          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); fetchOrders(0); }} className="border border-[#E8DDD0] rounded-xl px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-[#C9A84C] hidden sm:block">{[20, 50, 100].map(n => <option key={n} value={n}>{n}/trang</option>)}</select>
-          <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
+      {/* Override calendar dropdown trên mobile — căn giữa màn hình */}
+      <style>{`
+        @media (max-width: 639px) {
+          #mobile-date-picker-seller > div > div.absolute {
+            right: auto !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            max-width: calc(100vw - 32px) !important;
+          }
+        }
+      `}</style>
 
-          <button
-            onClick={() => setShowExportPicker(true)}
-            disabled={exporting}
-            title="Xuất Excel đơn hàng"
+      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
+
+        {/* ── Desktop header (sm+) — unchanged ── */}
+        <div className="hidden sm:flex items-center gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">Đơn hàng</h1>
+            <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} đơn hàng</p>
+          </div>
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <input type="text" placeholder="Tìm đơn, khách hàng..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C] w-48 lg:w-56" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <DateRangePicker align="right" from={dateRange.from} to={dateRange.to} onChange={r => { setDateRange(r); setPage(0); }} placeholder="Khoảng ngày" />
+          </div>
+          <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={() => setShowExportPicker(true)} disabled={exporting} title="Xuất Excel đơn hàng"
             className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0">
             {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
           </button>
-
-          {/* NEW: Nút Báo cáo tổng hợp - thay thế 2 nút cũ */}
           {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).userId === 15 && (
-            <button
-              onClick={() => setShowReportModal(true)}
-              title="Xuất báo cáo"
+            <button onClick={() => setShowReportModal(true)} title="Xuất báo cáo"
               className="p-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors shrink-0">
               <FileBarChart size={14} />
             </button>
           )}
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
-          {FILTER_TABS.map(t => <button key={t.value} onClick={() => setStatusFilter(t.value)} className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${statusFilter === t.value ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>{t.label}</button>)}
+
+        {/* ── Mobile header (< sm) — 2 rows ── */}
+        <div className="sm:hidden mb-3 space-y-2">
+          {/* Row 1: title + date picker + refresh + export */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold text-[#1C1C1E] leading-tight">Đơn hàng</h1>
+              <p className="text-[10px] text-[#8E8878]">{total} đơn hàng</p>
+            </div>
+
+            {/* Nút chọn ngày — dropdown mở trực tiếp, căn giữa màn hình */}
+            <div id="mobile-date-picker-seller" className="relative shrink-0">
+              <DateRangePicker
+                from={dateRange.from}
+                to={dateRange.to}
+                onChange={r => { setDateRange(r); setPage(0); }}
+                placeholder={todayLabel}
+                align="right"
+              />
+            </div>
+
+            {/* Nút xóa filter ngày */}
+            {hasDateFilter && (
+              <button
+                onClick={() => { setDateRange({ from: null, to: null }); setPage(0); }}
+                className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-400 hover:bg-red-100 transition-colors shrink-0"
+                title="Xóa bộ lọc ngày">
+                <X size={13} />
+              </button>
+            )}
+
+            <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button onClick={() => setShowExportPicker(true)} disabled={exporting} title="Xuất Excel"
+              className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0">
+              {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
+            </button>
+            {currentUser.userId === 15 && (
+              <button onClick={() => setShowReportModal(true)} title="Xuất báo cáo"
+                className="p-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors shrink-0">
+                <FileBarChart size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Row 2: full-width search */}
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <input
+              type="text"
+              placeholder="Tìm đơn, khách hàng..."
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              className="w-full border border-[#E8DDD0] rounded-xl pl-9 pr-8 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C]"
+            />
+            {searchInput && (
+              <button onClick={() => setSearchInput('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#C4B9A8] hover:text-[#8E8878]">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-1.5 overflow-x-auto pb-3 scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {FILTER_TABS.map(tab => (
+            <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
+              className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${statusFilter === tab.value ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="flex-1 overflow-auto px-4 sm:px-6 py-4">
-        {loading && orders.length === 0 ? (<div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" /></div>)
-          : orders.length === 0 ? (<div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2"><Search size={32} strokeWidth={1} /><p className="text-sm">Không có đơn hàng nào</p></div>)
+        {loading && orders.length === 0
+          ? <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" /></div>
+          : orders.length === 0
+            ? <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2"><Search size={32} strokeWidth={1} /><p className="text-sm">Không có đơn hàng nào</p></div>
             : (<>
-              {/* Desktop table */}
+              {/* Desktop table — unchanged */}
               <div className="hidden md:block bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                       <tr>
                         <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.size === orders.length && orders.length > 0} onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} /></th>
-                        {[t('order', 'order_code'), 'Thời gian', t('customer', 'customer'), 'Kho', t('common', 'status'), 'PT Thanh toán',
-                          'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hóa đơn', t('common', 'actions')]
-                          .map(h => (
-                            <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
-                          ))}
+                        {[t('order', 'order_code'), 'Thời gian', t('customer', 'customer'), 'Kho', t('common', 'status'), 'PT Thanh toán', 'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hóa đơn', t('common', 'actions')]
+                          .map(h => <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -587,71 +650,44 @@ export default function OrdersPage() {
                         const isActioning = actionLoading === o.id; const isThisInvoice = invoiceLoadingId === o.id;
                         const paidAmount = Number(o.paidAmount || 0);
                         return (
-                          <tr key={o.id}
-                            className={`border-b border-[#F0EBE3] last:border-0 transition-colors ${getRowBg(o)} ${isThisInvoice ? 'opacity-80' : ''} ${isActioning ? 'opacity-60' : ''}`}>
+                          <tr key={o.id} className={`border-b border-[#F0EBE3] last:border-0 transition-colors ${getRowBg(o)} ${isThisInvoice ? 'opacity-80' : ''} ${isActioning ? 'opacity-60' : ''}`}>
                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" className="w-3.5 h-3.5 accent-[#C9A84C]" checked={selectedIds.has(o.id)} onChange={e => { const next = new Set(selectedIds); e.target.checked ? next.add(o.id) : next.delete(o.id); setSelectedIds(next); }} /></td>
                             <td className="px-4 py-3 whitespace-nowrap"><div className="flex items-center gap-1.5"><span className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</span>{detailLoading === o.id && <div className="w-3 h-3 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" />}</div></td>
                             <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDate(o.createdAt)}</td>
-                            <td className="px-4 py-3 max-w-[160px]">
-                              <p className="text-xs font-medium text-[#1C1C1E] break-words leading-snug">{o.customerName}</p>
-                              <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>
-                            </td>
+                            <td className="px-4 py-3 max-w-[160px]"><p className="text-xs font-medium text-[#1C1C1E] break-words leading-snug">{o.customerName}</p><p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p></td>
                             <td className="px-4 py-3"><WarehouseBadge name={o.warehouseName} /></td>
                             <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                             <td className="px-4 py-3"><PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} /></td>
                             <td className="px-4 py-3">
                               <p className="text-xs font-bold text-[#1C1C1E] whitespace-nowrap">{formatPrice(o.finalAmount)}</p>
-                              {o.status === 'COMPLETED' && o.paymentStatus === 'PAID' ? (paidAmount > 0 && paidAmount !== Number(o.finalAmount) && <p className="text-[10px] text-sky-600 font-medium whitespace-nowrap">TT Thực tế: {formatPrice(paidAmount)}</p>) : (<>{paidAmount > 0 && <p className="text-[10px] text-emerald-600 font-medium whitespace-nowrap">Đã thu: {formatPrice(paidAmount)}</p>}{paidAmount > 0 && paidAmount < Number(o.finalAmount) && <p className="text-[10px] text-orange-500 font-medium whitespace-nowrap">Còn: {formatPrice(Number(o.finalAmount) - paidAmount)}</p>}</>)}
+                              {o.status === 'COMPLETED' && o.paymentStatus === 'PAID'
+                                ? (paidAmount > 0 && paidAmount !== Number(o.finalAmount) && <p className="text-[10px] text-sky-600 font-medium whitespace-nowrap">TT Thực tế: {formatPrice(paidAmount)}</p>)
+                                : (<>{paidAmount > 0 && <p className="text-[10px] text-emerald-600 font-medium whitespace-nowrap">Đã thu: {formatPrice(paidAmount)}</p>}{paidAmount > 0 && paidAmount < Number(o.finalAmount) && <p className="text-[10px] text-orange-500 font-medium whitespace-nowrap">Còn: {formatPrice(Number(o.finalAmount) - paidAmount)}</p>}</>)}
                             </td>
                             <td className="px-4 py-3"><CreatedByBadge name={o.orderedByName} /></td>
+                            <td className="px-4 py-3"><SellerBadge name={o.createdByName} /></td>
                             <td className="px-4 py-3">
-                              <SellerBadge name={o.createdByName} />
-                            </td>
-                            <td className="px-4 py-3">
-                              {o.receiptFileUrl ? (
-                                <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap hover:bg-emerald-100">📄 Chứng từ</a>
-                              ) : <span className="text-[10px] text-[#C4B9A8]">—</span>}
+                              {o.receiptFileUrl
+                                ? <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap hover:bg-emerald-100">📄 Chứng từ</a>
+                                : <span className="text-[10px] text-[#C4B9A8]">—</span>}
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1.5">
                                 <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    setDetailLoading(o.id);
-                                    try {
-                                      const [dr, lr] = await Promise.all([
-                                        accountantApi.getOrderDetail(o.id),
-                                        accountantApi.getOrderLogs(o.id),
-                                      ]);
-                                      setSelectedOrder({
-                                        ...(dr.data?.data || o),
-                                        logs: lr.data?.data || [],
-                                      });
-                                    } catch {
-                                      setSelectedOrder(o);
-                                    } finally {
-                                      setDetailLoading(null);
-                                    }
-                                  }}
-                                  className="relative p-1.5 rounded-lg border bg-sky-50 text-sky-600 border-transparent hover:bg-sky-100 hover:scale-105 active:scale-95 transition-all duration-200"
-                                >
-                                  {detailLoading === o.id ? (
-                                    <BtnSpinner size={13} colorClass="border-sky-400 !border-t-transparent" />
-                                  ) : (
-                                    <Search size={13} />
-                                  )}
+                                <button onClick={async e => {
+                                  e.stopPropagation(); setDetailLoading(o.id);
+                                  try {
+                                    const [dr, lr] = await Promise.all([accountantApi.getOrderDetail(o.id), accountantApi.getOrderLogs(o.id)]);
+                                    setSelectedOrder({ ...(dr.data?.data || o), logs: lr.data?.data || [] });
+                                  } catch { setSelectedOrder(o); }
+                                  finally { setDetailLoading(null); }
+                                }} className="relative p-1.5 rounded-lg border bg-sky-50 text-sky-600 border-transparent hover:bg-sky-100 hover:scale-105 active:scale-95 transition-all duration-200">
+                                  {detailLoading === o.id ? <BtnSpinner size={13} colorClass="border-sky-400 !border-t-transparent" /> : <Search size={13} />}
                                 </button>
                               </div>
                             </td>
                             <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                              <StatusActionButtons
-                                order={o}
-                                onCancel={() => setCancelTarget(o)}
-                                onEdit={() => setEditTarget(o)}
-                                loading={isActioning}
-                                disabled={!canActOnOrder(o)} />
+                              <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} />
                             </td>
                           </tr>
                         );
@@ -666,25 +702,49 @@ export default function OrdersPage() {
                 {orders.map(o => {
                   const isCompleted = o.status === 'COMPLETED' || o.status === 'CANCELLED';
                   const isActioning = actionLoading === o.id;
+                  const isThisDetail = detailLoading === o.id;
                   return (
-                    <div key={o.id} onClick={() => setSelectedOrder(o)}
-                      className={`rounded-2xl border p-4 space-y-3 transition-all cursor-pointer ${invoiceLoadingId === o.id ? 'bg-[#C9A84C]/5 border-[#C9A84C]/40' : 'bg-white border-[#F0EBE3]'} ${isActioning ? 'opacity-60' : ''}`}>
+                    <div key={o.id}
+                      className={`rounded-2xl border p-4 space-y-3 transition-all ${invoiceLoadingId === o.id ? 'bg-[#C9A84C]/5 border-[#C9A84C]/40' : 'bg-white border-[#F0EBE3]'} ${isActioning ? 'opacity-60' : ''}`}>
+                      {/* Top: mã đơn + tiền */}
                       <div className="flex items-start justify-between gap-2">
-                        <div><p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p><p className="text-xs font-semibold text-[#1C1C1E] mt-0.5">{o.customerName}</p><p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p></div>
-                        <div className="text-right shrink-0"><p className="text-sm font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</p><p className="text-[10px] text-[#8E8878] mt-0.5">{formatDateShort(o.createdAt)}</p></div>
+                        <div>
+                          <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
+                          <p className="text-xs font-semibold text-[#1C1C1E] mt-0.5">{o.customerName}</p>
+                          <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</p>
+                          <p className="text-[10px] text-[#8E8878] mt-0.5">{formatDateShort(o.createdAt)}</p>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#F0EBE3]"><StatusBadge status={o.status} /><WarehouseBadge name={o.warehouseName} /></div>
+                      {/* Badges */}
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#F0EBE3]">
+                        <StatusBadge status={o.status} />
+                        <WarehouseBadge name={o.warehouseName} />
+                      </div>
+                      {/* Actions */}
                       <div className="flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
                         <CreatedByBadge name={o.orderedByName} />
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {/* Nút kính lúp — chi tiết đơn */}
+                          <button
+                            onClick={() => handleMobileDetail(o.id)}
+                            disabled={!!detailLoading}
+                            title="Chi tiết đơn"
+                            className={`relative p-1.5 rounded-lg border transition-all duration-200
+                              ${isThisDetail
+                                ? 'bg-sky-50 text-sky-400 border-sky-200 cursor-wait'
+                                : detailLoading
+                                  ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] opacity-40 cursor-not-allowed'
+                                  : 'bg-sky-50 text-sky-600 border-transparent hover:bg-sky-100 hover:scale-105 active:scale-95'}`}>
+                            {isThisDetail
+                              ? <BtnSpinner size={13} colorClass="border-sky-400 !border-t-transparent" />
+                              : <Search size={13} />}
+                          </button>
                           <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                           <PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
-                          <StatusActionButtons
-                            order={o}
-                            onCancel={() => setCancelTarget(o)}
-                            onEdit={() => setEditTarget(o)}
-                            loading={isActioning}
-                            disabled={!canActOnOrder(o)} />
+                          <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} />
                         </div>
                       </div>
                     </div>
@@ -742,17 +802,10 @@ export default function OrdersPage() {
               <button onClick={() => setShowExportPicker(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
             </div>
             <p className="text-xs text-[#8E8878]">Đơn hủy sẽ tự động bị loại khỏi báo cáo.</p>
-            <DateRangePicker
-              from={exportDateRange.from}
-              to={exportDateRange.to}
-              onChange={r => setExportDateRange(r)}
-              placeholder="Chọn khoảng ngày"
-            />
+            <DateRangePicker from={exportDateRange.from} to={exportDateRange.to} onChange={r => setExportDateRange(r)} placeholder="Chọn khoảng ngày" />
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowExportPicker(false)} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
-              <button
-                onClick={handleExport}
-                disabled={exporting || !exportDateRange.from || !exportDateRange.to}
+              <button onClick={handleExport} disabled={exporting || !exportDateRange.from || !exportDateRange.to}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center gap-2">
                 {exporting ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><Download size={14} /> Xuất Excel</>}
               </button>
@@ -761,7 +814,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* NEW: Modal báo cáo tổng hợp (thay thế 2 modal cũ) */}
+      {/* Modal báo cáo tổng hợp */}
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
@@ -773,53 +826,32 @@ export default function OrdersPage() {
               </div>
               <button onClick={() => setShowReportModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
             </div>
-
-            {/* 3 lựa chọn báo cáo */}
             <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setReportType('INGREDIENT')}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${reportType === 'INGREDIENT' ? 'bg-violet-500 text-white border-violet-500' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-violet-300'}`}>
-                📦 Nguyên liệu
-              </button>
-              <button
-                onClick={() => setReportType('CUSTOMER_PRODUCT')}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${reportType === 'CUSTOMER_PRODUCT' ? 'bg-rose-500 text-white border-rose-500' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-rose-300'}`}>
-                👥 KH × Sản phẩm
-              </button>
-              <button
-                onClick={() => setReportType('DELIVERY')}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${reportType === 'DELIVERY' ? 'bg-blue-500 text-white border-blue-500' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-blue-300'}`}>
-                🚚 Giao hàng
-              </button>
+              {[
+                { key: 'INGREDIENT', label: '📦 Nguyên liệu', active: 'bg-violet-500 text-white border-violet-500', hover: 'hover:border-violet-300' },
+                { key: 'CUSTOMER_PRODUCT', label: '👥 KH × Sản phẩm', active: 'bg-rose-500 text-white border-rose-500', hover: 'hover:border-rose-300' },
+                { key: 'DELIVERY', label: '🚚 Giao hàng', active: 'bg-blue-500 text-white border-blue-500', hover: 'hover:border-blue-300' },
+              ].map(r => (
+                <button key={r.key} onClick={() => setReportType(r.key)}
+                  className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${reportType === r.key ? r.active : `border-[#E8DDD0] text-[#5C5C5C] ${r.hover}`}`}>
+                  {r.label}
+                </button>
+              ))}
             </div>
-
             <div className="pt-2">
               <p className="text-xs text-[#8E8878] mb-2">
                 {reportType === 'INGREDIENT' && 'Tổng hợp nguyên liệu từ tất cả đơn hàng (không tính đơn hủy).'}
                 {reportType === 'CUSTOMER_PRODUCT' && 'Tổng hợp sản lượng và doanh thu theo từng khách hàng.'}
                 {reportType === 'DELIVERY' && 'Báo cáo giao hàng theo tài xế, thời gian giao hàng thực tế.'}
               </p>
-              <DateRangePicker
-                from={reportDateRange.from}
-                to={reportDateRange.to}
-                onChange={r => setReportDateRange(r)}
-                placeholder="Chọn khoảng ngày (mặc định: hôm nay)"
-              />
+              <DateRangePicker from={reportDateRange.from} to={reportDateRange.to} onChange={r => setReportDateRange(r)} placeholder="Chọn khoảng ngày (mặc định: hôm nay)" />
             </div>
-
             <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => { setShowReportModal(false); setReportDateRange({ from: null, to: null }); }}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">
-                Huỷ
-              </button>
-              <button
-                onClick={handleReportExport}
-                disabled={exportingReport || !reportDateRange.from || !reportDateRange.to}
+              <button onClick={() => { setShowReportModal(false); setReportDateRange({ from: null, to: null }); }}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
+              <button onClick={handleReportExport} disabled={exportingReport || !reportDateRange.from || !reportDateRange.to}
                 className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] disabled:opacity-50 flex items-center justify-center gap-2">
-                {exportingReport
-                  ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
-                  : <><Download size={14} /> Xuất báo cáo</>}
+                {exportingReport ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><Download size={14} /> Xuất báo cáo</>}
               </button>
             </div>
           </div>
@@ -827,22 +859,14 @@ export default function OrdersPage() {
       )}
 
       {cancelTarget && (
-        <CancelOrderModal
-          order={cancelTarget}
-          onClose={() => setCancelTarget(null)}
-          onConfirm={handleCancelConfirm}
-          loading={cancelLoading}
-        />
+        <CancelOrderModal order={cancelTarget} onClose={() => setCancelTarget(null)} onConfirm={handleCancelConfirm} loading={cancelLoading} />
       )}
 
       <EditOrderModal
         open={!!editTarget}
         orderId={editTarget?.id}
         onClose={() => setEditTarget(null)}
-        onSaved={() => {
-          setEditTarget(null);
-          fetchOrders();
-        }}
+        onSaved={() => { setEditTarget(null); fetchOrders(); }}
       />
     </div>
   );

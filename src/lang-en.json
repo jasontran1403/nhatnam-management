@@ -137,6 +137,10 @@
     "sale_kpi": "Sales KPI",
     "analytics": "Analytics",
     "production": "Production",
+    "work_orders": "Work orders",
+    "production_plan": "Production Plan",
+    "maintenance": "Maintenance",
+    "machines": "Machines",
     "seller_dashboard": "Dashboard",
     "pos": "Point of Sale",
     "drafts": "Draft Orders",
@@ -155,7 +159,8 @@
     "batch_history": "Batch History",
     "warehouse_receipts": "Warehouse Receipts",
     "quotation": "Quotation",
-    "delivering": "Orders"
+    "delivering": "Orders",
+    "machine_manage": "Machines & Maintenance"
   },
   "profile": {
     "my_profile": "My Profile",

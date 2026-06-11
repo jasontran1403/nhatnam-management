@@ -1,20 +1,15 @@
 /**
  * navConfigs.js — cấu hình nav menu cho từng role.
- * Labels giờ là i18n keys, AppLayout sẽ dịch qua t('nav', key).
- * Export thêm hàm buildNav(t) để tạo nav items đã dịch.
  */
 import {
   LayoutDashboard, ShoppingCart, Users, UserCog,
   Warehouse, Package, LogOut, Receipt, TrendingUp,
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
-  FileSpreadsheet,
-  ClipboardCheck,
-  FileClock,
-  Truck
+  FileSpreadsheet, ClipboardCheck, FileClock, Truck,
+  Wrench, Settings2,
 } from 'lucide-react';
 
-// Raw nav configs với i18n keys
 export const adminNavRaw = [
   { to: '/admin/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/admin/orders', labelKey: 'orders', icon: ShoppingCart },
@@ -41,6 +36,7 @@ export const ownerNavRaw = [
   { to: '/owner/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/owner/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
   { to: '/owner/analytics', labelKey: 'analytics', icon: BarChart2 },
+  // ── Sản xuất — 1 item duy nhất, dashboard gộp tất cả ──────────────────────
   { to: '/owner/production', labelKey: 'production', icon: Factory },
 ];
 
@@ -63,7 +59,6 @@ export const warehouseNavRaw = [
   { to: '/warehouse/operations', labelKey: 'import_export', icon: Package },
   { to: '/warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
-  // { to: '/warehouse/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
 ];
 
@@ -72,7 +67,6 @@ export const superWarehouseNavRaw = [
   { to: '/super-warehouse/operations', labelKey: 'import_export', icon: Package },
   { to: '/super-warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/super-warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
-  // { to: '/super-warehouse/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
 ];
 
@@ -80,31 +74,38 @@ export const accountantNavRaw = [
   { to: '/accountant/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/accountant/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/accountant/customers', labelKey: 'customers', icon: Users },
-  { to: '/accountant/suppliers', labelKey: 'suppliers', icon: Package },
   { to: '/accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
+  { to: '/accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
+  // { to: '/accountant/suppliers', labelKey: 'suppliers', icon: Package },
 ];
 
 export const superAccountantNavRaw = [
   { to: '/super-accountant/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/super-accountant/history', labelKey: 'orders', icon: ShoppingCart },
+  { to: '/super-accountant/customers', labelKey: 'customers', icon: Users },
   { to: '/super-accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
-  { to: '/super-accountant/suppliers', labelKey: 'suppliers', icon: Package },
   { to: '/super-accountant/warehouse-receipts', labelKey: 'warehouse_receipts', icon: FileText },
+  // { to: '/super-accountant/suppliers', labelKey: 'suppliers', icon: Package },
 ];
 
 export const operatorNavRaw = [
   { to: '/operator/products', labelKey: 'products', icon: Package },
   { to: '/operator/ingredients', labelKey: 'ingredients', icon: FlaskConical },
-  // { to: '/operator/categories',  labelKey: 'categories',  icon: Tags },
   { to: '/operator/batches', labelKey: 'batches', icon: Layers },
   { to: '/operator/landingpage', labelKey: 'landing_page', icon: Globe },
 ];
 
 export const factoryWorkerNavRaw = [
   { to: '/factory/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
-  { to: '/factory/batches', labelKey: 'factory_batches', icon: ClipboardList },
+  // Lệnh sản xuất — trang mới (xem lệnh, lập phương án, xác nhận bước)
+  { to: '/factory/orders', labelKey: 'work_orders', icon: ClipboardList },
+  // Nhập mẻ legacy (vẫn giữ)
+  { to: '/factory/batches', labelKey: 'factory_batches', icon: ClipboardCheck },
+  // Lịch sử mẻ
   { to: '/factory/history', labelKey: 'batch_history', icon: Package },
+  // Quản lý máy + bảo trì
+  { to: '/factory/machines', labelKey: 'machine_manage', icon: Wrench },
 ];
 
 /** Helper: build translated nav items from raw config + t function */
@@ -116,7 +117,7 @@ export function buildNav(rawNav, t) {
   }));
 }
 
-// Legacy exports (static VI labels) — kept for backward compat
+// Legacy exports — kept for backward compat
 export const adminNav = adminNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 export const ownerNav = ownerNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 export const hrNav = hrNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));

@@ -137,6 +137,10 @@
     "sale_kpi": "KPI Sale",
     "analytics": "Phân tích",
     "production": "Sản xuất",
+    "work_orders": "Lệnh sản xuất",
+    "production_plan": "Kế hoạch sản xuất",
+    "maintenance": "Bảo trì",
+    "machines": "Máy móc",
     "seller_dashboard": "Dashboard",
     "pos": "Bán hàng",
     "drafts": "Đơn nháp",
@@ -155,7 +159,8 @@
     "batch_history": "Lịch sử mẻ",
     "warehouse_receipts": "Phiếu nhập kho",
     "quotation": "Báo giá",
-    "delivering": "Đơn hàng"
+    "delivering": "Đơn hàng",
+    "machine_manage": "Máy & Bảo trì"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

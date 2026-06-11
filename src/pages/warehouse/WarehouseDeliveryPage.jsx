@@ -81,12 +81,12 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
     useEffect(() => {
         if (!open) return;
         const t = setTimeout(() => {
-            api.get(`/api/warehouse/drivers?q=${encodeURIComponent(query)}`)
+            api.get(`/api/warehouse/drivers?q=${encodeURIComponent(query)}&type=${selectedType}`)
                 .then(r => setResults(r.data?.data || []))
                 .catch(() => setResults([]));
         }, 200);
         return () => clearTimeout(t);
-    }, [query, open]);
+    }, [query, open, selectedType]);
 
     const addDriver = (name) => {
         const existing = deliveryInfo.find(d => d.name === name && d.type === selectedType);
@@ -121,7 +121,7 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
         if (!name) return;
         setCreating(true);
         try {
-            await api.post('/api/warehouse/drivers', { name });
+            await api.post('/api/warehouse/drivers', { name, vehicleType: selectedType });
             addDriver(name);
         } catch (_) { }
         setCreating(false);
@@ -355,22 +355,7 @@ function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm,
 function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
     const [file, setFile]       = useState(null);
     const [preview, setPreview] = useState(null);
-    const [deliveryInfo, setDeliveryInfo] = useState(() => {
-        try { return JSON.parse(order?.deliveryInfoJson || '[]'); }
-        catch { return []; }
-    });
     const fileInputRef = useRef(null);
-
-    // Auto-save deliveryInfo khi thay đổi
-    useEffect(() => {
-        if (!order?.id) return;
-        const t = setTimeout(async () => {
-            try {
-                await api.patch(`/api/warehouse/orders/${order.id}/drivers`, { deliveryInfo });
-            } catch (_) { }
-        }, 600);
-        return () => clearTimeout(t);
-    }, [deliveryInfo]); // eslint-disable-line
 
     const handleFile = (f) => {
         if (!f) return;
@@ -413,11 +398,6 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
                         </div>
                     </div>
 
-                    {/* Tài xế */}
-                    <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 border border-[#F0EBE3]">
-                        <DriverPicker deliveryInfo={deliveryInfo} onChange={setDeliveryInfo} />
-                    </div>
-
                     {/* Chứng từ */}
                     <div className="space-y-2">
                         <p className="text-xs font-semibold text-[#1C1C1E]">
@@ -455,7 +435,7 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
                         className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors font-medium">
                         Huỷ
                     </button>
-                    <button onClick={() => onConfirm(file || null, deliveryInfo)} disabled={loading}
+                    <button onClick={() => onConfirm(file || null)} disabled={loading}
                         className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                         {loading
                             ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
@@ -530,15 +510,10 @@ export default function WarehouseDeliveryPage() {
         }
     };
 
-    const handleDeliverConfirm = async (file, deliveryInfo = []) => {
+    const handleDeliverConfirm = async (file) => {
         if (!deliverTarget) return;
         setDeliverLoading(true);
         try {
-            if (deliveryInfo.length > 0) {
-                try {
-                    await api.patch(`/api/warehouse/orders/${deliverTarget.id}/drivers`, { deliveryInfo });
-                } catch (_) { }
-            }
             await warehouseApi.confirmDelivered(deliverTarget.id);
             let receiptUrl = null;
             if (file) {
@@ -556,7 +531,6 @@ export default function WarehouseDeliveryPage() {
                     ? {
                         ...o,
                         status: 'PENDING_PAYMENT',
-                        deliveryInfoJson: JSON.stringify(deliveryInfo),
                         ...(receiptUrl ? { receiptFileUrl: receiptUrl } : {}),
                     }
                     : o

@@ -117,7 +117,6 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const PAYMENT_METHODS = [
     { value: 'CASH', label: t('payment', 'cash_icon') },
     { value: 'BANK_TRANSFER', label: t('payment', 'bank_transfer_icon') },
-    { value: 'DEBT', label: t('payment', 'debt_icon') },
   ];
   const finalAmount = Number(order?.finalAmount || 0);
   const alreadyPaid = Number(order?.paidAmount || 0);
@@ -223,7 +222,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-[#1C1C1E]">{t('payment', 'payment_method')}</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {PAYMENT_METHODS.map(m => (
                 <button key={m.value} onClick={() => setPaymentMethod(m.value)}
                   className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${paymentMethod === m.value ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C]'}`}>
@@ -319,12 +318,6 @@ function StatusActionButtons({ order, onComplete, onPartialPayment, loading }) {
           {loading ? <BtnSpinner size={10} colorClass="border-blue-400 !border-t-blue-600" /> : <><DollarSign size={10} /> {t('payment', 'collect_partial2')}</>}
         </button>
       )}
-      {canComplete && (
-        <button onClick={e => { e.stopPropagation(); onComplete(); }} disabled={loading}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
-          {loading ? <BtnSpinner size={10} colorClass="border-emerald-400 !border-t-emerald-600" /> : <><CheckCircle size={10} /> {t('status', 'completed')}</>}
-        </button>
-      )}
     </div>
   );
 }
@@ -333,16 +326,16 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
   const { t } = useLang();
   const isThisLoading = invoiceLoadingId === order.id;
   const isOtherLoading = !!invoiceLoadingId && !isThisLoading;
-  const isCompleted = order.status === 'COMPLETED';  // ← thêm dòng này
+  const isCompleted = order.status === 'COMPLETED';
 
   return (
     <button onClick={e => { e.stopPropagation(); onInvoice(order.id, e); }}
-      disabled={!!invoiceLoadingId || isCompleted}  // ← thêm isCompleted
+      disabled={!!invoiceLoadingId || isCompleted}
       title={isThisLoading ? t('common', 'processing') : isOtherLoading ? t('status', 'pending_other') : isCompleted ? t('status', 'completed') : t('document', 'invoice')}
       className={`relative p-1.5 rounded-lg border transition-all duration-200
         ${isThisLoading ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1'
           : isOtherLoading ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
-            : isCompleted ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'  // ← thêm case này
+            : isCompleted ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
               : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
       {isThisLoading ? <BtnSpinner size={13} colorClass="border-[#C9A84C] !border-t-transparent" /> : <FileText size={13} />}
       {isThisLoading && <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md pointer-events-none z-10">{t('common', 'processing')}</span>}
@@ -351,11 +344,12 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
 }
 
 // ── OrderCard mobile ──────────────────────────────────────────────────────────
-function OrderCard({ o, actionLoading, invoiceLoadingId, onComplete, onPartialPayment, onUpdatePaymentMethod, onInvoice, onUploadReceipt }) {
+function OrderCard({ o, actionLoading, invoiceLoadingId, detailLoading, onComplete, onPartialPayment, onUpdatePaymentMethod, onInvoice, onUploadReceipt, onDetail }) {
   const { t } = useLang();
   const isCompleted = o.status === 'COMPLETED' || o.status === 'CANCELLED';
   const isActioning = actionLoading === o.id;
   const isThisInvoice = invoiceLoadingId === o.id;
+  const isThisDetail = detailLoading === o.id;
 
   return (
     <div className={`rounded-2xl border p-4 space-y-3 transition-all
@@ -417,6 +411,22 @@ function OrderCard({ o, actionLoading, invoiceLoadingId, onComplete, onPartialPa
         {/* Invoice */}
         <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={onInvoice} />
 
+        {/* Detail button — kính lúp cạnh invoice */}
+        <button
+          onClick={e => { e.stopPropagation(); onDetail(o.id); }}
+          disabled={!!detailLoading}
+          title={t('common', 'detail') || 'Chi tiết'}
+          className={`relative p-1.5 rounded-lg border transition-all duration-200
+            ${isThisDetail
+              ? 'bg-sky-50 text-sky-400 border-sky-200 cursor-wait'
+              : detailLoading
+                ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] opacity-40 cursor-not-allowed'
+                : 'bg-sky-50 text-sky-600 border-transparent hover:bg-sky-100 hover:scale-105 active:scale-95'}`}>
+          {isThisDetail
+            ? <BtnSpinner size={13} colorClass="border-sky-400 !border-t-transparent" />
+            : <Search size={13} />}
+        </button>
+
         {/* Thu tiền / Hoàn thành */}
         <StatusActionButtons
           order={o}
@@ -472,7 +482,7 @@ export default function AccountantOrdersPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(100);
   const [uploadingReceiptId, setUploadingReceiptId] = useState(null);
   const receiptInputRef = useRef(null);
   const [sortNoReceipt, setSortNoReceipt] = useState(false);
@@ -481,27 +491,35 @@ export default function AccountantOrdersPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
+  // Label ngày hôm nay — mặc định hiển thị trên nút mobile
+  const todayLabel = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  // Label khoảng ngày đang filter — nếu chưa chọn thì dùng ngày hôm nay
+  const mobileDateLabel = (() => {
+    const fmt = ts => new Date(ts).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    if (dateRange.from && dateRange.to) return `${fmt(dateRange.from)} – ${fmt(dateRange.to)}`;
+    if (dateRange.from) return `Từ ${fmt(dateRange.from)}`;
+    if (dateRange.to) return `Đến ${fmt(dateRange.to)}`;
+    return todayLabel; // mặc định: ngày hôm nay
+  })();
+
+  const hasDateFilter = !!(dateRange.from || dateRange.to);
+
   const fetchOrders = useCallback(async (p = 0) => {
     setLoading(true);
     try {
       const params = { page: p, size: pageSize };
       if (statusFilter !== 'ALL') params.status = statusFilter;
-
       if (search.trim()) {
-        // Có keyword → gửi lên server, KHÔNG gửi from/to
         params.keyword = search.trim();
       } else {
-        // Không có keyword → filter ngày bình thường
         if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
         if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
       }
-
       if (productFilter) params.productId = productFilter;
       if (customerFilter) params.customerId = customerFilter;
-
       const res = await accountantApi.getOrders(params);
       const content = res.data?.data?.content || [];
-      // Bỏ filter client-side — server đã xử lý
       setOrders(content);
       setTotal(res.data?.data?.totalItems || 0);
       setPage(p);
@@ -523,7 +541,6 @@ export default function AccountantOrdersPage() {
       const params = {};
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (search.trim()) {
-        // Đang search → export theo keyword, bỏ filter ngày
         params.keyword = search.trim();
       } else {
         if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
@@ -627,6 +644,16 @@ export default function AccountantOrdersPage() {
     finally { setUploadingReceiptId(null); e.target.value = ''; }
   };
 
+  // Mobile detail handler
+  const handleMobileDetail = async (orderId) => {
+    setDetailLoading(orderId);
+    try {
+      const [dr, lr] = await Promise.all([accountantApi.getOrderDetail(orderId), accountantApi.getOrderLogs(orderId)]);
+      setSelectedOrder({ ...(dr.data?.data || orders.find(o => o.id === orderId)), logs: lr.data?.data || [] });
+    } catch { setSelectedOrder(orders.find(o => o.id === orderId)); }
+    finally { setDetailLoading(null); }
+  };
+
   const executeBulkComplete = async (mode, isFinalPartial) => {
     setBulkLoading(true);
     try {
@@ -651,39 +678,102 @@ export default function AccountantOrdersPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#FAF7F2]">
+      {/* Override vị trí calendar dropdown trên mobile — căn giữa màn hình */}
+      <style>{`
+  @media (max-width: 639px) {
+    #mobile-date-picker > div > div.absolute {
+      right: auto !important;
+      transform: translateX(-50%) !important;
+      max-width: calc(100vw - 32px) !important;
+    }
+  }
+`}</style>
       <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
-        <div className="flex items-center gap-2 mb-3">
+
+        {/* ── Desktop header (sm+) — unchanged ── */}
+        <div className="hidden sm:flex items-center gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">{t('order', 'orders')}</h1>
             <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} {t('order', 'orders').toLowerCase()}</p>
           </div>
-          <div className="relative hidden sm:block">
+          <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
             <input type="text" placeholder={t('common', 'search')} value={searchInput} onChange={e => setSearchInput(e.target.value)}
               className="border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C] w-48 lg:w-56" />
           </div>
-          <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
-            <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={r => { setDateRange(r); setPage(0); }} />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <DateRangePicker
+              from={dateRange.from}
+              to={dateRange.to}
+              onChange={r => { setDateRange(r); setPage(0); }}
+              align="right"
+            />
             {productFilter && <button onClick={() => setProductFilter('')} className="flex items-center gap-1 px-2 py-1 bg-[#C9A84C]/10 text-[#C9A84C] rounded-lg text-xs font-medium">{t('common', 'deselect')} <X size={10} /></button>}
             {customerFilter && <button onClick={() => setCustomerFilter('')} className="flex items-center gap-1 px-2 py-1 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium">{t('common', 'deselect')} <X size={10} /></button>}
           </div>
-          <div className="flex sm:hidden items-center gap-1.5">
-            <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
-              <input type="text" placeholder={t('common', 'search')} value={searchInput} onChange={e => setSearchInput(e.target.value)} className="border border-[#E8DDD0] rounded-xl pl-8 pr-3 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C] w-28" />
-            </div>
-            <button onClick={() => setShowFilter(f => !f)} className={`p-2 rounded-xl border transition-colors ${showFilter ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878]'}`}><Filter size={15} /></button>
-          </div>
-          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); fetchOrders(0); }} className="border border-[#E8DDD0] rounded-xl px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-[#C9A84C] hidden sm:block">
-            {[20, 50, 100].map(n => <option key={n} value={n}>{n}/{t('common', 'date').toLowerCase()}</option>)}
-          </select>
-          <button onClick={() => setSortNoReceipt(v => !v)} className={`p-2 rounded-xl border transition-colors hidden sm:flex items-center ${sortNoReceipt ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878]'}`}><List size={14} /></button>
           <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
           <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0" title={t('common', 'export')}>
             {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
           </button>
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+
+        {/* ── Mobile header (< sm) — 2 rows ── */}
+        <div className="sm:hidden mb-3 space-y-2">
+          {/* Row 1: title + DateRangePicker (dropdown mở trực tiếp) + refresh + export */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold text-[#1C1C1E] leading-tight">{t('order', 'orders')}</h1>
+              <p className="text-[10px] text-[#8E8878]">{total} {t('order', 'orders').toLowerCase()}</p>
+            </div>
+
+            {/* Mobile DateRangePicker — dropdown căn giữa màn hình */}
+            <div id="mobile-date-picker" className="relative shrink-0">
+              <DateRangePicker
+                from={dateRange.from}
+                to={dateRange.to}
+                onChange={r => { setDateRange(r); setPage(0); }}
+                placeholder={todayLabel}
+                align="right"
+              />
+            </div>
+
+            {hasDateFilter && (
+              <button
+                onClick={() => { setDateRange({ from: null, to: null }); setPage(0); }}
+                className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-400 hover:bg-red-100 transition-colors shrink-0"
+                title="Xóa bộ lọc ngày">
+                <X size={13} />
+              </button>
+            )}
+
+            <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0" title={t('common', 'export')}>
+              {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
+            </button>
+          </div>
+
+          {/* Row 2: full-width search */}
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <input
+              type="text"
+              placeholder={t('common', 'search')}
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              className="w-full border border-[#E8DDD0] rounded-xl pl-9 pr-8 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C]"
+            />
+            {searchInput && (
+              <button onClick={() => setSearchInput('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#C4B9A8] hover:text-[#8E8878]">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-1.5 overflow-x-auto pb-3 scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {FILTER_TABS.map(tab => (
             <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
               className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${statusFilter === tab.value ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
@@ -711,7 +801,7 @@ export default function AccountantOrdersPage() {
                           checked={selectedIds.size === orders.length && orders.length > 0}
                           onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} />
                       </th>
-                      {[t('order', 'order_code'), t('common', 'date'), t('customer', 'customer'), t('warehouse', 'warehouse'), t('common', 'status'), t('payment', 'payment_method'), t('order', 'total_paid'), t('order', 'ordererCreatedBy'), t('document', 'document'), t('document', 'invoice'), t('common', 'actions')].map(h => (
+                      {[t('order', 'order_code'), t('common', 'date'), t('customer', 'customer'), t('warehouse', 'warehouse'), t('common', 'status'), t('payment', 'payment_method'), t('order', 'total_paid'), t('order', 'ordererCreatedBy'), t('document', 'document'), t('document', 'invoice')].map(h => (
                         <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -785,12 +875,6 @@ export default function AccountantOrdersPage() {
                               </button>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <StatusActionButtons order={o}
-                              onComplete={() => handleComplete(o.id)}
-                              onPartialPayment={() => setPartialOrder(o)}
-                              loading={isActioning} />
-                          </td>
                         </tr>
                       );
                     })}
@@ -805,11 +889,13 @@ export default function AccountantOrdersPage() {
                 <OrderCard key={o.id} o={o}
                   actionLoading={actionLoading}
                   invoiceLoadingId={invoiceLoadingId}
+                  detailLoading={detailLoading}
                   onComplete={handleComplete}
                   onPartialPayment={setPartialOrder}
                   onUpdatePaymentMethod={handleUpdatePaymentMethod}
                   onInvoice={handleInvoice}
                   onUploadReceipt={handleUploadReceipt}
+                  onDetail={handleMobileDetail}
                 />
               ))}
             </div>
@@ -835,10 +921,8 @@ export default function AccountantOrdersPage() {
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-white border border-[#E8DDD0] rounded-2xl shadow-xl px-4 py-2.5">
             <div className="flex flex-col mr-2">
               <span className="text-xs font-semibold text-[#5C5C5C]">{selectedIds.size} {t('order', 'orders').toLowerCase()} {t('common', 'selected').toLowerCase()}</span>
-              <span className="text-[11px] font-bold text-[#C9A84C]">{formatP(totalSelected)}</span>
+              <span className="text-[11px] font-bold text-[#C9A84C]">Tổng tiền: {formatP(totalSelected)}</span>
             </div>
-            <button onClick={() => setBulkConfirm({ mode: 'DELIVERED_UNPAID', isFinalPartial: false })} className="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold hover:bg-orange-100">🚚 {t('status', 'delivered')}</button>
-            <button onClick={() => setBulkConfirm({ mode: 'DELIVERED_PAID', isFinalPartial: false })} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100">✅ {t('order', 'complete_order_full')}</button>
             <button onClick={() => setSelectedIds(new Set())} className="ml-1 p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={13} /></button>
           </div>
         );

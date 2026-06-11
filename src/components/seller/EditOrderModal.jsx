@@ -481,7 +481,10 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
 
   // ✅ FIX: Tính giá NET đúng — item.unitPrice đã là giá theo đơn vị hiển thị (thùng/kg)
   // Chỉ cần tách thuế ra nếu INCLUSIVE
-  const netPrice = calcNet(item.unitPrice, vatRate, vatMode);
+  const netPrice = vatMode === 'INCLUSIVE'
+    ? Number(item.unitPrice)
+    : calcNet(item.unitPrice, vatRate, vatMode);
+
   const lineNet = netPrice * item.quantity;
 
   const itemDiscount = item.itemDiscountRate ?? 0;
@@ -494,7 +497,10 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
 
   const startEditPrice = () => {
     // Hiển thị giá NET khi sửa (giá chưa thuế)
-    setPriceDisplay(String(Math.round(netPrice)));
+    setPriceDisplay(String(
+      vatMode === 'INCLUSIVE' ? Math.round(item.unitPrice) : Math.round(netPrice)
+    ));
+
     setEditingPrice(true);
     setTimeout(() => { priceRef.current?.focus(); priceRef.current?.select(); }, 30);
   };
@@ -502,9 +508,11 @@ function EditItemRow({ item, prodInfo, onUpdateQty, onRemove, onPriceOverride, o
     const val = parseFloat(priceDisplay.replace(',', '.'));
     if (!isNaN(val) && val >= 0) {
       // Người dùng nhập giá NET, cần convert về giá lưu trữ (INCLUSIVE thì nhân lại thuế)
-      const storedPrice = vatMode === 'INCLUSIVE' && vatRate > 0
-        ? val * (1 + vatRate / 100)
-        : val;
+      const storedPrice = vatMode === 'INCLUSIVE'
+        ? val          // giá người dùng nhập đã gồm thuế → lưu thẳng
+        : vatRate > 0
+          ? val * (1 + vatRate / 100)  // EXCLUSIVE: nhân lại để lưu
+          : val;
       onPriceOverride(item._editId, storedPrice);
     }
     setEditingPrice(false);

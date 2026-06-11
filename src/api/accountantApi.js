@@ -43,6 +43,9 @@ export const accountantDashboardApi = {
 export const accountantOrderApi = {
   list: (params) => api.get('/api/accountant/orders', { params }).then(unwrap),
 
+  getPendingPayment: (params) =>
+    api.get('/api/accountant/orders/pending-payment', { params }).then(unwrap),
+
   markPendingPayment: (id) =>
     api.patch(`/api/accountant/orders/${id}/pending-payment`).then(unwrap),
 
