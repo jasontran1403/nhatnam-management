@@ -326,7 +326,6 @@ export default function OrdersPage() {
   const [exportingReport, setExportingReport] = useState(false);
 
   const STATUS_MAP = {
-    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
     CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle },
     PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
     READY: { label: t('status', 'ready'), bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle },
@@ -338,11 +337,10 @@ export default function OrdersPage() {
   };
   const FILTER_TABS = [
     { value: 'ALL', label: t('common', 'all') },
+    { value: 'PREPARING', label: t('status', 'preparing') },
     { value: 'DELIVERING', label: t('status', 'delivering_short') },
     { value: 'PENDING_PAYMENT', label: t('status', 'pending_payment') },
     { value: 'COMPLETED', label: t('status', 'completed') },
-    { value: 'PENDING', label: t('status', 'pending') },
-    { value: 'PREPARING', label: t('status', 'preparing') },
     { value: 'CANCELLED', label: t('status', 'cancelled') },
   ];
 
