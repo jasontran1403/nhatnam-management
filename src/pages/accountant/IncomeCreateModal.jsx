@@ -225,7 +225,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
               <TrendingUp size={20} className="text-[#C9A84C]" />
               <div>
                 <h2 className="text-lg font-bold text-[#1C1C1E]">Tạo phiếu thu</h2>
-                <p className="text-xs text-[#8E8878]">Có hiệu lực ngay, không cần duyệt</p>
+                <p className="text-xs text-[#8E8878]">Có hiệu lực ngay, không cần duyệt123123</p>
               </div>
             </div>
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
