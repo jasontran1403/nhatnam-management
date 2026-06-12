@@ -498,6 +498,150 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
   );
 }
 
+// ── Import Ingredients Modal ───────────────────────────────────────────────────
+function ImportIngredientsModal({ open, onClose, onDone }) {
+  const toast = useToast();
+  const [step, setStep] = useState('upload'); // 'upload' | 'result'
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState(null); // { updated, skipped, errors }
+  const [uploadError, setUploadError] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) { setStep('upload'); setResult(null); setUploadError(null); }
+  }, [open]);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await operatorApi.importIngredients(fd);
+      const body = res?.data || {};
+
+      // Backend trả success:true nhưng code != 200 khi có lỗi nghiệp vụ
+      if (!body.success || (body.data === null && body.message && body.code !== 200)) {
+        setUploadError(body.message || 'Lỗi import nguyên liệu');
+        return;
+      }
+
+      const d = body.data || {};
+      setResult({
+        updated: d.updated ?? 0,
+        skipped: d.skipped ?? 0,
+        errors:  d.errors  || [],
+      });
+      setStep('result');
+      if ((d.updated ?? 0) > 0) onDone();
+    } catch (e) {
+      setUploadError(e?.response?.data?.message || 'Lỗi import nguyên liệu');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE3]">
+          <div>
+            <h2 className="text-base font-bold text-[#1C1C1E]">Import nguyên liệu</h2>
+            <p className="text-xs text-[#8E8878] mt-0.5">
+              {step === 'upload'
+                ? 'Tải file Excel đã export từ hệ thống để cập nhật'
+                : 'Kết quả import'}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]">
+            <X size={20} />
+          </button>
+        </div>
+
+        {step === 'upload' ? (
+          <div className="flex flex-col items-center justify-center p-10 gap-5">
+            <div className="w-16 h-16 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
+              {uploading
+                ? <div className="w-8 h-8 border-3 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                : <Upload size={28} className="text-[#C9A84C]" />}
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-[#1C1C1E]">
+                {uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}
+              </p>
+              <p className="text-xs text-[#8E8878] mt-1">
+                Dùng file đã Export từ hệ thống. Backend dựa vào cột <strong>ID</strong> để cập nhật.
+              </p>
+              <p className="text-xs text-[#C9A84C] mt-1">
+                ⚠ Danh mục và kho phải khớp tên trong hệ thống.
+              </p>
+              <p className="text-xs text-amber-600 mt-1 bg-amber-50 rounded-lg px-3 py-1.5">
+                ⚠ Mỗi file chỉ import được <strong>1 lần</strong>. Export lại nếu muốn import tiếp.
+              </p>
+              {uploadError && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-left max-w-xs">
+                  <span className="text-red-500 mt-0.5 shrink-0">✕</span>
+                  <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+                </div>
+              )}
+            </div>
+            {!uploading && (
+              <label className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+                <Upload size={15} /> Chọn file .xlsx
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                  onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
+              </label>
+            )}
+          </div>
+        ) : (
+          <div className="p-6 space-y-4">
+            {/* Summary */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-emerald-600">{result?.updated ?? 0}</p>
+                <p className="text-xs text-emerald-700 mt-0.5">Cập nhật thành công</p>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-red-500">{result?.skipped ?? 0}</p>
+                <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
+              </div>
+            </div>
+
+            {/* Errors */}
+            {result?.errors?.length > 0 && (
+              <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-48 overflow-y-auto">
+                <p className="text-xs font-semibold text-red-600 mb-2">Chi tiết lỗi:</p>
+                {result.errors.map((err, i) => (
+                  <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 last:border-0">{err}</p>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <button onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">
+                Đóng
+              </button>
+              <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+                <Upload size={14} /> Import thêm
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                  onChange={e => { if (e.target.files[0]) { setStep('upload'); handleFile(e.target.files[0]); } }} />
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OperatorIngredientsPage() {
   const { t } = useLang();
@@ -522,6 +666,9 @@ export default function OperatorIngredientsPage() {
   // [NEW] Delete state
   const [deleteModal, setDeleteModal] = useState({ open: false, ingredient: null });
   const [deleting, setDeleting] = useState(false);
+
+  // [NEW] Import modal state
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const fetchData = () => {
     setLoading(true);
@@ -690,11 +837,30 @@ export default function OperatorIngredientsPage() {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên, mã hàng..."
                 className="pl-8 pr-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] w-44" />
             </div>
-            <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+            <button onClick={() => setImportModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
               <Upload size={14} /> Import
-              <input type="file" accept=".xlsx,.csv" className="hidden" onChange={() => { }} />
-            </label>
-            <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            </button>
+            <button onClick={async () => {
+              try {
+                const res = await operatorApi.exportIngredients();
+                const blob = new Blob([res.data], {
+                  type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const disposition = res.headers?.['content-disposition'] || '';
+                const match = disposition.match(/filename="?([^"]+)"?/);
+                a.download = match ? match[1] : 'danh-sach-nguyen-lieu.xlsx';
+                a.click();
+                URL.revokeObjectURL(url);
+                toast('Đã xuất file nguyên liệu', 'success');
+              } catch (e) {
+                toast(e?.response?.data?.message || 'Lỗi xuất file', 'error');
+              }
+            }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
               <Download size={14} /> Export
             </button>
             <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 rounded-xl btn-gold text-sm font-medium">
@@ -815,6 +981,13 @@ export default function OperatorIngredientsPage() {
         onConfirm={handleDeleteConfirm}
         itemName={deleteModal.ingredient?.name || ''}
         deleting={deleting}
+      />
+
+      {/* [NEW] Import modal */}
+      <ImportIngredientsModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onDone={fetchData}
       />
     </div>
   );

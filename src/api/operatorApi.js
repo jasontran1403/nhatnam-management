@@ -40,6 +40,8 @@ export const operatorApi = {
   getProducts: () => api.get('/api/operator/products'),
   // [NEW] Xóa product
   deleteProduct: (id) => api.delete(`/api/operator/products/${id}`),
+  // [NEW] Cập nhật SKU
+  updateProductSku: (id, sku) => api.patch(`/api/operator/products/${id}/sku`, { sku }),
 
   // ── Import / Export ──────────────────────────────────────────────────────
   exportIngredients: () =>

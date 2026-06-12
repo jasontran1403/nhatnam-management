@@ -8,12 +8,180 @@ import { useToast } from '../../components/common/Toast';
 import {
   Plus, Trash2, X, ChevronDown, ChevronUp,
   ImagePlus, Box, Search, Edit2, AlertTriangle,
-  Package, Tag, Layers,
+  Package, Tag, Layers, Download, Upload, Hash,
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
 const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần'];
+
+// ── SKU Generator ─────────────────────────────────────────────────────────────
+// Tạo SKU ngắn gọn, dễ nhớ cho ~500 sản phẩm thực phẩm
+// Format: [CAT]-[2-3 ký tự tên]-[ID 3 số]  ví dụ: KEM-SDA-001, HAI-TOM-042
+const CATEGORY_PREFIX = {
+  'kem': 'KEM', 'cream': 'KEM',
+  'gia vị': 'GVJ', 'gia vi': 'GVJ', 'sauce': 'GVJ', 'sốt': 'GVJ', 'sot': 'GVJ',
+  'thịt': 'THT', 'thit': 'THT', 'meat': 'THT',
+  'hải sản': 'HSN', 'hai san': 'HSN', 'seafood': 'HSN', 'tôm': 'HSN', 'tom': 'HSN',
+  'xúc xích': 'XXC', 'xuc xich': 'XXC', 'sausage': 'XXC',
+  'rau': 'RAU', 'củ': 'RAU', 'cu': 'RAU',
+  'đồ uống': 'DUO', 'do uong': 'DUO', 'drink': 'DUO',
+  'bánh': 'BNH', 'banh': 'BNH',
+};
+
+function generateSKU(productName, category, productId) {
+  const removeVietnamese = (str) =>
+    (str || '').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/gi, 'd')
+      .toUpperCase()
+      .replace(/[^A-Z0-9 ]/g, '')
+      .trim();
+
+  // 1. Prefix danh mục (3 ký tự)
+  const catLower = (category || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g,'d');
+  let catCode = 'PRD';
+  for (const [key, val] of Object.entries(CATEGORY_PREFIX)) {
+    if (catLower.includes(key)) { catCode = val; break; }
+  }
+
+  // 2. Tên sản phẩm → lấy 2-3 ký tự đầu của từ đầu tiên có nghĩa
+  const cleanName = removeVietnamese(productName);
+  const words = cleanName.split(/\s+/).filter(w => w.length >= 2);
+  let nameCode = '';
+  if (words.length >= 2) {
+    nameCode = words[0].slice(0, 2) + words[1].slice(0, 1);
+  } else if (words.length === 1) {
+    nameCode = words[0].slice(0, 3);
+  } else {
+    nameCode = cleanName.slice(0, 3);
+  }
+  nameCode = nameCode.padEnd(3, 'X').slice(0, 3);
+
+  // 3. ID sản phẩm (3 chữ số, nếu chưa có ID thì dùng random)
+  const idNum = productId ? String(productId).padStart(3, '0').slice(-3) : String(Math.floor(Math.random() * 900) + 100);
+
+  return `${catCode}-${nameCode}-${idNum}`;
+}
+
+// ── Import Products Modal ─────────────────────────────────────────────────────
+function ImportProductsModal({ open, onClose, onDone }) {
+  const toast = useToast();
+  const [step, setStep] = useState('upload'); // 'upload' | 'result'
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => { if (!open) { setStep('upload'); setResult(null); setUploadError(null); } }, [open]);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const res = await operatorApi.importUpdateProducts(file);
+      const body = res?.data || {};
+
+      // Backend trả success:true nhưng code != 200 khi có lỗi nghiệp vụ (token sai, file cũ...)
+      if (!body.success || (body.data === null && body.message && body.code !== 200)) {
+        setUploadError(body.message || 'Lỗi import sản phẩm');
+        return;
+      }
+
+      const d = body.data || {};
+      setResult({ updated: d.updated ?? 0, skipped: d.skipped ?? 0, errors: d.errors || [] });
+      setStep('result');
+      if ((d.updated ?? 0) > 0) onDone();
+    } catch (e) {
+      setUploadError(e?.response?.data?.message || 'Lỗi import sản phẩm');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE3]">
+          <div>
+            <h2 className="text-base font-bold text-[#1C1C1E]">Import sản phẩm</h2>
+            <p className="text-xs text-[#8E8878] mt-0.5">
+              {step === 'upload' ? 'Dùng file Export từ hệ thống — file chỉ import được 1 lần' : 'Kết quả import'}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={20} /></button>
+        </div>
+
+        {step === 'upload' ? (
+          <div className="flex flex-col items-center justify-center p-10 gap-5">
+            <div className="w-16 h-16 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
+              {uploading
+                ? <div className="w-8 h-8 border-[3px] border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                : <Upload size={28} className="text-[#C9A84C]" />}
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
+              <p className="text-xs text-[#8E8878] mt-1">Backend dựa vào cột <strong>ID</strong> để cập nhật.</p>
+              <p className="text-xs text-amber-600 mt-1 bg-amber-50 rounded-lg px-3 py-1.5">
+                ⚠ Mỗi file chỉ import được <strong>1 lần</strong>. Export lại nếu muốn import tiếp.
+              </p>
+              {uploadError && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-left max-w-xs">
+                  <span className="text-red-500 mt-0.5 shrink-0">✕</span>
+                  <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+                </div>
+              )}
+            </div>
+            {!uploading && (
+              <label className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+                <Upload size={15} /> Chọn file .xlsx
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                  onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
+              </label>
+            )}
+          </div>
+        ) : (
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-emerald-600">{result?.updated ?? 0}</p>
+                <p className="text-xs text-emerald-700 mt-0.5">Cập nhật thành công</p>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-red-500">{result?.skipped ?? 0}</p>
+                <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
+              </div>
+            </div>
+            {result?.errors?.length > 0 && (
+              <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-48 overflow-y-auto">
+                <p className="text-xs font-semibold text-red-600 mb-2">Chi tiết lỗi:</p>
+                {result.errors.map((err, i) => (
+                  <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 last:border-0">{err}</p>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 pt-2">
+              <button onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">
+                Đóng
+              </button>
+              <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830]">
+                <Upload size={14} /> Import file mới
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                  onChange={e => { if (e.target.files[0]) { setStep('upload'); handleFile(e.target.files[0]); } }} />
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 const DEFAULT_TIERS = [
   { _id: 'tier-1', tierName: 'Sỉ 1', minQty: 0, maxQty: 5, price: '' },
@@ -31,6 +199,7 @@ const emptyIngredient = () => ({
 const emptyForm = () => ({
   existingProductId: null,
   name: '',
+  sku: '',
   categoryName: '',
   unit: '',
   basePrice: '',
@@ -183,6 +352,7 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
       setForm({
         existingProductId: editProduct.id,
         name: editProduct.name || '',
+        sku: editProduct.sku || '',
         categoryName: editProduct.category || editProduct.categoryName || '',
         unit: editProduct.unit || '',
         basePrice: editProduct.basePrice != null ? String(editProduct.basePrice) : '',
@@ -292,6 +462,7 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
         items: [{
           existingProductId: form.existingProductId,
           name: form.name.trim(),
+          sku: form.sku.trim() || null,
           categoryName: form.categoryName,
           unit: form.unit,
           basePrice: Number(String(form.basePrice).replace(/[^0-9]/g, '')),
@@ -376,6 +547,23 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
                 <input value={form.name} onChange={e => upd({ name: e.target.value })}
                   placeholder="Ví dụ: Sốt dừa Nhất Nam"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white" />
+              </div>
+              {/* SKU */}
+              <div>
+                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1 flex items-center gap-1">
+                  <Hash size={11} className="text-[#C9A84C]" /> SKU
+                  <span className="font-normal text-[#B0A898]">(mã hàng ngắn)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input value={form.sku} onChange={e => upd({ sku: e.target.value.toUpperCase() })}
+                    placeholder="VD: KEM-SDA-001"
+                    className="flex-1 px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white font-mono" />
+                  <button type="button"
+                    onClick={() => upd({ sku: generateSKU(form.name, form.categoryName, form.existingProductId) })}
+                    className="px-3 py-2 text-xs rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 font-semibold whitespace-nowrap transition-colors">
+                    Tạo SKU
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -595,6 +783,7 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
               <p className="text-xs text-[#8E8878] mt-0.5">
                 {product.category && <span>{product.category} · </span>}
                 {product.unit}
+                {product.sku && <span className="ml-1.5 font-mono bg-[#F5F0E8] text-[#C9A84C] rounded px-1.5 py-0.5 text-[10px]">{product.sku}</span>}
               </p>
             </div>
             {/* Action buttons - visible on hover */}
@@ -680,6 +869,9 @@ export default function OperatorProductBatchPage() {
   const [deleteModal, setDeleteModal] = useState({ open: false, product: null });
   const [deleting, setDeleting]     = useState(false);
 
+  // Import/Export
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
   const imgSrc = (url) => {
     if (!url) return null;
     if (url.startsWith('http')) return url;
@@ -746,6 +938,31 @@ export default function OperatorProductBatchPage() {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportProducts = async () => {
+    setExporting(true);
+    try {
+      const res = await operatorApi.exportFullList();
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const disposition = res.headers?.['content-disposition'] || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : 'danh-sach-san-pham.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`Đã xuất file sản phẩm`, 'success');
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi xuất file', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Unique categories from products
   const catOptions = useMemo(() => {
     const set = new Set(products.map(p => p.category).filter(Boolean));
@@ -776,6 +993,21 @@ export default function OperatorProductBatchPage() {
                 placeholder="Tìm tên sản phẩm..."
                 className="pl-8 pr-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] w-48" />
             </div>
+
+            {/* Import */}
+            <button onClick={() => setImportModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+              <Upload size={14} /> Import
+            </button>
+
+            {/* Export */}
+            <button onClick={handleExportProducts} disabled={exporting}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+              {exporting
+                ? <span className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                : <Download size={14} />}
+              Export
+            </button>
 
             {/* Tạo mới */}
             <button onClick={handleCreate}
@@ -834,6 +1066,13 @@ export default function OperatorProductBatchPage() {
         onConfirm={handleDeleteConfirm}
         itemName={deleteModal.product?.name || ''}
         deleting={deleting}
+      />
+
+      {/* Modal import */}
+      <ImportProductsModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onDone={fetchData}
       />
     </div>
   );

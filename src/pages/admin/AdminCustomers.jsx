@@ -588,6 +588,107 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
   );
 }
 
+// ── Import Customers Modal ────────────────────────────────────────────────────
+function ImportCustomersModal({ open, onClose, onDone }) {
+  const toast = useToast();
+  const [step, setStep] = useState('upload');
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => { if (!open) { setStep('upload'); setResult(null); setUploadError(null); } }, [open]);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setUploadError(null);
+    try {
+      const res = await adminCustomerApi.importAll(file);
+      const body = res?.data || {};
+      if (!body.success || (body.data === null && body.message && body.code !== 200)) {
+        setUploadError(body.message || 'Lỗi import khách hàng');
+        return;
+      }
+      const d = body.data || {};
+      setResult({ updated: d.updated ?? 0, skipped: d.skipped ?? 0, errors: d.errors || [] });
+      setStep('result');
+      if ((d.updated ?? 0) > 0) onDone();
+    } catch (e) {
+      setUploadError(e?.response?.data?.message || 'Lỗi import khách hàng');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Import khách hàng"
+      subtitle={step === 'upload' ? 'Dùng file Export từ hệ thống — file chỉ import được 1 lần' : 'Kết quả import'}
+      size="sm">
+      {step === 'upload' ? (
+        <div className="flex flex-col items-center gap-4 py-4">
+          <div className="w-14 h-14 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
+            {uploading
+              ? <div className="w-7 h-7 border-[3px] border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              : <Upload size={24} className="text-[#C9A84C]" />}
+          </div>
+          <div className="text-center space-y-1.5">
+            <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
+            <p className="text-xs text-[#8E8878]">Backend dựa vào cột <strong>ID</strong> để cập nhật.</p>
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
+              ⚠ Mỗi file chỉ import được <strong>1 lần</strong>. Export lại nếu muốn import tiếp.
+            </p>
+            {uploadError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-left">
+                <span className="text-red-500 shrink-0 mt-0.5">✕</span>
+                <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+              </div>
+            )}
+          </div>
+          {!uploading && (
+            <label className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+              <Upload size={14} /> Chọn file .xlsx
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
+            </label>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{result?.updated ?? 0}</p>
+              <p className="text-xs text-emerald-700 mt-0.5">Cập nhật thành công</p>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+              <p className="text-2xl font-bold text-red-500">{result?.skipped ?? 0}</p>
+              <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
+            </div>
+          </div>
+          {result?.errors?.length > 0 && (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-40 overflow-y-auto">
+              <p className="text-xs font-semibold text-red-600 mb-1.5">Chi tiết lỗi:</p>
+              {result.errors.map((err, i) => (
+                <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 last:border-0">{err}</p>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <SecondaryButton onClick={onClose} className="flex-1">Đóng</SecondaryButton>
+            <label className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830]">
+              <Upload size={13} /> Import file mới
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                onChange={e => { if (e.target.files[0]) { setStep('upload'); handleFile(e.target.files[0]); } }} />
+            </label>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AdminCustomers() {
   const { t } = useLang();
@@ -619,6 +720,38 @@ export default function AdminCustomers() {
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState(null);
+
+  const [exporting, setExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const params = {};
+      if (debouncedQ) params.q = debouncedQ;
+      if (filters.type) params.type = filters.type;
+      if (filters.isActive !== '') params.isActive = filters.isActive;
+      if (filters.sellerId !== '') params.sellerId = filters.sellerId;
+
+      const res = await adminCustomerApi.exportAll(params);
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Lấy tên file từ header nếu có, fallback về tên mặc định
+      const disposition = res.headers?.['content-disposition'] || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : `danh-sach-khach-hang.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e?.response?.data?.message || e?.message || 'Lỗi khi xuất dữ liệu');
+    } finally {
+      setExporting(false);
+    }
+  }, [debouncedQ, filters]);
 
   const handleDelete = async () => {
     if (!deletePassword.trim()) { setDeleteError('Vui lòng nhập mật khẩu'); return; }
@@ -716,15 +849,16 @@ export default function AdminCustomers() {
             className="flex items-center gap-1.5 text-xs px-3 py-2">
             <UserPlus size={13} /> Tạo khách hàng
           </PrimaryButton>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
-            <Upload size={13} /> Import
-            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
-              if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
-            }} />
-          </label>
-          <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
+          <button onClick={() => setImportOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
-            <Download size={13} /> Export
+            <Upload size={13} /> Import
+          </button>
+          <button onClick={handleExport} disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            {exporting
+              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              : <Download size={13} />}
+            {exporting ? 'Đang xuất...' : 'Export'}
           </button>
         </div>
       </div>
@@ -1092,6 +1226,12 @@ export default function AdminCustomers() {
         customer={editCustomer}
         onClose={() => { setCreateOpen(false); setEditCustomer(null); }}
         onSaved={() => { setCreateOpen(false); setEditCustomer(null); load(); }}
+      />
+
+      <ImportCustomersModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onDone={load}
       />
     </div>
   );

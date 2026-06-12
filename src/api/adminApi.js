@@ -64,6 +64,11 @@ export const adminCustomerApi = {
   getOrderHistory: (customerId) => api.get(`/api/admin/customers/${customerId}/orders`).then(unwrap),
   assignSeller: (id, sellerId) => api.put(`/api/admin/customers/${id}/assign-seller`, null, { params: sellerId != null ? { sellerId } : {} }).then(unwrap),
   searchSellers: (q) => api.get('/api/admin/customers/sellers/search', { params: { q } }).then(unwrap),
+  exportAll: (params) => api.get('/api/admin/customers/export', { params, responseType: 'blob' }),
+  importAll: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/api/admin/customers/import', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ─── Users ───────────────────────────────────────────────────────────────────
