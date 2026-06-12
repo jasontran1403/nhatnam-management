@@ -7,15 +7,16 @@ import { useToast } from '../../components/common/Toast';
 import {
   X, TrendingUp, Send, CreditCard, Banknote,
   Search, Plus, Trash2, Upload, ShoppingCart,
-  AlertCircle, FileText, ChevronRight
+  AlertCircle, FileText, ChevronRight, CheckCircle2, Clock
 } from 'lucide-react';
 
 function formatVND(n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ'; }
-function parseVND(s)   { return Number(String(s).replace(/[^0-9]/g, '')) || 0; }
+function parseVND(s) { return Number(String(s).replace(/[^0-9]/g, '')) || 0; }
 
 // ── Modal chi tiết các đơn đã chọn ───────────────────────────────────────────
 function OrderSummaryModal({ orders, onClose }) {
-  const total = orders.reduce((s, o) => s + (o.finalAmount || 0), 0);
+  const total = orders.reduce((s, o) => s + Math.round(o.remainingAmount ?? o.finalAmount ?? 0), 0);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
@@ -28,7 +29,6 @@ function OrderSummaryModal({ orders, onClose }) {
             <X size={18} />
           </button>
         </div>
-
         <div className="overflow-y-auto flex-1 p-5 space-y-2">
           {orders.map(o => (
             <div key={o.id} className="flex items-center justify-between py-2.5 px-3 bg-[#FAF7F2] rounded-xl">
@@ -36,11 +36,17 @@ function OrderSummaryModal({ orders, onClose }) {
                 <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
                 <p className="text-sm text-[#1C1C1E]">{o.customerName || 'Khách lẻ'}</p>
               </div>
-              <p className="text-sm font-bold text-[#1C1C1E]">{formatVND(o.finalAmount)}</p>
+              <p className="text-sm font-bold text-[#1C1C1E]">
+                {formatVND(Math.round(o.remainingAmount ?? o.finalAmount ?? 0))}
+                {o.paymentStatus === 'PARTIAL' && (
+                  <span className="block text-xs font-normal text-amber-500 text-right">
+                    {formatVND(Math.round(o.finalAmount ?? 0))}
+                  </span>
+                )}
+              </p>
             </div>
           ))}
         </div>
-
         <div className="p-5 border-t border-black/5 flex-shrink-0">
           <div className="flex justify-between items-center mb-4">
             <span className="text-sm font-semibold text-[#8E8878]">Tổng cần thu</span>
@@ -55,35 +61,128 @@ function OrderSummaryModal({ orders, onClose }) {
   );
 }
 
+// ── Modal xác nhận thu thiếu đơn cuối ────────────────────────────────────────
+function PartialConfirmModal({ info, onConfirm, onCancel }) {
+  // info = { lastOrder, lastOrderRemaining, shortfall, collected, orderTotal }
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="p-5 border-b border-black/5">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertCircle size={18} className="text-amber-500" />
+            <h3 className="font-bold text-[#1C1C1E]">Xác nhận thu thiếu</h3>
+          </div>
+          <p className="text-sm text-[#8E8878]">
+            Số tiền thu <span className="font-bold text-[#1C1C1E]">{formatVND(info.collected)}</span> thiếu{' '}
+            <span className="font-bold text-red-500">{formatVND(info.shortfall)}</span> so với tổng đơn hàng{' '}
+            <span className="font-bold text-[#1C1C1E]">{formatVND(info.orderTotal)}</span>.
+          </p>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wide">
+            Đơn bị thiếu: <span className="font-mono text-[#C9A84C]">{info.lastOrder.orderCode}</span>
+          </p>
+          <div className="bg-[#FAF7F2] rounded-xl p-3 text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-[#8E8878]">Cần thu</span>
+              <span className="font-bold">
+                {formatVND(Math.round(info.lastOrder.remainingAmount ?? info.lastOrder.finalAmount ?? 0))}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#8E8878]">Số tiền sẽ thu</span>
+              <span className="font-bold text-amber-600">{formatVND(info.lastOrderRemaining)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#8E8878]">Còn thiếu</span>
+              <span className="font-bold text-red-500">{formatVND(info.shortfall)}</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-[#8E8878]">Chọn cách xử lý cho đơn này:</p>
+
+          <button
+            onClick={() => onConfirm('PARTIAL')}
+            className="w-full flex items-start gap-3 p-3 rounded-xl border-2 border-amber-200 bg-amber-50 hover:border-amber-400 transition text-left"
+          >
+            <Clock size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-amber-700">Thu 1 phần</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Ghi nhận thu {formatVND(info.lastOrderRemaining)}, đơn vẫn ở trạng thái <strong>Chờ thanh toán</strong>. Còn thiếu {formatVND(info.shortfall)}.
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onConfirm('FULL')}
+            className="w-full flex items-start gap-3 p-3 rounded-xl border-2 border-green-200 bg-green-50 hover:border-green-400 transition text-left"
+          >
+            <CheckCircle2 size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-green-700">Ghi nhận đã thu đủ</p>
+              <p className="text-xs text-green-600 mt-0.5">
+                Chấp nhận lệch {formatVND(info.shortfall)}, đánh dấu đơn <strong>Hoàn thành</strong>.
+              </p>
+            </div>
+          </button>
+        </div>
+
+        <div className="px-5 pb-5">
+          <button
+            onClick={onCancel}
+            className="w-full py-2.5 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition"
+          >
+            Huỷ, kiểm tra lại
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main modal ────────────────────────────────────────────────────────────────
 export default function IncomeCreateModal({ onClose, onCreated }) {
   const toast = useToast();
   const fileRef = useRef();
   const searchDebounce = useRef(null);
   const orderDropRef = useRef();
+  const [receiptNumber, setReceiptNumber] = useState('');
 
   // Đơn hàng
-  const [orderSearch, setOrderSearch]       = useState('');
-  const [orderResults, setOrderResults]     = useState([]);
-  const [orderLoading, setOrderLoading]     = useState(false);
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderResults, setOrderResults] = useState([]);
+  const [orderLoading, setOrderLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
-  const [showOrderDrop, setShowOrderDrop]   = useState(false);
+  const [showOrderDrop, setShowOrderDrop] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
 
-  // Form
-  const [payerName, setPayerName]     = useState('');
-  const [reason, setReason]           = useState('');
-  const [paymentType, setPaymentType] = useState('CASH');
-  const [bankName, setBankName]       = useState('');
-  const [bankRef, setBankRef]         = useState('');
-  const [items, setItems]             = useState([{ id: 1, itemName: 'Khoản thu 1', amount: '', note: '' }]);
-  const [images, setImages]           = useState([]);
-  const [submitting, setSubmitting]   = useState(false);
+  // Số tiền thực thu
+  const [collectedAmount, setCollectedAmount] = useState('');
+  const [collectedError, setCollectedError] = useState('');
+  const [showPartialConfirm, setShowPartialConfirm] = useState(false);
+  const [partialInfo, setPartialInfo] = useState(null);
+  const [pendingHandling, setPendingHandling] = useState(null); // 'PARTIAL' | 'FULL'
 
-  const orderTotal  = selectedOrders.reduce((s, o) => s + (o.finalAmount || 0), 0);
+  // Form
+  const [payerName, setPayerName] = useState('');
+  const [reason, setReason] = useState('');
+  const [paymentType, setPaymentType] = useState('CASH');
+  const [bankName, setBankName] = useState('');
+  const [bankRef, setBankRef] = useState('');
+  const [items, setItems] = useState([{ id: 1, itemName: 'Khoản thu 1', amount: '', note: '' }]);
+  const [images, setImages] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const orderTotal = selectedOrders.reduce(
+    (s, o) => s + Math.round(o.remainingAmount ?? o.finalAmount ?? 0), 0
+  );
+
+  const collectedNum = parseVND(collectedAmount);
   const manualTotal = items.reduce((s, i) => s + parseVND(i.amount), 0);
-  const hasOrders   = selectedOrders.length > 0;
-  const displayTotal = hasOrders ? orderTotal : manualTotal;
+  const hasOrders = selectedOrders.length > 0;
+  const displayTotal = hasOrders ? (collectedAmount ? collectedNum : orderTotal) : manualTotal;
 
   // Đóng dropdown khi click ngoài
   useEffect(() => {
@@ -94,7 +193,15 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
-  // Tìm đơn PENDING_PAYMENT — dùng endpoint mới
+  // Reset collected khi thay đổi danh sách đơn
+  useEffect(() => {
+    setCollectedAmount('');
+    setCollectedError('');
+    setPartialInfo(null);
+    setPendingHandling(null);
+  }, [selectedOrders.length]);
+
+  // Tìm đơn PENDING_PAYMENT
   const searchOrders = useCallback(async (q) => {
     setOrderLoading(true);
     try {
@@ -150,10 +257,61 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
     }
   };
 
+  // ── Validate số tiền thu ──────────────────────────────────────────────────
+  const validateCollected = (collected) => {
+    if (!hasOrders) return { valid: true };
+    if (!collected || collected <= 0) return { valid: false, error: 'Vui lòng nhập số tiền thực thu' };
+    if (collected > orderTotal) {
+      return { valid: false, error: `Số tiền thu (${formatVND(collected)}) vượt quá tổng cần thu (${formatVND(orderTotal)})` };
+    }
+    if (collected === orderTotal) return { valid: true, partial: false };
+
+    let remaining = collected;
+    for (let i = 0; i < selectedOrders.length; i++) {
+      const orderAmt = Math.round(selectedOrders[i].remainingAmount ?? selectedOrders[i].finalAmount ?? 0); // ← sửa ở đây
+      const isLast = i === selectedOrders.length - 1;
+
+      if (remaining >= orderAmt) {
+        remaining -= orderAmt;
+      } else {
+        if (!isLast || remaining <= 0) {
+          const shortOrders = selectedOrders.slice(i);
+          return {
+            valid: false,
+            error: `Tổng tiền thu không đủ cho ${shortOrders.map(o => o.orderCode).join(', ')}. Vui lòng kiểm tra lại.`
+          };
+        }
+        return {
+          valid: true,
+          partial: true,
+          lastOrder: selectedOrders[i],
+          lastOrderRemaining: remaining,
+          shortfall: orderAmt - remaining, // ← sửa ở đây
+        };
+      }
+    }
+    return { valid: true, partial: false };
+  };
+
+  const handleCollectedChange = (val) => {
+    setCollectedAmount(val);
+    setCollectedError('');
+    setPendingHandling(null);
+    setPartialInfo(null);
+    if (!val) return;
+    const num = parseVND(val);
+    const result = validateCollected(num);
+    if (!result.valid) {
+      setCollectedError(result.error);
+    } else if (result.partial) {
+      setPartialInfo({ ...result, collected: num, orderTotal });
+    }
+  };
+
   // Items manual
-  const addItem    = () => setItems(p => [...p, { id: Date.now(), itemName: `Khoản thu ${p.length + 1}`, amount: '', note: '' }]);
+  const addItem = () => setItems(p => [...p, { id: Date.now(), itemName: `Khoản thu ${p.length + 1}`, amount: '', note: '' }]);
   const removeItem = (id) => setItems(p => p.filter(i => i.id !== id));
-  const updateItem = (id, k, v) => setItems(p => p.map(i => i.id === id ? {...i, [k]: v} : i));
+  const updateItem = (id, k, v) => setItems(p => p.map(i => i.id === id ? { ...i, [k]: v } : i));
 
   // Upload ảnh
   const handleImageChange = async (e) => {
@@ -165,7 +323,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
         const res = await incomeApi.uploadImage(file);
         const uploaded = res.data?.data?.imageUrl || res.data?.imageUrl || '';
         if (!uploaded) throw new Error();
-        setImages(p => p.map(img => img.id === tmp.id ? {...img, uploading: false, uploadedUrl: uploaded} : img));
+        setImages(p => p.map(img => img.id === tmp.id ? { ...img, uploading: false, uploadedUrl: uploaded } : img));
       } catch {
         setImages(p => p.filter(img => img.id !== tmp.id));
         toast('Lỗi upload ảnh', 'error');
@@ -174,45 +332,100 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
     e.target.value = '';
   };
 
-  const handleSubmit = async () => {
-    if (!reason.trim()) { toast('Lý do thu là bắt buộc', 'error'); return; }
-    if (paymentType === 'BANK_TRANSFER') {
-      if (!bankName.trim()) { toast('Vui lòng nhập tên ngân hàng', 'error'); return; }
-      if (!bankRef.trim())  { toast('Vui lòng nhập mã tham chiếu giao dịch', 'error'); return; }
-    }
-
-    let submitItems;
-    if (hasOrders) {
-      submitItems = [{
-        itemName: `Thu tiền đơn hàng: ${selectedOrders.map(o => o.orderCode).join(', ')}`,
-        amount: orderTotal,
-        note: null,
-      }];
-    } else {
-      submitItems = items.filter(i => i.itemName.trim() && parseVND(i.amount) > 0)
-        .map(i => ({ itemName: i.itemName.trim(), amount: parseVND(i.amount), note: i.note.trim() || null }));
-      if (submitItems.length === 0) { toast('Phải có ít nhất 1 khoản thu hợp lệ', 'error'); return; }
-    }
-    if (images.some(img => img.uploading)) { toast('Đang tải ảnh, vui lòng chờ...', 'warning'); return; }
-
+  // ── Submit ────────────────────────────────────────────────────────────────
+  const doSubmit = async (lastOrderHandling) => {
     setSubmitting(true);
     try {
-      await incomeApi.create({
-        payerName:        payerName.trim() || null,
-        reason:           reason.trim(),
+      let submitItems;
+      const collected = hasOrders ? collectedNum : null;
+
+      if (hasOrders) {
+        submitItems = [{
+          itemName: `Thu tiền đơn hàng: ${selectedOrders.map(o => o.orderCode).join(', ')}`,
+          amount: collected,
+          note: null,
+        }];
+      } else {
+        submitItems = items
+          .filter(i => i.itemName.trim() && parseVND(i.amount) > 0)
+          .map(i => ({ itemName: i.itemName.trim(), amount: parseVND(i.amount), note: i.note.trim() || null }));
+      }
+
+      const res = await incomeApi.create({
+        payerName: payerName.trim() || null,
+        reason: reason.trim(),
         paymentType,
-        bankName:         paymentType === 'BANK_TRANSFER' ? bankName.trim() : undefined,
-        bankRef:          paymentType === 'BANK_TRANSFER' ? bankRef.trim()  : undefined,
+        bankName: paymentType === 'BANK_TRANSFER' ? bankName.trim() : undefined,
+        bankRef: paymentType === 'BANK_TRANSFER' ? bankRef.trim() : undefined,
         linkedOrderCodes: hasOrders ? selectedOrders.map(o => o.orderCode) : undefined,
-        items:            submitItems,
-        imageUrls:        images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
+        collectedAmount: collected,
+        lastOrderHandling: lastOrderHandling || undefined,
+        items: submitItems,
+        imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
+        receiptNumber: receiptNumber.trim(),
       });
+
+      // Backend trả success: false hoặc code != 200/901 → lỗi nghiệp vụ
+      const data = res.data;
+      if (data.message !== 'OK') {
+        // Bỏ dấu \" trong message trước khi hiển thị
+        const cleanMessage = (data.message || 'Lỗi khi tạo phiếu').replace(/\\"/g, '').replace(/"/g, '');
+        toast(cleanMessage, 'error');
+        return;
+      }
+
       toast('Phiếu thu đã được tạo thành công', 'success');
       onCreated();
     } catch (e) {
       toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu', 'error');
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleSubmit = async () => {
+    if (!receiptNumber.trim()) { toast('Số phiếu thu là bắt buộc', 'error'); return; }
+
+    if (!reason.trim()) { toast('Lý do thu là bắt buộc', 'error'); return; }
+    if (paymentType === 'BANK_TRANSFER') {
+      if (!bankName.trim()) { toast('Vui lòng nhập tên ngân hàng', 'error'); return; }
+      if (!bankRef.trim()) { toast('Vui lòng nhập mã tham chiếu giao dịch', 'error'); return; }
+    }
+    if (images.some(img => img.uploading)) { toast('Đang tải ảnh, vui lòng chờ...', 'warning'); return; }
+
+    if (hasOrders) {
+      if (!collectedNum) { toast('Vui lòng nhập số tiền thực thu', 'error'); return; }
+      const validation = validateCollected(collectedNum);
+      if (!validation.valid) { toast(validation.error, 'error'); return; }
+
+      if (validation.partial) {
+        // Cần xác nhận cách xử lý đơn cuối
+        setPartialInfo({ ...validation, collected: collectedNum, orderTotal });
+        setShowPartialConfirm(true);
+        return;
+      }
+      // Thu đủ hết
+      await doSubmit(null);
+    } else {
+      const validItems = items.filter(i => i.itemName.trim() && parseVND(i.amount) > 0);
+      if (validItems.length === 0) { toast('Phải có ít nhất 1 khoản thu hợp lệ', 'error'); return; }
+      await doSubmit(null);
+    }
+  };
+
+  const handlePartialConfirm = async (handling) => {
+    setShowPartialConfirm(false);
+    await doSubmit(handling);
+  };
+
+  // ── Trạng thái collected amount ──────────────────────────────────────────
+  const collectedStatus = (() => {
+    if (!hasOrders || !collectedNum) return null;
+    if (collectedError) return 'error';
+    if (collectedNum === orderTotal) return 'exact';
+    if (partialInfo) return 'partial';
+    return null;
+  })();
 
   return (
     <>
@@ -244,7 +457,6 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                 <span className="text-xs font-normal text-[#8E8878] ml-1">(tuỳ chọn)</span>
               </label>
 
-              {/* Ô search đơn hàng */}
               <div className="relative" ref={orderDropRef}>
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
@@ -278,7 +490,14 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                               <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
                               <p className="text-sm text-[#1C1C1E]">{o.customerName || 'Khách lẻ'}</p>
                             </div>
-                            <span className="text-sm font-bold text-[#1C1C1E]">{formatVND(o.finalAmount)}</span>
+                            <span className="text-sm font-bold text-[#1C1C1E]">
+                              {formatVND(Math.round(o.remainingAmount ?? o.finalAmount ?? 0))}
+                              {o.paymentStatus === 'PARTIAL' && (
+                                <span className="block text-xs font-normal text-amber-500">
+                                  Còn lại / {formatVND(Math.round(o.finalAmount ?? 0))}
+                                </span>
+                              )}
+                            </span>
                           </div>
                         </button>
                       ))
@@ -287,15 +506,17 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                 )}
               </div>
 
-              {/* Tóm tắt đơn đã chọn + nút chi tiết */}
+              {/* Tóm tắt đơn đã chọn */}
               {hasOrders && (
                 <div className="mt-2 bg-[#FAF7F2] rounded-xl border border-[#C9A84C]/20 p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-[#1C1C1E]">
-                        {selectedOrders.length} đơn hàng đã chọn
+                        {selectedOrders.length} đơn hàng đang chọn:
                       </span>
-                      <span className="text-sm font-bold text-[#C9A84C]">· {formatVND(orderTotal)}</span>
+                      <span className="text-sm font-bold text-[#C9A84C]">
+                        {formatVND(orderTotal)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -312,7 +533,6 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                       </button>
                     </div>
                   </div>
-                  {/* Danh sách mã đơn dạng tag nhỏ */}
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {selectedOrders.map(o => (
                       <span
@@ -329,6 +549,64 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                 </div>
               )}
             </div>
+
+            {/* ── Số tiền thực thu (chỉ hiện khi có đơn) ── */}
+            {hasOrders && (
+              <div>
+                <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+                  Số tiền thực thu <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      value={collectedAmount ? new Intl.NumberFormat('vi-VN').format(parseVND(collectedAmount)) : ''}
+                      onChange={e => handleCollectedChange(String(parseVND(e.target.value)))}
+                      placeholder="Nhập số tiền..."
+                      className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 text-right pr-10 ${collectedError
+                        ? 'border-red-300 focus:ring-red-200 bg-red-50'
+                        : collectedStatus === 'exact'
+                          ? 'border-green-300 focus:ring-green-200 bg-green-50'
+                          : collectedStatus === 'partial'
+                            ? 'border-amber-300 focus:ring-amber-200 bg-amber-50'
+                            : 'border-black/10 focus:ring-[#C9A84C]/40'
+                        }`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#8E8878]">đ</span>
+                  </div>
+                  <button
+                    onClick={() => handleCollectedChange(String(orderTotal))}
+                    className="px-3 py-2.5 rounded-xl border border-[#C9A84C]/40 text-xs font-bold text-[#C9A84C] hover:bg-[#C9A84C]/10 transition whitespace-nowrap"
+                  >
+                    Thu đủ
+                  </button>
+                </div>
+
+                {/* Feedback dưới ô nhập */}
+                {collectedError && (
+                  <p className="mt-1.5 text-xs text-red-500 flex items-start gap-1">
+                    <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                    {collectedError}
+                  </p>
+                )}
+                {collectedStatus === 'exact' && (
+                  <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Thu đủ tổng đơn hàng
+                  </p>
+                )}
+                {collectedStatus === 'partial' && partialInfo && (
+                  <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                    <p className="text-xs text-amber-700 font-semibold flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      Thu thiếu <span className="font-mono">{formatVND(partialInfo.shortfall)}</span> cho đơn cuối{' '}
+                      <span className="font-mono text-[#C9A84C]">{partialInfo.lastOrder.orderCode}</span>
+                    </p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Sẽ thu {formatVND(partialInfo.lastOrderRemaining)} / {formatVND(Math.round(partialInfo.lastOrder.finalAmount || 0))} — bạn sẽ chọn cách xử lý khi tạo phiếu.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Người nộp tiền ── */}
             <div>
@@ -354,6 +632,19 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
               />
             </div>
 
+            {/* ── Số phiếu thu ── */}
+            <div>
+              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+                Số phiếu thu <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={receiptNumber}
+                onChange={e => setReceiptNumber(e.target.value)}
+                placeholder="Nhập số phiếu thu..."
+                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+              />
+            </div>
+
             {/* ── Loại thanh toán ── */}
             <div>
               <label className="block text-sm font-semibold text-[#1C1C1E] mb-2">
@@ -362,11 +653,10 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setPaymentType('CASH')}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition ${
-                    paymentType === 'CASH'
-                      ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
-                      : 'border-black/10 text-[#8E8878] hover:border-[#C9A84C]/50'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition ${paymentType === 'CASH'
+                    ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
+                    : 'border-black/10 text-[#8E8878] hover:border-[#C9A84C]/50'
+                    }`}
                 >
                   <Banknote size={18} />
                   <div className="text-left">
@@ -376,11 +666,10 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                 </button>
                 <button
                   onClick={() => setPaymentType('BANK_TRANSFER')}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition ${
-                    paymentType === 'BANK_TRANSFER'
-                      ? 'border-blue-400 bg-blue-50 text-blue-600'
-                      : 'border-black/10 text-[#8E8878] hover:border-blue-300'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition ${paymentType === 'BANK_TRANSFER'
+                    ? 'border-blue-400 bg-blue-50 text-blue-600'
+                    : 'border-black/10 text-[#8E8878] hover:border-blue-300'
+                    }`}
                 >
                   <CreditCard size={18} />
                   <div className="text-left">
@@ -461,8 +750,15 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
 
             {/* Tổng */}
             <div className="flex justify-between items-center py-2 border-t border-black/5">
-              <span className="text-sm font-semibold text-[#8E8878]">Tổng cần thu</span>
-              <span className="text-lg font-bold text-[#C9A84C]">{formatVND(displayTotal)}</span>
+              <span className="text-sm font-semibold text-[#8E8878]">
+                {hasOrders ? 'Số tiền thực thu' : 'Tổng cần thu'}
+              </span>
+              <span className={`text-lg font-bold ${collectedStatus === 'error' ? 'text-red-500' :
+                collectedStatus === 'partial' ? 'text-amber-500' :
+                  'text-[#C9A84C]'
+                }`}>
+                {formatVND(displayTotal)}
+              </span>
             </div>
 
             {/* ── Ảnh chứng từ ── */}
@@ -500,7 +796,8 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
               Huỷ
             </button>
             <button
-              onClick={handleSubmit} disabled={submitting}
+              onClick={handleSubmit}
+              disabled={submitting || !!collectedError}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#C9A84C] text-white font-bold hover:bg-[#B8923E] transition disabled:opacity-50"
             >
               {submitting
@@ -517,6 +814,15 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
         <OrderSummaryModal
           orders={selectedOrders}
           onClose={() => setShowOrderDetail(false)}
+        />
+      )}
+
+      {/* Modal xác nhận thu thiếu */}
+      {showPartialConfirm && partialInfo && (
+        <PartialConfirmModal
+          info={partialInfo}
+          onConfirm={handlePartialConfirm}
+          onCancel={() => setShowPartialConfirm(false)}
         />
       )}
     </>
