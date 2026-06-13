@@ -234,14 +234,20 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   );
 }
 
-function StatusActionButtons({ order, onCancel, onEdit, loading, disabled }) {
+function StatusActionButtons({ order, onCancel, onEdit, loading, disabled, isSuperSeller }) {
   const { status } = order;
-  const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
+  const isCancelled = status === 'CANCELLED';
+
+  // SUPER_SELLER: sửa được mọi trạng thái trừ CANCELLED
+  // Seller thường: chỉ sửa PREPARING
+  const canEdit = isSuperSeller
+    ? !isCancelled
+    : status === 'PREPARING';
+
+  const locked = (status === 'COMPLETED' || isCancelled || status === 'FAILED') && !canEdit;
   if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
 
-  const canEdit = status === 'PREPARING';
   const canCancel = CANCELLABLE_STATUSES.has(status);
-
   if (!canEdit && !canCancel) return null;
   if (disabled) return <span className="text-[10px] text-[#C4B9A8] italic">Chỉ xem</span>;
 
@@ -685,7 +691,7 @@ export default function OrdersPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                              <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} />
+                              <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
                             </td>
                           </tr>
                         );
@@ -742,7 +748,7 @@ export default function OrdersPage() {
                           </button>
                           <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                           <PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
-                          <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} />
+                          <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
                         </div>
                       </div>
                     </div>
@@ -865,6 +871,7 @@ export default function OrdersPage() {
         orderId={editTarget?.id}
         onClose={() => setEditTarget(null)}
         onSaved={() => { setEditTarget(null); fetchOrders(); }}
+        isSuperSeller={isSuperSeller}
       />
     </div>
   );

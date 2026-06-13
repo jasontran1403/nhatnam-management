@@ -851,7 +851,7 @@ function ProductPickerModal({ onAdd, onClose, existingIds }) {
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
-export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
+export default function EditOrderModal({ open, orderId, onClose, onSaved, isSuperSeller = false }) {
   const toast = useToast();
   const idCounter = useRef(0);
   const nextId = () => { idCounter.current += 1; return idCounter.current; };
@@ -879,6 +879,12 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
   const [discountFixed, setDiscountFixed] = useState(null);
   const [discountFixedDisplay, setDiscountFixedDisplay] = useState('');
   const [surchargeItems, setSurchargeItems] = useState([]);
+
+  // Người giao hàng (chỉ SUPER_SELLER dùng)
+  const [deliveryDrivers, setDeliveryDrivers] = useState([]); // [{name,type,trips}]
+  const [driverSearches, setDriverSearches]   = useState({}); // {idx: keyword}
+  const [driverResults, setDriverResults]     = useState({}); // {idx: [{name,vehicleType}]}
+  const driverDebounceRefs                    = useRef({});
 
   const [showPicker, setShowPicker] = useState(false);
   const [tierEditId, setTierEditId] = useState(null);
@@ -946,6 +952,17 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
         setDiscount(0);
         setDiscountFixed(Number(d.discountAmount));
         setDiscountFixedDisplay(new Intl.NumberFormat('vi-VN').format(Number(d.discountAmount)));
+      }
+
+      // Tài xế giao hàng
+      if (d?.deliveryInfo && Array.isArray(d.deliveryInfo) && d.deliveryInfo.length > 0) {
+        setDeliveryDrivers(d.deliveryInfo.map(dr => ({
+          name: dr.name || '',
+          type: dr.type || 'BIKE',
+          trips: dr.trips || 1,
+        })));
+      } else {
+        setDeliveryDrivers([]);
       }
 
       // Phụ phí
@@ -1192,54 +1209,109 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
 
   const total = subtotalAfterItemDiscount - discountAmt + exclusiveVatTotal + surchargeNum;
 
+  // ── Confirm Edit Modal state (SUPER_SELLER) ─────────────────────────────────
+  const [showConfirmEdit, setShowConfirmEdit] = useState(false);
+  const [confirmEditData, setConfirmEditData] = useState({ requestedBy: '', editReason: '', requestedByRole: '', requestedByRoles: [] });
+  const [staffSearch, setStaffSearch]         = useState('');
+  const [staffResults, setStaffResults]       = useState([]);
+  const [loadingStaff, setLoadingStaff]       = useState(false);
+  const staffDebounceRef = useRef(null);
+
+  const searchStaff = (kw) => {
+    setStaffSearch(kw);
+    if (staffDebounceRef.current) clearTimeout(staffDebounceRef.current);
+    if (!kw.trim()) { setStaffResults([]); return; }
+    staffDebounceRef.current = setTimeout(async () => {
+      setLoadingStaff(true);
+      try {
+        const res = await orderApi.searchStaff(kw);
+        setStaffResults(res?.data?.data || []);
+      } catch { setStaffResults([]); }
+      finally { setLoadingStaff(false); }
+    }, 600);
+  };
+
+  const searchDriver = (idx, kw, type) => {
+    setDriverSearches(prev => ({ ...prev, [idx]: kw }));
+    if (driverDebounceRefs.current[idx]) clearTimeout(driverDebounceRefs.current[idx]);
+    if (!kw.trim()) { setDriverResults(prev => ({ ...prev, [idx]: [] })); return; }
+    driverDebounceRefs.current[idx] = setTimeout(async () => {
+      try {
+        // Map BIKE→MOTORBIKE vì backend dùng MOTORBIKE/TRUCK
+        const apiType = type === 'BIKE' ? 'MOTORBIKE' : type;
+        const res = await orderApi.searchDrivers(kw, apiType);
+        setDriverResults(prev => ({ ...prev, [idx]: res?.data?.data || [] }));
+      } catch { setDriverResults(prev => ({ ...prev, [idx]: [] })); }
+    }, 600);
+  };
+
+  const selectDriver = (idx, driverName) => {
+    setDeliveryDrivers(prev => prev.map((r, i) => i === idx ? { ...r, name: driverName } : r));
+    setDriverSearches(prev => ({ ...prev, [idx]: driverName }));
+    setDriverResults(prev => ({ ...prev, [idx]: [] }));
+  };
+
   // Lưu
+  const buildPayload = () => ({
+    orderedByName: orderedByName || undefined,
+    receiverName: receiverName || undefined,
+    deliveryAddress: deliveryAddress || undefined,
+    deliveryDatetime: datetimeLocalToTs(deliveryDatetime) || undefined,
+    paymentMethod,
+    notes: notes || undefined,
+    discountAmount: discountFixed !== null ? discountAmt : undefined,
+    discountRate: discountFixed === null ? discount : undefined,
+    showPrices: priceDisplayOption === 'show',
+    hideAllPrices: priceDisplayOption === 'hide_all',
+    surchargeItems: surchargeItems.filter(i => Number(i.amount) > 0),
+    customerId: selectedCustomer?.id ?? undefined,
+    deliveryInfo: deliveryDrivers.length > 0
+      ? deliveryDrivers.filter(d => d.name.trim())
+      : undefined,
+    items: items.map(i => {
+      const isPromoItem = i.isPromo === true;
+      let sentPrice = i.unitPrice;
+      if (i.saleType === 'BOX' && i.unitsPerBox > 0) sentPrice = i.unitPrice / i.unitsPerBox;
+      const finalPrice = isPromoItem ? 0 : sentPrice;
+      return {
+        productId: i.productId,
+        quantity: i.quantity,
+        originalQuantity: i.originalQuantity ?? 0,
+        priceMode: isPromoItem ? 'BASE' : (i.priceSource === 'TIER' ? 'TIER' : 'BASE'),
+        tierId: (isPromoItem || i.priceSource !== 'TIER') ? null : i.tierId,
+        sentUnitPrice: finalPrice,
+        isManualPrice: isPromoItem ? true : (i.priceSource === 'MANUAL'),
+        discountPercent: (!isPromoItem && i.itemDiscountRate > 0) ? i.itemDiscountRate : undefined,
+        saleType: i.saleType ?? 'RETAIL', unitsPerBox: i.unitsPerBox, unit: i.unit,
+        notes: isPromoItem ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
+        vatRate: i.vatRate ?? 0,
+        vatMode: i.vatMode ?? 'INCLUSIVE',
+      };
+    }),
+  });
+
   const handleSave = async () => {
     if (items.length === 0) { toast('Đơn hàng cần có ít nhất 1 sản phẩm', 'warning'); return; }
+    // SUPER_SELLER → mở modal xác nhận để nhập người yêu cầu & lý do
+    if (isSuperSeller) {
+      setConfirmEditData({ requestedBy: '', editReason: '' });
+      setStaffSearch(''); setStaffResults([]);
+      setShowConfirmEdit(true);
+      return;
+    }
+    // Seller thường → submit thẳng
+    await doSave({});
+  };
+
+  const doSave = async (extra = {}) => {
     setSaving(true);
     try {
-      const payload = {
-        orderedByName: orderedByName || undefined,
-        receiverName: receiverName || undefined,
-        deliveryAddress: deliveryAddress || undefined,
-        deliveryDatetime: datetimeLocalToTs(deliveryDatetime) || undefined,
-        paymentMethod,
-        notes: notes || undefined,
-        discountAmount: discountFixed !== null ? discountAmt : undefined,
-        discountRate: discountFixed === null ? discount : undefined,
-        showPrices: priceDisplayOption === 'show',
-        hideAllPrices: priceDisplayOption === 'hide_all',
-        surchargeItems: surchargeItems.filter(i => Number(i.amount) > 0),
-        customerId: selectedCustomer?.id ?? undefined,
-        items: items.map(i => {
-          const isPromoItem = i.isPromo === true;
-
-          // ✅ FIX SAVE: Gửi giá theo đơn vị hộp (cơ bản) về backend
-          // item.unitPrice hiện đang là giá thùng (nếu BOX), cần chia lại về hộp
-          let sentPrice = i.unitPrice;
-          if (i.saleType === 'BOX' && i.unitsPerBox > 0) {
-            sentPrice = i.unitPrice / i.unitsPerBox;
-          }
-
-          const finalPrice = isPromoItem ? 0 : sentPrice;
-
-          return {
-            productId: i.productId,
-            quantity: i.quantity,
-            originalQuantity: i.originalQuantity ?? 0,
-            priceMode: isPromoItem ? 'BASE' : (i.priceSource === 'TIER' ? 'TIER' : 'BASE'),
-            tierId: (isPromoItem || i.priceSource !== 'TIER') ? null : i.tierId,
-            sentUnitPrice: finalPrice,
-            isManualPrice: isPromoItem ? true : (i.priceSource === 'MANUAL'),
-            discountPercent: (!isPromoItem && i.itemDiscountRate > 0) ? i.itemDiscountRate : undefined,
-            saleType: i.saleType ?? 'RETAIL', unitsPerBox: i.unitsPerBox, unit: i.unit,
-            notes: isPromoItem ? `[KM]${i.promoNote ? ' ' + i.promoNote : ''}` : (i.notes || undefined),
-            vatRate: i.vatRate ?? 0,
-            vatMode: i.vatMode ?? 'INCLUSIVE',
-          };
-        }),
-      };
-
-      await orderApi.updateOrderItems(orderId, payload);
+      const payload = { ...buildPayload(), ...extra };
+      if (isSuperSeller) {
+        await orderApi.superSellerUpdateOrder(orderId, payload);
+      } else {
+        await orderApi.updateOrderItems(orderId, payload);
+      }
       toast('Đã cập nhật đơn hàng', 'success');
       onSaved?.();
       onClose();
@@ -1254,6 +1326,127 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
 
   return (
     <>
+      {/* ── Confirm Edit Modal (SUPER_SELLER) ─────────────────────────────── */}
+      {showConfirmEdit && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+              <h3 className="font-bold text-[#1C1C1E]">Xác nhận sửa đơn</h3>
+              <button onClick={() => setShowConfirmEdit(false)}
+                className="p-1.5 rounded-lg hover:bg-black/5 text-[#8E8878]">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Ô 1: Tìm nhân viên */}
+              <div>
+                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">
+                  Nhân viên yêu cầu sửa <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+                  <input
+                    className="w-full h-10 pl-8 pr-3 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                    placeholder="Tìm theo tên nhân viên..."
+                    value={staffSearch}
+                    onChange={e => searchStaff(e.target.value)} />
+                  {loadingStaff && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] animate-spin" />}
+                </div>
+                {/* Kết quả tìm kiếm */}
+                {staffResults.length > 0 && !confirmEditData.requestedBy && (
+                  <div className="mt-1 border border-black/10 rounded-xl overflow-hidden shadow-sm">
+                    {staffResults.map(s => (
+                      <button key={s.id}
+                        onClick={() => {
+                          const roles = s.roles || (s.role ? [s.role] : []);
+                          const defaultRole = roles.length === 1 ? roles[0] : '';
+                          setConfirmEditData(d => ({ ...d, requestedBy: s.fullName, requestedByRoles: roles, requestedByRole: defaultRole }));
+                          setStaffSearch(s.fullName);
+                          setStaffResults([]);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#FAF7F2] text-left transition-colors">
+                        <User size={14} className="text-[#8E8878] flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm text-[#1C1C1E] font-medium truncate">{s.fullName}</p>
+                          <p className="text-xs text-[#8E8878]">{s.role}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {confirmEditData.requestedBy && (
+                  <div className="mt-1.5 flex items-center gap-2 bg-[#C9A84C]/10 text-[#C9A84C] rounded-xl px-3 py-2">
+                    <User size={13} />
+                    <span className="text-sm font-medium flex-1">{confirmEditData.requestedBy}</span>
+                    <button onClick={() => {
+                      setConfirmEditData(d => ({ ...d, requestedBy: '' }));
+                      setStaffSearch(''); setStaffResults([]);
+                    }} className="text-[#8E8878] hover:text-red-500">
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Role selector — hiện khi nhân viên có nhiều role */}
+              {confirmEditData.requestedBy && confirmEditData.requestedByRoles.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">
+                    Role yêu cầu <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {confirmEditData.requestedByRoles.map(r => (
+                      <button key={r}
+                        onClick={() => setConfirmEditData(d => ({ ...d, requestedByRole: r }))}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                          confirmEditData.requestedByRole === r
+                            ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
+                            : 'bg-white text-[#5C5C5C] border-black/10 hover:border-[#C9A84C]/50'
+                        }`}>
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ô 2: Lý do sửa */}
+              <div>
+                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">
+                  Lý do sửa đơn <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-xl border border-black/10 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 resize-none placeholder:text-[#8E8878]"
+                  placeholder="Nhập lý do sửa đơn..."
+                  value={confirmEditData.editReason}
+                  onChange={e => setConfirmEditData(d => ({ ...d, editReason: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-black/5">
+              <button onClick={() => setShowConfirmEdit(false)}
+                className="px-4 py-2 rounded-xl border border-black/10 text-sm text-[#5C5C5C] hover:bg-black/5">
+                Hủy
+              </button>
+              <button
+                disabled={!confirmEditData.requestedBy || !confirmEditData.editReason.trim() || (confirmEditData.requestedByRoles.length > 1 && !confirmEditData.requestedByRole) || saving}
+                onClick={async () => {
+                  setShowConfirmEdit(false);
+                  await doSave({
+                    requestedBy: confirmEditData.requestedBy,
+                    editReason: confirmEditData.editReason.trim(),
+                    requestedByRole: confirmEditData.requestedByRole || undefined,
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#b8943e] disabled:opacity-40 flex items-center gap-2">
+                {saving && <Loader2 size={14} className="animate-spin" />}
+                Xác nhận sửa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
         <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
 
@@ -1375,6 +1568,83 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved }) {
                     <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Ghi chú đơn hàng..."
                       className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C] resize-none" />
                   </div>
+
+                  {/* Người giao hàng — chỉ SUPER_SELLER */}
+                  {isSuperSeller && (
+                    <div className="pt-2 border-t border-[#F0EBE3]">
+                      <label className="block text-[10px] text-[#8E8878] font-semibold mb-1.5">🚚 Người giao hàng</label>
+                      <div className="space-y-2">
+                        {deliveryDrivers.map((d, idx) => (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              {/* Loại xe — đổi type sẽ reset search + kết quả */}
+                              <select
+                                className="px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C] bg-white shrink-0"
+                                value={d.type}
+                                onChange={e => {
+                                  const newType = e.target.value;
+                                  setDeliveryDrivers(prev => prev.map((r,i) => i===idx ? {...r, type: newType, name: ''} : r));
+                                  setDriverSearches(prev => ({ ...prev, [idx]: '' }));
+                                  setDriverResults(prev => ({ ...prev, [idx]: [] }));
+                                }}>
+                                <option value="BIKE">🛵 Xe máy</option>
+                                <option value="TRUCK">🚛 Xe tải</option>
+                              </select>
+
+                              {/* Search tài xế */}
+                              <div className="relative flex-1">
+                                <input
+                                  className="w-full px-2 py-1.5 text-xs border border-[#E8DDD0] rounded-lg focus:outline-none focus:border-[#C9A84C]"
+                                  placeholder="Tìm tên tài xế..."
+                                  value={driverSearches[idx] ?? d.name}
+                                  onChange={e => searchDriver(idx, e.target.value, d.type)}
+                                />
+                                {/* Kết quả dropdown */}
+                                {(driverResults[idx] || []).length > 0 && (
+                                  <div className="absolute top-full left-0 right-0 mt-0.5 bg-white border border-[#E8DDD0] rounded-lg shadow-lg z-10 overflow-hidden max-h-32 overflow-y-auto">
+                                    {(driverResults[idx] || []).map((dr, di) => (
+                                      <button key={di}
+                                        onMouseDown={e => { e.preventDefault(); selectDriver(idx, dr.name); }}
+                                        className="w-full flex items-center gap-2 px-2.5 py-2 text-xs hover:bg-[#FDF8ED] text-left">
+                                        <span>{dr.vehicleType === 'TRUCK' ? '🚛' : '🛵'}</span>
+                                        <span className="font-medium text-[#1C1C1E]">{dr.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Số lượt */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button onClick={() => setDeliveryDrivers(prev => prev.map((r,i) => i===idx ? {...r, trips: Math.max(1, r.trips-1)} : r))}
+                                  className="w-5 h-5 rounded-full bg-[#F0EBE3] text-xs font-bold flex items-center justify-center hover:bg-[#E8DDD0]">−</button>
+                                <span className="text-xs font-bold w-5 text-center">{d.trips}</span>
+                                <button onClick={() => setDeliveryDrivers(prev => prev.map((r,i) => i===idx ? {...r, trips: r.trips+1} : r))}
+                                  className="w-5 h-5 rounded-full bg-[#F0EBE3] text-xs font-bold flex items-center justify-center hover:bg-[#E8DDD0]">+</button>
+                              </div>
+
+                              {/* Xóa */}
+                              <button
+                                onClick={() => {
+                                  setDeliveryDrivers(prev => prev.filter((_,i) => i!==idx));
+                                  setDriverSearches(prev => { const n={...prev}; delete n[idx]; return n; });
+                                  setDriverResults(prev => { const n={...prev}; delete n[idx]; return n; });
+                                }}
+                                className="w-5 h-5 rounded-full text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 flex items-center justify-center flex-shrink-0">
+                                <X size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+
+                        <button
+                          onClick={() => setDeliveryDrivers(prev => [...prev, { name: '', type: 'BIKE', trips: 1 }])}
+                          className="flex items-center gap-1 text-[11px] text-[#C9A84C] hover:text-[#a07830] font-semibold py-1">
+                          <Plus size={12} /> Thêm tài xế
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Hiển thị giá */}
                   <div className="pt-2 border-t border-[#F0EBE3]">

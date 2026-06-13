@@ -63,6 +63,7 @@ import HistoryPage from '../pages/warehouse/HistoryPage';
 import WarehouseOrdersPage from '../pages/warehouse/WarehouseOrdersPage';
 import ExpenseCreatePage from '../pages/super_accountant/ExpenseCreatePage';
 import WarehouseDeliveryPage from '../pages/warehouse/WarehouseDeliveryPage';
+import DriverAttendancePage from '../pages/warehouse/DriverAttendancePage';
 
 // Accountant
 import AccountantDashboardPage from '../pages/accountant/AccountantDashboardPage';
@@ -87,6 +88,7 @@ import FactoryMachinePage from '../pages/factory_worker/FactoryMachinePage';
 
 import QuotationPage from '../pages/seller/QuotationPage';
 import SuperAccountantCustomers from '../pages/accountant/SuperAccountantCustomers';
+import CertificatePage from '../pages/shared/CertificatePage';
 
 // ── Root redirect ─────────────────────────────────────────────────────────────
 function RootRedirect() {
@@ -154,6 +156,7 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
+        <Route path="certificates" element={<CertificatePage />} />
 
         {/* Production v2 — Dashboard chính + detail lệnh */}
         <Route path="production" element={<OwnerProductionDashboard />} />
@@ -200,6 +203,7 @@ export default function AppRoutes() {
         <Route path="history" element={<HistoryPage />} />
         <Route path="expenses" element={<ExpenseCreatePage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
+        <Route path="driver-attendance" element={<DriverAttendancePage />} />
       </Route>
 
       {/* ── SUPER WAREHOUSE */}
@@ -247,6 +251,7 @@ export default function AppRoutes() {
         <Route path="ingredients" element={<OperatorIngredientsPage />} />
         <Route path="products" element={<OperatorProductBatchPage />} />
         <Route path="batches" element={<OperatorMyBatchesPage />} />
+        <Route path="certificates" element={<CertificatePage />} />
         <Route path="landingpage" element={<OperatorLandingpagePage />} />
       </Route>
 

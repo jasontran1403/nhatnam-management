@@ -160,7 +160,9 @@
     "warehouse_receipts": "Warehouse Receipts",
     "quotation": "Quotation",
     "delivering": "Orders",
-    "machine_manage": "Machines & Maintenance"
+    "machine_manage": "Machines & Maintenance",
+    "certificates": "Certificates",
+    "driver_attendance": "Driver ODO Log"
   },
   "profile": {
     "my_profile": "My Profile",

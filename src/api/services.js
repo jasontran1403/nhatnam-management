@@ -115,6 +115,10 @@ export const orderApi = {
     api.patch(`/api/seller/orders/${id}/cancel`, { reason }),
   updateOrderItems: (id, data) =>
     api.put(`/api/seller/orders/${id}/items`, data),
+  superSellerUpdateOrder: (id, data) =>
+    api.put(`/api/seller/orders/${id}/super-edit`, data),
+  searchStaff: (keyword) =>
+    api.get('/api/seller/orders/super-edit/staff-search', { params: { keyword } }),
   exportIngredients: (params) =>
     api.get('/api/seller/orders/export-ingredients', { params, responseType: 'blob' }),
   exportDeliveryReport: (params) =>

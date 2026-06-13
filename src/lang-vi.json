@@ -160,7 +160,9 @@
     "warehouse_receipts": "Phiếu nhập kho",
     "quotation": "Báo giá",
     "delivering": "Đơn hàng",
-    "machine_manage": "Máy & Bảo trì"
+    "machine_manage": "Máy & Bảo trì",
+    "certificates": "Chứng nhận",
+    "driver_attendance": "Điểm danh ODO"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

@@ -13,7 +13,7 @@ import {
     Search, RefreshCw, ChevronLeft, ChevronRight,
     Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
     Camera, FileText, X, CheckSquare, Paperclip,
-    Plus,
+    Plus, Download, Calendar,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -463,6 +463,31 @@ export default function WarehouseDeliveryPage() {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [detailLoading, setDetailLoading] = useState(null);
 
+    const [showExportModal, setShowExportModal]         = useState(false);
+    const [exportFrom, setExportFrom]                   = useState('');
+    const [exportTo, setExportTo]                       = useState('');
+    const [exporting, setExporting]                     = useState(false);
+
+    const handleExportReport = async () => {
+        if (!exportFrom || !exportTo) { toast('Chọn khoảng thời gian', 'error'); return; }
+        setExporting(true);
+        try {
+            const res = await api.get('/api/warehouse/reports/driver', {
+                params: { from: exportFrom, to: exportTo },
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(res.data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bao-cao-tai-xe-${exportFrom}-${exportTo}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+            setShowExportModal(false);
+            toast('Đã xuất báo cáo', 'success');
+        } catch { toast('Lỗi xuất báo cáo', 'error'); }
+        finally { setExporting(false); }
+    };
+
     const [prepareTarget, setPrepareTarget]             = useState(null);
     const [preparingLoading, setPreparingLoading]       = useState(false);
     const [prepareDetail, setPrepareDetail]             = useState(null);
@@ -663,6 +688,11 @@ export default function WarehouseDeliveryPage() {
                         className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0">
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                     </button>
+                    <button onClick={() => setShowExportModal(true)}
+                        title="Xuất báo cáo tài xế"
+                        className="p-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors shrink-0">
+                        <Download size={14} />
+                    </button>
                 </div>
                 <div className="sm:hidden">
                     <DateRangePicker from={dateRange.from} to={dateRange.to}
@@ -859,6 +889,60 @@ export default function WarehouseDeliveryPage() {
 
             <input ref={receiptInputRef} type="file" accept="image/png,image/jpg,image/jpeg"
                 className="hidden" onChange={handleReceiptFileChange} />
+
+            {/* ── Export Driver Report Modal ── */}
+            {showExportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
+                            <div className="flex items-center gap-2">
+                                <Download size={16} className="text-[#C9A84C]" />
+                                <h3 className="font-bold text-[#1C1C1E] text-sm">Xuất báo cáo tài xế</h3>
+                            </div>
+                            <button onClick={() => setShowExportModal(false)}
+                                className="p-1.5 rounded-lg hover:bg-[#F0EBE3] text-[#8E8878]">
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <p className="text-xs text-[#8E8878]">
+                                Xuất báo cáo km, số phiếu và số đơn giao của từng tài xế trong khoảng thời gian.
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-semibold text-[#5C5C5C] mb-1">
+                                        <Calendar size={10} className="inline mr-1" />Từ ngày
+                                    </label>
+                                    <input type="date" value={exportFrom}
+                                        onChange={e => setExportFrom(e.target.value)}
+                                        className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C]" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-semibold text-[#5C5C5C] mb-1">
+                                        <Calendar size={10} className="inline mr-1" />Đến ngày
+                                    </label>
+                                    <input type="date" value={exportTo}
+                                        onChange={e => setExportTo(e.target.value)}
+                                        className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C]" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 px-5 pb-5">
+                            <button onClick={() => setShowExportModal(false)}
+                                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3]">
+                                Hủy
+                            </button>
+                            <button onClick={handleExportReport}
+                                disabled={exporting || !exportFrom || !exportTo}
+                                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#b8963e] disabled:opacity-40">
+                                {exporting
+                                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
+                                    : <><Download size={14} /> Xuất Excel</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {prepareTarget && (
                 <PrepareDeliverModal

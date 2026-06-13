@@ -6,7 +6,7 @@ import {
   Warehouse, Package, LogOut, Receipt, TrendingUp,
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
-  FileSpreadsheet, ClipboardCheck, FileClock, Truck,
+  FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
   Wrench, Settings2,
 } from 'lucide-react';
 
@@ -36,6 +36,7 @@ export const ownerNavRaw = [
   { to: '/owner/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/owner/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
   { to: '/owner/analytics', labelKey: 'analytics', icon: BarChart2 },
+  { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
   // ── Sản xuất — 1 item duy nhất, dashboard gộp tất cả ──────────────────────
   { to: '/owner/production', labelKey: 'production', icon: Factory },
 ];
@@ -60,6 +61,7 @@ export const warehouseNavRaw = [
   { to: '/warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
+  { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
 ];
 
 export const superWarehouseNavRaw = [
@@ -68,6 +70,7 @@ export const superWarehouseNavRaw = [
   { to: '/super-warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/super-warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
+  { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
 ];
 
 export const accountantNavRaw = [
@@ -93,6 +96,7 @@ export const operatorNavRaw = [
   { to: '/operator/products', labelKey: 'products', icon: Package },
   { to: '/operator/ingredients', labelKey: 'ingredients', icon: FlaskConical },
   { to: '/operator/batches', labelKey: 'batches', icon: Layers },
+  { to: '/operator/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
   { to: '/operator/landingpage', labelKey: 'landing_page', icon: Globe },
 ];
 
