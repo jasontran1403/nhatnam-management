@@ -10,31 +10,49 @@ export const AuthProvider = ({ children }) => {
   });
   const [token, setToken] = useState(() => localStorage.getItem('token'));
 
-  /**
-   * login(username, password, selectedRole?)
-   * - selectedRole: null = lần đầu (backend sẽ trả requireRoleSelection nếu có nhiều role)
-   * - selectedRole: 'ADMIN' | 'ACCOUNTANT' | ... = đăng nhập chính thức với role này
-   *
-   * Trả về data từ backend:
-   * - { requireRoleSelection: true, availableRoles: [...] } → frontend hiện popup
-   * - { accessToken, role, ... } → đăng nhập thành công
-   */
   const login = useCallback(async (username, password, selectedRole = null) => {
     const res = await authApi.login({ username, password, selectedRole });
     const { data } = res.data;
 
-    // Nếu backend yêu cầu chọn role → không lưu token, chỉ trả data cho UI xử lý
+    // Backend tự detect defaultRole (user.role field) khi không chọn role
+    // Nếu vẫn requireRoleSelection thì user chưa có default → frontend hiện popup
     if (data.requireRoleSelection) {
       return data;
     }
 
-    // Đăng nhập thành công
     localStorage.setItem('token', data.accessToken);
     localStorage.setItem('user', JSON.stringify(data));
     setToken(data.accessToken);
     setUser(data);
     return data;
   }, []);
+
+  /**
+   * Switch role — gọi API với token hiện tại, nhận token mới với role mới.
+   */
+  const switchRole = useCallback(async (newRole) => {
+    const res = await authApi.switchRole(newRole);
+    const data = res.data?.data ?? res.data;
+    localStorage.setItem('token', data.accessToken);
+    localStorage.setItem('user', JSON.stringify(data));
+    setToken(data.accessToken);
+    setUser(data);
+    return data;
+  }, []);
+
+  /**
+   * Set role mặc định — lưu vào DB qua API.
+   * role = null để bỏ default.
+   */
+  const setDefaultRole = useCallback(async (role) => {
+    await authApi.setDefaultRole(role);
+    // Cập nhật user object local để UI reflect ngay
+    if (user) {
+      const updated = { ...user, defaultRole: role };
+      localStorage.setItem('user', JSON.stringify(updated));
+      setUser(updated);
+    }
+  }, [user]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -51,12 +69,15 @@ export const AuthProvider = ({ children }) => {
     setUser(updated);
   }, [user]);
 
-
   const isAuthenticated = !!token && !!user;
   const role = user?.role || user?.roles?.[0] || '';
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated, role, updateUser }}>
+    <AuthContext.Provider value={{
+      user, token, login, logout,
+      switchRole, setDefaultRole,
+      isAuthenticated, role, updateUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,11 +4,12 @@ import {
   X, Plus, Trash2, Save, AlertTriangle, Search,
   Grid, ChevronRight, Package, Loader2, Pencil, Percent,
   Check, Gift, ChevronDown, User, Clock, CreditCard, MapPin,
-  UserCheck, UserPlus, Building2,
+  UserCheck, UserPlus, Building2, Bell,
 } from 'lucide-react';
 import { orderApi, productApi, categoryApi } from '../../api/services';
 import api from '../../api/axios';
 import { useToast } from '../common/Toast';
+import useWebSocket from '../../hooks/useWebSocket';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -854,6 +855,28 @@ function ProductPickerModal({ onAdd, onClose, existingIds }) {
 export default function EditOrderModal({ open, orderId, onClose, onSaved, isSuperSeller = false }) {
   const toast = useToast();
   const idCounter = useRef(0);
+
+  // ── WebSocket: cảnh báo nếu đơn bị sửa từ nơi khác trong khi modal đang mở ──
+  const [wsOrderAlert, setWsOrderAlert] = useState(null);
+  const wsUserRef = useRef(null);
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      wsUserRef.current = u;
+    } catch { wsUserRef.current = {}; }
+  }, []);
+  const wsRole  = wsUserRef.current?.role  || '';
+  const wsToken = wsUserRef.current?.token || localStorage.getItem('token') || '';
+  useWebSocket(wsRole, wsToken, (msg) => {
+    if (!open || !orderId) return;
+    if (
+      (msg.eventType === 'ORDER_EDITED' || msg.eventType === 'ORDER_UPDATED') &&
+      (msg.orderId === orderId || msg.referenceId === String(orderId))
+    ) {
+      const editorName = msg.editorName || msg.senderName || 'Người khác';
+      setWsOrderAlert(`⚠️ ${editorName} vừa sửa đơn này. Dữ liệu có thể đã thay đổi.`);
+    }
+  });
   const nextId = () => { idCounter.current += 1; return idCounter.current; };
 
   const [priceDisplayOption, setPriceDisplayOption] = useState('show');
@@ -904,6 +927,7 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved, isSupe
     setDiscount(0); setDiscountFixed(null); setDiscountFixedDisplay('');
     setSurchargeItems([]);
     setSelectedCustomer(null);
+    setWsOrderAlert(null);
     setFetchingDetail(true);
 
     let cancelled = false;
@@ -1462,6 +1486,14 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved, isSupe
           </div>
 
           <div className="flex-1 overflow-y-auto">
+            {/* Banner cảnh báo WS — khi có người khác sửa đơn cùng lúc */}
+            {wsOrderAlert && (
+              <div className="mx-5 mt-3 px-3 py-2 bg-rose-50 rounded-xl border border-rose-200 flex gap-2 items-start">
+                <Bell size={14} className="text-rose-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-rose-700 flex-1">{wsOrderAlert}</p>
+                <button onClick={() => setWsOrderAlert(null)} className="text-rose-400 hover:text-rose-600 shrink-0"><X size={12} /></button>
+              </div>
+            )}
             {/* Cảnh báo kho */}
             <div className="mx-5 mt-3 px-3 py-2 bg-amber-50 rounded-xl border border-amber-200 flex gap-2 items-start">
               <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />

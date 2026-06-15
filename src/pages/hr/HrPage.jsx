@@ -3,10 +3,12 @@ import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users, FileText, Clock, Plus, Search, ChevronDown, ChevronUp,
-  DollarSign, Calendar, UserCog, X, Check, Loader2, AlertCircle,
+  DollarSign, Calendar, UserCog, X, Check, Loader2, AlertCircle, Download,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { hrSalaryApi, hrLeaveApi, hrOtApi, hrEmployeeApi } from '../../api/hrApi';
+import { downloadBlob } from '../../api/services';
+import api from '../../api/axios';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Field, inputCls, selectCls,
   Table, Thead, Th, Td, Tr, TabBar, EmptyState, LoadingSpinner,
@@ -16,10 +18,12 @@ import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/common/Toast';
+import DateRangePicker from '../../components/ui/DateRangePicker';
 
 
 // ── Salary Modal (single) ─────────────────────────────────────────────────────
 function SalaryModal({ user, onClose, onSaved }) {
+  const { t } = useLang();
   const toast = useToast();
   const [form, setForm] = useState({
     baseSalary: '', socialInsuranceRate: '8', socialInsuranceSalary: '',
@@ -645,29 +649,135 @@ function OtTab() {
   );
 }
 
+// ── Driver Report Export Modal ────────────────────────────────────────────────
+function DriverReportModal({ onClose }) {
+  const toast = useToast();
+  const [from, setFrom] = useState(null);
+  const [to, setTo] = useState(null);
+  const [bikeRate, setBikeRate] = useState('');
+  const [truckRate, setTruckRate] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const fmt = (d) => {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('vi-VN');
+  };
+
+  const handleExport = async () => {
+    if (!from || !to) { toast('Chọn khoảng thời gian', 'error'); return; }
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        from: String(from),
+        to: String(to),
+        excludeWarehouse: 'true',
+        bikeRatePerKm: bikeRate || '0',
+        truckRatePerKm: truckRate || '0',
+      });
+      const res = await api.get(`/api/admin/users/reports?${params}`, { responseType: 'blob' });
+      downloadBlob(res.data, `bao-cao-tai-xe-${from}_${to}.xlsx`);
+      toast('Xuất báo cáo thành công', 'success');
+      onClose();
+    } catch { toast('Lỗi xuất báo cáo', 'error'); }
+    finally { setExporting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#1A1A2E] to-[#2D2D44] px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+              <Download size={16} className="text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-sm">Báo cáo & Lương tài xế</h3>
+              <p className="text-white/60 text-[10px]">Xuất file Excel chuyên nghiệp</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Date range */}
+          <div>
+            <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">KHOẢNG THỜI GIAN</p>
+            <DateRangePicker
+              from={from}
+              to={to}
+              onChange={({ from, to }) => {
+                setFrom(from);
+                setTo(to);
+              }}
+              placeholder="Chọn khoảng thời gian"
+            />
+          </div>
+
+          {/* Salary rates */}
+          <div>
+            <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">Lương theo km</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-sky-50 border border-sky-200 p-3">
+                <label className="block text-[11px] font-bold text-sky-700 mb-1.5">🏍️ Xe máy (đ/km)</label>
+                <input type="number" min="0" value={bikeRate} onChange={e => setBikeRate(e.target.value)}
+                  placeholder="VD: 2000"
+                  className="w-full h-8 px-2 rounded-lg border border-sky-200 text-sm focus:outline-none focus:border-sky-400 bg-white" />
+              </div>
+              <div className="rounded-xl bg-orange-50 border border-orange-200 p-3">
+                <label className="block text-[11px] font-bold text-orange-700 mb-1.5">🚛 Xe tải (đ/km)</label>
+                <input type="number" min="0" value={truckRate} onChange={e => setTruckRate(e.target.value)}
+                  placeholder="VD: 5000"
+                  className="w-full h-8 px-2 rounded-lg border border-orange-200 text-sm focus:outline-none focus:border-orange-400 bg-white" />
+              </div>
+            </div>
+            <p className="text-[10px] text-[#8E8878] mt-1.5 italic">Để trống = không tính lương km (chỉ thống kê)</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-[#E8DDD0]">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3] font-medium">Hủy</button>
+          <button onClick={handleExport} disabled={exporting || !from || !to}
+            className="flex-1 py-2.5 rounded-xl bg-[#1A1A2E] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2D2D44] disabled:opacity-40 transition-colors">
+            {exporting
+              ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
+              : <><Download size={14} /> Xuất Excel</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function HrPage() {
   const { t } = useLang();
   const [tab, setTab] = useState('employees');
+  const [showDriverReport, setShowDriverReport] = useState(false);
 
   const LEAVE_TYPE_LABEL = { PAID: t('hr', 'leave_paid'), UNPAID: t('hr', 'leave_unpaid') };
 
-
-  // ── Main Page ─────────────────────────────────────────────────────────────────
   const TABS = [
     { id: 'employees', label: 'Quản lý nhân viên', icon: Users },
     { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
     { id: 'ot', label: 'Phiếu OT', icon: Clock },
   ];
 
-
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <PageHeader icon={UserCog} title="Nhân sự" subtitle="Quản lý lương, nghỉ phép, tăng ca" />
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader icon={UserCog} title="Nhân sự" subtitle="Quản lý lương, nghỉ phép, tăng ca" />
+        <button onClick={() => setShowDriverReport(true)}
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1A1A2E] text-white text-sm font-semibold hover:bg-[#2D2D44] transition-colors shadow-sm mt-1">
+          <Download size={14} /> Báo cáo tài xế
+        </button>
+      </div>
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'employees' && <EmployeesTab />}
       {tab === 'leaves' && <LeavesTab />}
       {tab === 'ot' && <OtTab />}
+      {showDriverReport && <DriverReportModal onClose={() => setShowDriverReport(false)} />}
     </div>
   );
 }

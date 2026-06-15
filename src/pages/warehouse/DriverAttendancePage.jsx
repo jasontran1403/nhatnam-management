@@ -2,7 +2,7 @@
  * DriverAttendancePage.jsx — Điểm danh ODO tài xế
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Gauge, CheckCircle2, Clock, Bike, Truck, Save, Loader2, Pencil } from 'lucide-react';
+import { Gauge, CheckCircle2, Clock, Bike, Truck, Save, Loader2, Pencil, Search, X } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
 
@@ -136,10 +136,14 @@ function VehicleSection({ row, date, onUpdate }) {
 }
 
 // ── Driver Card ───────────────────────────────────────────────────────────────
-function DriverCard({ driverName, rows, date, onUpdate }) {
-  const allDone = rows.every(r => r.startOdometer != null && r.endOdometer != null);
-  const anyDone = rows.some(r => r.startOdometer != null || r.endOdometer != null);
-  const hasBoth = rows.length > 1;
+function DriverCard({ driver, date, onUpdate }) {
+  const { driverId, driverName, vehicles } = driver;
+  const allDone = vehicles.every(v => v.startOdometer != null && v.endOdometer != null);
+  const anyDone = vehicles.some(v => v.startOdometer != null || v.endOdometer != null);
+  const hasBoth = vehicles.length > 1;
+
+  const sorted = [...vehicles].sort((a, b) =>
+    (a.vehicleType === 'MOTORBIKE' ? 0 : 1) - (b.vehicleType === 'MOTORBIKE' ? 0 : 1));
 
   return (
     <div className={`bg-white rounded-2xl border-2 overflow-hidden
@@ -157,8 +161,13 @@ function DriverCard({ driverName, rows, date, onUpdate }) {
       </div>
 
       <div className={`p-3 ${hasBoth ? 'grid grid-cols-2 gap-2' : ''}`}>
-        {rows.map(row => (
-          <VehicleSection key={row.vehicleType} row={row} date={date} onUpdate={onUpdate} />
+        {sorted.map(v => (
+          <VehicleSection
+            key={v.vehicleType}
+            row={{ driverId, vehicleType: v.vehicleType, ...v }}
+            date={date}
+            onUpdate={onUpdate}
+          />
         ))}
       </div>
     </div>
@@ -172,6 +181,9 @@ export default function DriverAttendancePage() {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debounceRef = useRef(null);
   const today = toLocalDate();
 
   const load = useCallback(async () => {
@@ -185,36 +197,48 @@ export default function DriverAttendancePage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleSearchChange = (val) => {
+    setSearchInput(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearchQuery(val.trim().toLowerCase()), 300);
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    setSearchQuery('');
+    clearTimeout(debounceRef.current);
+  };
+
   const handleUpdate = (driverId, vehicleType, which, data) => {
-    setRows(prev => prev.map(r => {
-      if (r.driverId !== driverId || r.vehicleType !== vehicleType) return r;
-      return which === 'start'
-        ? { ...r, startOdometer: data.odometer, startRecordedBy: data.recordedBy }
-        : { ...r, endOdometer: data.odometer, endRecordedBy: data.recordedBy };
+    setRows(prev => prev.map(driver => {
+      if (driver.driverId !== driverId) return driver;
+      return {
+        ...driver,
+        vehicles: driver.vehicles.map(v => {
+          if (v.vehicleType !== vehicleType) return v;
+          return which === 'start'
+            ? { ...v, startOdometer: data.odometer, startRecordedBy: data.recordedBy }
+            : { ...v, endOdometer: data.odometer, endRecordedBy: data.recordedBy };
+        }),
+      };
     }));
   };
 
-  // Group, filter "Kho giao tại kho", sort MOTORBIKE trước TRUCK
-  const grouped = [];
-  const seen = {};
-  rows.forEach(r => {
-    if (EXCLUDE_NAMES.includes(r.driverName?.toLowerCase().trim())) return;
-    if (!seen[r.driverName]) {
-      seen[r.driverName] = [];
-      grouped.push({ driverName: r.driverName, rows: seen[r.driverName] });
-    }
-    seen[r.driverName].push(r);
-  });
-  grouped.forEach(g => g.rows.sort((a, b) =>
-    (a.vehicleType === 'MOTORBIKE' ? 0 : 1) - (b.vehicleType === 'MOTORBIKE' ? 0 : 1)));
+  // Filter: bỏ kho + search debounce
+  const grouped = rows
+    .filter(r => !EXCLUDE_NAMES.includes(r.driverName?.toLowerCase().trim()))
+    .filter(r => !searchQuery || r.driverName?.toLowerCase().includes(searchQuery));
 
-  const totalRows = rows.filter(r => !EXCLUDE_NAMES.includes(r.driverName?.toLowerCase().trim())).length;
-  const doneStart = rows.filter(r => !EXCLUDE_NAMES.includes(r.driverName?.toLowerCase().trim()) && r.startOdometer != null).length;
-  const doneBoth  = rows.filter(r => !EXCLUDE_NAMES.includes(r.driverName?.toLowerCase().trim()) && r.startOdometer != null && r.endOdometer != null).length;
+  const totalVehicles = grouped.reduce((s, r) => s + r.vehicles.length, 0);
+  const doneStart = grouped.reduce((s, r) =>
+    s + r.vehicles.filter(v => v.startOdometer != null).length, 0);
+  const doneBoth = grouped.reduce((s, r) =>
+    s + r.vehicles.filter(v => v.startOdometer != null && v.endOdometer != null).length, 0);
 
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
-      <div className="bg-white border-b border-[#F0EBE3] sticky top-0 z-10 px-4 sm:px-6 py-3">
+      <div className="bg-white border-b border-[#F0EBE3] sticky top-0 z-10 px-4 sm:px-6 py-3 space-y-2.5">
+        {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#C9A84C]/15 flex items-center justify-center flex-shrink-0">
@@ -225,17 +249,34 @@ export default function DriverAttendancePage() {
               <p className="text-[10px] text-[#8E8878]">{fmtDateVN(today)} · {grouped.length} tài xế</p>
             </div>
           </div>
-          {!loading && totalRows > 0 && (
+          {!loading && totalVehicles > 0 && (
             <div className="flex items-center gap-2 text-[10px]">
               <span className={`px-2 py-1 rounded-full font-semibold
-                ${doneStart === totalRows ? 'bg-sky-100 text-sky-700' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
-                🌅 {doneStart}/{totalRows}
+                ${doneStart === totalVehicles ? 'bg-sky-100 text-sky-700' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
+                🌅 {doneStart}/{totalVehicles}
               </span>
               <span className={`px-2 py-1 rounded-full font-semibold
-                ${doneBoth === totalRows ? 'bg-emerald-100 text-emerald-700' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
-                ✓ {doneBoth}/{totalRows}
+                ${doneBoth === totalVehicles ? 'bg-emerald-100 text-emerald-700' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
+                ✓ {doneBoth}/{totalVehicles}
               </span>
             </div>
+          )}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <input
+            value={searchInput}
+            onChange={e => handleSearchChange(e.target.value)}
+            placeholder="Tìm tài xế..."
+            className="w-full pl-8 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-[#FAFAF8] focus:outline-none focus:border-[#C9A84C] focus:bg-white transition-colors"
+          />
+          {searchInput && (
+            <button onClick={clearSearch}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+              <X size={13} />
+            </button>
           )}
         </div>
       </div>
@@ -249,12 +290,14 @@ export default function DriverAttendancePage() {
         ) : grouped.length === 0 ? (
           <div className="text-center py-20 text-[#8E8878]">
             <Gauge size={40} className="mx-auto mb-3 opacity-20" />
-            <p className="text-sm">Chưa có tài xế nào</p>
+            <p className="text-sm">
+              {searchQuery ? `Không tìm thấy "${searchInput}"` : 'Chưa có tài xế nào'}
+            </p>
           </div>
         ) : (
-          grouped.map(g => (
-            <DriverCard key={g.driverName} driverName={g.driverName}
-              rows={g.rows} date={today} onUpdate={handleUpdate} />
+          grouped.map(driver => (
+            <DriverCard key={driver.driverId} driver={driver}
+              date={today} onUpdate={handleUpdate} />
           ))
         )}
       </div>

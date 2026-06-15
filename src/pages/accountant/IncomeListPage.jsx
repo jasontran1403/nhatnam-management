@@ -1,11 +1,11 @@
 // src/pages/accountant/IncomeListPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { incomeApi } from '../../api/services';
+import { incomeApi, downloadBlob } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import {
   TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight,
-  X, Plus, Banknote, CreditCard, Eye
+  X, Plus, Banknote, CreditCard, Eye, Download,
 } from 'lucide-react';
 import IncomeCreateModal from './IncomeCreateModal';
 import IncomeDetailModal from './IncomeDetailModal';
@@ -46,6 +46,23 @@ export default function IncomeListPage() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [detailVoucher, setDetailVoucher] = useState(null);
+  const [showExport, setShowExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    const range = dateRange || dayRange(selectedDate);
+    setExporting(true);
+    try {
+      const res = await incomeApi.exportReport(range.from, range.to);
+      const d = new Date(range.from);
+      const dEnd = new Date(range.to);
+      const fmt = (dt) => `${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;
+      downloadBlob(res.data, `phieu-thu-${fmt(d)}_${fmt(dEnd)}.xlsx`);
+      toast('Xuất báo cáo thành công', 'success');
+      setShowExport(false);
+    } catch { toast('Lỗi xuất báo cáo', 'error'); }
+    finally { setExporting(false); }
+  };
 
   const calcTotal = (list) => list.reduce((s, v) => s + (Number(v.totalAmount) || 0), 0);
 
@@ -130,6 +147,13 @@ export default function IncomeListPage() {
             <X size={14} />
           </button>
         )}
+        <button
+          onClick={() => setShowExport(true)}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs font-medium text-[#5C5C5C] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all"
+          title="Xuất báo cáo"
+        >
+          <Download size={13} /> Export
+        </button>
       </div>
 
       {loading ? (
@@ -165,6 +189,72 @@ export default function IncomeListPage() {
 
       {showCreate && <IncomeCreateModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(0); }} />}
       {detailVoucher && <IncomeDetailModal voucher={detailVoucher} onClose={() => setDetailVoucher(null)} />}
+
+      {/* ── Export Modal ── */}
+      {showExport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Download size={16} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">Xuất báo cáo phiếu thu</h3>
+                  <p className="text-white/70 text-[10px]">File Excel · gồm hóa đơn liên kết</p>
+                </div>
+              </div>
+              <button onClick={() => setShowExport(false)}
+                className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3">
+              {/* Khoảng thời gian đang chọn */}
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Khoảng thời gian</p>
+                <p className="text-sm font-semibold text-emerald-700">
+                  {formatDate(currentRange.from).split(' ').slice(1).join(' ')}
+                  {' — '}
+                  {formatDate(currentRange.to).split(' ').slice(1).join(' ')}
+                </p>
+                <p className="text-[10px] text-emerald-500 mt-1 italic">Theo bộ lọc ngày đang chọn</p>
+              </div>
+
+              {/* Các cột sẽ có */}
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">Nội dung file</p>
+                {[
+                  'Thời gian tạo phiếu thu',
+                  'Số phiếu thu',
+                  'Hóa đơn thu (mỗi đơn 1 dòng)',
+                  'Tổng tiền thu',
+                ].map(col => (
+                  <div key={col} className="flex items-center gap-2 text-xs text-[#5C4E3D]">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                    {col}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 px-5 pb-5">
+              <button onClick={() => setShowExport(false)}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3] transition-colors font-medium">
+                Hủy
+              </button>
+              <button onClick={handleExport} disabled={exporting}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+                {exporting
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
+                  : <><Download size={14} /> Xuất Excel</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

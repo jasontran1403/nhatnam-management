@@ -12,6 +12,8 @@ export const getImageUrl = (path) => {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
   login: (data) => api.post('/api/auth/login', data),
+  switchRole: (role) => api.post('/api/auth/switch-role', { role }),
+  setDefaultRole: (role) => api.put('/api/auth/default-role', { role }),
 };
 
 // ─── Upload ──────────────────────────────────────────────────────────────────
@@ -119,6 +121,8 @@ export const orderApi = {
     api.put(`/api/seller/orders/${id}/super-edit`, data),
   searchStaff: (keyword) =>
     api.get('/api/seller/orders/super-edit/staff-search', { params: { keyword } }),
+  searchDrivers: (keyword, vehicleType) =>
+    api.get('/api/warehouse/drivers', { params: { q: keyword, type: vehicleType } }),
   exportIngredients: (params) =>
     api.get('/api/seller/orders/export-ingredients', { params, responseType: 'blob' }),
   exportDeliveryReport: (params) =>
@@ -221,6 +225,8 @@ export const incomeApi = {
   listByDate: (from, to, params) => api.get('/api/income-vouchers/by-date', { params: { from, to, ...params } }),
   search: (q, params) => api.get('/api/income-vouchers/search', { params: { q, ...params } }),
   getById: (id) => api.get(`/api/income-vouchers/${id}`),
+  exportReport: (from, to) =>
+    api.get('/api/income-vouchers/export', { params: { from, to }, responseType: 'blob' }),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
     return api.post('/api/upload/income-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });

@@ -1,6 +1,6 @@
 // src/components/common/ProfileButton.jsx
 import { useState } from 'react';
-import { UserCircle, X, Eye, EyeOff, Loader2, Check, Mail, Phone, Lock } from 'lucide-react';
+import { UserCircle, X, Eye, EyeOff, Loader2, Check, Mail, Phone, Lock, RefreshCw, Star, ChevronRight } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from './Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -14,13 +14,44 @@ function inputCls(hasErr) {
             : 'border-black/10 focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20'}`;
 }
 
+export const ROLE_LABELS = {
+    SUPERADMIN: 'Quản lý',
+    ADMIN: 'Giám Đốc',
+    OWNER: 'Chủ tịch',
+
+    SELLER: 'Nhân viên Kinh doanh',
+    SUPER_SELLER: 'Trưởng phòng Kinh doanh',
+
+    ACCOUNTANT: 'Nhân viên Kế Toán',
+    SUPER_ACCOUNTANT: 'Kế toán Trưởng',
+
+    WAREHOUSE: 'Nhân viên Kho',
+    SUPER_WAREHOUSE: 'Trưởng kho',
+
+    FACTORY_WORKER: 'Nhân viên Xưởng',
+
+    HR: 'Hành chính Nhân sự',
+
+    OPERATOR: 'Nhân viên Nhập liệu',
+};
+
+const ROLE_COLORS = {
+    ADMIN: 'bg-red-100 text-red-700', OWNER: 'bg-purple-100 text-purple-700',
+    SELLER: 'bg-blue-100 text-blue-700', SUPER_SELLER: 'bg-blue-200 text-blue-800',
+    ACCOUNTANT: 'bg-green-100 text-green-700', SUPER_ACCOUNTANT: 'bg-green-200 text-green-800',
+    WAREHOUSE: 'bg-orange-100 text-orange-700', SUPER_WAREHOUSE: 'bg-orange-200 text-orange-800',
+    HR: 'bg-pink-100 text-pink-700', SUPERADMIN: 'bg-gray-200 text-gray-800',
+};
+
 export default function ProfileButton({ compact = false }) {
     const navigate = useNavigate();
     const [redirecting, setRedirecting] = useState(false);
     const toast = useToast();
-    const { user: authUser, logout, updateUser } = useAuth();
+    const { user: authUser, logout, updateUser, switchRole, setDefaultRole } = useAuth();
     const { t } = useLang();
     const [open, setOpen] = useState(false);
+    // 'menu' | 'profile' | 'switch-role'
+    const [view, setView] = useState('menu');
     const [tab, setTab] = useState('info');
 
     const [profile, setProfile] = useState(null);
@@ -34,6 +65,16 @@ export default function ProfileButton({ compact = false }) {
     const [savingPwd, setSavingPwd] = useState(false);
     const [showPwd, setShowPwd] = useState({ current: false, new: false, confirm: false });
 
+    const [switchingRole, setSwitchingRole] = useState(null);
+    const [settingDefault, setSettingDefault] = useState(null);
+
+    const availableRoles = authUser?.availableRoles || [];
+    const currentRole = authUser?.role || '';
+    // defaultRole = user.role field in DB (backend sets it)
+    // After switchRole, backend returns updated user with role field
+    // We detect it by comparing authUser.defaultRole (set by setDefaultRole) or authUser.role
+    const defaultRole = authUser?.defaultRole ?? authUser?.role ?? null;
+
     const loadProfile = async () => {
         setLoadingProfile(true);
         try {
@@ -41,19 +82,20 @@ export default function ProfileButton({ compact = false }) {
             const data = res.data?.data;
             setProfile(data);
             setInfoForm({ fullName: data?.fullName || '', email: data?.email || '', phoneNumber: data?.phoneNumber || '' });
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoadingProfile(false);
-        }
+        } catch (e) { console.error(e); }
+        finally { setLoadingProfile(false); }
     };
 
     const handleOpen = () => {
         setOpen(true);
-        setTab('info');
+        setView('menu');
         setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        setPwdErr({});
-        setInfoErr({});
+        setPwdErr({}); setInfoErr({});
+    };
+
+    const handleOpenProfile = () => {
+        setView('profile');
+        setTab('info');
         loadProfile();
     };
 
@@ -63,7 +105,6 @@ export default function ProfileButton({ compact = false }) {
             errs.email = t('misc', 'email_invalid');
         setInfoErr(errs);
         if (Object.keys(errs).length) return;
-
         setSavingInfo(true);
         try {
             const res = await api.put('/api/profile', {
@@ -71,71 +112,79 @@ export default function ProfileButton({ compact = false }) {
                 email: infoForm.email.trim() || null,
                 phoneNumber: infoForm.phoneNumber.trim() || null,
             });
-            if (res.data?.success === false) {
-                toast(res.data?.message || t('profile', 'update_info_error'), 'error');
-                return;
-            }
-            toast(t('common', 'update') + ' ' + t('common', 'success').toLowerCase(), 'success');
+            if (res.data?.success === false) { toast(res.data?.message || 'Lỗi', 'error'); return; }
+            toast('Đã lưu thông tin', 'success');
             const updated = res.data?.data;
             setProfile(updated);
             updateUser({ fullName: updated?.fullName, email: updated?.email, phoneNumber: updated?.phoneNumber });
-        } catch (e) {
-            toast(e?.response?.data?.message || t('profile', 'update_info_error'), 'error');
-        } finally {
-            setSavingInfo(false);
-        }
+        } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+        finally { setSavingInfo(false); }
     };
 
     const handleChangePassword = async () => {
         const errs = {};
         if (!pwdForm.currentPassword) errs.currentPassword = t('common', 'required');
-        if (!pwdForm.newPassword || pwdForm.newPassword.length < 6)
-            errs.newPassword = t('auth', 'password_min_length');
-        if (pwdForm.newPassword !== pwdForm.confirmPassword)
-            errs.confirmPassword = t('auth', 'password_mismatch');
+        if (!pwdForm.newPassword || pwdForm.newPassword.length < 6) errs.newPassword = t('auth', 'password_min_length');
+        if (pwdForm.newPassword !== pwdForm.confirmPassword) errs.confirmPassword = t('auth', 'password_mismatch');
         setPwdErr(errs);
         if (Object.keys(errs).length) return;
-
         setSavingPwd(true);
         try {
             const res = await api.put('/api/profile/password', {
-                currentPassword: pwdForm.currentPassword,
-                newPassword: pwdForm.newPassword,
+                currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword,
             });
-            if (res.data?.success === false) {
-                toast(res.data?.message || t('auth', 'change_password_error'), 'error');
-                return;
-            }
+            if (res.data?.success === false) { toast(res.data?.message || 'Lỗi', 'error'); return; }
             toast(t('auth', 'change_password_success_relogin'), 'success');
             setRedirecting(true);
             setTimeout(() => { setOpen(false); logout(); navigate('/login'); }, 1500);
+        } catch (e) { toast(e?.response?.data?.message || 'Lỗi', 'error'); }
+        finally { setSavingPwd(false); }
+    };
+
+    const handleSwitchRole = async (role) => {
+        if (role === currentRole) return;
+        setSwitchingRole(role);
+        try {
+            await switchRole(role);
+            toast(`Đã chuyển sang ${ROLE_LABELS[role] || role}`, 'success');
+            setOpen(false);
+            // Force reload to apply new role routing
+            setTimeout(() => window.location.href = '/', 300);
         } catch (e) {
-            toast(e?.response?.data?.message || t('auth', 'change_password_error'), 'error');
+            toast(e?.response?.data?.message || 'Lỗi chuyển role', 'error');
+        } finally { setSwitchingRole(null); }
+    };
+
+    const handleToggleDefault = async (role) => {
+        const username = authUser?.username || '';
+        setSettingDefault(role);
+        try {
+            if (defaultRole === role) {
+                await setDefaultRole(null);
+                toast('Đã bỏ role mặc định', 'info');
+            } else {
+                await setDefaultRole(role);
+                toast(`${ROLE_LABELS[role] || role} sẽ là role mặc định khi đăng nhập`, 'success');
+            }
+        } catch {
+            toast('Lỗi cập nhật role mặc định', 'error');
         } finally {
-            setSavingPwd(false);
+            setSettingDefault(null);
         }
     };
 
-    const displayRole = t('roles', (authUser?.role || '').toLowerCase()) || authUser?.role || '';
+    const displayRole = t('roles', currentRole.toLowerCase()) || ROLE_LABELS[currentRole] || currentRole;
 
     const tabs = [
-        { key: 'info',     label: t('profile', 'info_tab'),    icon: UserCircle },
+        { key: 'info', label: t('profile', 'info_tab'), icon: UserCircle },
         { key: 'password', label: t('profile', 'password_tab'), icon: Lock },
-    ];
-
-    const pwdFields = [
-        { key: 'currentPassword', label: t('auth', 'current_password'), showKey: 'current' },
-        { key: 'newPassword',     label: t('auth', 'new_password'),     showKey: 'new',     hint: t('auth', 'password_min_length') },
-        { key: 'confirmPassword', label: t('auth', 'confirm_password'), showKey: 'confirm' },
     ];
 
     return (
         <>
-            <button
-                onClick={handleOpen}
+            <button onClick={handleOpen}
                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-[#FAF7F2] transition group"
-                title={t('profile', 'my_profile')}
-            >
+                title={t('profile', 'my_profile')}>
                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                     {(authUser?.fullName || authUser?.username || '?')[0]?.toUpperCase()}
                 </div>
@@ -163,6 +212,12 @@ export default function ProfileButton({ compact = false }) {
                         {/* Header */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
                             <div className="flex items-center gap-3">
+                                {view !== 'menu' && (
+                                    <button onClick={() => setView('menu')}
+                                        className="p-1 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] mr-1">
+                                        <ChevronRight size={16} className="rotate-180" />
+                                    </button>
+                                )}
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white font-bold">
                                     {(authUser?.fullName || authUser?.username || '?')[0]?.toUpperCase()}
                                 </div>
@@ -176,116 +231,177 @@ export default function ProfileButton({ compact = false }) {
                             </button>
                         </div>
 
-                        {/* Tabs */}
-                        <div className="flex border-b border-black/5">
-                            {tabs.map(({ key, label, icon: Icon }) => (
-                                <button key={key} onClick={() => setTab(key)}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition border-b-2
-                    ${tab === key
-                                            ? 'border-[#C9A84C] text-[#C9A84C]'
-                                            : 'border-transparent text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
-                                    <Icon size={15} /> {label}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Tab: Info */}
-                        {tab === 'info' && (
-                            <div className="p-5 space-y-4">
-                                {loadingProfile ? (
-                                    <div className="flex justify-center py-8">
-                                        <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                <UserCircle size={13} className="text-[#C9A84C]" /> {t('profile', 'full_name')}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={infoForm.fullName}
-                                                onChange={e => setInfoForm(p => ({ ...p, fullName: e.target.value }))}
-                                                placeholder={t('placeholder', 'name_example')}
-                                                className={inputCls(false)}
-                                            />
+                        {/* ── View: Menu ── */}
+                        {view === 'menu' && (
+                            <div className="p-4 space-y-2">
+                                {/* Switch Role option — only if user has multiple roles */}
+                                {availableRoles.length > 1 && (
+                                    <button onClick={() => setView('switch-role')}
+                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#FAF7F2] border border-[#F0EBE3] transition text-left group">
+                                        <div className="w-9 h-9 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
+                                            <RefreshCw size={16} className="text-[#C9A84C]" />
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                <Mail size={13} className="text-[#C9A84C]" /> Email
-                                            </label>
-                                            <input
-                                                type="email"
-                                                value={infoForm.email}
-                                                onChange={e => { setInfoForm(p => ({ ...p, email: e.target.value })); setInfoErr(p => ({ ...p, email: '' })); }}
-                                                placeholder="email@example.com"
-                                                className={inputCls(!!infoErr.email)}
-                                            />
-                                            {infoErr.email && <p className="text-xs text-red-500 mt-1">{infoErr.email}</p>}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-[#1C1C1E]">Chuyển đổi vai trò</p>
+                                            <p className="text-xs text-[#8E8878]">Đang dùng: <span className={`px-1.5 py-0.5 rounded font-medium ${ROLE_COLORS[currentRole] || 'bg-gray-100 text-gray-700'}`}>{ROLE_LABELS[currentRole] || currentRole}</span></p>
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                <Phone size={13} className="text-[#C9A84C]" /> {t('customer', 'phone')}
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                value={infoForm.phoneNumber}
-                                                onChange={e => setInfoForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                                                placeholder="0912 345 678"
-                                                className={inputCls(false)}
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={handleSaveInfo}
-                                            disabled={savingInfo}
-                                            className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2"
-                                        >
-                                            {savingInfo
-                                                ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</>
-                                                : <><Check size={16} /> {t('common', 'save_changes')}</>}
-                                        </button>
-                                    </>
+                                        <ChevronRight size={16} className="text-[#C4B9A8] group-hover:text-[#C9A84C] flex-shrink-0" />
+                                    </button>
                                 )}
+
+                                {/* Update profile */}
+                                <button onClick={handleOpenProfile}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#FAF7F2] border border-[#F0EBE3] transition text-left group">
+                                    <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                        <UserCircle size={16} className="text-blue-500" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-[#1C1C1E]">Thông tin tài khoản</p>
+                                        <p className="text-xs text-[#8E8878]">Cập nhật tên, email, mật khẩu</p>
+                                    </div>
+                                    <ChevronRight size={16} className="text-[#C4B9A8] group-hover:text-[#C9A84C] flex-shrink-0" />
+                                </button>
                             </div>
                         )}
 
-                        {/* Tab: Password */}
-                        {tab === 'password' && (
-                            <div className="p-5 space-y-4">
-                                {pwdFields.map(({ key, label, showKey, hint }) => (
-                                    <div key={key}>
-                                        <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">{label}</label>
-                                        <div className="relative">
-                                            <input
-                                                type={showPwd[showKey] ? 'text' : 'password'}
-                                                value={pwdForm[key]}
-                                                onChange={e => { setPwdForm(p => ({ ...p, [key]: e.target.value })); setPwdErr(p => ({ ...p, [key]: '' })); }}
-                                                placeholder="••••••••"
-                                                className={`${inputCls(!!pwdErr[key])} pr-10`}
-                                            />
-                                            <button type="button"
-                                                onClick={() => setShowPwd(p => ({ ...p, [showKey]: !p[showKey] }))}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
-                                                {showPwd[showKey] ? <EyeOff size={15} /> : <Eye size={15} />}
+                        {/* ── View: Switch Role ── */}
+                        {view === 'switch-role' && (
+                            <div className="p-4 space-y-2">
+                                <p className="text-xs text-[#8E8878] px-1 mb-3">
+                                    Chọn vai trò để chuyển đổi. Nhấn ⭐ để đặt làm mặc định khi đăng nhập.
+                                </p>
+                                {availableRoles.map(r => {
+                                    const isActive = r === currentRole;
+                                    const isDefault = r === defaultRole;
+                                    const isSwitching = switchingRole === r;
+                                    return (
+                                        <div key={r}
+                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition
+                                            ${isActive
+                                                    ? 'border-[#C9A84C] bg-[#FDF8ED]'
+                                                    : 'border-[#F0EBE3] hover:border-[#C9A84C]/40 hover:bg-[#FAF7F2]'}`}>
+                                            {/* Role info - clickable to switch */}
+                                            <button
+                                                onClick={() => handleSwitchRole(r)}
+                                                disabled={isActive || !!switchingRole}
+                                                className="flex items-center gap-3 flex-1 text-left disabled:cursor-default">
+                                                {isSwitching
+                                                    ? <Loader2 size={16} className="animate-spin text-[#C9A84C] flex-shrink-0" />
+                                                    : isActive
+                                                        ? <Check size={16} className="text-[#C9A84C] flex-shrink-0" />
+                                                        : <div className="w-4 h-4 rounded-full border-2 border-[#E8DDD0] flex-shrink-0" />
+                                                }
+                                                <div>
+                                                    <p className={`text-sm font-semibold ${isActive ? 'text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+                                                        {ROLE_LABELS[r] || r}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                            {/* Star = set default */}
+                                            <button
+                                                onClick={() => handleToggleDefault(r)}
+                                                disabled={!!settingDefault}
+                                                title={isDefault ? 'Bỏ mặc định' : 'Đặt làm mặc định khi đăng nhập'}
+                                                className={`p-1.5 rounded-lg transition flex-shrink-0
+                                                ${isDefault ? 'text-yellow-500 hover:text-yellow-600' : 'text-[#C4B9A8] hover:text-yellow-500'}
+                                                ${settingDefault === r ? 'animate-pulse' : ''}`}>
+                                                <Star size={14} fill={isDefault ? 'currentColor' : 'none'} />
                                             </button>
                                         </div>
-                                        {pwdErr[key] && <p className="text-xs text-red-500 mt-1">{pwdErr[key]}</p>}
-                                        {hint && !pwdErr[key] && <p className="text-xs text-[#8E8878] mt-1">{hint}</p>}
-                                    </div>
-                                ))}
-                                <button
-                                    onClick={handleChangePassword}
-                                    disabled={savingPwd}
-                                    className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {savingPwd
-                                        ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</>
-                                        : <><Lock size={16} /> {t('auth', 'change_password')}</>}
-                                </button>
-                                <p className="text-xs text-[#8E8878] text-center">
-                                    {t('auth', 'change_password_success_relogin')}
-                                </p>
+                                    );
+                                })}
                             </div>
+                        )}
+
+                        {/* ── View: Profile ── */}
+                        {view === 'profile' && (
+                            <>
+                                <div className="flex border-b border-black/5">
+                                    {tabs.map(({ key, label, icon: Icon }) => (
+                                        <button key={key} onClick={() => setTab(key)}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition border-b-2
+                                            ${tab === key
+                                                    ? 'border-[#C9A84C] text-[#C9A84C]'
+                                                    : 'border-transparent text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
+                                            <Icon size={15} /> {label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {tab === 'info' && (
+                                    <div className="p-5 space-y-4">
+                                        {loadingProfile ? (
+                                            <div className="flex justify-center py-8">
+                                                <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+                                                        <UserCircle size={13} className="text-[#C9A84C]" /> {t('profile', 'full_name')}
+                                                    </label>
+                                                    <input type="text" value={infoForm.fullName}
+                                                        onChange={e => setInfoForm(p => ({ ...p, fullName: e.target.value }))}
+                                                        placeholder={t('placeholder', 'name_example')}
+                                                        className={inputCls(false)} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+                                                        <Mail size={13} className="text-[#C9A84C]" /> Email
+                                                    </label>
+                                                    <input type="email" value={infoForm.email}
+                                                        onChange={e => { setInfoForm(p => ({ ...p, email: e.target.value })); setInfoErr(p => ({ ...p, email: '' })); }}
+                                                        placeholder="email@example.com" className={inputCls(!!infoErr.email)} />
+                                                    {infoErr.email && <p className="text-xs text-red-500 mt-1">{infoErr.email}</p>}
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+                                                        <Phone size={13} className="text-[#C9A84C]" /> {t('customer', 'phone')}
+                                                    </label>
+                                                    <input type="tel" value={infoForm.phoneNumber}
+                                                        onChange={e => setInfoForm(p => ({ ...p, phoneNumber: e.target.value }))}
+                                                        placeholder="0912 345 678" className={inputCls(false)} />
+                                                </div>
+                                                <button onClick={handleSaveInfo} disabled={savingInfo}
+                                                    className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                                    {savingInfo ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</> : <><Check size={16} /> {t('common', 'save_changes')}</>}
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                {tab === 'password' && (
+                                    <div className="p-5 space-y-4">
+                                        {[
+                                            { key: 'currentPassword', label: t('auth', 'current_password'), showKey: 'current' },
+                                            { key: 'newPassword', label: t('auth', 'new_password'), showKey: 'new', hint: t('auth', 'password_min_length') },
+                                            { key: 'confirmPassword', label: t('auth', 'confirm_password'), showKey: 'confirm' },
+                                        ].map(({ key, label, showKey, hint }) => (
+                                            <div key={key}>
+                                                <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">{label}</label>
+                                                <div className="relative">
+                                                    <input type={showPwd[showKey] ? 'text' : 'password'} value={pwdForm[key]}
+                                                        onChange={e => { setPwdForm(p => ({ ...p, [key]: e.target.value })); setPwdErr(p => ({ ...p, [key]: '' })); }}
+                                                        placeholder="••••••••" className={`${inputCls(!!pwdErr[key])} pr-10`} />
+                                                    <button type="button"
+                                                        onClick={() => setShowPwd(p => ({ ...p, [showKey]: !p[showKey] }))}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+                                                        {showPwd[showKey] ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                    </button>
+                                                </div>
+                                                {pwdErr[key] && <p className="text-xs text-red-500 mt-1">{pwdErr[key]}</p>}
+                                                {hint && !pwdErr[key] && <p className="text-xs text-[#8E8878] mt-1">{hint}</p>}
+                                            </div>
+                                        ))}
+                                        <button onClick={handleChangePassword} disabled={savingPwd}
+                                            className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                            {savingPwd ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</> : <><Lock size={16} /> {t('auth', 'change_password')}</>}
+                                        </button>
+                                        <p className="text-xs text-[#8E8878] text-center">{t('auth', 'change_password_success_relogin')}</p>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

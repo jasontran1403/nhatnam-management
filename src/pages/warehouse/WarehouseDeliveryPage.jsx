@@ -12,7 +12,7 @@ import api from '../../api/axios';
 import {
     Search, RefreshCw, ChevronLeft, ChevronRight,
     Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
-    Camera, FileText, X, CheckSquare, Paperclip,
+    Camera, FileText, X, CheckSquare, Paperclip, Check,
     Plus, Download, Calendar,
 } from 'lucide-react';
 
@@ -467,13 +467,18 @@ export default function WarehouseDeliveryPage() {
     const [exportFrom, setExportFrom]                   = useState('');
     const [exportTo, setExportTo]                       = useState('');
     const [exporting, setExporting]                     = useState(false);
+    const [exportExcludeWarehouse, setExportExcludeWarehouse] = useState(true);
 
     const handleExportReport = async () => {
         if (!exportFrom || !exportTo) { toast('Chọn khoảng thời gian', 'error'); return; }
         setExporting(true);
         try {
             const res = await api.get('/api/warehouse/reports/driver', {
-                params: { from: exportFrom, to: exportTo },
+                params: {
+                    from: exportFrom,
+                    to: exportTo,
+                    excludeWarehouse: exportExcludeWarehouse,
+                },
                 responseType: 'blob',
             });
             const url = URL.createObjectURL(res.data);
@@ -893,48 +898,91 @@ export default function WarehouseDeliveryPage() {
             {/* ── Export Driver Report Modal ── */}
             {showExportModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
-                            <div className="flex items-center gap-2">
-                                <Download size={16} className="text-[#C9A84C]" />
-                                <h3 className="font-bold text-[#1C1C1E] text-sm">Xuất báo cáo tài xế</h3>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        {/* Header with gradient */}
+                        <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                                    <Download size={16} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-white text-sm">Xuất báo cáo tài xế</h3>
+                                    <p className="text-white/70 text-[10px]">Thống kê km · phiếu · đơn giao</p>
+                                </div>
                             </div>
                             <button onClick={() => setShowExportModal(false)}
-                                className="p-1.5 rounded-lg hover:bg-[#F0EBE3] text-[#8E8878]">
-                                <X size={16} />
+                                className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                                <X size={14} />
                             </button>
                         </div>
+
                         <div className="p-5 space-y-4">
-                            <p className="text-xs text-[#8E8878]">
-                                Xuất báo cáo km, số phiếu và số đơn giao của từng tài xế trong khoảng thời gian.
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-[10px] font-semibold text-[#5C5C5C] mb-1">
-                                        <Calendar size={10} className="inline mr-1" />Từ ngày
-                                    </label>
-                                    <input type="date" value={exportFrom}
-                                        onChange={e => setExportFrom(e.target.value)}
-                                        className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C]" />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-semibold text-[#5C5C5C] mb-1">
-                                        <Calendar size={10} className="inline mr-1" />Đến ngày
-                                    </label>
-                                    <input type="date" value={exportTo}
-                                        onChange={e => setExportTo(e.target.value)}
-                                        className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C]" />
+                            {/* Date range */}
+                            <div>
+                                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2.5">
+                                    Khoảng thời gian
+                                </p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="block text-[11px] font-semibold text-[#5C4E3D] flex items-center gap-1">
+                                            <Calendar size={10} className="text-[#C9A84C]" /> Từ ngày
+                                        </label>
+                                        <input type="date" value={exportFrom}
+                                            onChange={e => setExportFrom(e.target.value)}
+                                            className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/10 transition-all" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-[11px] font-semibold text-[#5C4E3D] flex items-center gap-1">
+                                            <Calendar size={10} className="text-[#C9A84C]" /> Đến ngày
+                                        </label>
+                                        <input type="date" value={exportTo}
+                                            onChange={e => setExportTo(e.target.value)}
+                                            min={exportFrom}
+                                            className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/10 transition-all" />
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* Filter options */}
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+                                    Bộ lọc
+                                </p>
+                                <label className="flex items-center gap-3 p-3 rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] cursor-pointer hover:border-[#C9A84C]/50 transition-colors group">
+                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0
+                                        ${exportExcludeWarehouse
+                                            ? 'bg-[#C9A84C] border-[#C9A84C]'
+                                            : 'border-[#E8DDD0] bg-white group-hover:border-[#C9A84C]/50'}`}
+                                        onClick={() => setExportExcludeWarehouse(v => !v)}>
+                                        {exportExcludeWarehouse && <Check size={11} className="text-white" strokeWidth={3} />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-[#1C1C1E]">Bỏ tài xế giao tại kho</p>
+                                        <p className="text-[10px] text-[#8E8878] mt-0.5">Chỉ tính tài xế giao đến khách</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            {/* Summary hint */}
+                            {exportFrom && exportTo && (
+                                <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">
+                                    <FileText size={12} className="text-sky-500 shrink-0" />
+                                    <p className="text-[11px] text-sky-700">
+                                        Báo cáo từ <strong>{new Date(exportFrom).toLocaleDateString('vi-VN')}</strong> đến <strong>{new Date(exportTo).toLocaleDateString('vi-VN')}</strong>
+                                        {exportExcludeWarehouse && <span className="text-sky-500"> · không gồm giao tại kho</span>}
+                                    </p>
+                                </div>
+                            )}
                         </div>
+
                         <div className="flex gap-2 px-5 pb-5">
                             <button onClick={() => setShowExportModal(false)}
-                                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3]">
+                                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3] transition-colors font-medium">
                                 Hủy
                             </button>
                             <button onClick={handleExportReport}
                                 disabled={exporting || !exportFrom || !exportTo}
-                                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#b8963e] disabled:opacity-40">
+                                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#b8963e] disabled:opacity-40 transition-colors">
                                 {exporting
                                     ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
                                     : <><Download size={14} /> Xuất Excel</>}

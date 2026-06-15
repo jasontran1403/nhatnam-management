@@ -7,7 +7,7 @@ import { useToast } from '../../components/common/Toast';
 import {
   X, TrendingUp, Send, CreditCard, Banknote,
   Search, Plus, Trash2, Upload, ShoppingCart,
-  AlertCircle, FileText, ChevronRight, CheckCircle2, Clock
+  AlertCircle, FileText, ChevronRight, CheckCircle2, Clock, RefreshCw,
 } from 'lucide-react';
 
 function formatVND(n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ'; }
@@ -174,6 +174,35 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
   const [items, setItems] = useState([{ id: 1, itemName: 'Khoản thu 1', amount: '', note: '' }]);
   const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  // Race condition warning: hiện khi backend trả 409 (số tiền đã thay đổi)
+  const [staleWarning, setStaleWarning] = useState(null); // { orderCode, oldAmount, newAmount }
+  const [reloading, setReloading] = useState(false);
+
+  // Re-fetch các đơn đang chọn để cập nhật số tiền mới nhất
+  const reloadSelectedOrders = useCallback(async () => {
+    if (selectedOrders.length === 0) return;
+    setReloading(true);
+    try {
+      const updated = await Promise.all(
+        selectedOrders.map(o =>
+          api.get(`/api/accountant/orders/${o.id}`)
+            .then(r => r.data?.data || r.data)
+            .catch(() => o) // fallback giữ nguyên nếu lỗi
+        )
+      );
+      setSelectedOrders(updated);
+      setCollectedAmount('');
+      setCollectedError('');
+      setPartialInfo(null);
+      setPendingHandling(null);
+      setStaleWarning(null);
+      toast('Đã cập nhật thông tin đơn hàng', 'success');
+    } catch {
+      toast('Lỗi tải lại đơn hàng', 'error');
+    } finally {
+      setReloading(false);
+    }
+  }, [selectedOrders]);
 
   const orderTotal = selectedOrders.reduce(
     (s, o) => s + Math.round(o.remainingAmount ?? o.finalAmount ?? 0), 0
@@ -359,16 +388,22 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
         bankRef: paymentType === 'BANK_TRANSFER' ? bankRef.trim() : undefined,
         linkedOrderCodes: hasOrders ? selectedOrders.map(o => o.orderCode) : undefined,
         collectedAmount: collected,
+        // Gửi từng đơn kèm số tiền còn lại client đang thấy
+        // Backend check từng đơn: nếu actualRemaining != expectedRemaining → 409
+        expectedOrderAmounts: hasOrders
+          ? selectedOrders.map(o => ({
+              orderCode: o.orderCode,
+              expectedRemainingAmount: Math.round(o.remainingAmount ?? o.finalAmount ?? 0),
+            }))
+          : undefined,
         lastOrderHandling: lastOrderHandling || undefined,
         items: submitItems,
         imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
         receiptNumber: receiptNumber.trim(),
       });
 
-      // Backend trả success: false hoặc code != 200/901 → lỗi nghiệp vụ
       const data = res.data;
       if (data.message !== 'OK') {
-        // Bỏ dấu \" trong message trước khi hiển thị
         const cleanMessage = (data.message || 'Lỗi khi tạo phiếu').replace(/\\"/g, '').replace(/"/g, '');
         toast(cleanMessage, 'error');
         return;
@@ -377,6 +412,17 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
       toast('Phiếu thu đã được tạo thành công', 'success');
       onCreated();
     } catch (e) {
+      // 409 Conflict = số tiền đã bị thay đổi bởi người khác
+      if (e?.response?.status === 409) {
+        const body = e.response.data?.data || e.response.data;
+        setStaleWarning({
+          message: body?.message || 'Số tiền đơn hàng đã thay đổi',
+          actualRemainingAmount: body?.actualRemainingAmount,
+          paidAmount: body?.paidAmount,
+          orderCode: body?.orderCode,
+        });
+        return;
+      }
       toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu', 'error');
     } finally {
       setSubmitting(false);
@@ -546,6 +592,38 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* ── Banner cảnh báo race condition ── */}
+              {staleWarning && (
+                <div className="mt-2 rounded-xl border-2 border-rose-300 bg-rose-50 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={15} className="text-rose-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-rose-700">Số tiền đã thay đổi!</p>
+                      <p className="text-xs text-rose-600 mt-0.5">{staleWarning.message}</p>
+                      {staleWarning.orderCode && (
+                        <p className="text-xs text-rose-500 mt-0.5">
+                          Đơn: <span className="font-mono font-bold">{staleWarning.orderCode}</span>
+                          {staleWarning.paidAmount != null && (
+                            <> · Đã thu: <span className="font-bold">{formatVND(staleWarning.paidAmount)}</span></>
+                          )}
+                          {staleWarning.actualRemainingAmount != null && (
+                            <> · Còn lại: <span className="font-bold text-rose-700">{formatVND(staleWarning.actualRemainingAmount)}</span></>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={reloadSelectedOrders}
+                    disabled={reloading}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-rose-500 text-white text-xs font-bold hover:bg-rose-600 transition disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={reloading ? 'animate-spin' : ''} />
+                    {reloading ? 'Đang tải lại...' : 'Tải lại đơn hàng để cập nhật'}
+                  </button>
                 </div>
               )}
             </div>
@@ -797,7 +875,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={submitting || !!collectedError}
+              disabled={submitting || !!collectedError || !!staleWarning}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#C9A84C] text-white font-bold hover:bg-[#B8923E] transition disabled:opacity-50"
             >
               {submitting

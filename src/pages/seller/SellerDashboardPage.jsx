@@ -8,6 +8,7 @@ import {
 import {
   ShoppingBag, TrendingUp, Clock, AlertTriangle,
   Crown, Package, CheckCircle, Truck, ChefHat, Wallet,
+  Users, UserPlus, Repeat2,
 } from 'lucide-react';
 import { sellerDashboardApi } from '../../api/sellerDashboardApi';
 import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
@@ -263,15 +264,104 @@ function DebtCard({ label, icon: Icon, value, accent, loading, alert, onClick })
   );
 }
 
+// ── Card 5: Khách hàng mới & cũ ──────────────────────────────────────────────
+function CustomerSummaryCard({ summary, loading }) {
+  const animTotal     = useCountUp(summary?.totalCustomers     ?? 0);
+  const animNew       = useCountUp(summary?.newCustomers       ?? 0);
+  const animReturning = useCountUp(summary?.returningCustomers ?? 0);
+
+  const total     = Number(summary?.totalCustomers     ?? 0);
+  const newC      = Number(summary?.newCustomers       ?? 0);
+  const returning = Number(summary?.returningCustomers ?? 0);
+
+  const newPct       = total > 0 ? Math.round((newC      / total) * 100) : 0;
+  const returningPct = total > 0 ? Math.round((returning / total) * 100) : 0;
+
+  return (
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#F0EBE3] shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">Khách hàng trong kỳ</p>
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+          <Users size={13} className="text-violet-500" />
+        </div>
+      </div>
+      {/* Định nghĩa rõ ràng */}
+      <div className="mb-3 space-y-0.5">
+        <p className="text-[9px] text-[#C4B9A8]">
+          <span className="text-violet-400 font-semibold">Mới</span> = có đơn trong kỳ &amp; chưa từng mua trước đó
+        </p>
+        <p className="text-[9px] text-[#C4B9A8]">
+          <span className="text-emerald-400 font-semibold">Cũ</span> = có đơn trong kỳ &amp; đã mua ít nhất 1 lần trước đó
+        </p>
+        <p className="text-[9px] text-[#C4B9A8] italic">Mỗi khách chỉ đếm 1 lần dù tạo nhiều đơn</p>
+      </div>
+
+      {/* Total */}
+      {loading
+        ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mb-3" />
+        : <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums mb-3">
+            {fmtNum(Math.round(animTotal))}
+          </p>
+      }
+
+      {/* Progress bar */}
+      {!loading && total > 0 && (
+        <div className="h-1.5 rounded-full bg-[#F0EBE3] overflow-hidden mb-3 flex">
+          <div
+            className="h-full rounded-l-full bg-violet-400 transition-all duration-700"
+            style={{ width: `${newPct}%` }}
+          />
+          <div
+            className="h-full rounded-r-full bg-emerald-400 transition-all duration-700"
+            style={{ width: `${returningPct}%` }}
+          />
+        </div>
+      )}
+      {loading && <div className="h-1.5 rounded-full bg-[#F0EBE3] animate-pulse mb-3" />}
+
+      {/* Breakdown */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-violet-50 px-3 py-2.5 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <UserPlus size={11} className="text-violet-500" />
+            <span className="text-[10px] text-violet-600 font-semibold">Khách mới</span>
+          </div>
+          <p className="text-base font-bold text-violet-600 tabular-nums">
+            {loading ? '…' : fmtNum(Math.round(animNew))}
+          </p>
+          {!loading && total > 0 && (
+            <p className="text-[9px] text-violet-400 font-medium">{newPct}% tổng khách</p>
+          )}
+        </div>
+        <div className="rounded-xl bg-emerald-50 px-3 py-2.5 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <Repeat2 size={11} className="text-emerald-500" />
+            <span className="text-[10px] text-emerald-600 font-semibold">Khách cũ</span>
+          </div>
+          <p className="text-base font-bold text-emerald-600 tabular-nums">
+            {loading ? '…' : fmtNum(Math.round(animReturning))}
+          </p>
+          {!loading && total > 0 && (
+            <p className="text-[9px] text-emerald-400 font-medium">{returningPct}% tổng khách</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function SellerDashboardPage() {
   const navigate = useNavigate();
 
-  const [preset,  setPreset]  = useState('today');
-  const [range,   setRange]   = useState(() => presetToRange('today'));
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+  const [preset,        setPreset]        = useState('today');
+  const [range,         setRange]         = useState(() => presetToRange('today'));
+  const [data,          setData]          = useState(null);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState(null);
+  const [customerStats, setCustomerStats] = useState(null);
+  const [customerLoading, setCustomerLoading] = useState(false);
 
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -286,13 +376,19 @@ export default function SellerDashboardPage() {
   const load = useCallback(async (r) => {
     if (!r) return;
     setLoading(true); setError(null);
+    setCustomerLoading(true);
     try {
-      const res = await sellerDashboardApi.getDashboard(r.from, r.to, groupByFromRange(r), 10);
-      setData(res);
-    } catch (e) {
-      setError(e.message);
+      const [dashRes, customerRes] = await Promise.allSettled([
+        sellerDashboardApi.getDashboard(r.from, r.to, groupByFromRange(r), 10),
+        sellerDashboardApi.getCustomerStats(r.from, r.to),
+      ]);
+      if (dashRes.status === 'fulfilled') setData(dashRes.value);
+      else setError(dashRes.reason?.message);
+      if (customerRes.status === 'fulfilled') setCustomerStats(customerRes.value);
+      else setCustomerStats(null);
     } finally {
       setLoading(false);
+      setCustomerLoading(false);
     }
   }, []);
 
@@ -334,10 +430,11 @@ export default function SellerDashboardPage() {
         </div>
       )}
 
-      {/* ── Row 1: Card Đơn + Card Doanh thu — stack dọc trên mobile, 2 cột từ sm ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      {/* ── Row 1: Card Đơn + Card Doanh thu + Card Khách hàng ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         <OrderSummaryCard summary={summary} loading={loading} />
         <RevenueSummaryCard summary={summary} loading={loading} />
+        <CustomerSummaryCard summary={customerStats} loading={customerLoading} />
       </div>
 
       {/* ── Row 2: Card Công nợ — luôn 2 cột (nội dung đơn giản, đủ chỗ) ── */}
