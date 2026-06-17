@@ -7,7 +7,7 @@ import {
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
-  Wrench, Settings2,
+  Wrench, Settings2, ShoppingBag, Archive,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -37,7 +37,6 @@ export const ownerNavRaw = [
   { to: '/owner/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
   { to: '/owner/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
-  // ── Sản xuất — 1 item duy nhất, dashboard gộp tất cả ──────────────────────
   { to: '/owner/production', labelKey: 'production', icon: Factory },
 ];
 
@@ -79,7 +78,6 @@ export const accountantNavRaw = [
   { to: '/accountant/customers', labelKey: 'customers', icon: Users },
   { to: '/accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
-  // { to: '/accountant/suppliers', labelKey: 'suppliers', icon: Package },
 ];
 
 export const superAccountantNavRaw = [
@@ -89,7 +87,8 @@ export const superAccountantNavRaw = [
   { to: '/super-accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/super-accountant/warehouse-receipts', labelKey: 'warehouse_receipts', icon: FileText },
-  // { to: '/super-accountant/suppliers', labelKey: 'suppliers', icon: Package },
+  // ── Phiếu đặt hàng nguyên liệu xưởng ────────────────────────────────────
+  { to: '/super-accountant/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
 ];
 
 export const operatorNavRaw = [
@@ -102,14 +101,14 @@ export const operatorNavRaw = [
 
 export const factoryWorkerNavRaw = [
   { to: '/factory/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
-  // Lệnh sản xuất — trang mới (xem lệnh, lập phương án, xác nhận bước)
   { to: '/factory/orders', labelKey: 'work_orders', icon: ClipboardList },
-  // Nhập mẻ legacy (vẫn giữ)
   { to: '/factory/batches', labelKey: 'factory_batches', icon: ClipboardCheck },
-  // Lịch sử mẻ
   { to: '/factory/history', labelKey: 'batch_history', icon: Package },
-  // Quản lý máy + bảo trì
   { to: '/factory/machines', labelKey: 'machine_manage', icon: Wrench },
+  // ── Phiếu đặt hàng nguyên liệu ───────────────────────────────────────────
+  { to: '/factory/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
+  // ── Kho nguyên liệu xưởng ────────────────────────────────────────────────
+  { to: '/factory/material-stock', labelKey: 'material_stock', icon: Archive },
 ];
 
 /** Helper: build translated nav items from raw config + t function */

@@ -162,7 +162,8 @@
     "delivering": "Đơn hàng",
     "machine_manage": "Máy & Bảo trì",
     "certificates": "Chứng nhận",
-    "driver_attendance": "Điểm danh ODO"
+    "driver_attendance": "Điểm danh ODO",
+    "material_requests": "Phiếu đặt hàng"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

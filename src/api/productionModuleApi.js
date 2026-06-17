@@ -97,6 +97,9 @@ export const factoryProdApi = {
     api.post(`/api/factory/batches/${batchId}/complete`, body).then(r => r.data.data),
   cancelBatch: (batchId, body) =>
     api.post(`/api/factory/batches/${batchId}/cancel`, body).then(r => r.data.data),
+  // Danh sách NVL đã trừ kho (chưa hoàn) của lệnh sản xuất — dùng cho form huỷ mẻ
+  getMaterialUsage: (workOrderId) =>
+    api.get(`/api/factory/work-orders/${workOrderId}/material-usage`).then(r => r.data.data),
 
 
   // Material Vendors (NCC nguyên liệu / máy móc / sửa chữa)
@@ -124,6 +127,12 @@ export const factoryProdApi = {
     api.patch(`/api/factory/maintenance/${id}/complete`, body).then(r => r.data.data),
   deleteMaintenance: (id) =>
     api.delete(`/api/factory/maintenance/${id}`).then(r => r.data.data),
+
+  // Preset bước sản xuất (BatchStepTemplate)
+  listStepTemplates: () =>
+    api.get('/api/factory/step-templates').then(r => r.data.data),
+  createStepTemplate: (body) =>
+    api.post('/api/factory/step-templates', body).then(r => r.data.data),
 };
 
 // ── Upload APIs ───────────────────────────────────────────────────────────────

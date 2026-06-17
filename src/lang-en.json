@@ -162,7 +162,8 @@
     "delivering": "Orders",
     "machine_manage": "Machines & Maintenance",
     "certificates": "Certificates",
-    "driver_attendance": "Driver ODO Log"
+    "driver_attendance": "Driver ODO Log",
+    "material_requests": "Material Requests"
   },
   "profile": {
     "my_profile": "My Profile",

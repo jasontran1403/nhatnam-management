@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Factory, Plus, Clock, CheckCircle2, AlertTriangle,
   Wrench, Settings2, ChevronRight, CalendarRange,
-  ClipboardList, X, Loader2, Package,
+  ClipboardList, X, Loader2, Package, Search, ChevronDown,
 } from 'lucide-react';
 import { startOfDay } from 'date-fns';
 import useMinLoading from '../../hooks/useMinLoading';
@@ -44,45 +44,273 @@ function KpiCard({ icon: Icon, label, value, sub, color = 'text-[#C9A84C]', icon
   );
 }
 
+// ── Search Dropdown — dùng chung ──────────────────────────────────────────────
+function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'Tìm...', disabled = false }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Reset q khi đóng
+  useEffect(() => { if (!open) setQ(''); }, [open]);
+
+  const selected = items.find(i => i.id === value);
+  const filtered = q.trim()
+    ? items.filter(i => i.name.toLowerCase().includes(q.toLowerCase()))
+    : items;
+
+  const handleOpen = () => { if (!disabled) setOpen(o => !o); };
+
+  return (
+    <div className="relative" ref={ref}>
+      <div
+        onClick={handleOpen}
+        className={`${inputCls} flex items-center gap-2 cursor-pointer min-h-[38px]
+          ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+      >
+        <Search size={13} className="text-[#8E8878] flex-shrink-0" />
+        <span className={`flex-1 truncate text-sm ${selected ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}`}>
+          {selected ? `${selected.name}${selected.unit ? ` (${selected.unit})` : ''}` : placeholder}
+        </span>
+        {selected && !disabled && (
+          <button
+            onClick={e => { e.stopPropagation(); onChange(''); }}
+            className="text-[#8E8878] hover:text-red-500 flex-shrink-0"
+          >
+            <X size={13} />
+          </button>
+        )}
+        {!selected && (
+          <ChevronDown size={13} className={`text-[#8E8878] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+        )}
+      </div>
+
+      {open && !disabled && (
+        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#E8DDD0]
+          rounded-xl shadow-lg mt-1 overflow-hidden">
+          <div className="p-2 border-b border-[#F0EBE3]">
+            <input
+              autoFocus
+              className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
+                focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+              placeholder="Tìm..."
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-[#8E8878] italic">Không tìm thấy</div>
+            ) : (
+              filtered.map(item => (
+                <button
+                  key={item.id}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] transition-colors
+                    ${value === item.id ? 'bg-[#F0EBE3] font-medium text-[#1C1C1E]' : 'text-[#1C1C1E]'}`}
+                  onClick={() => { onChange(item.id); setOpen(false); }}
+                >
+                  {item.name}{item.unit ? ` (${item.unit})` : ''}
+                </button>
+              ))
+            )}
+          </div>
+          {onCreateNew && (
+            <button
+              className="w-full text-left px-3 py-2.5 text-sm text-[#C9A84C] font-semibold
+                border-t border-[#F0EBE3] hover:bg-[#FAF7F2] flex items-center gap-1.5"
+              onClick={() => { setOpen(false); onCreateNew(q); }}
+            >
+              <Plus size={13} /> Tạo sản phẩm mới{q ? `: "${q}"` : ''}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Multi-product select (tag-style, search + dropdown) ────────────────────────
+function MultiProductSelect({ allProducts, selected, onChange, onCreateNew }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => { if (!open) setQ(''); }, [open]);
+
+  const available = allProducts.filter(p =>
+    !selected.includes(p.id) &&
+    (!q.trim() || p.name.toLowerCase().includes(q.toLowerCase()))
+  );
+  const selectedItems = allProducts.filter(p => selected.includes(p.id));
+
+  return (
+    <div ref={ref}>
+      {/* Tags đã chọn */}
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selectedItems.map(p => (
+            <span key={p.id}
+              className="flex items-center gap-1 bg-[#1A2B1A] text-white text-xs px-2.5 py-1 rounded-full">
+              {p.name}{p.unit ? ` (${p.unit})` : ''}
+              <button
+                onClick={() => onChange(selected.filter(id => id !== p.id))}
+                className="hover:text-red-300 transition-colors ml-0.5"
+              >
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Input search + dropdown */}
+      <div className="relative">
+        <div
+          className={`${inputCls} flex items-center gap-2 cursor-pointer min-h-[38px]`}
+          onClick={() => setOpen(o => !o)}
+        >
+          <Search size={13} className="text-[#8E8878] flex-shrink-0" />
+          <span className="flex-1 text-sm text-[#8E8878]">
+            {selected.length === 0 ? 'Chọn sản phẩm...' : `Đã chọn ${selected.length} sản phẩm`}
+          </span>
+          <ChevronDown size={13} className={`text-[#8E8878] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+        </div>
+
+        {open && (
+          <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#E8DDD0]
+            rounded-xl shadow-lg mt-1 overflow-hidden">
+            <div className="p-2 border-b border-[#F0EBE3]">
+              <input
+                autoFocus
+                className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
+                  focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+                placeholder="Tìm sản phẩm..."
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {available.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-[#8E8878] italic">
+                  {allProducts.length === selected.length ? 'Đã chọn tất cả' : 'Không tìm thấy'}
+                </div>
+              ) : (
+                available.map(item => (
+                  <button
+                    key={item.id}
+                    className="w-full text-left px-3 py-2 text-sm text-[#1C1C1E] hover:bg-[#FAF7F2] transition-colors"
+                    onClick={() => { onChange([...selected, item.id]); setQ(''); }}
+                  >
+                    {item.name}{item.unit ? ` (${item.unit})` : ''}
+                  </button>
+                ))
+              )}
+            </div>
+            {onCreateNew && (
+              <button
+                className="w-full text-left px-3 py-2.5 text-sm text-[#C9A84C] font-semibold
+                  border-t border-[#F0EBE3] hover:bg-[#FAF7F2] flex items-center gap-1.5"
+                onClick={() => { setOpen(false); onCreateNew(q); }}
+              >
+                <Plus size={13} /> Tạo sản phẩm mới{q ? `: "${q}"` : ''}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Quick create product modal ────────────────────────────────────────────────
+function QuickCreateProductModal({ initialName = '', onClose, onCreated }) {
+  const [name, setName] = useState(initialName);
+  const [unit, setUnit] = useState('Kg');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const submit = async () => {
+    if (!name.trim()) { setErr('Vui lòng nhập tên sản phẩm'); return; }
+    setSaving(true);
+    try {
+      const created = await factoryProductApi.create({ name: name.trim(), unit });
+      onCreated(created);
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Có lỗi xảy ra');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-[#1C1C1E]">Tạo sản phẩm mới</h3>
+          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
+        </div>
+        {err && <p className="text-xs text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-xl">{err}</p>}
+        <div className="space-y-3">
+          <Field label="Tên sản phẩm *">
+            <input autoFocus className={inputCls} placeholder="VD: Xúc xích heo"
+              value={name} onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && submit()} />
+          </Field>
+          <Field label="Đơn vị">
+            <select className={inputCls} value={unit} onChange={e => setUnit(e.target.value)}>
+              {['Kg', 'Gr', 'Hộp', 'Túi', 'Cái', 'Thùng'].map(u => <option key={u}>{u}</option>)}
+            </select>
+          </Field>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose}
+            className="flex-1 py-2 text-sm text-[#8E8878] border border-[#E8DDD0] rounded-xl hover:bg-[#FAF7F2]">
+            Huỷ
+          </button>
+          <PrimaryButton className="flex-1" onClick={submit} loading={saving}>Tạo sản phẩm</PrimaryButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Shimmer CSS ───────────────────────────────────────────────────────────────
 const GANTT_CSS = `
 @keyframes ganttFlow {
   0%   { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
-/* WO IN_PROGRESS shimmer */
 .gantt-shimmer {
   background-size: 200% 100% !important;
   animation: ganttFlow 2s linear infinite;
 }
-/* Machine active: green shimmer - background travels left to right */
 @keyframes machineFlow {
   0%   { background-position: 100% center; }
   100% { background-position: -100% center; }
 }
 .mday-active {
-  background: linear-gradient(90deg,
-    #10b981 0%,
-    #10b981 20%,
-    #10b981 80%,
-    #10b981 100%) !important;
+  background: linear-gradient(90deg,#10b981 0%,#10b981 20%,#10b981 80%,#10b981 100%) !important;
   background-size: 300% 100% !important;
   animation: machineFlow 1.8s ease-in-out infinite;
 }
-/* Machine maintenance day: red diagonal stripes, no animation */
 .mday-maint {
   background: repeating-linear-gradient(
-    45deg,
-    rgba(220,38,38,0.7),
-    rgba(220,38,38,0.7) 3px,
-    rgba(254,202,202,0.85) 3px,
-    rgba(254,202,202,0.85) 8px
+    45deg,rgba(220,38,38,0.7),rgba(220,38,38,0.7) 3px,
+    rgba(254,202,202,0.85) 3px,rgba(254,202,202,0.85) 8px
   ) !important;
 }
-/* Inactive machine */
-.mday-inactive {
-  background: rgba(0,0,0,0.04) !important;
-}
+.mday-inactive { background: rgba(0,0,0,0.04) !important; }
 `;
 function GanttCSS() { return <style>{GANTT_CSS}</style>; }
 
@@ -99,25 +327,18 @@ function DragScroll({ children, weeksBack, totalWeeks, className = '' }) {
   }, []);
   const onMouseDown = e => {
     if (e.button !== 0) return;
-    dragging.current = true;
-    startX.current = e.pageX - ref.current.offsetLeft;
-    startScroll.current = ref.current.scrollLeft;
-    ref.current.style.cursor = 'grabbing';
-    e.preventDefault();
+    dragging.current = true; startX.current = e.pageX - ref.current.offsetLeft;
+    startScroll.current = ref.current.scrollLeft; ref.current.style.cursor = 'grabbing'; e.preventDefault();
   };
-  const onMouseMove = e => {
-    if (!dragging.current) return;
-    ref.current.scrollLeft = startScroll.current - (e.pageX - ref.current.offsetLeft - startX.current);
-  };
+  const onMouseMove = e => { if (!dragging.current) return; ref.current.scrollLeft = startScroll.current - (e.pageX - ref.current.offsetLeft - startX.current); };
   const onMouseUp = () => { dragging.current = false; if (ref.current) ref.current.style.cursor = 'grab'; };
   const ts = useRef(0); const tsc = useRef(0);
-  const onTouchStart = e => { ts.current = e.touches[0].pageX; tsc.current = ref.current.scrollLeft; };
-  const onTouchMove = e => { ref.current.scrollLeft = tsc.current - (e.touches[0].pageX - ts.current); };
   return (
     <div ref={ref} className={'overflow-x-auto select-none scrollbar-hide ' + className}
       style={{ cursor: 'grab' }}
       onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
-      onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
+      onTouchStart={e=>{ts.current=e.touches[0].pageX;tsc.current=ref.current.scrollLeft;}}
+      onTouchMove={e=>{ref.current.scrollLeft=tsc.current-(e.touches[0].pageX-ts.current);}}>
       {children}
     </div>
   );
@@ -125,8 +346,8 @@ function DragScroll({ children, weeksBack, totalWeeks, className = '' }) {
 
 // ── PRODUCTION GANTT ──────────────────────────────────────────────────────────
 const WO_STATUS_COLOR = {
-  SCHEDULED:    '#6366f1', PENDING_PLAN: '#f59e0b', PLANNED: '#3b82f6',
-  IN_PROGRESS:  '#f97316', COMPLETED: '#10b981', CANCELLED: '#9ca3af',
+  SCHEDULED:'#6366f1',PENDING_PLAN:'#f59e0b',PLANNED:'#3b82f6',
+  IN_PROGRESS:'#f97316',COMPLETED:'#10b981',CANCELLED:'#9ca3af',
 };
 
 function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
@@ -135,45 +356,31 @@ function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
   const mon = new Date(today); mon.setDate(today.getDate()-((today.getDay()+6)%7)); mon.setHours(0,0,0,0);
   const wStart = new Date(mon); wStart.setDate(mon.getDate()-WEEKS_BACK*7);
   const weeks = Array.from({length:WEEKS_TOTAL},(_,i)=>{const d=new Date(wStart);d.setDate(wStart.getDate()+i*7);return d;});
-  const totalMs = WEEKS_TOTAL*7*86400000, startMs = wStart.getTime(), endMs = startMs+totalMs;
-  const pL = ms => Math.max(0,Math.min(100,((ms-startMs)/totalMs)*100));
-  const pW = (s,e) => Math.max(0.5,((Math.min(e,endMs)-Math.max(s,startMs))/totalMs)*100);
-  const todayPct = pL(today.getTime());
-  const COL_W = 110; // px per week
+  const totalMs=WEEKS_TOTAL*7*86400000, startMs=wStart.getTime(), endMs=startMs+totalMs;
+  const pL=ms=>Math.max(0,Math.min(100,((ms-startMs)/totalMs)*100));
+  const pW=(s,e)=>Math.max(0.5,((Math.min(e,endMs)-Math.max(s,startMs))/totalMs)*100);
+  const todayPct=pL(today.getTime());
+  const COL_W=110;
 
-  // Build rows
-  const ordersByPlan = {};
-  (orders||[]).forEach(o => {
-    const k = o.productionPlanId||'__none__';
-    if(!ordersByPlan[k]) ordersByPlan[k]=[];
-    ordersByPlan[k].push(o);
-  });
-  const rows = [];
-  (plans||[]).forEach(p => {
-    rows.push({type:'plan',data:p});
-    (ordersByPlan[p.id]||[]).forEach(o => rows.push({type:'order',data:o}));
-  });
-  (ordersByPlan['__none__']||[]).forEach(o => rows.push({type:'order',data:o}));
+  const ordersByPlan={};
+  (orders||[]).forEach(o=>{const k=o.productionPlanId||'__none__';if(!ordersByPlan[k])ordersByPlan[k]=[];ordersByPlan[k].push(o);});
+  const rows=[];
+  (plans||[]).forEach(p=>{rows.push({type:'plan',data:p});(ordersByPlan[p.id]||[]).forEach(o=>rows.push({type:'order',data:o}));});
+  (ordersByPlan['__none__']||[]).forEach(o=>rows.push({type:'order',data:o}));
   if(!rows.length) return <EmptyState icon={CalendarRange} title="Chưa có kế hoạch hoặc lệnh sản xuất nào"/>;
 
-  const LABEL_W = 200;
-  const ROW_H = 36;
-  const PLAN_ROW_H = 44;
-
+  const LABEL_W=200, ROW_H=36, PLAN_ROW_H=44;
   return (
-    <div style={{fontFamily:'inherit'}}>
+    <div>
       <GanttCSS/>
       <div className="flex">
-        {/* Fixed label column */}
         <div style={{width:LABEL_W,flexShrink:0}}>
           <div style={{height:32}}/>
-          {rows.map((row,ri) => {
-            const isPlan = row.type==='plan';
-            const d = row.data;
-            const h = isPlan ? PLAN_ROW_H : ROW_H;
+          {rows.map((row,ri)=>{
+            const isPlan=row.type==='plan'; const d=row.data; const h=isPlan?PLAN_ROW_H:ROW_H;
             return (
               <div key={`lbl-${ri}`} style={{height:h,marginBottom:4}} className="flex items-center pr-3">
-                {isPlan ? (
+                {isPlan?(
                   <div className="w-full">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold tracking-wide">KH</span>
@@ -181,7 +388,7 @@ function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
                     </div>
                     <p className="text-[10px] text-[#8E8878] truncate mt-0.5">{d.title}</p>
                   </div>
-                ) : (
+                ):(
                   <div className="pl-3 w-full">
                     <div className="flex items-center gap-1.5">
                       <span className="w-1 h-1 rounded-full bg-[#C9A84C] flex-shrink-0"/>
@@ -194,104 +401,50 @@ function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
             );
           })}
         </div>
-
-        {/* Scrollable timeline */}
         <DragScroll weeksBack={WEEKS_BACK} totalWeeks={WEEKS_TOTAL} className="flex-1 min-w-0">
           <div style={{minWidth:WEEKS_TOTAL*COL_W,position:'relative'}}>
-            {/* Week headers */}
             <div className="flex sticky top-0 z-30" style={{height:32,background:'white'}}>
-              {weeks.map((w,i) => {
-                const isNow = w<=today && today<new Date(w.getTime()+7*86400000);
-                const isMonth = w.getDate()<=7;
+              {weeks.map((w,i)=>{
+                const isNow=w<=today&&today<new Date(w.getTime()+7*86400000);
+                const isMonth=w.getDate()<=7;
                 return (
                   <div key={i} style={{flex:'0 0 '+COL_W+'px',width:COL_W}}
                     className={`flex-shrink-0 flex items-center justify-center border-l text-[10px] font-medium
                       ${isNow?'text-[#C9A84C] font-bold':'text-[#8E8878]'}
                       ${isMonth?'border-l-2 border-[#C9A84C]/30 bg-[#FAF7F2]':'border-black/5'}`}>
-                    {isMonth
-                      ? <span className="font-bold">{w.toLocaleDateString('vi',{month:'short'})}</span>
-                      : `${w.getDate()}/${w.getMonth()+1}`}
+                    {isMonth?<span className="font-bold">{w.toLocaleDateString('vi',{month:'short'})}</span>:`${w.getDate()}/${w.getMonth()+1}`}
                   </div>
                 );
               })}
             </div>
-
-            {/* Today line */}
             <div className="absolute top-0 bottom-0 z-20 pointer-events-none"
               style={{left:`${todayPct}%`,width:1.5,background:`linear-gradient(to bottom,${BRAND},${BRAND}55)`}}/>
-
-            {/* Rows */}
-            {rows.map((row,ri) => {
-              const isPlan = row.type==='plan';
-              const d = row.data;
-              const h = isPlan ? PLAN_ROW_H : ROW_H;
-              const cancelled = d.status==='CANCELLED';
-              const pct = Number(d.progressPct||0);
-              const s = Number(isPlan?d.startDate:d.scheduledStartDate);
-              const e = Number(isPlan?d.endDate:d.plannedEndDate);
+            {rows.map((row,ri)=>{
+              const isPlan=row.type==='plan'; const d=row.data; const h=isPlan?PLAN_ROW_H:ROW_H;
+              const cancelled=d.status==='CANCELLED'; const pct=Number(d.progressPct||0);
+              const s=Number(isPlan?d.startDate:d.scheduledStartDate); const e=Number(isPlan?d.endDate:d.plannedEndDate);
               if(!s) return <div key={`row-${ri}`} style={{height:h,marginBottom:4}}/>;
-              const left = pL(s);
-              const width = pW(s,e);
-              const color = isPlan
-                ? (cancelled?'#9ca3af':'#3b82f6')
-                : (WO_STATUS_COLOR[d.status]||'#9ca3af');
-              const isActive = d.status==='IN_PROGRESS';
-
+              const left=pL(s); const width=pW(s,e);
+              const color=isPlan?(cancelled?'#9ca3af':'#3b82f6'):(WO_STATUS_COLOR[d.status]||'#9ca3af');
+              const isActive=d.status==='IN_PROGRESS';
               return (
                 <div key={`row-${ri}`} style={{height:h,marginBottom:4,position:'relative'}}>
-                  {/* Row bg stripe */}
-                  <div className="absolute inset-0" style={{background: ri%2===0?'transparent':'rgba(0,0,0,0.012)'}}/>
-
-                  <button
-                    onClick={() => isPlan?onPlanClick(d.id):onOrderClick(d.id)}
-                    style={{
-                      position:'absolute',
-                      top: isPlan?6:8, bottom: isPlan?6:8,
-                      left:`${left}%`, width:`${width}%`,
-                      minWidth:3,
-                      borderRadius: isPlan?6:4,
-                      overflow:'hidden',
-                      cursor:'pointer',
-                      border:'none', padding:0,
-                      background: isPlan
-                        ? (cancelled ? '#d1d5db' : '#3b82f6')
-                        : (isActive
-                            ? `linear-gradient(90deg,${color}99 0%,${color}ff 40%,#ffffff44 50%,${color}ff 60%,${color}99 100%)`
-                            : cancelled ? color+'88' : color),
-                      borderLeft: isPlan ? `3px solid ${cancelled?'#9ca3af':'#2563eb'}` : undefined,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                    }}
-                    className={isActive?'gantt-shimmer':''}
-                    title={isPlan?`${d.planCode} — ${pct.toFixed(0)}%`:`${d.workOrderCode} — ${pct.toFixed(0)}%`}>
+                  <div className="absolute inset-0" style={{background:ri%2===0?'transparent':'rgba(0,0,0,0.012)'}}/>
+                  <button onClick={()=>isPlan?onPlanClick(d.id):onOrderClick(d.id)}
+                    style={{position:'absolute',top:isPlan?6:8,bottom:isPlan?6:8,left:`${left}%`,width:`${width}%`,minWidth:3,
+                      borderRadius:isPlan?6:4,overflow:'hidden',cursor:'pointer',border:'none',padding:0,
+                      background:isPlan?(cancelled?'#d1d5db':'#3b82f6'):(isActive?`linear-gradient(90deg,${color}99 0%,${color}ff 40%,#ffffff44 50%,${color}ff 60%,${color}99 100%)`:cancelled?color+'88':color),
+                      borderLeft:isPlan?`3px solid ${cancelled?'#9ca3af':'#2563eb'}`:undefined,
+                      boxShadow:'0 1px 3px rgba(0,0,0,0.15)'}}
+                    className={isActive?'gantt-shimmer':''}>
                     <div className="h-full w-full flex items-center px-2 overflow-hidden">
-                      {/* Progress fill for plans */}
-                      {isPlan && !cancelled && (
-                        <div style={{
-                          position:'absolute',left:0,top:0,bottom:0,
-                          width:`${Math.min(pct,100)}%`,
-                          background:'rgba(255,255,255,0.2)',
-                          pointerEvents:'none'
-                        }}/>
-                      )}
-                      <span className="text-white text-[10px] font-bold whitespace-nowrap relative z-10 drop-shadow-sm">
-                        {pct.toFixed(0)}%
-                      </span>
+                      {isPlan&&!cancelled&&<div style={{position:'absolute',left:0,top:0,bottom:0,width:`${Math.min(pct,100)}%`,background:'rgba(255,255,255,0.2)',pointerEvents:'none'}}/>}
+                      <span className="text-white text-[10px] font-bold whitespace-nowrap relative z-10 drop-shadow-sm">{pct.toFixed(0)}%</span>
                     </div>
                   </button>
                 </div>
               );
             })}
-
-            {/* Legend */}
-            <div className="flex flex-wrap gap-4 mt-3 px-1 pb-1 text-[10px] text-[#8E8878]">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{background:'#3b82f6',borderLeft:'2px solid #2563eb'}}/>Kế hoạch</span>
-              {Object.entries(WO_STATUS_COLOR).map(([s,c]) => (
-                <span key={s} className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{backgroundColor:c}}/>
-                  {{SCHEDULED:'Hẹn giờ',PENDING_PLAN:'Chờ PA',PLANNED:'Có phương án',IN_PROGRESS:'Đang SX',COMPLETED:'Hoàn thành',CANCELLED:'Đã huỷ'}[s]}
-                </span>
-              ))}
-            </div>
           </div>
         </DragScroll>
       </div>
@@ -299,62 +452,43 @@ function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
   );
 }
 
-// ── MAINTENANCE GANTT ─────────────────────────────────────────────────────────
+// ── MAINTENANCE GANTT (giữ nguyên từ bản cũ) ─────────────────────────────────
 function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
-  // Show info for the clicked day: which week it belongs to, work hours, downtime
   const dayDate = new Date(dayMs);
-  // Monday of this week
   const dow = dayDate.getDay();
   const monOffset = (dow === 0 ? -6 : 1 - dow);
   const monDate = new Date(dayDate); monDate.setDate(dayDate.getDate() + monOffset); monDate.setHours(0,0,0,0);
   const satDate = new Date(monDate); satDate.setDate(monDate.getDate() + 5); satDate.setHours(23,59,59,999);
-
-  const weekStart = monDate.getTime();
-  const weekEnd = satDate.getTime();
-
-  const fmt = d => new Date(d).toLocaleDateString('vi', {weekday:'short', day:'2-digit', month:'2-digit', year:'numeric'});
-  const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString('vi', {hour:'2-digit', minute:'2-digit'}) : '—';
-
-  // Maintenance overlapping this day (8:00–18:00)
+  const weekStart = monDate.getTime(); const weekEnd = satDate.getTime();
+  const fmt = d => new Date(d).toLocaleDateString('vi', {weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+  const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit'}) : '—';
   const dayStart = new Date(dayMs); dayStart.setHours(8,0,0,0);
   const dayEnd = new Date(dayMs); dayEnd.setHours(18,0,0,0);
   const dayMaints = maintenanceList.filter(mt => {
-    const ms2 = Number(mt.actualStart||mt.plannedStart);
-    const me  = Number(mt.actualEnd||mt.plannedEnd);
-    return ms2 && me && ms2 < dayEnd.getTime() && me > dayStart.getTime();
+    const ms2=Number(mt.actualStart||mt.plannedStart); const me=Number(mt.actualEnd||mt.plannedEnd);
+    return ms2&&me&&ms2<dayEnd.getTime()&&me>dayStart.getTime();
   });
-
-  const totalDowntimeHours = dayMaints.reduce((sum, mt) => {
-    const ms2 = Math.max(Number(mt.actualStart||mt.plannedStart), dayStart.getTime());
-    const me  = Math.min(Number(mt.actualEnd||mt.plannedEnd), dayEnd.getTime());
-    return sum + Math.max(0, (me - ms2) / 3600000);
-  }, 0);
-
-  const workHours = Math.max(0, 10 - totalDowntimeHours); // 8:00–18:00 = 10h
-
+  const totalDowntimeHours = dayMaints.reduce((sum,mt)=>{
+    const ms2=Math.max(Number(mt.actualStart||mt.plannedStart),dayStart.getTime());
+    const me=Math.min(Number(mt.actualEnd||mt.plannedEnd),dayEnd.getTime());
+    return sum+Math.max(0,(me-ms2)/3600000);
+  },0);
+  const workHours = Math.max(0,10-totalDowntimeHours);
   return (
-    <Modal open title={`${machine.name} — ${dayDate.toLocaleDateString('vi', {weekday:'long', day:'2-digit', month:'2-digit'})}`} onClose={onClose} size="md"
+    <Modal open title={`${machine.name} — ${dayDate.toLocaleDateString('vi',{weekday:'long',day:'2-digit',month:'2-digit'})}`} onClose={onClose} size="md"
       footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
       <div className="space-y-4">
         <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1.5">
           <div className="flex justify-between"><span className="text-[#8E8878]">Tuần làm việc</span><span className="font-semibold">{fmt(weekStart)} → {fmt(weekEnd)}</span></div>
           <div className="flex justify-between"><span className="text-[#8E8878]">Ca làm việc</span><span className="font-semibold text-emerald-600">08:00 – 18:00 (10 giờ/ngày)</span></div>
-          <div className="flex justify-between"><span className="text-[#8E8878]">Giờ thực tế hôm nay</span>
-            <span className={`font-bold ${workHours < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{workHours.toFixed(1)}h</span>
-          </div>
-          {totalDowntimeHours > 0 && (
-            <div className="flex justify-between"><span className="text-[#8E8878]">Giờ ngưng máy</span>
-              <span className="font-bold text-red-600">{totalDowntimeHours.toFixed(1)}h</span>
-            </div>
-          )}
+          <div className="flex justify-between"><span className="text-[#8E8878]">Giờ thực tế hôm nay</span><span className={`font-bold ${workHours<10?'text-amber-600':'text-emerald-600'}`}>{workHours.toFixed(1)}h</span></div>
+          {totalDowntimeHours>0&&<div className="flex justify-between"><span className="text-[#8E8878]">Giờ ngưng máy</span><span className="font-bold text-red-600">{totalDowntimeHours.toFixed(1)}h</span></div>}
         </div>
-
-        {dayMaints.length > 0 ? (
+        {dayMaints.length>0?(
           <div className="space-y-2">
             <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Lý do ngưng máy</p>
-            {dayMaints.map((mt, i) => {
-              const ms2 = Number(mt.actualStart||mt.plannedStart);
-              const me  = Number(mt.actualEnd||mt.plannedEnd);
+            {dayMaints.map((mt,i)=>{
+              const ms2=Number(mt.actualStart||mt.plannedStart); const me=Number(mt.actualEnd||mt.plannedEnd);
               return (
                 <div key={i} className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 space-y-1">
                   <div className="flex items-center gap-2">
@@ -364,15 +498,13 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
                     <span className="text-sm font-semibold text-[#1C1C1E]">{mt.title}</span>
                   </div>
                   <p className="text-xs text-[#8E8878]">{fmtTime(ms2)} → {fmtTime(me)}</p>
-                  {mt.vendorName && <p className="text-xs text-[#8E8878]">Đơn vị: {mt.vendorName}</p>}
+                  {mt.vendorName&&<p className="text-xs text-[#8E8878]">Đơn vị: {mt.vendorName}</p>}
                 </div>
               );
             })}
           </div>
-        ) : (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700 font-medium text-center">
-            ✓ Máy hoạt động bình thường cả ngày
-          </div>
+        ):(
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700 font-medium text-center">✓ Máy hoạt động bình thường cả ngày</div>
         )}
       </div>
     </Modal>
@@ -380,133 +512,77 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
 }
 
 function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
-  // Per-day view: 30 days back + 60 days forward = 90 days
-  const DAYS_BACK = 30, DAYS_TOTAL = 90;
-  const COL_W = 120; // px per day
-  const LABEL_W = 200, ROW_H = 40;
-  const WORK_START_H = 8, WORK_END_H = 18; // 8:00–18:00
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dStart = new Date(today); dStart.setDate(today.getDate() - DAYS_BACK);
-
-  const days = Array.from({length:DAYS_TOTAL}, (_,i) => {
-    const d = new Date(dStart); d.setDate(dStart.getDate()+i); return d;
+  const DAYS_BACK=30,DAYS_TOTAL=90,COL_W=120,LABEL_W=200,ROW_H=40,WORK_START_H=8,WORK_END_H=18;
+  const today=new Date();today.setHours(0,0,0,0);
+  const dStart=new Date(today);dStart.setDate(today.getDate()-DAYS_BACK);
+  const days=Array.from({length:DAYS_TOTAL},(_,i)=>{const d=new Date(dStart);d.setDate(dStart.getDate()+i);return d;});
+  const totalMs=DAYS_TOTAL*86400000,startMs=dStart.getTime(),endMs=startMs+totalMs;
+  const todayPct=((today.getTime()-startMs)/totalMs)*100;
+  const [clickedDay,setClickedDay]=useState(null);
+  const maintByMachine={};
+  (maintenanceList||[]).forEach(m=>{if(!maintByMachine[m.machineId])maintByMachine[m.machineId]=[];maintByMachine[m.machineId].push(m);});
+  const rows=[];
+  (machines||[]).forEach(machine=>{
+    rows.push({type:'machine',data:machine});
+    const maints=maintByMachine[machine.id]||[];
+    const groups={};
+    maints.forEach(m=>{const key=m.title||m.id;if(!groups[key])groups[key]={title:m.title,items:[],maintenanceType:m.maintenanceType,status:m.status};groups[key].items.push(m);});
+    Object.values(groups).forEach(group=>rows.push({type:'maint',data:group,machine}));
   });
-
-  const totalMs = DAYS_TOTAL * 86400000;
-  const startMs = dStart.getTime();
-  const endMs = startMs + totalMs;
-
-  const todayPct = ((today.getTime() - startMs) / totalMs) * 100;
-
-  const [clickedDay, setClickedDay] = useState(null); // {machine, dayMs}
-
-  const maintByMachine = {};
-  (maintenanceList||[]).forEach(m => {
-    if (!maintByMachine[m.machineId]) maintByMachine[m.machineId] = [];
-    maintByMachine[m.machineId].push(m);
-  });
-
-  const rows = [];
-  (machines||[]).forEach(machine => {
-    rows.push({type:'machine', data:machine});
-    const maints = maintByMachine[machine.id]||[];
-    const groups = {};
-    maints.forEach(m => {
-      const key = m.title||m.id;
-      if (!groups[key]) groups[key] = {title:m.title, items:[], maintenanceType:m.maintenanceType, status:m.status};
-      groups[key].items.push(m);
-    });
-    Object.values(groups).forEach(group => rows.push({type:'maint', data:group, machine}));
-  });
-
-  if (!machines||!machines.length) return <EmptyState icon={Settings2} title="Chưa có máy nào"/>;
-
-  const maintColor = item => {
-    if (item.status==='COMPLETED') return '#22c55e';
-    if (item.status==='MISSED') return '#6b7280';
-    if (item.maintenanceType==='CORRECTIVE') return '#ef4444';
-    if (item.status==='IN_PROGRESS') return '#eab308';
+  if(!machines||!machines.length) return <EmptyState icon={Settings2} title="Chưa có máy nào"/>;
+  const maintColor=item=>{
+    if(item.status==='COMPLETED') return '#22c55e';
+    if(item.status==='MISSED') return '#6b7280';
+    if(item.maintenanceType==='CORRECTIVE') return '#ef4444';
+    if(item.status==='IN_PROGRESS') return '#eab308';
     return '#3b82f6';
   };
-
-  // Check if a day (00:00 ms) has maintenance overlapping work hours 8:00–18:00
-  const getDayMaintOverlap = (machineMaints, dayMs) => {
-    const workStart = dayMs + WORK_START_H * 3600000;
-    const workEnd   = dayMs + WORK_END_H   * 3600000;
-    return machineMaints.filter(mt => {
-      const ms2 = Number(mt.actualStart||mt.plannedStart);
-      const me  = Number(mt.actualEnd||mt.plannedEnd);
-      return ms2 && me && ms2 < workEnd && me > workStart;
-    });
+  const getDayMaintOverlap=(machineMaints,dayMs)=>{
+    const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
+    return machineMaints.filter(mt=>{const ms2=Number(mt.actualStart||mt.plannedStart),me=Number(mt.actualEnd||mt.plannedEnd);return ms2&&me&&ms2<workEnd&&me>workStart;});
   };
-
-  // Bar position helpers: scale matches day segments (COL_W = 10 work hours 08:00-18:00)
-  const WORK_MS = (WORK_END_H - WORK_START_H) * 3600000; // 10h in ms
-  const msToWorkLeft = ms => {
-    // Which day index?
-    const msDay = new Date(ms); msDay.setHours(0,0,0,0);
-    const di = Math.round((msDay.getTime() - dStart.getTime()) / 86400000);
-    const dayWorkStart = msDay.getTime() + WORK_START_H * 3600000;
-    const dayWorkEnd   = msDay.getTime() + WORK_END_H   * 3600000;
-    const clampedMs = Math.max(dayWorkStart, Math.min(ms, dayWorkEnd));
-    return di * COL_W + ((clampedMs - dayWorkStart) / WORK_MS) * COL_W;
+  const WORK_MS=(WORK_END_H-WORK_START_H)*3600000;
+  const msToWorkLeft=ms=>{
+    const msDay=new Date(ms);msDay.setHours(0,0,0,0);
+    const di=Math.round((msDay.getTime()-dStart.getTime())/86400000);
+    const dayWorkStart=msDay.getTime()+WORK_START_H*3600000,dayWorkEnd=msDay.getTime()+WORK_END_H*3600000;
+    const clampedMs=Math.max(dayWorkStart,Math.min(ms,dayWorkEnd));
+    return di*COL_W+((clampedMs-dayWorkStart)/WORK_MS)*COL_W;
   };
-  const msToWorkWidth = (s, e) => {
-    // Span across days: sum up work-hour pixels for each day covered
-    const sDay = new Date(s); sDay.setHours(0,0,0,0);
-    const eDay = new Date(e); eDay.setHours(0,0,0,0);
-    const diS = Math.round((sDay.getTime() - dStart.getTime()) / 86400000);
-    const diE = Math.round((eDay.getTime() - dStart.getTime()) / 86400000);
-    let totalPx = 0;
-    for (let di = diS; di <= diE; di++) {
-      const dayMs2 = dStart.getTime() + di * 86400000;
-      const dayWorkStart = dayMs2 + WORK_START_H * 3600000;
-      const dayWorkEnd   = dayMs2 + WORK_END_H   * 3600000;
-      const segS = Math.max(s, dayWorkStart);
-      const segE = Math.min(e, dayWorkEnd);
-      if (segE > segS) totalPx += ((segE - segS) / WORK_MS) * COL_W;
+  const msToWorkWidth=(s,e)=>{
+    const sDay=new Date(s);sDay.setHours(0,0,0,0);const eDay=new Date(e);eDay.setHours(0,0,0,0);
+    const diS=Math.round((sDay.getTime()-dStart.getTime())/86400000),diE=Math.round((eDay.getTime()-dStart.getTime())/86400000);
+    let totalPx=0;
+    for(let di=diS;di<=diE;di++){
+      const dayMs2=dStart.getTime()+di*86400000,dayWorkStart=dayMs2+WORK_START_H*3600000,dayWorkEnd=dayMs2+WORK_END_H*3600000;
+      const segS=Math.max(s,dayWorkStart),segE=Math.min(e,dayWorkEnd);
+      if(segE>segS)totalPx+=((segE-segS)/WORK_MS)*COL_W;
     }
-    return Math.max(4, totalPx);
+    return Math.max(4,totalPx);
   };
-
   return (
     <div>
       <GanttCSS/>
       <div className="flex">
-        {/* Labels */}
-        <div style={{width:LABEL_W, flexShrink:0}}>
+        <div style={{width:LABEL_W,flexShrink:0}}>
           <div style={{height:32}}/>
-          {rows.map((row,ri) => {
-            const isMachine = row.type==='machine';
-            const d = row.data;
+          {rows.map((row,ri)=>{
+            const isMachine=row.type==='machine';const d=row.data;
             return (
-              <div key={`lbl-${ri}`} style={{height:ROW_H, marginBottom:4}} className="flex items-center pr-3">
-                {isMachine ? (
+              <div key={`lbl-${ri}`} style={{height:ROW_H,marginBottom:4}} className="flex items-center pr-3">
+                {isMachine?(
                   <div className="flex items-center gap-2 w-full">
-                    {(() => {
-                      // Check if currently in maintenance window
-                      const nowMs = Date.now();
-                      const machineMaintList = maintByMachine[d.id]||[];
-                      const inActiveMaint = machineMaintList.some(mt => {
-                        const ms2 = Number(mt.actualStart||mt.plannedStart);
-                        const me  = Number(mt.actualEnd||mt.plannedEnd);
-                        return ms2 && me && nowMs >= ms2 && nowMs <= me;
-                      });
-                      const dotCls = inActiveMaint
-                        ? 'bg-red-400 animate-pulse'
-                        : d.status==='ACTIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-300';
+                    {(()=>{
+                      const nowMs=Date.now();const machineMaintList=maintByMachine[d.id]||[];
+                      const inActiveMaint=machineMaintList.some(mt=>{const ms2=Number(mt.actualStart||mt.plannedStart),me=Number(mt.actualEnd||mt.plannedEnd);return ms2&&me&&nowMs>=ms2&&nowMs<=me;});
+                      const dotCls=inActiveMaint?'bg-red-400 animate-pulse':d.status==='ACTIVE'?'bg-emerald-400 animate-pulse':'bg-gray-300';
                       return <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotCls}`}/>;
                     })()}
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#1C1C1E] truncate">{d.name}</p>
-                      {d.factoryName && <p className="text-[9px] text-[#8E8878] truncate">{d.factoryName}</p>}
-                    </div>
+                    <div className="min-w-0"><p className="text-xs font-bold text-[#1C1C1E] truncate">{d.name}</p>{d.factoryName&&<p className="text-[9px] text-[#8E8878] truncate">{d.factoryName}</p>}</div>
                   </div>
-                ) : (
+                ):(
                   <div className="pl-4 flex items-center gap-1.5 w-full">
-                    <span className="w-1 h-1 rounded-full flex-shrink-0"
-                      style={{backgroundColor: d.maintenanceType==='CORRECTIVE'?'#ef4444':'#3b82f6'}}/>
+                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{backgroundColor:d.maintenanceType==='CORRECTIVE'?'#ef4444':'#3b82f6'}}/>
                     <span className="text-[10px] text-[#8E8878] truncate block">{d.title}</span>
                   </div>
                 )}
@@ -514,136 +590,69 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
             );
           })}
         </div>
-
-        {/* Timeline */}
         <DragScroll weeksBack={DAYS_BACK} totalWeeks={DAYS_TOTAL} className="flex-1 min-w-0">
-          <div style={{minWidth:DAYS_TOTAL*COL_W, position:'relative'}}>
-
-            {/* Day headers */}
-            <div className="flex sticky top-0 z-30" style={{height:32, background:'white'}}>
-              {days.map((d,i) => {
-                const isToday = d.getTime() === today.getTime();
-                const isSun = d.getDay() === 0;
-                const isSat = d.getDay() === 6;
-                const isFirstOfMonth = d.getDate() === 1;
+          <div style={{minWidth:DAYS_TOTAL*COL_W,position:'relative'}}>
+            <div className="flex sticky top-0 z-30" style={{height:32,background:'white'}}>
+              {days.map((d,i)=>{
+                const isToday=d.getTime()===today.getTime();const isSun=d.getDay()===0;const isSat=d.getDay()===6;const isFirstOfMonth=d.getDate()===1;
                 return (
-                  <div key={i} style={{flex:`0 0 ${COL_W}px`, width:COL_W}}
+                  <div key={i} style={{flex:`0 0 ${COL_W}px`,width:COL_W}}
                     className={`flex-shrink-0 flex items-center justify-center border-l text-[10px] font-medium
-                      ${isToday?'bg-[#C9A84C]/10 text-[#C9A84C] font-bold border-[#C9A84C]/30':
-                        isSun||isSat?'bg-gray-50 text-gray-400 border-black/5':'text-[#8E8878] border-black/5'}
+                      ${isToday?'bg-[#C9A84C]/10 text-[#C9A84C] font-bold border-[#C9A84C]/30':isSun||isSat?'bg-gray-50 text-gray-400 border-black/5':'text-[#8E8878] border-black/5'}
                       ${isFirstOfMonth?'border-l-2 border-[#C9A84C]/40':''}`}>
                     <div className="text-center leading-tight">
-                      {isFirstOfMonth
-                        ? <><span className="font-bold block">{d.toLocaleDateString('vi',{month:'short'})}</span><span className="text-[9px]">{d.getDate()}</span></>
-                        : <><span className="block">{['CN','T2','T3','T4','T5','T6','T7'][d.getDay()]}</span><span className="font-semibold">{d.getDate()}</span></>
-                      }
+                      {isFirstOfMonth?<><span className="font-bold block">{d.toLocaleDateString('vi',{month:'short'})}</span><span className="text-[9px]">{d.getDate()}</span></>
+                        :<><span className="block">{['CN','T2','T3','T4','T5','T6','T7'][d.getDay()]}</span><span className="font-semibold">{d.getDate()}</span></>}
                     </div>
                   </div>
                 );
               })}
             </div>
-
-            {/* Today line */}
-            <div className="absolute top-0 bottom-0 z-20 pointer-events-none"
-              style={{left:`${todayPct}%`, width:2, background:`linear-gradient(to bottom,${BRAND},${BRAND}55)`}}/>
-
-            {/* Rows */}
-            {rows.map((row,ri) => {
-              const isMachine = row.type==='machine';
-              const d = row.data;
-              const machineMaints = isMachine ? (maintByMachine[d.id]||[]) : [];
-
+            <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{left:`${todayPct}%`,width:2,background:`linear-gradient(to bottom,${BRAND},${BRAND}55)`}}/>
+            {rows.map((row,ri)=>{
+              const isMachine=row.type==='machine';const d=row.data;const machineMaints=isMachine?(maintByMachine[d.id]||[]):[];
               return (
-                <div key={`row-${ri}`} style={{height:ROW_H, marginBottom:4, position:'relative'}}>
-                  <div className="absolute inset-0" style={{background: ri%2===0?'transparent':'rgba(0,0,0,0.012)'}}/>
-
-                  {isMachine ? (
-                    // Per-day segments with 8:00–18:00 work window
-                    <div className="absolute" style={{top:6, bottom:6, left:0, right:0}}>
-                      {days.map((dayDate, di) => {
-                        const dayMs = dayDate.getTime();
-                        const isSun = dayDate.getDay() === 0;
-                        const dayLeft = di * COL_W;
-
-                        if (isSun) {
-                          // Sunday: grey gap
-                          return <div key={di} style={{
-                            position:'absolute', top:0, bottom:0, left:dayLeft, width:COL_W,
-                            background:'rgba(0,0,0,0.025)', borderRadius:3,
-                          }}/>;
-                        }
-
-                        // Work window: 8:00–18:00 within this day
-                        const workStart = dayMs + WORK_START_H * 3600000;
-                        const workEnd   = dayMs + WORK_END_H   * 3600000;
-                        const maintOverlaps = getDayMaintOverlap(machineMaints, dayMs);
-
-                        // Build segments: green for working, red for maintenance
-                        const segments = [];
-                        let cursor = workStart;
-                        const sorted = [...maintOverlaps].sort((a,b) =>
-                          Number(a.actualStart||a.plannedStart) - Number(b.actualStart||b.plannedStart));
-
-                        sorted.forEach(mt => {
-                          const ms2 = Math.max(Number(mt.actualStart||mt.plannedStart), workStart);
-                          const me  = Math.min(Number(mt.actualEnd||mt.plannedEnd), workEnd);
-                          if (ms2 > cursor) segments.push({start:cursor, end:ms2, type:'work'});
-                          if (me > ms2) segments.push({start:ms2, end:me, type:'maint'});
-                          cursor = Math.max(cursor, me);
+                <div key={`row-${ri}`} style={{height:ROW_H,marginBottom:4,position:'relative'}}>
+                  <div className="absolute inset-0" style={{background:ri%2===0?'transparent':'rgba(0,0,0,0.012)'}}/>
+                  {isMachine?(
+                    <div className="absolute" style={{top:6,bottom:6,left:0,right:0}}>
+                      {days.map((dayDate,di)=>{
+                        const dayMs=dayDate.getTime();const isSun=dayDate.getDay()===0;const dayLeft=di*COL_W;
+                        if(isSun) return <div key={di} style={{position:'absolute',top:0,bottom:0,left:dayLeft,width:COL_W,background:'rgba(0,0,0,0.025)',borderRadius:3}}/>;
+                        const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
+                        const maintOverlaps=getDayMaintOverlap(machineMaints,dayMs);
+                        const segments=[];let cursor=workStart;
+                        const sorted=[...maintOverlaps].sort((a,b)=>Number(a.actualStart||a.plannedStart)-Number(b.actualStart||b.plannedStart));
+                        sorted.forEach(mt=>{
+                          const ms2=Math.max(Number(mt.actualStart||mt.plannedStart),workStart),me=Math.min(Number(mt.actualEnd||mt.plannedEnd),workEnd);
+                          if(ms2>cursor)segments.push({start:cursor,end:ms2,type:'work'});
+                          if(me>ms2)segments.push({start:ms2,end:me,type:'maint'});
+                          cursor=Math.max(cursor,me);
                         });
-                        if (cursor < workEnd) segments.push({start:cursor, end:workEnd, type:'work'});
-
-                        const totalWork = workEnd - workStart; // 10h in ms
-
-                        // Always render as layered segments: green base + red overlays
-                        const hasMaint = segments.some(s => s.type === 'maint');
+                        if(cursor<workEnd)segments.push({start:cursor,end:workEnd,type:'work'});
+                        const totalWork=workEnd-workStart;const hasMaint=segments.some(s=>s.type==='maint');
                         return (
-                          <div key={di}
-                            onClick={() => setClickedDay({machine:d, dayMs})}
-                            className="mday-active"
-                            style={{
-                              position:'absolute', top:0, bottom:0, left:dayLeft, width:COL_W-2,
-                              borderRadius:4, cursor:'pointer',
-                            }}>
-                            {/* Overlay red maintenance segments on top of green shimmer base */}
-                            {hasMaint && segments.filter(s => s.type==='maint').map((seg, si) => {
-                              const segLeft2 = ((seg.start - workStart) / totalWork) * 100;
-                              const segWidth2 = ((seg.end - seg.start) / totalWork) * 100;
-                              return (
-                                <div key={si} className="mday-maint" style={{
-                                  position:'absolute', top:0, bottom:0,
-                                  left:`${segLeft2}%`, width:`${segWidth2}%`,
-                                }}/>
-                              );
+                          <div key={di} onClick={()=>setClickedDay({machine:d,dayMs})} className="mday-active"
+                            style={{position:'absolute',top:0,bottom:0,left:dayLeft,width:COL_W-2,borderRadius:4,cursor:'pointer'}}>
+                            {hasMaint&&segments.filter(s=>s.type==='maint').map((seg,si)=>{
+                              const segLeft2=((seg.start-workStart)/totalWork)*100,segWidth2=((seg.end-seg.start)/totalWork)*100;
+                              return <div key={si} className="mday-maint" style={{position:'absolute',top:0,bottom:0,left:`${segLeft2}%`,width:`${segWidth2}%`}}/>;
                             })}
                           </div>
                         );
                       })}
                     </div>
-                  ) : (
-                    // Maintenance bars using pixel-based positioning
+                  ):(
                     <>
-                      {(d.items||[]).map((item, ii) => {
-                        const s = Number(item.actualStart||item.plannedStart);
-                        const e = Number(item.actualEnd||item.plannedEnd||(s+86400000*2));
-                        if (!s||s>endMs||e<startMs) return null;
-                        const color = maintColor(item);
-                        const barLeft = msToWorkLeft(s);
-                        const barW    = msToWorkWidth(s, e);
+                      {(d.items||[]).map((item,ii)=>{
+                        const s=Number(item.actualStart||item.plannedStart),e=Number(item.actualEnd||item.plannedEnd||(s+86400000*2));
+                        if(!s||s>endMs||e<startMs) return null;
+                        const color=maintColor(item);const barLeft=msToWorkLeft(s);const barW=msToWorkWidth(s,e);
                         return (
-                          <button key={ii}
-                            onClick={() => onItemClick(item)}
-                            style={{
-                              position:'absolute', top:6, bottom:6,
-                              left:barLeft, width:Math.max(barW,4),
-                              borderRadius:4, overflow:'hidden', cursor:'pointer',
-                              border:'none', padding:'0 6px',
-                              backgroundColor:color+'cc',
-                              boxShadow:'0 1px 3px rgba(0,0,0,0.2)', zIndex:10,
-                            }}>
+                          <button key={ii} onClick={()=>onItemClick(item)}
+                            style={{position:'absolute',top:6,bottom:6,left:barLeft,width:Math.max(barW,4),borderRadius:4,overflow:'hidden',cursor:'pointer',border:'none',padding:'0 6px',backgroundColor:color+'cc',boxShadow:'0 1px 3px rgba(0,0,0,0.2)',zIndex:10}}>
                             <span className="text-white text-[9px] font-bold whitespace-nowrap truncate drop-shadow-sm">
-                              {item.title?.length>10?item.title.slice(0,8)+'…':item.title}
-                              {' '}{item.plannedStart ? new Date(item.plannedStart).toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'}) : ''}
+                              {item.title?.length>10?item.title.slice(0,8)+'…':item.title}{' '}{item.plannedStart?new Date(item.plannedStart).toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'}):''}
                             </span>
                           </button>
                         );
@@ -653,195 +662,346 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
                 </div>
               );
             })}
-
-            {/* Legend */}
             <div className="flex flex-wrap gap-4 mt-3 px-1 pb-1 text-[10px] text-[#8E8878]">
               {[['#10b981','Đang hoạt động'],['#ef4444','Bảo trì/Sự cố'],['#3b82f6','Theo lịch'],['#eab308','Đang xử lý'],['#22c55e','Hoàn thành']].map(([c,l])=>(
-                <span key={l} className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{backgroundColor:c}}/>{l}
-                </span>
+                <span key={l} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{backgroundColor:c}}/>{l}</span>
               ))}
             </div>
           </div>
         </DragScroll>
       </div>
-
-      {/* Click modal for machine day */}
-      {clickedDay && (
-        <MachineWeekModal
-          machine={clickedDay.machine}
-          dayMs={clickedDay.dayMs}
-          maintenanceList={maintByMachine[clickedDay.machine.id]||[]}
-          onClose={() => setClickedDay(null)}
-        />
-      )}
+      {clickedDay&&<MachineWeekModal machine={clickedDay.machine} dayMs={clickedDay.dayMs} maintenanceList={maintByMachine[clickedDay.machine.id]||[]} onClose={()=>setClickedDay(null)}/>}
     </div>
   );
 }
 
 // ── MAINTENANCE DETAIL MODAL ──────────────────────────────────────────────────
 function MaintenanceDetailModal({ item, onClose }) {
-  const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  const img = p => p?.startsWith('http') ? p : BASE + '/api/auth' + p;
+  const BASE=import.meta.env.VITE_API_BASE_URL||'http://localhost:8080';
+  const img=p=>p?.startsWith('http')?p:BASE+'/api/auth'+p;
   return (
-    <Modal open title={item.title} onClose={onClose} size="lg"
-      footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
+    <Modal open title={item.title} onClose={onClose} size="lg" footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
       <div className="space-y-5">
         <div className="flex gap-3 flex-wrap">
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-            item.status==='COMPLETED'?'bg-emerald-100 text-emerald-700':
-            item.maintenanceType==='CORRECTIVE'?'bg-red-100 text-red-700':'bg-blue-100 text-blue-700'}`}>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${item.status==='COMPLETED'?'bg-emerald-100 text-emerald-700':item.maintenanceType==='CORRECTIVE'?'bg-red-100 text-red-700':'bg-blue-100 text-blue-700'}`}>
             {item.maintenanceType==='CORRECTIVE'?'🚨 Sự cố phát sinh':'🔧 Bảo trì định kỳ'}
           </span>
           <span className="text-xs px-2.5 py-1 rounded-full bg-[#FAF7F2] text-[#8E8878]">{item.machineName}</span>
           <StatusBadge status={item.status}/>
         </div>
         <div className="grid grid-cols-2 gap-3 text-sm">
-          {[
-            {label:'Bắt đầu kế hoạch',value:fmtDate(item.plannedStart)},
-            {label:'Kết thúc dự kiến',value:fmtDate(item.plannedEnd)},
-            {label:'Thực tế hoàn thành',value:fmtDate(item.actualEnd)||'—'},
-            {label:'Giờ downtime',value:item.actualDowntimeHours?`${item.actualDowntimeHours}h`:`${item.plannedDowntimeHours||0}h (KH)`},
-            {label:'Chi phí',value:item.actualCost?fmtCurrency(item.actualCost):item.estimatedCost?`~${fmtCurrency(item.estimatedCost)}`:'—'},
-            {label:'Đơn vị thi công',value:item.vendorName||'—'},
-          ].map(s=>(
-            <div key={s.label} className="bg-[#FAF7F2] rounded-xl p-3">
-              <p className="text-xs text-[#8E8878] mb-0.5">{s.label}</p>
-              <p className="font-semibold text-[#1C1C1E]">{s.value}</p>
-            </div>
+          {[{label:'Bắt đầu kế hoạch',value:fmtDate(item.plannedStart)},{label:'Kết thúc dự kiến',value:fmtDate(item.plannedEnd)},{label:'Thực tế hoàn thành',value:fmtDate(item.actualEnd)||'—'},{label:'Giờ downtime',value:item.actualDowntimeHours?`${item.actualDowntimeHours}h`:`${item.plannedDowntimeHours||0}h (KH)`},{label:'Chi phí',value:item.actualCost?fmtCurrency(item.actualCost):item.estimatedCost?`~${fmtCurrency(item.estimatedCost)}`:'—'},{label:'Đơn vị thi công',value:item.vendorName||'—'}].map(s=>(
+            <div key={s.label} className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-0.5">{s.label}</p><p className="font-semibold text-[#1C1C1E]">{s.value}</p></div>
           ))}
         </div>
         {item.description&&<div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Nội dung</p><p className="text-sm">{item.description}</p></div>}
         {item.completionNotes&&<div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Ghi chú hoàn thành</p><p className="text-sm">{item.completionNotes}</p></div>}
-        {[['Ảnh trước bảo trì',item.beforeImages],['Ảnh sau bảo trì',item.afterImages],['Chứng từ',item.receiptImages]].map(([label,imgs])=>
-          imgs?.length>0&&(
-            <div key={label}>
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}</p>
-              <div className="flex gap-2 flex-wrap">
-                {imgs.map((url,i)=>(
-                  <a key={i} href={img(url)} target="_blank" rel="noreferrer">
-                    <img src={img(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-black/10 hover:scale-105 transition-transform"/>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )
-        )}
+        {[['Ảnh trước bảo trì',item.beforeImages],['Ảnh sau bảo trì',item.afterImages],['Chứng từ',item.receiptImages]].map(([label,imgs])=>imgs?.length>0&&(
+          <div key={label}><p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}</p><div className="flex gap-2 flex-wrap">{imgs.map((url,i)=><a key={i} href={img(url)} target="_blank" rel="noreferrer"><img src={img(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-black/10 hover:scale-105 transition-transform"/></a>)}</div></div>
+        ))}
       </div>
     </Modal>
   );
 }
 
-// ── CREATE PLAN MODAL ─────────────────────────────────────────────────────────
+// ── CREATE PLAN MODAL — multi-product + search dropdown ───────────────────────
 function CreatePlanModal({ products, onClose, onSaved }) {
-  const todayMs = startOfDay(new Date()).getTime();
-  const [form, setForm] = useState({title:'',factoryProductId:'',targetQty:'',notes:''});
-  const [dateRange, setDateRange] = useState({from:null,to:null});
+  const [form, setForm] = useState({ title: '', targetQty: '', notes: '' });
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const submit=async()=>{
-    if(!form.title||!form.factoryProductId||!form.targetQty){setErr('Vui lòng điền đầy đủ');return;}
-    if(!dateRange.from||!dateRange.to){setErr('Chọn thời gian kế hoạch');return;}
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [quickCreateName, setQuickCreateName] = useState('');
+  const [localProducts, setLocalProducts] = useState(products);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const submit = async () => {
+    if (!form.title || selectedProductIds.length === 0 || !form.targetQty) {
+      setErr('Vui lòng điền đầy đủ tiêu đề, chọn ít nhất 1 sản phẩm và sản lượng');
+      return;
+    }
+    if (!dateRange.from || !dateRange.to) { setErr('Chọn thời gian kế hoạch'); return; }
     setSaving(true);
-    try{await ownerProdApi.createPlan({title:form.title,factoryProductId:Number(form.factoryProductId),targetQty:Number(form.targetQty),startDate:dateRange.from,endDate:dateRange.to,notes:form.notes});onSaved();}
-    catch(e){setErr(e?.response?.data?.message||'Có lỗi xảy ra');}finally{setSaving(false);}
+    try {
+      await ownerProdApi.createPlan({
+        title: form.title,
+        // Gửi array sản phẩm (backend cần hỗ trợ factoryProductIds)
+        factoryProductId: selectedProductIds[0], // backward compat — sản phẩm chính
+        factoryProductIds: selectedProductIds,
+        targetQty: Number(form.targetQty),
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+        notes: form.notes,
+      });
+      onSaved();
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Có lỗi xảy ra');
+    } finally { setSaving(false); }
   };
+
+  const handleProductCreated = (newProd) => {
+    setLocalProducts(prev => [...prev, newProd]);
+    setSelectedProductIds(prev => [...prev, newProd.id]);
+    setShowQuickCreate(false);
+  };
+
   return (
-    <Modal open title="Tạo kế hoạch sản xuất" onClose={onClose} size="md"
-      footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>Tạo kế hoạch</PrimaryButton></div>}>
-      <div className="space-y-4">
-        {err&&<p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-        <Field label="Tiêu đề" required><input className={inputCls} value={form.title} onChange={e=>set('title',e.target.value)}/></Field>
-        <Field label="Sản phẩm" required>
-          <select className={inputCls} value={form.factoryProductId} onChange={e=>set('factoryProductId',e.target.value)}>
-            <option value="">-- Chọn --</option>
-            {products.map(p=><option key={p.id} value={p.id}>{p.name} ({p.unit})</option>)}
-          </select>
-        </Field>
-        <Field label="Sản lượng mục tiêu" required><input type="number" className={inputCls} value={form.targetQty} onChange={e=>set('targetQty',e.target.value)}/></Field>
-        <Field label="Thời gian kế hoạch" required>
-          <div className="pt-1"><DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange}/></div>
-        </Field>
-        <Field label="Ghi chú"><textarea className={inputCls} rows={2} value={form.notes} onChange={e=>set('notes',e.target.value)}/></Field>
-      </div>
-    </Modal>
+    <>
+      <Modal open title="Tạo kế hoạch sản xuất" onClose={onClose} size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
+            <PrimaryButton onClick={submit} loading={saving}>Tạo kế hoạch</PrimaryButton>
+          </div>
+        }>
+        <div className="space-y-4">
+          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+
+          <Field label="Tiêu đề" required>
+            <input className={inputCls} value={form.title} onChange={e => set('title', e.target.value)} placeholder="VD: Kế hoạch Q3 2026"/>
+          </Field>
+
+          <Field label="Sản phẩm" required>
+            <MultiProductSelect
+              allProducts={localProducts}
+              selected={selectedProductIds}
+              onChange={setSelectedProductIds}
+              onCreateNew={(name) => { setQuickCreateName(name); setShowQuickCreate(true); }}
+            />
+          </Field>
+
+          <Field label="Sản lượng mục tiêu" required>
+            <input type="number" className={inputCls} value={form.targetQty}
+              onChange={e => set('targetQty', e.target.value)} placeholder="VD: 5000"/>
+          </Field>
+
+          <Field label="Thời gian kế hoạch" required>
+            <div className="pt-1">
+              <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange}/>
+            </div>
+          </Field>
+
+          <Field label="Ghi chú">
+            <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)}/>
+          </Field>
+        </div>
+      </Modal>
+
+      {showQuickCreate && (
+        <QuickCreateProductModal
+          initialName={quickCreateName}
+          onClose={() => setShowQuickCreate(false)}
+          onCreated={handleProductCreated}
+        />
+      )}
+    </>
   );
 }
 
-// ── CREATE WORK ORDER MODAL ───────────────────────────────────────────────────
+// ── CREATE WORK ORDER MODAL — block sản phẩm khi chưa chọn kế hoạch ──────────
 function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onClose, onSaved }) {
-  const [form, setForm] = useState({productionPlanId:prefilledPlanId?String(prefilledPlanId):'',factoryProductId:'',plannedQty:'',notes:'',productionFactoryId:'',scheduledMode:false});
-  const [dateRange, setDateRange] = useState({from:null,to:null});
+  const [form, setForm] = useState({
+    productionPlanId: prefilledPlanId ? String(prefilledPlanId) : '',
+    factoryProductId: '',
+    plannedQty: '', notes: '', productionFactoryId: '', scheduledMode: false,
+  });
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [overPlanConfirm, setOverPlanConfirm] = useState(null);
-  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const selectedPlan=plans.find(p=>p.id===Number(form.productionPlanId));
-  useEffect(()=>{if(prefilledPlanId){const p=plans.find(x=>x.id===Number(prefilledPlanId));if(p)set('factoryProductId',String(p.factoryProductId));}},[prefilledPlanId,plans]);
-  const doSubmit=async(force=false)=>{
-    setSaving(true);
-    try{
-      await ownerProdApi.createWorkOrder({productionPlanId:Number(form.productionPlanId),factoryProductId:Number(form.factoryProductId),plannedQty:Number(form.plannedQty),scheduledStartDate:dateRange.from,plannedEndDate:dateRange.to,notes:form.notes,forceCreate:force,productionFactoryId:form.productionFactoryId?Number(form.productionFactoryId):null,scheduledMode:form.scheduledMode});
-      setOverPlanConfirm(null);onSaved();
-    }catch(e){
-      const msg=e?.response?.data?.message||e?.message||'Có lỗi xảy ra';
-      if(msg.startsWith('OVER_PLAN_QTY:')){const[,nT,tQ]=msg.split(':');setOverPlanConfirm({newTotal:nT,targetQty:tQ});}
-      else setErr(msg);
-    }finally{setSaving(false);}
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const selectedPlan = plans.find(p => p.id === Number(form.productionPlanId));
+
+  // Sản phẩm trong kế hoạch: ưu tiên factoryProductIds (array), fallback factoryProductId (single)
+  const planProductIds = selectedPlan
+    ? (selectedPlan.factoryProductIds?.length
+        ? selectedPlan.factoryProductIds
+        : selectedPlan.factoryProductId ? [selectedPlan.factoryProductId] : [])
+    : [];
+  const planProducts = planProductIds.length > 0
+    ? products.filter(p => planProductIds.includes(p.id))
+    : [];
+
+  // Khi chọn plan, auto-fill sản phẩm nếu plan chỉ có 1 sản phẩm
+  useEffect(() => {
+    if (prefilledPlanId) {
+      const p = plans.find(x => x.id === Number(prefilledPlanId));
+      if (p) {
+        const ids = p.factoryProductIds?.length ? p.factoryProductIds : p.factoryProductId ? [p.factoryProductId] : [];
+        if (ids.length === 1) set('factoryProductId', String(ids[0]));
+      }
+    }
+  }, [prefilledPlanId, plans]);
+
+  const handlePlanChange = (planId) => {
+    set('productionPlanId', planId);
+    set('factoryProductId', ''); // reset sản phẩm khi đổi kế hoạch
   };
-  const planAcc=selectedPlan?Number(selectedPlan.accumulatedQty||0):0;
-  const planTgt=selectedPlan?Number(selectedPlan.targetQty||0):0;
+
+  const doSubmit = async (force = false) => {
+    setSaving(true);
+    try {
+      await ownerProdApi.createWorkOrder({
+        productionPlanId: Number(form.productionPlanId),
+        factoryProductId: Number(form.factoryProductId),
+        plannedQty: Number(form.plannedQty),
+        scheduledStartDate: dateRange.from,
+        plannedEndDate: dateRange.to,
+        notes: form.notes,
+        forceCreate: force,
+        productionFactoryId: form.productionFactoryId ? Number(form.productionFactoryId) : null,
+        scheduledMode: form.scheduledMode,
+      });
+      setOverPlanConfirm(null);
+      onSaved();
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Có lỗi xảy ra';
+      if (msg.startsWith('OVER_PLAN_QTY:')) {
+        const [, nT, tQ] = msg.split(':');
+        setOverPlanConfirm({ newTotal: nT, targetQty: tQ });
+      } else { setErr(msg); }
+    } finally { setSaving(false); }
+  };
+
+  const planAcc = selectedPlan ? Number(selectedPlan.accumulatedQty || 0) : 0;
+  const planTgt = selectedPlan ? Number(selectedPlan.targetQty || 0) : 0;
+  const noPlanSelected = !form.productionPlanId;
+
+  // Plan items for dropdown
+  const planItems = plans
+    .filter(p => p.status === 'ACTIVE')
+    .map(p => ({ id: p.id, name: `${p.planCode} — ${p.title}`, unit: '' }));
+
   return (
     <>
       <Modal open title="Tạo lệnh sản xuất" onClose={onClose} size="md"
-        footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={async()=>{if(!form.productionPlanId||!form.factoryProductId||!form.plannedQty||!dateRange.from){setErr('Điền đầy đủ thông tin');return;}setErr('');await doSubmit(false);}} loading={saving}>Tạo lệnh</PrimaryButton></div>}>
+        footer={
+          <div className="flex justify-end gap-2">
+            <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
+            <PrimaryButton
+              onClick={async () => {
+                if (!form.productionPlanId || !form.factoryProductId || !form.plannedQty || !dateRange.from) {
+                  setErr('Điền đầy đủ thông tin'); return;
+                }
+                setErr('');
+                await doSubmit(false);
+              }}
+              loading={saving}>
+              Tạo lệnh
+            </PrimaryButton>
+          </div>
+        }>
         <div className="space-y-4">
-          {err&&<p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+
+          {/* Kế hoạch — search dropdown */}
           <Field label="Kế hoạch" required>
-            <select className={inputCls} value={form.productionPlanId} onChange={e=>{set('productionPlanId',e.target.value);const p=plans.find(x=>x.id===Number(e.target.value));if(p)set('factoryProductId',String(p.factoryProductId));}}>
-              <option value="">-- Chọn kế hoạch --</option>
-              {plans.filter(p=>p.status==='ACTIVE').map(p=><option key={p.id} value={p.id}>{p.planCode} — {p.title}</option>)}
-            </select>
+            <SearchDropdown
+              items={planItems}
+              value={form.productionPlanId ? Number(form.productionPlanId) : ''}
+              onChange={id => handlePlanChange(id ? String(id) : '')}
+              placeholder="Chọn kế hoạch..."
+            />
           </Field>
-          {selectedPlan&&(
+
+          {/* Summary kế hoạch */}
+          {selectedPlan && (
             <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1">
-              <div className="flex justify-between"><span className="text-[#8E8878]">Mục tiêu</span><span className="font-medium">{fmtNum(planTgt)} {selectedPlan.outputUnit}</span></div>
-              <div className="flex justify-between"><span className="text-[#8E8878]">Đã lên lệnh</span><span className={`font-medium ${planAcc>=planTgt?'text-red-500':'text-emerald-600'}`}>{fmtNum(planAcc)}</span></div>
-              <div className="flex justify-between"><span className="text-[#8E8878]">Còn lại</span><span className={`font-bold ${planTgt-planAcc<=0?'text-red-500':'text-[#C9A84C]'}`}>{planTgt-planAcc<=0?'Đã đủ':fmtNum(planTgt-planAcc)}</span></div>
+              <div className="flex justify-between">
+                <span className="text-[#8E8878]">Sản phẩm</span>
+                <span className="font-medium">{planProducts.map(p => p.name).join(', ') || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#8E8878]">Mục tiêu</span>
+                <span className="font-medium">{fmtNum(planTgt)} {selectedPlan.outputUnit}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#8E8878]">Đã lên lệnh</span>
+                <span className={`font-medium ${planAcc >= planTgt ? 'text-red-500' : 'text-emerald-600'}`}>{fmtNum(planAcc)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#8E8878]">Còn lại</span>
+                <span className={`font-bold ${planTgt - planAcc <= 0 ? 'text-red-500' : 'text-[#C9A84C]'}`}>
+                  {planTgt - planAcc <= 0 ? 'Đã đủ' : fmtNum(planTgt - planAcc)}
+                </span>
+              </div>
             </div>
           )}
+
+          {/* Sản phẩm — chỉ hiện khi đã chọn kế hoạch, chỉ cho chọn sản phẩm trong kế hoạch */}
           <Field label="Sản phẩm" required>
-            <select className={inputCls} value={form.factoryProductId} onChange={e=>set('factoryProductId',e.target.value)}>
-              <option value="">-- Chọn --</option>
-              {products.map(p=><option key={p.id} value={p.id}>{p.name} ({p.unit})</option>)}
-            </select>
+            {noPlanSelected ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#E8DDD0] bg-gray-50">
+                <Search size={13} className="text-[#8E8878]" />
+                <span className="text-sm text-[#8E8878]">Chọn kế hoạch trước</span>
+              </div>
+            ) : planProducts.length === 0 ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50">
+                <AlertTriangle size={13} className="text-amber-600" />
+                <span className="text-sm text-amber-700">Kế hoạch chưa có sản phẩm</span>
+              </div>
+            ) : (
+              <SearchDropdown
+                items={planProducts}
+                value={form.factoryProductId ? Number(form.factoryProductId) : ''}
+                onChange={id => set('factoryProductId', id ? String(id) : '')}
+                placeholder="Chọn sản phẩm..."
+                disabled={noPlanSelected}
+              />
+            )}
           </Field>
-          <Field label="Sản lượng lệnh" required><input type="number" className={inputCls} value={form.plannedQty} onChange={e=>set('plannedQty',e.target.value)}/></Field>
+
+          <Field label="Tổng sản lượng" required>
+            <input type="number" className={inputCls} value={form.plannedQty}
+              onChange={e => set('plannedQty', e.target.value)} placeholder="VD: 500"/>
+          </Field>
+
           <Field label="Thời gian sản xuất" required>
-            <div className="pt-1"><DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange} placeholder={selectedPlan?`Từ ${fmtDate(selectedPlan.startDate)} trở đi`:'Chọn ngày'}/></div>
+            <div className="pt-1">
+              <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange}
+                placeholder={selectedPlan ? `Từ ${fmtDate(selectedPlan.startDate)} trở đi` : 'Chọn ngày'}/>
+            </div>
           </Field>
-          <Field label="Ghi chú"><textarea className={inputCls} rows={2} value={form.notes} onChange={e=>set('notes',e.target.value)}/></Field>
-          {factories?.length>0&&(
+
+          <Field label="Ghi chú">
+            <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)}/>
+          </Field>
+
+          {factories?.length > 0 && (
             <Field label="Xưởng sản xuất">
-              <select className={inputCls} value={form.productionFactoryId} onChange={e=>set('productionFactoryId',e.target.value)}>
+              <select className={inputCls} value={form.productionFactoryId}
+                onChange={e => set('productionFactoryId', e.target.value)}>
                 <option value="">-- Không gán xưởng --</option>
-                {factories.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+                {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
             </Field>
           )}
+
           <div className="flex items-center justify-between bg-[#FAF7F2] rounded-xl px-4 py-3">
-            <div><p className="text-sm font-medium">Hẹn giờ chặt</p><p className="text-xs text-[#8E8878]">Nhân viên chỉ được nhập NVL trước 3 ngày</p></div>
-            <button onClick={()=>set('scheduledMode',!form.scheduledMode)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${form.scheduledMode?'bg-[#C9A84C]':'bg-black/15'}`}>
-              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${form.scheduledMode?'left-6':'left-0.5'}`}/>
+            <div>
+              <p className="text-sm font-medium">Hẹn giờ chặt</p>
+              <p className="text-xs text-[#8E8878]">Nhân viên chỉ được nhập NVL trước 3 ngày</p>
+            </div>
+            <button onClick={() => set('scheduledMode', !form.scheduledMode)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${form.scheduledMode ? 'bg-[#C9A84C]' : 'bg-black/15'}`}>
+              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${form.scheduledMode ? 'left-6' : 'left-0.5'}`}/>
             </button>
           </div>
         </div>
       </Modal>
-      {overPlanConfirm&&(
-        <Modal open title="Xác nhận vượt kế hoạch" onClose={()=>setOverPlanConfirm(null)} size="sm"
-          footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={()=>setOverPlanConfirm(null)}>Huỷ</SecondaryButton><PrimaryButton onClick={()=>doSubmit(true)} loading={saving}>Vẫn tạo lệnh</PrimaryButton></div>}>
+
+      {overPlanConfirm && (
+        <Modal open title="Xác nhận vượt kế hoạch" onClose={() => setOverPlanConfirm(null)} size="sm"
+          footer={
+            <div className="flex justify-end gap-2">
+              <SecondaryButton onClick={() => setOverPlanConfirm(null)}>Huỷ</SecondaryButton>
+              <PrimaryButton onClick={() => doSubmit(true)} loading={saving}>Vẫn tạo lệnh</PrimaryButton>
+            </div>
+          }>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-3">
             <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5"/>
             <div className="text-sm text-amber-800">
@@ -911,32 +1071,42 @@ export default function OwnerProductionDashboard() {
   const [selectedMaint, setSelectedMaint] = useState(null);
   const [activeSection, setActiveSection] = useState('orders');
 
-  const load=async()=>{
+  const load = async () => {
     setLoading(true);
-    try{
-      const [dash,planList,prods,maint,factList]=await Promise.all([
-        ownerProdApi.getDashboard(),ownerProdApi.listPlans(0,50,'ACTIVE'),
-        factoryProductApi.list(true),ownerProdApi.listMaintenance(new Date().getFullYear()),
-        ownerProdApi.listFactories().catch(()=>[]),
+    try {
+      const [dash, planList, prods, maint, factList] = await Promise.all([
+        ownerProdApi.getDashboard(),
+        ownerProdApi.listPlans(0, 50, 'ACTIVE'),
+        factoryProductApi.list(true),
+        ownerProdApi.listMaintenance(new Date().getFullYear()),
+        ownerProdApi.listFactories().catch(() => []),
       ]);
-      setDashboard(dash);setPlans(planList?.content||[]);setProducts(prods||[]);setMaintenance(maint||[]);setFactories(factList||[]);
-    }finally{setLoading(false);}
+      setDashboard(dash);
+      setPlans(planList?.content || []);
+      setProducts(prods || []);
+      setMaintenance(maint || []);
+      setFactories(factList || []);
+    } finally { setLoading(false); }
   };
-  useEffect(()=>{load();},[]);
-  const onSaved=()=>{setShowCreatePlan(false);setShowCreateWO(false);setPrefilledPlan(null);load();};
 
-  if(loading&&!dashboard) return(
-    <div className="p-6 space-y-6"><div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[...Array(4)].map((_,i)=><StatCardSkeleton key={i}/>)}</div></div>
+  useEffect(() => { load(); }, []);
+
+  const onSaved = () => { setShowCreatePlan(false); setShowCreateWO(false); setPrefilledPlan(null); load(); };
+
+  if (loading && !dashboard) return (
+    <div className="p-6 space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[...Array(4)].map((_,i) => <StatCardSkeleton key={i}/>)}</div>
+    </div>
   );
-  const d=dashboard||{};
+
+  const d = dashboard || {};
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <PageHeader icon={Factory} title="Quản lý sản xuất" subtitle="Kế hoạch · Lệnh sản xuất · Máy móc"/>
         <div className="flex gap-2">
-          <SecondaryButton onClick={()=>setShowCreateWO(true)}><Plus size={15}/> Tạo lệnh</SecondaryButton>
-          <PrimaryButton onClick={()=>setShowCreatePlan(true)}><Plus size={15}/> Kế hoạch mới</PrimaryButton>
+          <PrimaryButton onClick={() => setShowCreatePlan(true)}><Plus size={15}/> Kế hoạch mới</PrimaryButton>
         </div>
       </div>
 
@@ -948,10 +1118,10 @@ export default function OwnerProductionDashboard() {
           {icon:Clock,label:'Chờ phương án',value:d.pendingPlanOrders||0,color:d.pendingPlanOrders>0?'text-amber-600':'text-[#8E8878]',iconBg:'bg-amber-50'},
           {icon:CheckCircle2,label:'Hoàn thành',value:d.completedOrders||0,color:'text-emerald-600',iconBg:'bg-emerald-50'},
           {icon:Settings2,label:'Máy hoạt động',value:`${d.activeMachines||0}/${d.totalMachines||0}`,color:'text-[#C9A84C]',iconBg:'bg-[#C9A84C]/10'},
-        ].map(kpi=><KpiCard key={kpi.label} {...kpi}/>)}
+        ].map(kpi => <KpiCard key={kpi.label} {...kpi}/>)}
       </div>
 
-      {d.pendingPlanOrders>0&&(
+      {d.pendingPlanOrders > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
           <AlertTriangle size={18} className="text-amber-600 flex-shrink-0"/>
           <p className="text-sm text-amber-800 font-medium">{d.pendingPlanOrders} lệnh đang chờ nhân viên xưởng lập phương án sản xuất</p>
@@ -959,44 +1129,44 @@ export default function OwnerProductionDashboard() {
       )}
 
       <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
-        {[{id:'orders',label:'Timeline sản xuất',icon:ClipboardList},{id:'machines',label:'Máy móc',icon:Settings2}].map(s=>(
-          <button key={s.id} onClick={()=>setActiveSection(s.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection===s.id?'bg-[#1C1C1E] text-white':'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
+        {[{id:'orders',label:'Timeline sản xuất',icon:ClipboardList},{id:'machines',label:'Máy móc',icon:Settings2}].map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
             <s.icon size={14}/>{s.label}
           </button>
         ))}
       </div>
 
-      {activeSection==='orders'&&(
+      {activeSection === 'orders' && (
         <SectionCard>
           <SectionHeader title="Timeline 39 tuần — Kế hoạch & Lệnh sản xuất"
-            action={<button onClick={()=>setShowCreateWO(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12}/> Tạo lệnh</button>}/>
+            action={<button onClick={() => setShowCreateWO(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12}/> Tạo lệnh</button>}/>
           <div className="p-4">
             <ProductionGantt
-              plans={d.recentPlans||[]} orders={d.calendarItems||[]}
-              onPlanClick={id=>navigate(`/owner/production/plans/${id}`)}
-              onOrderClick={id=>navigate(`/owner/production/work-orders/${id}`)}/>
+              plans={d.recentPlans || []} orders={d.calendarItems || []}
+              onPlanClick={id => navigate(`/owner/production/plans/${id}`)}
+              onOrderClick={id => navigate(`/owner/production/work-orders/${id}`)}/>
           </div>
         </SectionCard>
       )}
 
-      {activeSection==='machines'&&(
+      {activeSection === 'machines' && (
         <SectionCard>
           <SectionHeader title="Máy móc & lịch bảo trì — 39 tuần"
-            action={<button onClick={()=>setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12}/> Thêm máy</button>}/>
+            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12}/> Thêm máy</button>}/>
           <div className="p-4">
-            <MaintenanceGantt machines={d.machines||[]} maintenanceList={maintenance} onItemClick={setSelectedMaint}/>
+            <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} onItemClick={setSelectedMaint}/>
           </div>
         </SectionCard>
       )}
 
-      {showCreatePlan&&<CreatePlanModal products={products} onClose={()=>setShowCreatePlan(false)} onSaved={onSaved}/>}
-      {(showCreateWO||prefilledPlan)&&(
+      {showCreatePlan && <CreatePlanModal products={products} onClose={() => setShowCreatePlan(false)} onSaved={onSaved}/>}
+      {(showCreateWO || prefilledPlan) && (
         <CreateWorkOrderModal plans={plans} products={products} factories={factories} prefilledPlanId={prefilledPlan?.id}
-          onClose={()=>{setShowCreateWO(false);setPrefilledPlan(null);}} onSaved={onSaved}/>
+          onClose={() => { setShowCreateWO(false); setPrefilledPlan(null); }} onSaved={onSaved}/>
       )}
-      {selectedMaint&&<MaintenanceDetailModal item={selectedMaint} onClose={()=>setSelectedMaint(null)}/>}
-      {showAddMachine&&<AddMachineModal factories={factories} onClose={()=>setShowAddMachine(false)} onSaved={onSaved}/>}
+      {selectedMaint && <MaintenanceDetailModal item={selectedMaint} onClose={() => setSelectedMaint(null)}/>}
+      {showAddMachine && <AddMachineModal factories={factories} onClose={() => setShowAddMachine(false)} onSaved={onSaved}/>}
     </div>
   );
 }

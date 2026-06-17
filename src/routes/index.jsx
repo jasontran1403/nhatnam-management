@@ -72,6 +72,7 @@ import SupplierManagementPage from '../pages/accountant/SupplierManagementPage';
 import AccountantWarehouseReceiptsPage from '../pages/accountant/AccountantWarehouseReceiptsPage';
 import ExpenseListPage from '../pages/accountant/ExpenseListPage';
 import IncomeListPage from '../pages/accountant/IncomeListPage';
+import SuperAccountantMaterialRequestPage from '../pages/super_accountant/SuperAccountantMaterialRequestPage';
 
 // Operator
 import OperatorCategoriesPage from '../pages/operator/OperatorCategoriesPage';
@@ -85,6 +86,8 @@ import { FactoryDashboardPage, FactoryHistoryPage } from '../pages/factory_worke
 import FactoryCreateBatchPage from '../pages/factory_worker/FactoryCreateBatchPage';
 import FactoryOrdersPage from '../pages/factory_worker/FactoryOrdersPage';
 import FactoryMachinePage from '../pages/factory_worker/FactoryMachinePage';
+import FactoryMaterialRequestPage from '../pages/factory_worker/FactoryMaterialRequestPage';
+import FactoryMaterialStockPage from '../pages/factory_worker/FactoryMaterialStockPage';
 
 import QuotationPage from '../pages/seller/QuotationPage';
 import SuperAccountantCustomers from '../pages/accountant/SuperAccountantCustomers';
@@ -240,6 +243,7 @@ export default function AppRoutes() {
         <Route path="expenses" element={<ExpenseListPage />} />
         <Route path="incomes" element={<IncomeListPage />} />
         <Route path="suppliers" element={<SupplierManagementPage />} />
+        <Route path="material-requests" element={<SuperAccountantMaterialRequestPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
       </Route>
 
@@ -258,12 +262,14 @@ export default function AppRoutes() {
       {/* ── FACTORY WORKER */}
       <Route path="/factory"
         element={<TranslatedLayout rawNav={factoryWorkerNavRaw} allowedRoles={['FACTORY_WORKER']} />}>
-        <Route index element={<Navigate to="/factory/dashboard" replace />} />
+        <Route index element={<Navigate to="/factory/orders" replace />} />
         <Route path="dashboard" element={<FactoryDashboardPage />} />
         <Route path="orders" element={<FactoryOrdersPage />} />
         <Route path="batches" element={<FactoryCreateBatchPage />} />
         <Route path="history" element={<FactoryHistoryPage />} />
         <Route path="machines" element={<FactoryMachinePage />} />
+        <Route path="material-requests" element={<FactoryMaterialRequestPage />} />
+        <Route path="material-stock" element={<FactoryMaterialStockPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

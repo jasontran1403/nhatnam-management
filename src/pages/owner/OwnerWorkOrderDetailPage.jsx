@@ -119,6 +119,21 @@ function StepPopover({ step, onClose }) {
   );
 }
 
+// ── Live elapsed timer (từ startMs đến hiện tại, cập nhật mỗi giây) ──────────
+function ElapsedTimer({ startMs }) {
+  const [elapsed, setElapsed] = useState(Date.now() - startMs);
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(Date.now() - startMs), 1000);
+    return () => clearInterval(t);
+  }, [startMs]);
+  const totalSec = Math.floor(elapsed / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return <span className="tabular-nums text-blue-500">{h}:{String(m).padStart(2,'0')}:{String(s).padStart(2,'0')}</span>;
+  return <span className="tabular-nums text-blue-500">{m}p{String(s).padStart(2,'0')}s</span>;
+}
+
 // ── Batch Roadmap Row (checkpoint timeline) ───────────────────────────────────
 function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
   const [selectedStep, setSelectedStep] = useState(null);
@@ -132,11 +147,23 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
   // Badge màu theo sản lượng so với kế hoạch
   const planQty = Number(planBatchQty || batch.plannedQty || 0);
   const actualQty = Number(batch.actualOutputQty || 0);
-  let qtyBadgeCls = 'bg-emerald-100 text-emerald-700'; // bằng/trong ngưỡng
+  let qtyBadgeCls = 'bg-emerald-100 text-emerald-700';
   if (isCompleted && planQty > 0) {
-    if (actualQty < planQty * 0.99) qtyBadgeCls = 'bg-orange-100 text-orange-700';       // ít hơn → cam
-    else if (actualQty > planQty * 1.001) qtyBadgeCls = 'bg-emerald-700 text-white';     // vượt → xanh đậm
+    if (actualQty < planQty * 0.99) qtyBadgeCls = 'bg-orange-100 text-orange-700';
+    else if (actualQty > planQty * 1.001) qtyBadgeCls = 'bg-emerald-700 text-white';
   }
+
+  // Tổng thời gian hoàn thành: bước đầu → bước cuối (chỉ hiện khi isCompleted)
+  const firstCompletedAt = steps.find(s => s.completedAt)?.completedAt;
+  const lastCompletedAt = [...steps].reverse().find(s => s.completedAt)?.completedAt;
+  const totalDurationLabel = (() => {
+    if (!isCompleted || !firstCompletedAt || !lastCompletedAt) return null;
+    const diffSec = Math.floor((Number(lastCompletedAt) - Number(firstCompletedAt)) / 1000);
+    const h = Math.floor(diffSec / 3600);
+    const m = Math.floor((diffSec % 3600) / 60);
+    if (h > 0) return `${h}h${m}p`;
+    return `${m}p`;
+  })();
 
   return (
     <div className="space-y-1">
@@ -150,6 +177,12 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
         {isCompleted && (
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${qtyBadgeCls}`}>
             ✓ {fmtNum(batch.actualOutputQty)} {batch.outputUnit}
+          </span>
+        )}
+        {/* Tổng thời gian hoàn thành mẻ */}
+        {isCompleted && totalDurationLabel && (
+          <span className="text-[10px] text-[#8E8878] bg-[#FAF7F2] px-2 py-0.5 rounded-full">
+            ⏱ {totalDurationLabel}
           </span>
         )}
         {isCancelled && (
@@ -174,15 +207,25 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
             const isCur = i===currentIdx && !isCancelled && !isCompleted;
             const isFirst = i===0;
             const isLast = i===steps.length-1;
+
+            // Bước trước đó (để lấy completedAt làm startMs cho đồng hồ bước hiện tại)
+            const prevStep = i > 0 ? steps[i-1] : null;
+            // Thời gian hiển thị dưới icon:
+            // - Nếu done & batch chưa xong → hiện giờ hoàn thành (HH:mm)
+            // - Nếu là bước hiện tại → đồng hồ đếm từ lúc bước trước xong
+            // - Nếu batch đã xong → không hiện gì dưới icon
+            const showCompletedTime = done && !isCompleted && step.completedAt;
+            const showTimer = isCur && prevStep?.completedAt;
+
             return (
               <div key={step.id} className="flex items-end flex-1 min-w-0">
-                {/* Connector trước dot (trừ bước đầu) */}
+                {/* Connector trước dot */}
                 {!isFirst && (
-                  <div className={`flex-1 h-0.5 mb-3 ${steps[i-1].status==='COMPLETED'?'bg-emerald-400':'bg-black/10'}`}/>
+                  <div className={`flex-1 h-0.5 mb-[28px] ${steps[i-1].status==='COMPLETED'?'bg-emerald-400':'bg-black/10'}`}/>
                 )}
-                {/* Dot + label */}
+                {/* Dot + label + time */}
                 <div className="flex flex-col items-center flex-shrink-0">
-                  <p className={`text-[9px] font-semibold text-center leading-tight mb-1.5 w-14 truncate
+                  <p className={`text-[9px] font-semibold text-center leading-tight mb-1 w-14 truncate
                     ${done?'text-emerald-600':isCur?'text-blue-500':'text-[#8E8878]'}`}
                     title={`B${step.stepSequence}: ${step.stepName}`}>
                     B{step.stepSequence}: {step.stepName}
@@ -196,10 +239,23 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
                         :'bg-white border-black/15 text-[#8E8878]'}`}>
                     {done?'✓':step.stepSequence}
                   </button>
+                  {/* Thời gian bên dưới icon */}
+                  <div className="mt-1 h-4 flex items-center justify-center">
+                    {showCompletedTime && (
+                      <span className="text-[9px] text-emerald-600 tabular-nums">
+                        {new Date(Number(step.completedAt)).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
+                      </span>
+                    )}
+                    {showTimer && (
+                      <span className="text-[9px] font-semibold">
+                        <ElapsedTimer startMs={Number(prevStep.completedAt)} />
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {/* Connector sau dot (trừ bước cuối) */}
+                {/* Connector sau dot */}
                 {!isLast && (
-                  <div className={`flex-1 h-0.5 mb-3 ${done?'bg-emerald-400':'bg-black/10'}`}/>
+                  <div className={`flex-1 h-0.5 mb-[28px] ${done?'bg-emerald-400':'bg-black/10'}`}/>
                 )}
               </div>
             );
@@ -221,21 +277,61 @@ function BatchCancelModal({ batch, onClose }) {
     <>
       <Modal open title={`Huỷ mẻ ${batch.batchCode}`} onClose={onClose} size="sm"
         footer={<div className="flex justify-end"><SecondaryButton onClick={onClose}>Đóng</SecondaryButton></div>}>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
-          <p className="text-sm font-semibold text-red-700">🚫 Mẻ bị huỷ</p>
-          <p className="text-sm text-red-600">{c.reason}</p>
-          <p className="text-xs text-red-500">Hướng xử lý: {c.resolution==='REDO'?'Làm lại':c.resolution==='REPLACE'?'Mua thêm NVL':'Dừng hẳn'}</p>
-          {c.attachments?.length>0&&(
-            <div className="flex gap-2 flex-wrap mt-2">
-              {c.attachments.map((url,i)=>(
-                <button key={i} onClick={()=>setLightbox(c.attachments)}
-                  className="w-16 h-16 rounded-lg overflow-hidden border border-red-200 hover:scale-105 transition-transform">
-                  <img src={imgUrl(url)} alt="" className="w-full h-full object-cover"/>
-                </button>
-              ))}
+        <div className="space-y-3">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+            <p className="text-sm font-semibold text-red-700">🚫 Mẻ bị huỷ</p>
+            <p className="text-sm text-red-600">{c.reason}</p>
+            <p className="text-xs text-red-500">Hướng xử lý: {c.resolution==='REDO'?'Làm lại':c.resolution==='REPLACE'?'Mua thêm NVL':'Dừng hẳn'}</p>
+            {c.resolutionNotes && <p className="text-xs text-red-500 italic">{c.resolutionNotes}</p>}
+            {c.attachments?.length>0&&(
+              <div className="flex gap-2 flex-wrap mt-2">
+                {c.attachments.map((url,i)=>(
+                  <button key={i} onClick={()=>setLightbox(c.attachments)}
+                    className="w-16 h-16 rounded-lg overflow-hidden border border-red-200 hover:scale-105 transition-transform">
+                    <img src={imgUrl(url)} alt="" className="w-full h-full object-cover"/>
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-red-400">Huỷ bởi {c.cancelledByName} · {fmtDate(c.cancelledAt)}</p>
+          </div>
+
+          {/* Sản lượng thực tế thu được trước khi huỷ */}
+          <div className="bg-[#FAF7F2] border border-black/5 rounded-xl p-4">
+            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">Sản lượng thực tế thu được</p>
+            <p className="text-lg font-bold text-[#1C1C1E]">
+              {fmtNum(c.actualOutputQty ?? 0)} {batch.outputUnit}
+            </p>
+          </div>
+
+          {/* Chi tiết nguyên liệu đã sử dụng / hoàn kho */}
+          {c.materialUsage?.length > 0 && (
+            <div className="bg-white border border-black/5 rounded-xl p-4">
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Nguyên liệu đã sử dụng</p>
+              <div className="space-y-2">
+                {c.materialUsage.map((m,i) => {
+                  const returned = Math.max(0, Number(m.deductedQty||0) - Number(m.actualUsedQty||0));
+                  return (
+                    <div key={i} className="flex items-center justify-between text-xs border-b border-black/5 last:border-0 pb-2 last:pb-0">
+                      <span className="font-medium text-[#1C1C1E]">{m.materialName}</span>
+                      <div className="text-right">
+                        <p className="text-[#1C1C1E]">Đã dùng: <b>{fmtNum(m.actualUsedQty)} {m.unit}</b></p>
+                        <p className="text-[#8E8878]">Đã lấy từ kho: {fmtNum(m.deductedQty)} {m.unit}</p>
+                        {returned > 0 && (
+                          <p className="text-emerald-600">↩ Hoàn kho: {fmtNum(returned)} {m.unit}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
-          <p className="text-[10px] text-red-400">Huỷ bởi {c.cancelledByName} · {fmtDate(c.cancelledAt)}</p>
+          {(!c.materialUsage || c.materialUsage.length === 0) && (
+            <p className="text-xs text-[#8E8878] italic px-1">
+              Mẻ này chưa trừ kho nguyên liệu nào (chưa bắt đầu sản xuất hoặc không dùng NVL từ kho xưởng).
+            </p>
+          )}
         </div>
       </Modal>
       {lightbox&&<ImageLightbox images={lightbox} onClose={()=>setLightbox(null)}/>}
