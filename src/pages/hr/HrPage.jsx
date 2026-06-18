@@ -442,7 +442,6 @@ function EmployeesTab() {
                 <Th>Họ tên</Th>
                 <Th>Bộ phận</Th>
                 <Th>Chức vụ</Th>
-                <Th>Role</Th>
                 <Th right>Thao tác</Th>
               </Tr>
             </Thead>
@@ -457,7 +456,6 @@ function EmployeesTab() {
                   </Td>
                   <Td><span className="text-sm">{u.department || '—'}</span></Td>
                   <Td><span className="text-sm">{u.position || '—'}</span></Td>
-                  <Td><Badge variant="default">{u.role}</Badge></Td>
                   <Td right>
                     <div className="flex gap-1 justify-end">
                       <SecondaryButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setInfoModal(u)}>

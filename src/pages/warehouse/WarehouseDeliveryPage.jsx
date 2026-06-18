@@ -224,7 +224,210 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
     );
 }
 
-// ── PrepareDeliverModal ───────────────────────────────────────────────────────
+// ── AddDriverSection ─────────────────────────────────────────────────────────
+// Dùng cho modal xác nhận giao hàng thành công: CHỈ ĐƯỢC THÊM, không được xoá
+// hoặc đổi tài xế đã gán cho đơn trước đó.
+//   - Tài xế đã có trong đơn: hiển thị read-only (không nút xoá/giảm lượt).
+//   - Có thể bấm "+1 lượt" cho tài xế đã có (cùng loại xe đã gắn).
+//   - Có thể thêm tài xế MỚI (chưa có trong đơn) ở bất kỳ loại xe nào.
+//   - 1 tài xế chỉ gắn 1 loại xe trong đơn: nếu tài xế đã có ở loại A, không cho
+//     thêm chính tài xế đó ở loại B trong cùng đơn — phải dùng đúng loại đã gắn.
+function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) {
+    const [query, setQuery]               = useState('');
+    const [results, setResults]           = useState([]);
+    const [open, setOpen]                 = useState(false);
+    const [creating, setCreating]         = useState(false);
+    const [selectedType, setSelectedType] = useState('MOTORBIKE');
+    const [err, setErr] = useState('');
+    const dropRef  = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => {
+            if (dropRef.current && !dropRef.current.contains(e.target)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        const t = setTimeout(() => {
+            api.get(`/api/warehouse/drivers?q=${encodeURIComponent(query)}&type=${selectedType}`)
+                .then(r => setResults(r.data?.data || []))
+                .catch(() => setResults([]));
+        }, 200);
+        return () => clearTimeout(t);
+    }, [query, open, selectedType]);
+
+    // Tài xế đã gán loại xe khác trong đơn này — không cho thêm lại với loại khác
+    const findLockedType = (name) => existingInfo.find(d => d.name === name)?.type
+        || addedInfo.find(d => d.name === name)?.type;
+
+    const addOrBumpDriver = (name) => {
+        const locked = findLockedType(name);
+        if (locked && locked !== selectedType) {
+            setErr(`Tài xế "${name}" đã gán loại xe ${locked === 'TRUCK' ? 'xe tải' : 'xe máy'} trong đơn này — chỉ có thể thêm lượt cho đúng loại xe đó`);
+            return;
+        }
+        setErr('');
+
+        // Nếu tài xế đã có sẵn trong đơn (existingInfo) cùng loại xe → chỉ +1 lượt ở phần "added"
+        const inExisting = existingInfo.some(d => d.name === name && d.type === selectedType);
+        const inAdded = addedInfo.some(d => d.name === name && d.type === selectedType);
+
+        if (inAdded) {
+            onAddedChange(addedInfo.map(d =>
+                d.name === name && d.type === selectedType ? { ...d, trips: d.trips + 1 } : d
+            ));
+        } else {
+            // Dòng mới trong "added" — dù tài xế đã có sẵn trong đơn hay là tài xế hoàn toàn mới,
+            // số lượt thêm luôn được cộng riêng rồi merge vào tổng khi submit.
+            onAddedChange([...addedInfo, { name, type: selectedType, trips: 1, isExisting: inExisting }]);
+        }
+        setQuery('');
+        setOpen(false);
+    };
+
+    const increaseAddedTrips = (idx) => {
+        onAddedChange(addedInfo.map((d, i) => i === idx ? { ...d, trips: d.trips + 1 } : d));
+    };
+    const decreaseAddedTrips = (idx) => {
+        const updated = [...addedInfo];
+        if (updated[idx].trips <= 1) updated.splice(idx, 1);
+        else updated[idx] = { ...updated[idx], trips: updated[idx].trips - 1 };
+        onAddedChange(updated);
+    };
+    const removeAdded = (idx) => onAddedChange(addedInfo.filter((_, i) => i !== idx));
+
+    const createAndAdd = async () => {
+        const name = query.trim();
+        if (!name) return;
+        setCreating(true);
+        try {
+            await api.post('/api/warehouse/drivers', { name, vehicleType: selectedType });
+            addOrBumpDriver(name);
+        } catch (_) { }
+        setCreating(false);
+    };
+
+    const showCreate = query.trim()
+        && !results.some(r => r.name.toLowerCase() === query.trim().toLowerCase());
+
+    return (
+        <div className="space-y-3">
+            <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+                Tài xế giao hàng
+            </p>
+
+            {/* Tài xế đã gán cho đơn — READ-ONLY, không xoá/đổi được */}
+            {existingInfo.length > 0 && (
+                <div className="space-y-1.5">
+                    {existingInfo.map((d, idx) => (
+                        <div key={`existing-${idx}`}
+                            className="flex items-center gap-2 bg-[#FAF7F2] rounded-xl border border-[#E8DDD0] px-3 py-2">
+                            <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
+                            <span className="flex-1 text-xs font-medium text-[#1C1C1E]">{d.name}</span>
+                            <span className="text-xs font-bold text-[#8E8878]">{d.trips} lượt</span>
+                            <span className="text-[9px] text-[#C4B9A8] italic ml-1">đã gán</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Tài xế / lượt mới thêm trong lần xác nhận này */}
+            {addedInfo.length > 0 && (
+                <div className="space-y-1.5">
+                    {addedInfo.map((d, idx) => (
+                        <div key={`added-${idx}`}
+                            className="flex items-center gap-2 bg-emerald-50 rounded-xl border border-emerald-200 px-3 py-2">
+                            <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
+                            <span className="flex-1 text-xs font-medium text-[#1C1C1E]">
+                                {d.name} <span className="text-[9px] text-emerald-600 font-normal">{d.isExisting ? '(+lượt)' : '(mới)'}</span>
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button onClick={() => decreaseAddedTrips(idx)}
+                                    className="w-5 h-5 rounded-full bg-white text-[#8E8878] text-xs font-bold hover:bg-emerald-100 flex items-center justify-center">
+                                    −
+                                </button>
+                                <span className="text-xs font-bold text-emerald-600 min-w-[2.5rem] text-center">
+                                    +{d.trips} lượt
+                                </span>
+                                <button onClick={() => increaseAddedTrips(idx)}
+                                    className="w-5 h-5 rounded-full bg-white text-[#8E8878] text-xs font-bold hover:bg-emerald-100 flex items-center justify-center">
+                                    +
+                                </button>
+                            </div>
+                            <button onClick={() => removeAdded(idx)} className="text-[#C4B9A8] hover:text-red-400 ml-1">
+                                <X size={12} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {err && <p className="text-[10px] text-red-500 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">{err}</p>}
+
+            {/* Loại phương tiện */}
+            <div className="flex gap-2">
+                {DELIVERY_TYPES.map(dt => (
+                    <button key={dt.value}
+                        onClick={() => { setSelectedType(dt.value); setErr(''); }}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors
+                            ${selectedType === dt.value
+                                ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
+                                : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+                        {dt.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Search input */}
+            <div ref={dropRef} className="relative">
+                <div className="flex gap-1.5">
+                    <div className="relative flex-1">
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                        <input type="text"
+                            placeholder={`Thêm tài xế (${selectedType === 'TRUCK' ? 'xe tải' : 'xe máy'})...`}
+                            value={query}
+                            onChange={e => { setQuery(e.target.value); setOpen(true); }}
+                            onFocus={() => setOpen(true)}
+                            className="w-full pl-8 pr-3 py-2 text-xs border border-[#E8DDD0] rounded-lg
+                                focus:outline-none focus:border-[#C9A84C] bg-white placeholder:text-[#C4B9A8]" />
+                    </div>
+                    {showCreate && (
+                        <button onClick={createAndAdd} disabled={creating}
+                            className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold
+                                bg-[#C9A84C] text-white hover:bg-[#B8943C] disabled:opacity-60">
+                            <Plus size={12} /> Thêm
+                        </button>
+                    )}
+                </div>
+                {open && results.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl
+                        border border-[#E8DDD0] shadow-lg py-1 max-h-40 overflow-y-auto">
+                        {results.map(d => (
+                            <button key={d.id}
+                                onClick={() => addOrBumpDriver(d.name)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left
+                                    hover:bg-[#FAF7F2] text-[#1C1C1E] transition-colors">
+                                <span>{selectedType === 'TRUCK' ? '🚛' : '🛵'}</span>
+                                <span className="flex-1">{d.name}</span>
+                                <span className="text-[#C4B9A8] text-[10px]">+ thêm lượt</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {existingInfo.length === 0 && addedInfo.length === 0 && (
+                <p className="text-[10px] text-[#C4B9A8] italic">Chưa có tài xế nào</p>
+            )}
+        </div>
+    );
+}
+
+
 function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm, loading }) {
     const [deliveryInfo, setDeliveryInfo] = useState(() => {
         try { return JSON.parse(order?.deliveryInfoJson || '[]'); }
@@ -357,6 +560,12 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
     const [preview, setPreview] = useState(null);
     const fileInputRef = useRef(null);
 
+    const existingDriverInfo = (() => {
+        try { return JSON.parse(order?.deliveryInfoJson || '[]'); }
+        catch { return []; }
+    })();
+    const [addedDriverInfo, setAddedDriverInfo] = useState([]);
+
     const handleFile = (f) => {
         if (!f) return;
         if (!['image/png', 'image/jpg', 'image/jpeg'].includes(f.type)) {
@@ -398,6 +607,15 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
                         </div>
                     </div>
 
+                    {/* Tài xế — chỉ được thêm, không xoá/đổi tài xế đã gán trước đó */}
+                    <div className="bg-[#FAF7F2] rounded-2xl px-3 py-3 border border-[#F0EBE3]">
+                        <AddDriverSection
+                            existingInfo={existingDriverInfo}
+                            addedInfo={addedDriverInfo}
+                            onAddedChange={setAddedDriverInfo}
+                        />
+                    </div>
+
                     {/* Chứng từ */}
                     <div className="space-y-2">
                         <p className="text-xs font-semibold text-[#1C1C1E]">
@@ -435,7 +653,7 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
                         className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors font-medium">
                         Huỷ
                     </button>
-                    <button onClick={() => onConfirm(file || null)} disabled={loading}
+                    <button onClick={() => onConfirm(file || null, addedDriverInfo)} disabled={loading}
                         className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                         {loading
                             ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
@@ -540,10 +758,30 @@ export default function WarehouseDeliveryPage() {
         }
     };
 
-    const handleDeliverConfirm = async (file) => {
+    const handleDeliverConfirm = async (file, addedDriverInfo = []) => {
         if (!deliverTarget) return;
         setDeliverLoading(true);
         try {
+            // Merge tài xế mới thêm vào danh sách hiện có — CHỈ CỘNG LƯỢT/THÊM MỚI,
+            // không xoá hoặc đổi tài xế đã gán cho đơn trước đó.
+            let mergedDriverInfo = null;
+            if (addedDriverInfo.length > 0) {
+                let existing = [];
+                try { existing = JSON.parse(deliverTarget.deliveryInfoJson || '[]'); } catch { existing = []; }
+                mergedDriverInfo = [...existing];
+                for (const added of addedDriverInfo) {
+                    const idx = mergedDriverInfo.findIndex(d => d.name === added.name && d.type === added.type);
+                    if (idx >= 0) {
+                        mergedDriverInfo[idx] = { ...mergedDriverInfo[idx], trips: mergedDriverInfo[idx].trips + added.trips };
+                    } else {
+                        mergedDriverInfo.push({ name: added.name, type: added.type, trips: added.trips });
+                    }
+                }
+                try {
+                    await api.patch(`/api/warehouse/orders/${deliverTarget.id}/drivers`, { deliveryInfo: mergedDriverInfo });
+                } catch (_) { }
+            }
+
             await warehouseApi.confirmDelivered(deliverTarget.id);
             let receiptUrl = null;
             if (file) {
@@ -562,6 +800,7 @@ export default function WarehouseDeliveryPage() {
                         ...o,
                         status: 'PENDING_PAYMENT',
                         ...(receiptUrl ? { receiptFileUrl: receiptUrl } : {}),
+                        ...(mergedDriverInfo ? { deliveryInfoJson: JSON.stringify(mergedDriverInfo) } : {}),
                     }
                     : o
             ));

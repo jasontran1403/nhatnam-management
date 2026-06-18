@@ -5,6 +5,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Factory, Plus, Edit2, Check, X, Package, FlaskConical,
   ClipboardList, TrendingUp, TrendingDown, CalendarDays,
+  Power, Eye, Clock, ShieldCheck, Wrench,
 } from 'lucide-react';
 import {
   factoryMaterialApi, factoryProductApi, recipeApi, batchOwnerApi,
@@ -46,7 +47,7 @@ export default function OwnerProductionPage() {
 
   const TABS = [
     { id: 'batches', label: t('batch', 'production_batches'), icon: ClipboardList },
-    { id: 'recipes', label: t('batch', 'formulas'), icon: FlaskConical },
+    { id: 'recipes', label: 'Biến thể sản xuất', icon: FlaskConical },
     { id: 'products', label: t('batch', 'finished_goods'), icon: Package },
     { id: 'materials', label: t('batch', 'raw_materials'), icon: Factory },
   ];
@@ -58,8 +59,7 @@ export default function OwnerProductionPage() {
 
   // Modals
   const [batchDetail, setBatchDetail] = useState(null);
-  const [showRecipeModal, setShowRecipeModal] = useState(false);
-  const [editRecipe, setEditRecipe] = useState(null);
+  const [recipeDetail, setRecipeDetail] = useState(null); // xem chi tiết biến thể (read-only)
   const [showMatModal, setShowMatModal] = useState(false);
   const [editMat, setEditMat] = useState(null);
   const [showProdModal, setShowProdModal] = useState(false);
@@ -98,6 +98,16 @@ export default function OwnerProductionPage() {
     await batchOwnerApi.markReviewed(id);
     loadAll();
     setBatchDetail(null);
+  };
+
+  const openRecipeDetail = async (id) => {
+    const d = await recipeApi.get(id);
+    setRecipeDetail(d);
+  };
+
+  const toggleRecipeActive = async (r) => {
+    await recipeApi.toggle(r.id, !r.isActive);
+    loadAll();
   };
 
   return (
@@ -211,24 +221,24 @@ export default function OwnerProductionPage() {
             </div>
           )}
 
-          {/* ── Recipes ──────────────────────────────────────────────────── */}
+          {/* ── Recipes (= Biến thể sản xuất, Owner chỉ XEM + bật/tắt) ─────── */}
           {tab === 'recipes' && (
             <div className="space-y-3">
-              <div className="flex justify-end">
-                <PrimaryButton onClick={() => { setEditRecipe(null); setShowRecipeModal(true); }}>
-                  <Plus size={15} /> Thêm công thức
-                </PrimaryButton>
-              </div>
+              <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl px-3 py-2.5 border border-black/5">
+                Biến thể sản xuất do nhân viên xưởng tạo và quản lý. Tại đây bạn có thể xem chi tiết và bật/tắt từng biến thể.
+              </p>
               {recipes.length === 0
-                ? <EmptyState icon={FlaskConical} title="Chưa có công thức nào" />
+                ? <EmptyState icon={FlaskConical} title="Chưa có biến thể sản xuất nào" />
                 : (
                   <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-[#FAF7F2] text-[#8E8878]">
-                          <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Công thức</th>
+                          <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Biến thể</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Thành phẩm</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Định lượng chuẩn</th>
+                          <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Người tạo</th>
+                          <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Trạng thái</th>
                           <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider">Thao tác</th>
                         </tr>
                       </thead>
@@ -249,11 +259,23 @@ export default function OwnerProductionPage() {
                                 </Badge>
                               </div>
                             </td>
+                            <td className="px-4 py-3 text-[#8E8878] text-xs">{r.createdByName || '—'}</td>
+                            <td className="px-4 py-3 text-center">
+                              {r.isActive
+                                ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đang dùng</Badge>
+                                : <Badge className="bg-slate-100 text-slate-500 ring-slate-200">Đã tắt</Badge>}
+                            </td>
                             <td className="px-4 py-3 text-right">
-                              <button onClick={() => { setEditRecipe(r); setShowRecipeModal(true); }}
-                                className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
-                                <Edit2 size={15} />
-                              </button>
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => openRecipeDetail(r.id)} title="Xem chi tiết"
+                                  className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+                                  <Eye size={15} />
+                                </button>
+                                <button onClick={() => toggleRecipeActive(r)} title={r.isActive ? 'Tắt biến thể' : 'Bật biến thể'}
+                                  className={`p-2 rounded-lg transition-colors ${r.isActive ? 'text-emerald-600 hover:bg-emerald-50' : 'text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+                                  <Power size={15} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -442,14 +464,11 @@ export default function OwnerProductionPage() {
         </Modal>
       )}
 
-      {/* ── Recipe Modal ─────────────────────────────────────────────────────── */}
-      {showRecipeModal && (
-        <RecipeModal
-          recipe={editRecipe}
-          products={products}
-          materials={materials}
-          onClose={() => setShowRecipeModal(false)}
-          onSaved={() => { setShowRecipeModal(false); loadAll(); }}
+      {/* ── Recipe Detail Modal (read-only, Owner chỉ xem) ─────────────────────── */}
+      {recipeDetail && (
+        <RecipeDetailModal
+          recipe={recipeDetail}
+          onClose={() => setRecipeDetail(null)}
         />
       )}
 
@@ -531,164 +550,81 @@ function SimpleFormModal({ title, initial, fields, onClose, onSave }) {
 }
 
 // ── Recipe Form Modal ─────────────────────────────────────────────────────────
-function RecipeModal({ recipe, products, materials, onClose, onSaved }) {
-  const [form, setForm] = useState({
-    factoryProductId: recipe?.factoryProductId || '',
-    name: recipe?.name || '',
-    standardOutputQty: recipe?.standardOutputQty || '',
-    notes: recipe?.notes || '',
-    items: recipe?.items?.map(i => ({
-      factoryMaterialId: i.factoryMaterialId,
-      standardQty: i.standardQty,
-      unit: i.unit,
-      sortOrder: i.sortOrder,
-    })) || [],
-  });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
-
-  // Lấy đơn vị của thành phẩm đang chọn (để hiển thị, không còn ô nhập)
-  const selectedProduct = products.find(p => p.id === Number(form.factoryProductId));
-
-  const addItem = () => setForm(f => ({
-    ...f,
-    items: [...f.items, { factoryMaterialId: '', standardQty: '', unit: '', sortOrder: f.items.length }],
-  }));
-
-  const setItem = (idx, k, v) => setForm(f => ({
-    ...f,
-    items: f.items.map((it, i) => i === idx ? { ...it, [k]: v } : it),
-  }));
-
-  const removeItem = (idx) => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
-
-  const save = async () => {
-    if (!form.factoryProductId || !form.name || !form.standardOutputQty) {
-      setErr('Vui lòng điền đầy đủ thông tin bắt buộc'); return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        ...form,
-        factoryProductId: Number(form.factoryProductId),
-        standardOutputQty: Number(form.standardOutputQty),
-        // outputUnit lấy từ thành phẩm, không nhập tay
-        outputUnit: selectedProduct?.unit || '',
-        items: form.items.map((it, i) => ({
-          factoryMaterialId: Number(it.factoryMaterialId),
-          standardQty: Number(it.standardQty),
-          unit: it.unit,
-          sortOrder: i,
-        })),
-      };
-      if (recipe) await recipeApi.update(recipe.id, payload);
-      else await recipeApi.create(payload);
-      onSaved();
-    } catch (e) {
-      setErr(e?.response?.data?.message || e.message);
-    } finally { setSaving(false); }
+function RecipeDetailModal({ recipe: r, onClose }) {
+  const fmtDuration = (mins) => {
+    const m = Number(mins) || 0;
+    if (m < 60) return `${m} phút`;
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return rem === 0 ? `${h} giờ` : `${h} giờ ${rem} phút`;
   };
 
   return (
-    <Modal open title={recipe ? 'Sửa công thức' : 'Tạo công thức mới'} onClose={onClose} size="lg"
-      footer={
-        <div className="flex justify-end gap-2">
-          <SecondaryButton onClick={onClose} disabled={saving}>Huỷ</SecondaryButton>
-          <PrimaryButton onClick={save} loading={saving}>Lưu công thức</PrimaryButton>
-        </div>
-      }>
-      <div className="space-y-4">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Thành phẩm" required>
-            <select className={inputCls} value={form.factoryProductId}
-              onChange={e => setForm(f => ({ ...f, factoryProductId: e.target.value }))}>
-              <option value="">Chọn thành phẩm</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.unit})</option>)}
-            </select>
-          </Field>
-
-          <Field label="Tên công thức" required>
-            <input className={inputCls} value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          </Field>
-
-          {/* Sản lượng chuẩn + đơn vị tự động từ thành phẩm */}
-          <Field label="Sản lượng chuẩn đầu ra" required>
-            <div className="flex gap-2">
-              <input type="number" min="0" step="0.001" className={inputCls} value={form.standardOutputQty}
-                onChange={e => setForm(f => ({ ...f, standardOutputQty: e.target.value }))} />
-              {selectedProduct && (
-                <span className="flex items-center px-3 py-2.5 bg-[#FAF7F2] border border-black/10 rounded-xl text-sm text-[#8E8878] whitespace-nowrap font-medium">
-                  {selectedProduct.unit}
-                </span>
-              )}
-            </div>
-            {selectedProduct && (
-              <p className="text-xs text-[#8E8878] mt-1">Đơn vị lấy từ thành phẩm: <strong>{selectedProduct.unit}</strong></p>
-            )}
-          </Field>
-
-          <Field label="Ghi chú">
-            <input className={inputCls} value={form.notes}
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-          </Field>
+    <Modal open title={`Biến thể: ${r.name}`} onClose={onClose} size="lg">
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className="bg-blue-50 text-blue-700 ring-blue-200">{r.factoryProductName}</Badge>
+          <Badge className="bg-[#C9A84C]/10 text-[#A07830] ring-[#C9A84C]/30">
+            Sản lượng chuẩn: {r.standardOutputQty} {r.outputUnit}
+          </Badge>
+          {r.isActive
+            ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đang dùng</Badge>
+            : <Badge className="bg-slate-100 text-slate-500 ring-slate-200">Đã tắt</Badge>}
         </div>
 
-        {/* NVL items */}
+        {r.notes && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+            <strong>Ghi chú:</strong> {r.notes}
+          </div>
+        )}
+
+        {/* Materials */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider">Định lượng NVL</span>
-            <button onClick={addItem}
-              className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:text-[#A07830] transition-colors">
-              <Plus size={13} /> Thêm NVL
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {form.items.map((item, idx) => {
-              const mat = materials.find(m => m.id === Number(item.factoryMaterialId));
-              return (
-                <div key={idx} className="flex gap-2 items-end bg-[#FAF7F2] rounded-xl p-3 border border-black/5">
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">NVL</label>
-                    <select className={inputCls} value={item.factoryMaterialId}
-                      onChange={e => {
-                        const m = materials.find(m => m.id === Number(e.target.value));
-                        setItem(idx, 'factoryMaterialId', e.target.value);
-                        // Tự động điền đơn vị từ NVL
-                        if (m) setItem(idx, 'unit', m.unit);
-                      }}>
-                      <option value="">Chọn NVL</option>
-                      {materials.map(m => <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>)}
-                    </select>
-                  </div>
-                  <div className="w-28">
-                    <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">Định lượng</label>
-                    <input type="number" min="0" step="0.001" className={inputCls} value={item.standardQty}
-                      onChange={e => setItem(idx, 'standardQty', e.target.value)} />
-                  </div>
-                  {/* Đơn vị hiển thị tự động từ NVL, không cho sửa */}
-                  <div className="w-20">
-                    <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">Đơn vị</label>
-                    <div className="px-3 py-2.5 bg-white border border-black/10 rounded-xl text-sm text-[#8E8878] font-medium">
-                      {mat?.unit || item.unit || '—'}
-                    </div>
-                  </div>
-                  <button onClick={() => removeItem(idx)}
-                    className="p-2 text-[#8E8878] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mb-0.5">
-                    <X size={15} />
-                  </button>
-                </div>
-              );
-            })}
-
-            {form.items.length === 0 && (
-              <p className="text-xs text-[#8E8878] italic text-center py-4">Chưa có NVL nào — nhấn "Thêm NVL" để bắt đầu</p>
-            )}
+          <p className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <Package size={13} /> Nguyên liệu
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {(r.items || []).map(i => (
+              <Badge key={i.id} className="bg-slate-50 text-slate-600 ring-slate-200">
+                {i.materialName}: {i.standardQty} {i.unit}
+              </Badge>
+            ))}
+            {(r.items || []).length === 0 && <span className="text-xs text-[#8E8878] italic">Chưa có nguyên liệu</span>}
           </div>
         </div>
+
+        {/* Steps */}
+        <div>
+          <p className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <Clock size={13} /> Các bước xử lý
+          </p>
+          <ol className="space-y-1.5">
+            {(r.steps || []).map((s, idx) => (
+              <li key={s.id} className="flex items-center gap-2 text-sm text-[#1C1C1E] bg-[#FAF7F2] rounded-xl px-3 py-2">
+                <span className="w-5 h-5 rounded-full bg-[#1C1C1E] text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+                  {idx + 1}
+                </span>
+                <span className="font-medium flex-1">{s.stepName}</span>
+                {s.requiresQc && (
+                  <span className="flex items-center gap-0.5 text-amber-600 text-xs flex-shrink-0">
+                    <ShieldCheck size={12} /> KS
+                  </span>
+                )}
+                <span className="text-[#8E8878] text-xs flex-shrink-0">{fmtDuration(s.durationMinutes)}</span>
+                {s.machineName && (
+                  <span className="flex items-center gap-1 text-[#8E8878] text-xs flex-shrink-0">
+                    <Wrench size={11} /> {s.machineName}
+                  </span>
+                )}
+              </li>
+            ))}
+            {(r.steps || []).length === 0 && <span className="text-xs text-[#8E8878] italic">Chưa có bước nào</span>}
+          </ol>
+        </div>
+
+        <p className="text-xs text-[#8E8878] italic">
+          Biến thể này do nhân viên xưởng tạo/sửa tại trang "Biến thể sản xuất" của xưởng.
+        </p>
       </div>
     </Modal>
   );

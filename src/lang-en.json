@@ -138,6 +138,7 @@
     "analytics": "Analytics",
     "production": "Production",
     "work_orders": "Work orders",
+    "production_variants": "Production Variants",
     "production_plan": "Production Plan",
     "maintenance": "Maintenance",
     "machines": "Machines",

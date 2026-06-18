@@ -58,6 +58,10 @@ export const ownerProdApi = {
   listMaintenance: (year, machineId) =>
     api.get('/api/owner/production/maintenance', { params: { year, machineId } }).then(r => r.data.data),
 
+  // Machine occupancy (WorkOrder/Batch đang chiếm máy) — cho Gantt sọc chéo xanh dương
+  listMachineOccupancy: (fromMs, toMs) =>
+    api.get('/api/owner/production/machine-occupancy', { params: { fromMs, toMs } }).then(r => r.data.data),
+
   // Factories (xưởng)
   listFactories: () =>
     api.get('/api/owner/production/factories').then(r => r.data.data),
@@ -80,9 +84,15 @@ export const factoryProdApi = {
   getOrderDetail: (id) =>
     api.get(`/api/factory/work-orders/${id}`).then(r => r.data.data),
 
-  // Lập phương án
-  submitPlan: (workOrderId, body) =>
-    api.post(`/api/factory/work-orders/${workOrderId}/plan`, body).then(r => r.data.data),
+  // Biến thể sản xuất — lọc theo FactoryProduct của lệnh để chọn khi lập phương án
+  listRecipesByProduct: (factoryProductId) =>
+    api.get('/api/factory/recipes', { params: factoryProductId ? { productId: factoryProductId } : {} }).then(r => r.data.data),
+
+  // Lập phương án theo Biến thể sản xuất (chọn biến thể + nhập sản lượng cần SX)
+  previewPlan: (workOrderId, recipeId, requestedQty) =>
+    api.get(`/api/factory/work-orders/${workOrderId}/plan-preview`, { params: { recipeId, requestedQty } }).then(r => r.data.data),
+  submitPlanByRecipe: (workOrderId, body) =>
+    api.post(`/api/factory/work-orders/${workOrderId}/plan-by-recipe`, body).then(r => r.data.data),
 
   // Bắt đầu sản xuất
   startOrder: (workOrderId) =>
@@ -91,6 +101,8 @@ export const factoryProdApi = {
   // Batch operations
   startBatch: (body) =>
     api.post('/api/factory/batches/start', body).then(r => r.data.data),
+  startStep: (batchId, stepSeq, body) =>
+    api.post(`/api/factory/batches/${batchId}/steps/${stepSeq}/start`, body || {}).then(r => r.data.data),
   completeStep: (batchId, stepSeq, body) =>
     api.post(`/api/factory/batches/${batchId}/steps/${stepSeq}/complete`, body).then(r => r.data.data),
   completeBatch: (batchId, body) =>

@@ -1,6 +1,5 @@
 // src/pages/factory_worker/FactoryOrdersPage.jsx
 import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import {
   ClipboardList, ChevronLeft, ChevronRight, ZoomIn, Factory,
   Lock, Camera, X, Plus, Loader2, CheckCircle2, AlertTriangle,
@@ -15,8 +14,6 @@ import {
 import {
   factoryProdApi, productionUploadApi, progressColor, fmtDate, fmtNum,
 } from '../../api/productionModuleApi';
-import { factoryWorkerApi } from '../../api/productionApi';
-import { factoryMaterialRequestApi } from '../../api/materialRequestApi';
 import { useToast } from '../../components/common/Toast';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -242,14 +239,16 @@ function CompleteBatchInline({ batch, wo, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const planQty = Number(wo?.plan?.batchQtyPerRun || batch?.plannedQty || 0);
-  const minQty = planQty > 0 ? planQty * 0.9 : 0;
-  const maxQty = planQty > 0 ? planQty * 1.1 : Infinity;
+  const lowQty = planQty > 0 ? planQty * 0.95 : 0;
+  const highQty = planQty > 0 ? planQty * 1.05 : Infinity;
   const validate = (v) => {
     const n = Number(v);
-    if (!v || isNaN(n) || n <= 0) return 'Vui lòng nhập sản lượng thực tế';
-    if (planQty > 0 && n < minQty) return `Sản lượng tối thiểu là ${minQty.toFixed(1)} ${wo.outputUnit} (−10% kế hoạch)`;
-    if (planQty > 0 && n > maxQty) return `Sản lượng tối đa là ${maxQty.toFixed(1)} ${wo.outputUnit} (+10% kế hoạch)`;
+    if (!v || isNaN(n) || n < 0) return 'Vui lòng nhập sản lượng thực tế hợp lệ';
     return '';
+  };
+  const isOutOfRange = (v) => {
+    const n = Number(v);
+    return planQty > 0 && !isNaN(n) && (n < lowQty || n > highQty);
   };
   const submit = async () => {
     const e = validate(qty); if (e) { setErr(e); return; }
@@ -257,7 +256,7 @@ function CompleteBatchInline({ batch, wo, onSaved }) {
     try {
       const res = await factoryProdApi.completeBatch(batch.id, {actualOutputQty: Number(qty)});
       toast(`Đã hoàn thành mẻ ${res?.batchCode||batch.batchCode} — ${qty} ${wo.outputUnit}`, 'success', 4000);
-      onSaved();
+      onSaved(true); // true = báo cho parent biết vừa hoàn thành 1 mẻ, để hỏi "bắt đầu mẻ tiếp theo?"
     } catch(ex) {
       toast(ex?.response?.data?.message||'Có lỗi xảy ra','error');
     } finally { setSaving(false); }
@@ -265,7 +264,12 @@ function CompleteBatchInline({ batch, wo, onSaved }) {
   return (
     <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-200 space-y-2">
       <p className="text-xs font-semibold text-emerald-700">✓ Tất cả bước hoàn thành — nhập sản lượng thực tế</p>
-      {planQty>0&&<p className="text-[10px] text-[#8E8878]">Kế hoạch: {planQty} {wo.outputUnit} · Cho phép: {minQty.toFixed(1)}–{maxQty.toFixed(1)} {wo.outputUnit}</p>}
+      {planQty>0&&<p className="text-[10px] text-[#8E8878]">Kế hoạch mẻ này: {planQty} {wo.outputUnit}</p>}
+      {qty && isOutOfRange(qty) && (
+        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+          ⚠ Sản lượng lệch hơn ±5% so với kế hoạch — vẫn có thể tiếp tục, hệ thống sẽ báo cho quản lý
+        </p>
+      )}
       {err&&<p className="text-xs text-red-600">{err}</p>}
       <div className="flex gap-2">
         <input type="number" step="0.1" className={inputCls+' flex-1'} placeholder={`Sản lượng (${wo.outputUnit})`}
@@ -480,7 +484,7 @@ function CancelBatchModal({ batch, workOrder, onClose, onSaved }) {
 }
 
 // ── Batch Roadmap ─────────────────────────────────────────────────────────────
-function BatchRoadmap({ batches, onConfirmStep, wo, planBatchQtyPerRun, onBatchCompleted, onCancelBatch }) {
+function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo, planBatchQtyPerRun, onBatchCompleted, onCancelBatch }) {
   const [lightbox, setLightbox] = useState(null);
   const sorted = [...(batches||[])].sort((a,b)=>(b.batchNumber||0)-(a.batchNumber||0));
   const [expanded, setExpanded] = useState(new Set([sorted[0]?.id].filter(Boolean)));
@@ -530,6 +534,20 @@ function BatchRoadmap({ batches, onConfirmStep, wo, planBatchQtyPerRun, onBatchC
                 </div>
               </button>
 
+              {/* Nguyên liệu riêng của mẻ này — expand/collapse */}
+              {isExpanded && batch.batchMaterials?.length > 0 && (
+                <div className="px-4 py-3 border-t border-black/5 bg-[#FAF7F2]/60">
+                  <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">Nguyên liệu mẻ này</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {batch.batchMaterials.map((m,i)=>(
+                      <span key={i} className="text-xs bg-white border border-black/10 rounded-full px-2.5 py-1 text-[#1C1C1E]">
+                        {m.materialName}: <b>{fmtNum(m.qty)} {m.unit}</b>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {isExpanded && batch.steps?.length>0 && (
                 <div className="px-4 py-4 border-t border-black/5">
                   <div className="relative">
@@ -537,25 +555,37 @@ function BatchRoadmap({ batches, onConfirmStep, wo, planBatchQtyPerRun, onBatchC
                     <div className="space-y-4">
                       {batch.steps.map((step,i)=>{
                         const done=step.status==='COMPLETED';
+                        const running=step.status==='IN_PROGRESS';
                         const prevDone=batch.steps.slice(0,i).every(s=>s.status==='COMPLETED');
-                        const isCurrent=!done&&batch.status==='IN_PROGRESS'&&prevDone;
+                        const canStart=!done&&!running&&batch.status==='IN_PROGRESS'&&prevDone;
+                        const isStartingThis = startingStepId === step.id;
                         return (
                           <div key={step.id} className="flex gap-4 relative">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 border-2 transition-all
                               ${done?'bg-emerald-500 border-emerald-500 text-white'
-                                :isCurrent?'bg-white border-[#C9A84C] text-[#C9A84C] ring-4 ring-[#C9A84C]/20 animate-pulse'
+                                :running?'bg-white border-[#C9A84C] text-[#C9A84C] ring-4 ring-[#C9A84C]/20 animate-pulse'
                                 :'bg-white border-black/15 text-[#8E8878]'}`}>
                               {done?<CheckCircle2 size={16}/>:<span className="text-xs font-bold">{step.stepSequence}</span>}
                             </div>
                             <div className={`flex-1 pb-2 ${done?'':'opacity-80'}`}>
                               <div className="flex items-center justify-between gap-2">
-                                <p className={`text-sm font-semibold ${done?'text-emerald-700':isCurrent?'text-[#C9A84C]':'text-[#8E8878]'}`}>
+                                <p className={`text-sm font-semibold ${done?'text-emerald-700':running?'text-[#C9A84C]':'text-[#8E8878]'}`}>
                                   {step.stepName}
                                   {(step.requiresQC||step.requiresQc)&&<span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-normal">📷 KS</span>}
-                                  {isCurrent&&<span className="ml-2 text-[10px] bg-[#C9A84C]/10 text-[#C9A84C] px-2 py-0.5 rounded-full font-normal">Đang thực hiện</span>}
+                                  {running&&<span className="ml-2 text-[10px] bg-[#C9A84C]/10 text-[#C9A84C] px-2 py-0.5 rounded-full font-normal">Đang thực hiện</span>}
                                 </p>
-                                {isCurrent&&<PrimaryButton onClick={()=>onConfirmStep(batch,step)} className="!px-3 !py-1 text-xs flex-shrink-0">Xác nhận</PrimaryButton>}
+                                {running&&<PrimaryButton onClick={()=>onConfirmStep(batch,step)} className="!px-3 !py-1 text-xs flex-shrink-0">Hoàn thành</PrimaryButton>}
+                                {canStart&&(
+                                  <SecondaryButton loading={isStartingThis} onClick={()=>onStartStep(batch,step)} className="!px-3 !py-1 text-xs flex-shrink-0">
+                                    Bắt đầu
+                                  </SecondaryButton>
+                                )}
                               </div>
+                              <p className="text-xs text-[#8E8878] mt-0.5 flex items-center gap-2 flex-wrap">
+                                {step.durationMinutes ? <span>⏱ Dự kiến {step.durationMinutes} phút</span> : null}
+                                {step.machineName ? <span>⚙ {step.machineName}</span> : null}
+                              </p>
+                              {running&&step.startedByName&&<p className="text-xs text-[#8E8878] mt-0.5">▶ Bắt đầu bởi {step.startedByName} · {fmtDate(step.startedAt)}</p>}
                               {done&&step.completedByName&&<p className="text-xs text-[#8E8878] mt-0.5">✓ {step.completedByName} · {fmtDate(step.completedAt)}</p>}
                               {step.attachments?.length>0&&(
                                 <div className="flex gap-1.5 mt-2 flex-wrap">
@@ -624,264 +654,50 @@ function BatchRoadmap({ batches, onConfirmStep, wo, planBatchQtyPerRun, onBatchC
   );
 }
 
-// ── Submit Plan Modal ────────────────────────────────────────────────────────
-// MaterialSearchInput — dropdown từ kho xưởng, lọc bỏ đã chọn
-function MaterialSelectInput({ value, onChange, stockList, placeholder = 'Chọn nguyên liệu...' }) {
-  const [q, setQ] = useState(value?.materialName || '');
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => { setQ(value?.materialName || ''); }, [value]);
-  useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target) &&
-      !document.getElementById('__mat_step_dd__')?.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  const [pos, setPos] = useState({top:0,left:0,width:0});
-  const calcPos = () => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    setPos({top: r.bottom + window.scrollY + 2, left: r.left + window.scrollX, width: r.width});
-  };
-
-  const filtered = q.trim() ? stockList.filter(s => s.materialName.toLowerCase().includes(q.toLowerCase())) : stockList;
-  const select = (s) => { setQ(s.materialName); onChange(s); setOpen(false); };
-  const handleFocus = () => { calcPos(); setOpen(true); };
-  const handleInput = (text) => { setQ(text); onChange({materialName: text, unit: null, totalQty: null}); calcPos(); setOpen(true); };
-
-  const dropdown = open ? createPortal(
-    <div id="__mat_step_dd__" style={{position:'absolute',top:pos.top,left:pos.left,width:pos.width,zIndex:99999}}
-      className="bg-white border border-[#E8DDD0] rounded-xl shadow-xl max-h-44 overflow-y-auto">
-      {stockList.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-[#8E8878] italic">Kho trống — nhập tự do</div>
-      ) : filtered.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-[#8E8878] italic">Không tìm thấy: <b>{q}</b></div>
-      ) : filtered.map((s, i) => (
-        <button key={i} className="w-full text-left px-3 py-2 hover:bg-[#FAF7F2] border-b border-black/5 last:border-0"
-          onMouseDown={e => e.preventDefault()} onClick={() => select(s)}>
-          <p className="text-sm text-[#1C1C1E] font-medium">{s.materialName}</p>
-          <p className="text-xs text-[#8E8878]">Tồn: {Number(s.totalQty||0).toLocaleString('vi-VN')} {s.unit}</p>
-        </button>
-      ))}
-    </div>, document.body
-  ) : null;
-
-  return (
-    <div ref={ref} className="flex-1 min-w-0">
-      <input className={inputCls} placeholder={placeholder} value={q}
-        onChange={e => handleInput(e.target.value)} onFocus={handleFocus} />
-      {dropdown}
-    </div>
-  );
-}
-
-// StepSearchInput — dropdown preset bước, gõ thêm mới
-// StepSearchInput — dropdown preset bước, gõ thêm mới
-function StepSearchInput({ stepTemplates, onAddStep }) {
-  const [q, setQ] = useState('');
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const inputRef = useRef(null);
-
-  const [pos, setPos] = useState({top:0,left:0,width:0});
-
-  useEffect(() => {
-    const h = (e) => { 
-      if (ref.current && !ref.current.contains(e.target) &&
-        !document.getElementById('__step_dd__')?.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  const calcPos = () => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    setPos({top: r.bottom + window.scrollY + 2, left: r.left + window.scrollX, width: r.width});
-  };
-
-  const filtered = q.trim() ? stepTemplates.filter(s => s.name.toLowerCase().includes(q.toLowerCase())) : stepTemplates;
-  const exactMatch = stepTemplates.some(s => s.name.toLowerCase() === q.toLowerCase().trim());
-
-  const select = (t) => { 
-    onAddStep({name: t.name, requiresQC: t.requiresQc || false}); 
-    setQ(''); 
-    setOpen(false);
-    // Blur input để đóng bàn phím trên mobile
-    if (inputRef.current) inputRef.current.blur();
-  };
-  
-  const createNew = () => { 
-    if (q.trim()) { 
-      onAddStep({name: q.trim(), requiresQC: false, isNew: true}); 
-      setQ(''); 
-      setOpen(false);
-      if (inputRef.current) inputRef.current.blur();
-    } 
-  };
-
-  const handleFocus = () => { 
-    calcPos(); 
-    setOpen(true); 
-  };
-
-  const handleInput = (text) => { 
-    setQ(text); 
-    calcPos(); 
-    setOpen(true); 
-  };
-
-  // Đóng dropdown khi nhấn Escape
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      setOpen(false);
-      if (inputRef.current) inputRef.current.blur();
-    }
-  };
-
-  const dropdown = open ? createPortal(
-    <div id="__step_dd__" style={{position:'absolute',top:pos.top,left:pos.left,width:pos.width,zIndex:99999}}
-      className="bg-white border border-[#E8DDD0] rounded-xl shadow-xl max-h-52 overflow-y-auto">
-      {filtered.length > 0 && filtered.map((t, i) => (
-        <button key={i} className="w-full text-left px-3 py-2 hover:bg-[#FAF7F2] border-b border-black/5 last:border-0 transition-colors"
-          onMouseDown={e => e.preventDefault()} onClick={() => select(t)}>
-          <p className="text-sm text-[#1C1C1E]">{t.name}</p>
-          {t.requiresQc && <p className="text-xs text-amber-600">📷 Có kiểm soát mặc định</p>}
-        </button>
-      ))}
-      {q.trim() && !exactMatch && (
-        <button className="w-full text-left px-3 py-2.5 bg-[#1A2B1A]/5 hover:bg-[#1A2B1A]/10 text-[#1A2B1A] font-semibold flex items-center gap-1.5 text-sm transition-colors"
-          onMouseDown={e => e.preventDefault()} onClick={createNew}>
-          <Plus size={12}/> Thêm bước mới: <span className="font-bold">"{q.trim()}"</span>
-        </button>
-      )}
-      {filtered.length === 0 && !q.trim() && (
-        <div className="px-3 py-2 text-xs text-[#8E8878] italic">Gõ tên bước để tìm hoặc thêm mới</div>
-      )}
-    </div>, document.body
-  ) : null;
-
-  return (
-    <div ref={ref} className="relative">
-      <input 
-        ref={inputRef}
-        className={inputCls} 
-        placeholder="Tìm hoặc thêm bước mới..." 
-        value={q}
-        onChange={e => handleInput(e.target.value)} 
-        onFocus={handleFocus}
-        onKeyDown={handleKeyDown}
-        autoComplete="off"
-      />
-      {dropdown}
-    </div>
-  );
-}
-
+// ── Submit Plan Modal (chọn biến thể sản xuất + nhập sản lượng cần SX) ─────────
 function SubmitPlanModal({ workOrder, onClose, onSaved }) {
   const toast = useToast();
-  const [form, setForm] = useState({totalBatches:'',batchQtyPerRun:'',notes:''});
-  const [perBatchQty, setPerBatchQty] = useState([]);
-  const [usePerBatchQty, setUsePerBatchQty] = useState(false);
-  const [machines, setMachines] = useState([]);
-  const [stepTemplates, setStepTemplates] = useState([]);
-  const [stockList, setStockList] = useState([]); // kho nguyên liệu xưởng
-  const [steps, setSteps] = useState([]);
-  // materials: [{materialName, unit, quantity, totalQty}]
-  const [materials, setMaterials] = useState([{materialName:'',unit:'',quantity:'',totalQty:null}]);
+  const [recipes, setRecipes] = useState([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(true);
+  const [recipeId, setRecipeId] = useState('');
+  const [requestedQty, setRequestedQty] = useState('');
+  const [notes, setNotes] = useState('');
+  const [preview, setPreview] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const canMaterials = workOrder.canInputMaterials !== false;
-
-  const set = (k,v) => setForm(f=>({...f,[k]:v}));
 
   useEffect(() => {
-    // Load máy, preset steps, kho nguyên liệu song song — dùng api module
-    Promise.all([
-      factoryProdApi.listMachines().catch(() => []),
-      factoryProdApi.listStepTemplates().catch(() => []),
-      factoryMaterialRequestApi.getStock().catch(() => []),
-    ]).then(([machs, templates, stock]) => {
-      setMachines(machs || []);
-      setStepTemplates(templates || []);
-      setStockList(stock || []);
-    });
+    factoryProdApi.listRecipesByProduct(workOrder.factoryProductId)
+      .then(list => setRecipes((list || []).filter(r => r.isActive !== false)))
+      .catch(() => setRecipes([]))
+      .finally(() => setLoadingRecipes(false));
   }, []);
 
-  // Thêm bước — nếu isNew thì lưu lên DB
-  const addStep = async (step) => {
-    setSteps(p => [...p, {name: step.name, requiresQC: step.requiresQC || false, machineId: null}]);
-    if (step.isNew) {
-      try {
-        const created = await factoryProdApi.createStepTemplate({ name: step.name, requiresQc: false });
-        if (created) setStepTemplates(p => [...p.filter(t => t.name !== step.name), created]);
-      } catch {}
-    }
-  };
-
-  const removeStep = (i) => setSteps(p => p.filter((_,j) => j !== i));
-  const toggleStepQC = (i) => setSteps(p => p.map((s,j) => j === i ? {...s, requiresQC: !s.requiresQC} : s));
-
-  // Steps chưa được chọn (filter bỏ đã dùng)
-  const availableTemplates = stepTemplates.filter(t => !steps.some(s => s.name.toLowerCase() === t.name.toLowerCase()));
-
-  // Materials
-  const setMat = (i, k, v) => setMaterials(p => p.map((m,j) => j === i ? {...m, [k]: v} : m));
-  const removeMat = (i) => setMaterials(p => p.filter((_,j) => j !== i));
-
-  const handleMaterialSelect = (i, s) => {
-    setMaterials(p => p.map((m, j) => j === i ? {
-      ...m,
-      materialName: s.materialName,
-      unit: s.unit || '',
-      totalQty: s.totalQty != null ? Number(s.totalQty) : null,
-    } : m));
-  };
-
-  // Stock chưa được chọn (filter bỏ đã dùng trong các dòng khác)
-  const getAvailableStock = (currentIdx) => {
-    const chosen = materials.filter((_,j) => j !== currentIdx).map(m => m.materialName).filter(Boolean);
-    return stockList.filter(s => !chosen.includes(s.materialName));
+  const runPreview = async () => {
+    if (!recipeId) { setErr('Vui lòng chọn biến thể sản xuất'); return; }
+    if (!requestedQty || Number(requestedQty) <= 0) { setErr('Vui lòng nhập sản lượng cần sản xuất'); return; }
+    setErr(''); setPreviewing(true); setPreview(null);
+    try {
+      const p = await factoryProdApi.previewPlan(workOrder.id, Number(recipeId), Number(requestedQty));
+      setPreview(p);
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Không thể tính phương án, vui lòng kiểm tra lại');
+    } finally { setPreviewing(false); }
   };
 
   const submit = async () => {
-    if (!form.totalBatches || !form.batchQtyPerRun) { setErr('Vui lòng nhập số mẻ và sản lượng/mẻ'); return; }
-    if (steps.length === 0) { setErr('Vui lòng thêm ít nhất 1 bước sản xuất'); return; }
-
-    // Validate nguyên liệu: số lượng không vượt tồn kho
-    for (const m of materials) {
-      if (!m.materialName.trim() || !m.quantity) continue;
-      if (m.totalQty != null && Number(m.quantity) > m.totalQty) {
-        setErr(`Số lượng "${m.materialName}" (${m.quantity} ${m.unit}) vượt tồn kho (${m.totalQty} ${m.unit})`);
-        return;
-      }
-    }
-
-    setSaving(true);
+    if (!preview) { setErr('Vui lòng xem trước phương án trước khi nộp'); return; }
+    setSaving(true); setErr('');
     try {
-      await factoryProdApi.submitPlan(workOrder.id, {
-        totalBatches: Number(form.totalBatches),
-        batchQtyPerRun: Number(form.batchQtyPerRun),
-        batchSteps: steps.map(s => s.name),
-        batchStepDetails: steps.map(s => ({name:s.name, requiresQC:s.requiresQC, machineId:s.machineId||null})),
-        batchQtyPerRunList: usePerBatchQty && perBatchQty.every(q=>q) ? perBatchQty.map(Number) : null,
-        notes: form.notes,
-        materials: canMaterials
-          ? materials.filter(m => m.materialName.trim()).map((m,i) => ({
-              materialName: m.materialName,
-              quantity: Number(m.quantity) || 0,
-              unit: m.unit,
-              sortOrder: i,
-            }))
-          : [],
+      await factoryProdApi.submitPlanByRecipe(workOrder.id, {
+        recipeId: Number(recipeId),
+        requestedQty: Number(requestedQty),
+        notes,
       });
-      toast('Đã nộp phương án sản xuất thành công!','success',4000);
+      toast('Đã nộp phương án sản xuất thành công!', 'success', 4000);
       onSaved();
-    } catch(e) {
+    } catch (e) {
       setErr(e?.response?.data?.message || 'Có lỗi xảy ra');
     } finally { setSaving(false); }
   };
@@ -893,147 +709,116 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
           <p className="text-xs text-[#8E8878]">Deadline: {fmtDate(workOrder.planDeadline)}</p>
           <div className="flex gap-2">
             <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
-            <PrimaryButton onClick={submit} loading={saving}>Nộp phương án</PrimaryButton>
+            <PrimaryButton onClick={submit} loading={saving} disabled={!preview}>Nộp phương án</PrimaryButton>
           </div>
         </div>
       }>
       <div className="space-y-5">
-        {err&&<p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
 
         {/* Lệnh info */}
         <div className="bg-[#1A2B1A] rounded-xl p-4 text-white">
           <p className="text-[#7CB87C] text-xs uppercase tracking-wider">Lệnh</p>
           <p className="font-bold text-lg mt-0.5">{workOrder.workOrderCode}</p>
-          <p className="text-white/70 text-sm">{workOrder.productName} — {fmtNum(workOrder.plannedQty)} {workOrder.outputUnit}</p>
+          <p className="text-white/70 text-sm">{workOrder.productName} — kế hoạch {fmtNum(workOrder.plannedQty)} {workOrder.outputUnit}</p>
         </div>
 
-        {/* Số mẻ + sản lượng */}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Số mẻ dự kiến" required>
-            <input type="number" className={inputCls} placeholder="VD: 3" value={form.totalBatches}
-              onChange={e=>{
-                set('totalBatches',e.target.value);
-                const n=Number(e.target.value)||0;
-                setPerBatchQty(Array.from({length:n},(_,i)=>perBatchQty[i]||form.batchQtyPerRun||''));
-              }}/>
-          </Field>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
-                Sản lượng mỗi mẻ ({workOrder.outputUnit}) *
-              </label>
-              <button type="button" onClick={()=>setUsePerBatchQty(v=>!v)}
-                className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${usePerBatchQty?'bg-[#C9A84C]/10 border-[#C9A84C] text-[#C9A84C]':'bg-white border-black/10 text-[#8E8878]'}`}>
-                {usePerBatchQty ? '✓ Từng mẻ khác nhau' : 'Từng mẻ khác nhau'}
-              </button>
-            </div>
-            {!usePerBatchQty ? (
-              <input type="number" className={inputCls} placeholder="VD: 30" value={form.batchQtyPerRun}
-                onChange={e=>set('batchQtyPerRun',e.target.value)}/>
+        {/* Chọn biến thể + sản lượng */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Biến thể sản xuất" required>
+            {loadingRecipes ? (
+              <p className="text-xs text-[#8E8878]">Đang tải...</p>
+            ) : recipes.length === 0 ? (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                Sản phẩm này chưa có biến thể sản xuất nào. Vui lòng tạo biến thể trước ở trang "Biến thể sản xuất".
+              </p>
             ) : (
+              <select className={inputCls} value={recipeId}
+                onChange={e => { setRecipeId(e.target.value); setPreview(null); }}>
+                <option value="">Chọn biến thể</option>
+                {recipes.map(r => (
+                  <option key={r.id} value={r.id}>{r.name} (chuẩn {r.standardOutputQty} {r.outputUnit}/mẻ)</option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <Field label={`Sản lượng cần sản xuất (${workOrder.outputUnit})`} required>
+            <input type="number" min="0" step="0.001" className={inputCls} placeholder="VD: 60"
+              value={requestedQty}
+              onChange={e => { setRequestedQty(e.target.value); setPreview(null); }} />
+          </Field>
+        </div>
+
+        <div className="flex justify-end">
+          <SecondaryButton onClick={runPreview} loading={previewing} disabled={!recipeId || !requestedQty}>
+            Xem trước phương án
+          </SecondaryButton>
+        </div>
+
+        {/* Preview kết quả tính toán */}
+        {preview && (
+          <div className="space-y-4">
+            <div className="bg-[#FAF7F2] rounded-xl p-4 border border-black/5">
+              <p className="text-sm font-semibold text-[#1C1C1E]">
+                {preview.totalBatches} mẻ — biến thể "{preview.recipeName}" (chuẩn {fmtNum(preview.standardOutputQty)} {preview.outputUnit}/mẻ)
+              </p>
+              <p className="text-xs text-[#8E8878] mt-0.5">Tổng sản lượng cần sản xuất: {fmtNum(preview.requestedQty)} {preview.outputUnit}</p>
+            </div>
+
+            {/* Từng mẻ */}
+            <div>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Chi tiết từng mẻ</p>
               <div className="space-y-2">
-                {perBatchQty.map((q,i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-xs text-[#8E8878] w-12 flex-shrink-0">Mẻ {i+1}:</span>
-                    <input type="number" className={inputCls+' flex-1'} placeholder={`VD: ${form.batchQtyPerRun||30}`}
-                      value={q} onChange={e=>setPerBatchQty(p=>p.map((v,j)=>j===i?e.target.value:v))}/>
-                    <span className="text-xs text-[#8E8878]">{workOrder.outputUnit}</span>
+                {preview.batches?.map(b => (
+                  <div key={b.batchNumber} className="border border-black/5 rounded-xl p-3 bg-white">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-semibold text-[#1C1C1E]">Mẻ {b.batchNumber}</span>
+                      <span className="text-sm text-[#C9A84C] font-semibold">{fmtNum(b.outputQty)} {preview.outputUnit}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {b.materials?.map((m, i) => (
+                        <span key={i} className="text-xs bg-[#FAF7F2] border border-black/5 rounded-full px-2.5 py-1 text-[#1C1C1E]">
+                          {m.materialName}: <b>{fmtNum(m.qty)} {m.unit}</b>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ))}
-                {perBatchQty.length === 0 && <p className="text-xs text-[#8E8878] italic">Nhập số mẻ trước</p>}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Các bước sản xuất — search dropdown + thêm mới */}
-        <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2 block">
-            Các bước sản xuất
-          </label>
-          {/* Danh sách bước đã thêm */}
-          {steps.length > 0 && (
-            <div className="space-y-1.5 mb-2">
-              {steps.map((s,i) => (
-                <div key={i} className="flex gap-2 items-center bg-[#FAF7F2] border border-black/5 rounded-xl px-3 py-2">
-                  <div className="w-6 h-6 rounded-full bg-white border border-black/10 flex items-center justify-center text-xs font-bold text-[#8E8878] flex-shrink-0">{i+1}</div>
-                  <span className="flex-1 text-sm text-[#1C1C1E]">{s.name}</span>
-                  <button onClick={()=>toggleStepQC(i)}
-                    className={`text-[10px] px-2 py-1 rounded-full border transition-colors flex-shrink-0
-                      ${s.requiresQC?'bg-amber-100 border-amber-300 text-amber-700':'bg-white border-black/10 text-[#8E8878] hover:border-[#C9A84C]'}`}>
-                    📷 {s.requiresQC?'Có KS':'Không KS'}
-                  </button>
-                  {machines.length > 0 && (
-                    <select className="text-[10px] border border-black/10 rounded-lg px-1.5 py-1 bg-white text-[#8E8878] flex-shrink-0 max-w-[110px]"
-                      value={s.machineId||''} onChange={e=>setSteps(p=>p.map((x,j)=>j===i?{...x,machineId:e.target.value?Number(e.target.value):null}:x))}>
-                      <option value="">Không chọn máy</option>
-                      {machines.map(m=><option key={m.id} value={m.id} disabled={m.status==='UNDER_MAINTENANCE'}>{m.name}{m.status==='UNDER_MAINTENANCE'?' (BT)':''}</option>)}
-                    </select>
-                  )}
-                  <button onClick={()=>removeStep(i)} className="text-[#8E8878] hover:text-red-500 flex-shrink-0"><X size={13}/></button>
-                </div>
-              ))}
+            {/* Tổng nguyên liệu */}
+            <div>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Tổng nguyên liệu cho cả lệnh</p>
+              <div className="flex flex-wrap gap-1.5">
+                {preview.totalMaterials?.map((m, i) => (
+                  <span key={i} className="text-xs bg-blue-50 border border-blue-200 rounded-full px-2.5 py-1 text-blue-700">
+                    {m.materialName}: <b>{fmtNum(m.qty)} {m.unit}</b>
+                  </span>
+                ))}
+              </div>
             </div>
-          )}
-          {/* Search dropdown thêm bước */}
-          <StepSearchInput stepTemplates={availableTemplates} onAddStep={addStep} />
-        </div>
 
-        {/* Nguyên liệu — chọn từ kho, validate tồn kho */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Nguyên liệu</label>
-            {canMaterials && (
-              <button onClick={()=>setMaterials(p=>[...p,{materialName:'',unit:'',quantity:'',totalQty:null}])}
-                className="text-xs text-[#C9A84C] font-semibold flex items-center gap-1">
-                <Plus size={11}/>Thêm NVL
-              </button>
-            )}
+            {/* Các bước */}
+            <div>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Các bước (lặp lại mỗi mẻ)</p>
+              <ol className="space-y-1.5">
+                {preview.steps?.map((s, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm bg-[#FAF7F2] rounded-xl px-3 py-2">
+                    <span className="w-5 h-5 rounded-full bg-[#1C1C1E] text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">{i+1}</span>
+                    <span className="font-medium flex-1 text-[#1C1C1E]">{s.stepName}</span>
+                    {s.requiresQc && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">📷 KS</span>}
+                    <span className="text-xs text-[#8E8878]">{s.durationMinutes} phút</span>
+                    {s.machineName && <span className="text-xs text-[#8E8878]">⚙ {s.machineName}</span>}
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
-          {!canMaterials ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
-              <Lock size={16} className="text-amber-600"/>
-              <p className="text-xs text-amber-700">Chế độ hẹn giờ: Chỉ được nhập nguyên liệu trong vòng 3 ngày trước ({fmtDate(workOrder.scheduledStartDate)})</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {materials.map((m,i) => {
-                const over = m.totalQty != null && m.quantity && Number(m.quantity) > m.totalQty;
-                return (
-                  <div key={i} className={`rounded-xl border p-2.5 ${over?'border-red-300 bg-red-50':'border-black/5 bg-[#FAF7F2]'}`}>
-                    {/* 1 dòng: tên | số lượng | đơn vị | remove */}
-                    <div className="flex gap-2 items-center">
-                      <MaterialSelectInput
-                        value={m}
-                        onChange={s => handleMaterialSelect(i, s)}
-                        stockList={getAvailableStock(i)}
-                        placeholder="Chọn nguyên liệu..."
-                      />
-                      <input type="number" min="0" step="0.001" className={`${inputCls} flex-shrink-0`}
-                        style={{width:72}} placeholder="SL"
-                        value={m.quantity} onChange={e=>setMat(i,'quantity',e.target.value)}/>
-                      <span className="text-xs text-[#8E8878] font-medium flex-shrink-0 w-8">
-                        {m.unit || '—'}
-                      </span>
-                      {materials.length > 1 && (
-                        <button onClick={()=>removeMat(i)} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={14}/></button>
-                      )}
-                    </div>
-                    {/* Tồn kho info */}
-                    {m.totalQty != null && m.materialName && (
-                      <p className={`text-xs mt-1 ${over?'text-red-600 font-semibold':'text-emerald-600'}`}>
-                        {over ? `⚠ Vượt tồn kho! Tồn: ${m.totalQty} ${m.unit}` : `✓ Tồn kho: ${Number(m.totalQty).toLocaleString('vi-VN')} ${m.unit}`}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        )}
 
         <Field label="Ghi chú">
-          <textarea className={inputCls} rows={2} value={form.notes} onChange={e=>set('notes',e.target.value)}/>
+          <textarea className={inputCls} rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
         </Field>
       </div>
     </Modal>
@@ -1041,7 +826,7 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
 }
 
 // ── Work Order Detail Panel ───────────────────────────────────────────────────
-function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
+function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
   const toast = useToast();
   const [wo, setWo] = useState(woInit); // local copy — tự refresh sau mỗi action
   const [detail, setDetail] = useState(null);
@@ -1051,6 +836,8 @@ function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
   const [cancelBatchTarget, setCancelBatchTarget] = useState(null);
   const [startingOrder, setStartingOrder] = useState(false);
   const [startingBatch, setStartingBatch] = useState(false);
+  const [startingStepId, setStartingStepId] = useState(null);
+  const [askNextBatch, setAskNextBatch] = useState(false); // modal hỏi "bắt đầu mẻ tiếp theo ngay?"
   const isCompleted = wo.status === 'COMPLETED';
 
   const load = async () => {
@@ -1060,6 +847,7 @@ function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
       setDetail(d);
       // Cập nhật luôn wo từ detail để nút hiển thị đúng status mới nhất
       if (d?.workOrder) setWo(d.workOrder);
+      return d;
     } finally { setLoadingDetail(false); }
   };
   useEffect(()=>{load();},[wo.id]);
@@ -1070,6 +858,36 @@ function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
     setCancelBatchTarget(null);
     load();       // reload detail + cập nhật wo.status
     onRefresh();  // cập nhật danh sách ngoài (Gantt)
+  };
+
+  // Gọi sau khi hoàn thành 1 mẻ (CompleteBatchInline) — hỏi có muốn bắt đầu mẻ tiếp theo ngay không
+  const onBatchCompleted = async () => {
+    setConfirmStep(null);
+    setCancelBatchTarget(null);
+    const d = await load();
+    onRefresh();
+    if (d?.hasNextBatch) setAskNextBatch(true);
+  };
+
+  const doStartBatch = async () => {
+    setStartingBatch(true);
+    try {
+      await factoryProdApi.startBatch({ workOrderId: wo.id });
+      setAskNextBatch(false);
+      onModalSaved();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
+    } finally { setStartingBatch(false); }
+  };
+
+  const handleStartStep = async (batch, step) => {
+    setStartingStepId(step.id);
+    try {
+      await factoryProdApi.startStep(batch.id, step.stepSequence, {});
+      load();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không thể bắt đầu bước này', 'error', 5000);
+    } finally { setStartingStepId(null); }
   };
 
   const pct=Number(wo.progressPct||0);
@@ -1099,6 +917,12 @@ function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
             </div>
           ))}
         </div>
+        {plan?.recipeName && (
+          <div className="bg-[#FAF7F2] rounded-xl px-3 py-2 text-xs text-[#8E8878]">
+            Biến thể sản xuất: <b className="text-[#1C1C1E]">{plan.recipeName}</b>
+            {plan.requestedQty != null && <> · Sản lượng yêu cầu: <b className="text-[#1C1C1E]">{fmtNum(plan.requestedQty)} {wo.outputUnit}</b></>}
+          </div>
+        )}
         <div className="flex gap-3 flex-wrap text-xs text-[#8E8878]">
           {wo.productionFactoryName&&<span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium flex items-center gap-1"><Factory size={12}/> {wo.productionFactoryName}</span>}
           <span>📅 {fmtDate(wo.scheduledStartDate)} → {fmtDate(wo.plannedEndDate)}</span>
@@ -1129,14 +953,9 @@ function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
               }}>Bắt đầu sản xuất</PrimaryButton>
             )}
             {canStartBatch&&(
-              <PrimaryButton loading={startingBatch} onClick={async()=>{
-                setStartingBatch(true);
-                try{
-                  await factoryProdApi.startBatch({workOrderId:wo.id,recipeId:recipes[0]?.id});
-                  onModalSaved();
-                }catch(e){toast(e?.response?.data?.message||'Có lỗi xảy ra','error');}
-                finally{setStartingBatch(false);}
-              }}><Plus size={14}/> Bắt đầu mẻ {nextBatchNumber}</PrimaryButton>
+              <PrimaryButton loading={startingBatch} onClick={doStartBatch}>
+                <Plus size={14}/> Bắt đầu mẻ {nextBatchNumber}
+              </PrimaryButton>
             )}
           </div>
         )}
@@ -1150,7 +969,9 @@ function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
           ):(
             <BatchRoadmap batches={batches} wo={wo} planBatchQtyPerRun={plan?.batchQtyPerRun}
               onConfirmStep={(batch,step)=>setConfirmStep({batch,step})}
-              onBatchCompleted={onModalSaved}
+              onStartStep={handleStartStep}
+              startingStepId={startingStepId}
+              onBatchCompleted={onBatchCompleted}
               onCancelBatch={(batch)=>setCancelBatchTarget(batch)}/>
           )}
         </div>
@@ -1159,6 +980,19 @@ function WorkOrderPanel({ wo: woInit, recipes, onClose, onRefresh }) {
       {showPlanModal&&<SubmitPlanModal workOrder={wo} onClose={()=>setShowPlanModal(false)} onSaved={onModalSaved}/>}
       {confirmStep&&<ConfirmStepModal batch={confirmStep.batch} step={confirmStep.step} onClose={()=>setConfirmStep(null)} onSaved={onModalSaved}/>}
       {cancelBatchTarget&&<CancelBatchModal batch={cancelBatchTarget} workOrder={wo} onClose={()=>setCancelBatchTarget(null)} onSaved={onModalSaved}/>}
+
+      {/* Hỏi bắt đầu mẻ tiếp theo ngay sau khi vừa hoàn thành 1 mẻ */}
+      {askNextBatch && (
+        <Modal open title="Bắt đầu mẻ tiếp theo?" onClose={()=>setAskNextBatch(false)} size="sm"
+          footer={
+            <div className="flex justify-end gap-2">
+              <SecondaryButton onClick={()=>setAskNextBatch(false)}>Để sau</SecondaryButton>
+              <PrimaryButton loading={startingBatch} onClick={doStartBatch}>Bắt đầu ngay</PrimaryButton>
+            </div>
+          }>
+          <p className="text-sm text-[#1C1C1E]">Mẻ vừa rồi đã hoàn thành. Bạn có muốn bắt đầu mẻ {nextBatchNumber} ngay bây giờ không?</p>
+        </Modal>
+      )}
     </Modal>
   );
 }
@@ -1168,7 +1002,6 @@ export default function FactoryOrdersPage() {
   const [factories, setFactories] = useState([]);
   const [selectedFactory, setSelected] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useMinLoading(true);
   const [selectedWO, setSelectedWO] = useState(null);
 
@@ -1179,8 +1012,8 @@ export default function FactoryOrdersPage() {
   const loadOrders = async(factoryId)=>{
     setLoading(true);
     try{
-      const[ords,recs]=await Promise.all([factoryProdApi.listMyOrders(factoryId),factoryWorkerApi.listRecipes()]);
-      setOrders(ords||[]);setRecipes(recs||[]);
+      const ords = await factoryProdApi.listMyOrders(factoryId);
+      setOrders(ords||[]);
     }finally{setLoading(false);}
   };
   useEffect(()=>{loadFactories();},[]);
@@ -1222,7 +1055,7 @@ export default function FactoryOrdersPage() {
         </div>
       )}
 
-      {selectedWO&&<WorkOrderPanel wo={selectedWO} recipes={recipes} onClose={()=>setSelectedWO(null)} onRefresh={()=>loadOrders(selectedFactory)}/>}
+      {selectedWO&&<WorkOrderPanel wo={selectedWO} onClose={()=>setSelectedWO(null)} onRefresh={()=>loadOrders(selectedFactory)}/>}
     </div>
   );
 }

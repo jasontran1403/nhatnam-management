@@ -138,6 +138,7 @@
     "analytics": "Phân tích",
     "production": "Sản xuất",
     "work_orders": "Lệnh sản xuất",
+    "production_variants": "Biến thể sản xuất",
     "production_plan": "Kế hoạch sản xuất",
     "maintenance": "Bảo trì",
     "machines": "Máy móc",

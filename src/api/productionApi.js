@@ -28,16 +28,12 @@ export const factoryProductApi = {
     api.put(`/api/owner/factory/products/${id}`, data).then(r => r.data.data),
 };
 
-// ── Production Recipes ────────────────────────────────────────────────────────
+// ── Production Recipes (= Biến thể sản xuất) — Owner chỉ XEM + bật/tắt ────────
 export const recipeApi = {
   list: (productId) =>
     api.get('/api/owner/factory/recipes', { params: productId ? { productId } : {} }).then(r => r.data.data),
   get: (id) =>
     api.get(`/api/owner/factory/recipes/${id}`).then(r => r.data.data),
-  create: (data) =>
-    api.post('/api/owner/factory/recipes', data).then(r => r.data.data),
-  update: (id, data) =>
-    api.put(`/api/owner/factory/recipes/${id}`, data).then(r => r.data.data),
   toggle: (id, active) =>
     api.patch(`/api/owner/factory/recipes/${id}/toggle`, null, { params: { active } }),
 };
@@ -66,6 +62,34 @@ export const factoryWorkerApi = {
     api.get('/api/factory/materials').then(r => r.data.data),
 };
 
+// ── Biến thể sản xuất (Factory Worker tạo/sửa — gắn với 1 FactoryProduct) ──────
+export const factoryRecipeApi = {
+  list: (productId) =>
+    api.get('/api/factory/recipes', { params: productId ? { productId } : {} }).then(r => r.data.data),
+  get: (id) =>
+    api.get(`/api/factory/recipes/${id}`).then(r => r.data.data),
+  create: (data) =>
+    api.post('/api/factory/recipes', data).then(r => r.data.data),
+  update: (id, data) =>
+    api.put(`/api/factory/recipes/${id}`, data).then(r => r.data.data),
+  toggle: (id, active) =>
+    api.patch(`/api/factory/recipes/${id}/toggle`, null, { params: { active } }),
+};
+
+// ── Mẫu bước sản xuất (preset chung, tái sử dụng giữa các biến thể) ────────────
+export const stepTemplateApi = {
+  list: () =>
+    api.get('/api/factory/step-templates').then(r => r.data.data),
+  create: (name) =>
+    api.post('/api/factory/step-templates', { name }).then(r => r.data.data),
+};
+
+// ── Máy móc (để gán cho từng bước trong biến thể) ───────────────────────────────
+export const factoryMachineApi = {
+  list: () =>
+    api.get('/api/factory/machines').then(r => r.data.data),
+};
+
 export const ownerProductionApi = {
 
   // ── Products & Materials (đã có, expose cho Owner) ────────────────────────
@@ -90,17 +114,15 @@ export const ownerProductionApi = {
   toggleMaterial: (id, active) =>
     api.patch(`/api/owner/factory/materials/${id}/toggle?active=${active}`).then(r => r.data.data),
 
-  // ── Recipes ───────────────────────────────────────────────────────────────
+  // ── Recipes (= Biến thể sản xuất, Owner chỉ XEM + bật/tắt) ─────────────────
   listRecipes: (productId) => {
     const qs = productId ? `?productId=${productId}` : '';
     return api.get(`/api/owner/factory/recipes${qs}`).then(r => r.data.data);
   },
   getRecipe: (id) =>
     api.get(`/api/owner/factory/recipes/${id}`).then(r => r.data.data),
-  createRecipe: (body) =>
-    api.post('/api/owner/factory/recipes', body).then(r => r.data.data),
-  updateRecipe: (id, body) =>
-    api.put(`/api/owner/factory/recipes/${id}`, body).then(r => r.data.data),
+  toggleRecipe: (id, active) =>
+    api.patch(`/api/owner/factory/recipes/${id}/toggle?active=${active}`).then(r => r.data.data),
 
   // ── Batches (Owner review) ────────────────────────────────────────────────
   listAllBatches: (page = 0, size = 20) =>

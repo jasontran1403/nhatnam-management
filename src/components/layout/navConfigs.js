@@ -102,6 +102,7 @@ export const operatorNavRaw = [
 export const factoryWorkerNavRaw = [
   { to: '/factory/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/factory/orders', labelKey: 'work_orders', icon: ClipboardList },
+  { to: '/factory/recipes', labelKey: 'production_variants', icon: FlaskConical },
   { to: '/factory/batches', labelKey: 'factory_batches', icon: ClipboardCheck },
   { to: '/factory/history', labelKey: 'batch_history', icon: Package },
   { to: '/factory/machines', labelKey: 'machine_manage', icon: Wrench },

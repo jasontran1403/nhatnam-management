@@ -91,14 +91,14 @@ function ChartTooltip({ active, payload, label }) {
 }
 
 // ── Pie custom tooltip ────────────────────────────────────────────────────────
-function PieTooltip({ active, payload }) {
+function PieTooltip({ active, payload, statusLabels }) {
   if (!active || !payload?.length) return null;
   const entry = payload[0];
   return (
     <div className="bg-[#1C1C1E] rounded-xl px-3 py-2 shadow-xl text-xs">
       <div className="flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.payload.fill }} />
-        <span className="text-white/70">{STATUS_LABEL_VI[entry.name] ?? entry.name}:</span>
+        <span className="text-white/70">{statusLabels?.[entry.name] ?? entry.name}:</span>
         <span className="text-white font-semibold">{formatNumber(entry.value)}</span>
       </div>
     </div>
@@ -465,7 +465,8 @@ export default function AdminDashboard() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip content={<PieTooltip />} />
+                  <Tooltip content={<PieTooltip statusLabels={STATUS_LABEL_VI} />} />
+
                   <Legend
                     wrapperStyle={{ fontSize: 10, paddingTop: 8 }}
                     iconType="circle"

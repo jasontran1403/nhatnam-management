@@ -85,6 +85,7 @@ import OperatorLandingpagePage from '../pages/operator/OperatorLandingpagePage';
 import { FactoryDashboardPage, FactoryHistoryPage } from '../pages/factory_worker/FactoryWorkerPages';
 import FactoryCreateBatchPage from '../pages/factory_worker/FactoryCreateBatchPage';
 import FactoryOrdersPage from '../pages/factory_worker/FactoryOrdersPage';
+import FactoryRecipesPage from '../pages/factory_worker/FactoryRecipesPage';
 import FactoryMachinePage from '../pages/factory_worker/FactoryMachinePage';
 import FactoryMaterialRequestPage from '../pages/factory_worker/FactoryMaterialRequestPage';
 import FactoryMaterialStockPage from '../pages/factory_worker/FactoryMaterialStockPage';
@@ -265,6 +266,7 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="/factory/orders" replace />} />
         <Route path="dashboard" element={<FactoryDashboardPage />} />
         <Route path="orders" element={<FactoryOrdersPage />} />
+        <Route path="recipes" element={<FactoryRecipesPage />} />
         <Route path="batches" element={<FactoryCreateBatchPage />} />
         <Route path="history" element={<FactoryHistoryPage />} />
         <Route path="machines" element={<FactoryMachinePage />} />

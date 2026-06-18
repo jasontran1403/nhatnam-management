@@ -137,6 +137,7 @@ function ElapsedTimer({ startMs }) {
 // ── Batch Roadmap Row (checkpoint timeline) ───────────────────────────────────
 function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
   const [selectedStep, setSelectedStep] = useState(null);
+  const [showMaterials, setShowMaterials] = useState(false);
   const isCompleted = batch.status === 'COMPLETED';
   const isCancelled = batch.status === 'CANCELLED';
   const steps = batch.steps || [];
@@ -197,7 +198,24 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
         {!isCompleted && !isCancelled && (
           <span className="text-[10px] text-[#8E8878]">{batch.completedSteps||0}/{batch.totalSteps||0} bước</span>
         )}
+        {batch.batchMaterials?.length > 0 && (
+          <button onClick={()=>setShowMaterials(v=>!v)}
+            className="text-[10px] text-[#C9A84C] font-semibold underline flex items-center gap-0.5 ml-auto">
+            Nguyên liệu mẻ này {showMaterials ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
+          </button>
+        )}
       </div>
+
+      {/* Nguyên liệu riêng của mẻ này — expand/collapse */}
+      {showMaterials && batch.batchMaterials?.length > 0 && (
+        <div className="ml-9 mt-1.5 flex flex-wrap gap-1.5">
+          {batch.batchMaterials.map((m,i) => (
+            <span key={i} className="text-[10px] bg-[#FAF7F2] border border-black/10 rounded-full px-2 py-1 text-[#1C1C1E]">
+              {m.materialName}: <b>{fmtNum(m.qty)} {m.unit}</b>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Step checkpoint line */}
       {steps.length > 0 && (
@@ -493,12 +511,24 @@ export default function OwnerWorkOrderDetailPage() {
             <SectionCard>
               <SectionHeader title="Phương án sản xuất" />
               <div className="p-4 space-y-3 text-sm">
+                {plan.recipeName && (
+                  <div className="flex justify-between">
+                    <span className="text-[#8E8878]">Biến thể sản xuất</span>
+                    <span className="font-semibold text-[#1C1C1E]">{plan.recipeName}</span>
+                  </div>
+                )}
+                {plan.requestedQty != null && (
+                  <div className="flex justify-between">
+                    <span className="text-[#8E8878]">Sản lượng yêu cầu</span>
+                    <span className="font-semibold">{fmtNum(plan.requestedQty)} {wo.outputUnit}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-[#8E8878]">Số mẻ</span>
                   <span className="font-semibold">{plan.totalBatches} mẻ</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#8E8878]">Mỗi mẻ</span>
+                  <span className="text-[#8E8878]">Mỗi mẻ (chuẩn)</span>
                   <span className="font-semibold">{fmtNum(plan.batchQtyPerRun)} {wo.outputUnit}</span>
                 </div>
                 {plan.totalEstimatedCost > 0 && (
@@ -512,7 +542,7 @@ export default function OwnerWorkOrderDetailPage() {
                 {/* Bước sản xuất */}
                 {plan.batchSteps?.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Các bước</p>
+                    <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Các bước (chung cho mọi mẻ)</p>
                     <div className="space-y-1">
                       {plan.batchSteps.map((step, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs">
@@ -544,7 +574,7 @@ export default function OwnerWorkOrderDetailPage() {
           {/* Nguyên liệu */}
           {plan?.materials?.length > 0 && (
             <SectionCard>
-              <SectionHeader title="Nguyên liệu" />
+              <SectionHeader title="Nguyên liệu dùng chung (cả lệnh)" />
               <div className="divide-y divide-black/5">
                 {plan.materials.map(m => (
                   <div key={m.id} className="px-4 py-3">

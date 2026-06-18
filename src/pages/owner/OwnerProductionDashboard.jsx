@@ -310,6 +310,12 @@ const GANTT_CSS = `
     rgba(254,202,202,0.85) 3px,rgba(254,202,202,0.85) 8px
   ) !important;
 }
+.mday-occupied {
+  background: repeating-linear-gradient(
+    45deg,rgba(37,99,235,0.7),rgba(37,99,235,0.7) 3px,
+    rgba(191,219,254,0.85) 3px,rgba(191,219,254,0.85) 8px
+  ) !important;
+}
 .mday-inactive { background: rgba(0,0,0,0.04) !important; }
 `;
 function GanttCSS() { return <style>{GANTT_CSS}</style>; }
@@ -511,7 +517,7 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
   );
 }
 
-function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
+function MaintenanceGantt({ machines, maintenanceList, occupancyList, onItemClick }) {
   const DAYS_BACK=30,DAYS_TOTAL=90,COL_W=120,LABEL_W=200,ROW_H=40,WORK_START_H=8,WORK_END_H=18;
   const today=new Date();today.setHours(0,0,0,0);
   const dStart=new Date(today);dStart.setDate(today.getDate()-DAYS_BACK);
@@ -519,8 +525,11 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
   const totalMs=DAYS_TOTAL*86400000,startMs=dStart.getTime(),endMs=startMs+totalMs;
   const todayPct=((today.getTime()-startMs)/totalMs)*100;
   const [clickedDay,setClickedDay]=useState(null);
+  const [clickedOccupancy,setClickedOccupancy]=useState(null);
   const maintByMachine={};
   (maintenanceList||[]).forEach(m=>{if(!maintByMachine[m.machineId])maintByMachine[m.machineId]=[];maintByMachine[m.machineId].push(m);});
+  const occByMachine={};
+  (occupancyList||[]).forEach(o=>{if(!occByMachine[o.machineId])occByMachine[o.machineId]=[];occByMachine[o.machineId].push(o);});
   const rows=[];
   (machines||[]).forEach(machine=>{
     rows.push({type:'machine',data:machine});
@@ -540,6 +549,11 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
   const getDayMaintOverlap=(machineMaints,dayMs)=>{
     const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
     return machineMaints.filter(mt=>{const ms2=Number(mt.actualStart||mt.plannedStart),me=Number(mt.actualEnd||mt.plannedEnd);return ms2&&me&&ms2<workEnd&&me>workStart;});
+  };
+  const getDayOccupancyOverlap=(machineOcc,dayMs)=>{
+    const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
+    const nowMs=Date.now();
+    return (machineOcc||[]).filter(o=>{const ms2=Number(o.startedAt),me=o.completedAt?Number(o.completedAt):nowMs;return ms2&&ms2<workEnd&&me>workStart;});
   };
   const WORK_MS=(WORK_END_H-WORK_START_H)*3600000;
   const msToWorkLeft=ms=>{
@@ -575,7 +589,9 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
                     {(()=>{
                       const nowMs=Date.now();const machineMaintList=maintByMachine[d.id]||[];
                       const inActiveMaint=machineMaintList.some(mt=>{const ms2=Number(mt.actualStart||mt.plannedStart),me=Number(mt.actualEnd||mt.plannedEnd);return ms2&&me&&nowMs>=ms2&&nowMs<=me;});
-                      const dotCls=inActiveMaint?'bg-red-400 animate-pulse':d.status==='ACTIVE'?'bg-emerald-400 animate-pulse':'bg-gray-300';
+                      const machineOccList=occByMachine[d.id]||[];
+                      const inActiveOcc=machineOccList.some(o=>{const ms2=Number(o.startedAt),me=o.completedAt?Number(o.completedAt):nowMs;return ms2&&nowMs>=ms2&&nowMs<=me;});
+                      const dotCls=inActiveMaint?'bg-red-400 animate-pulse':inActiveOcc?'bg-blue-400 animate-pulse':d.status==='ACTIVE'?'bg-emerald-400 animate-pulse':'bg-gray-300';
                       return <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotCls}`}/>;
                     })()}
                     <div className="min-w-0"><p className="text-xs font-bold text-[#1C1C1E] truncate">{d.name}</p>{d.factoryName&&<p className="text-[9px] text-[#8E8878] truncate">{d.factoryName}</p>}</div>
@@ -610,7 +626,7 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
             </div>
             <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{left:`${todayPct}%`,width:2,background:`linear-gradient(to bottom,${BRAND},${BRAND}55)`}}/>
             {rows.map((row,ri)=>{
-              const isMachine=row.type==='machine';const d=row.data;const machineMaints=isMachine?(maintByMachine[d.id]||[]):[];
+              const isMachine=row.type==='machine';const d=row.data;const machineMaints=isMachine?(maintByMachine[d.id]||[]):[];const machineOcc=isMachine?(occByMachine[d.id]||[]):[];
               return (
                 <div key={`row-${ri}`} style={{height:ROW_H,marginBottom:4,position:'relative'}}>
                   <div className="absolute inset-0" style={{background:ri%2===0?'transparent':'rgba(0,0,0,0.012)'}}/>
@@ -621,22 +637,25 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
                         if(isSun) return <div key={di} style={{position:'absolute',top:0,bottom:0,left:dayLeft,width:COL_W,background:'rgba(0,0,0,0.025)',borderRadius:3}}/>;
                         const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
                         const maintOverlaps=getDayMaintOverlap(machineMaints,dayMs);
-                        const segments=[];let cursor=workStart;
-                        const sorted=[...maintOverlaps].sort((a,b)=>Number(a.actualStart||a.plannedStart)-Number(b.actualStart||b.plannedStart));
-                        sorted.forEach(mt=>{
-                          const ms2=Math.max(Number(mt.actualStart||mt.plannedStart),workStart),me=Math.min(Number(mt.actualEnd||mt.plannedEnd),workEnd);
-                          if(ms2>cursor)segments.push({start:cursor,end:ms2,type:'work'});
-                          if(me>ms2)segments.push({start:ms2,end:me,type:'maint'});
-                          cursor=Math.max(cursor,me);
-                        });
-                        if(cursor<workEnd)segments.push({start:cursor,end:workEnd,type:'work'});
-                        const totalWork=workEnd-workStart;const hasMaint=segments.some(s=>s.type==='maint');
+                        const occOverlaps=getDayOccupancyOverlap(machineOcc,dayMs);
+                        // Gộp 2 loại "chiếm dụng" (bảo trì + đang SX) thành 1 timeline, bảo trì ưu tiên hiển thị nếu trùng giờ
+                        const blocks=[
+                          ...maintOverlaps.map(mt=>({start:Math.max(Number(mt.actualStart||mt.plannedStart),workStart),end:Math.min(Number(mt.actualEnd||mt.plannedEnd),workEnd),kind:'maint'})),
+                          ...occOverlaps.map(o=>({start:Math.max(Number(o.startedAt),workStart),end:Math.min(o.completedAt?Number(o.completedAt):Date.now(),workEnd),kind:'occupied',data:o})),
+                        ].sort((a,b)=>a.start-b.start);
+                        const totalWork=workEnd-workStart;const hasBlock=blocks.length>0;
                         return (
                           <div key={di} onClick={()=>setClickedDay({machine:d,dayMs})} className="mday-active"
                             style={{position:'absolute',top:0,bottom:0,left:dayLeft,width:COL_W-2,borderRadius:4,cursor:'pointer'}}>
-                            {hasMaint&&segments.filter(s=>s.type==='maint').map((seg,si)=>{
+                            {hasBlock&&blocks.map((seg,si)=>{
                               const segLeft2=((seg.start-workStart)/totalWork)*100,segWidth2=((seg.end-seg.start)/totalWork)*100;
-                              return <div key={si} className="mday-maint" style={{position:'absolute',top:0,bottom:0,left:`${segLeft2}%`,width:`${segWidth2}%`}}/>;
+                              if(segWidth2<=0)return null;
+                              return (
+                                <div key={si}
+                                  className={seg.kind==='maint'?'mday-maint':'mday-occupied'}
+                                  onClick={seg.kind==='occupied'?(e)=>{e.stopPropagation();setClickedOccupancy(seg.data);}:undefined}
+                                  style={{position:'absolute',top:0,bottom:0,left:`${segLeft2}%`,width:`${segWidth2}%`}}/>
+                              );
                             })}
                           </div>
                         );
@@ -663,7 +682,7 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
               );
             })}
             <div className="flex flex-wrap gap-4 mt-3 px-1 pb-1 text-[10px] text-[#8E8878]">
-              {[['#10b981','Đang hoạt động'],['#ef4444','Bảo trì/Sự cố'],['#3b82f6','Theo lịch'],['#eab308','Đang xử lý'],['#22c55e','Hoàn thành']].map(([c,l])=>(
+              {[['#10b981','Đang hoạt động'],['#2563eb','Đang sản xuất (lệnh)'],['#ef4444','Bảo trì/Sự cố'],['#3b82f6','Theo lịch'],['#eab308','Đang xử lý'],['#22c55e','Hoàn thành']].map(([c,l])=>(
                 <span key={l} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{backgroundColor:c}}/>{l}</span>
               ))}
             </div>
@@ -671,7 +690,31 @@ function MaintenanceGantt({ machines, maintenanceList, onItemClick }) {
         </DragScroll>
       </div>
       {clickedDay&&<MachineWeekModal machine={clickedDay.machine} dayMs={clickedDay.dayMs} maintenanceList={maintByMachine[clickedDay.machine.id]||[]} onClose={()=>setClickedDay(null)}/>}
+      {clickedOccupancy&&<MachineOccupancyModal occupancy={clickedOccupancy} onClose={()=>setClickedOccupancy(null)}/>}
     </div>
+  );
+}
+
+// ── Machine Occupancy Detail (click vào sọc chéo xanh dương) ─────────────────
+function MachineOccupancyModal({ occupancy, onClose }) {
+  const o = occupancy;
+  const isRunning = !o.completedAt;
+  return (
+    <Modal open title="Máy đang được sử dụng" onClose={onClose} size="sm"
+      footer={<div className="flex justify-end"><SecondaryButton onClick={onClose}>Đóng</SecondaryButton></div>}>
+      <div className="space-y-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-1.5">
+          <p className="text-sm font-semibold text-blue-700">{o.workOrderCode}</p>
+          <p className="text-sm text-blue-600">Mẻ {o.batchCode} — Bước: {o.stepName}</p>
+          <p className="text-xs text-blue-500">
+            Bắt đầu: {new Date(Number(o.startedAt)).toLocaleString('vi-VN')}
+          </p>
+          {isRunning
+            ? <p className="text-xs font-semibold text-blue-600">⏳ Đang thực hiện</p>
+            : <p className="text-xs text-blue-500">Hoàn thành: {new Date(Number(o.completedAt)).toLocaleString('vi-VN')}</p>}
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -1063,6 +1106,7 @@ export default function OwnerProductionDashboard() {
   const [products, setProducts] = useState([]);
   const [factories, setFactories] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
+  const [occupancy, setOccupancy] = useState([]);
   const [loading, setLoading] = useMinLoading(true);
   const [showCreatePlan, setShowCreatePlan] = useState(false);
   const [showCreateWO, setShowCreateWO] = useState(false);
@@ -1074,18 +1118,24 @@ export default function OwnerProductionDashboard() {
   const load = async () => {
     setLoading(true);
     try {
-      const [dash, planList, prods, maint, factList] = await Promise.all([
+      // Khoảng thời gian khớp với MaintenanceGantt: 30 ngày trước → 60 ngày sau (tổng 90 ngày)
+      const now = Date.now();
+      const fromMs = now - 30 * 86400000;
+      const toMs = now + 60 * 86400000;
+      const [dash, planList, prods, maint, factList, occ] = await Promise.all([
         ownerProdApi.getDashboard(),
         ownerProdApi.listPlans(0, 50, 'ACTIVE'),
         factoryProductApi.list(true),
         ownerProdApi.listMaintenance(new Date().getFullYear()),
         ownerProdApi.listFactories().catch(() => []),
+        ownerProdApi.listMachineOccupancy(fromMs, toMs).catch(() => []),
       ]);
       setDashboard(dash);
       setPlans(planList?.content || []);
       setProducts(prods || []);
       setMaintenance(maint || []);
       setFactories(factList || []);
+      setOccupancy(occ || []);
     } finally { setLoading(false); }
   };
 
@@ -1155,7 +1205,7 @@ export default function OwnerProductionDashboard() {
           <SectionHeader title="Máy móc & lịch bảo trì — 39 tuần"
             action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12}/> Thêm máy</button>}/>
           <div className="p-4">
-            <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} onItemClick={setSelectedMaint}/>
+            <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy} onItemClick={setSelectedMaint}/>
           </div>
         </SectionCard>
       )}
