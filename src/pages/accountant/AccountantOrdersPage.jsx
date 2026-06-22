@@ -326,17 +326,15 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
   const { t } = useLang();
   const isThisLoading = invoiceLoadingId === order.id;
   const isOtherLoading = !!invoiceLoadingId && !isThisLoading;
-  const isCompleted = order.status === 'COMPLETED';
 
   return (
     <button onClick={e => { e.stopPropagation(); onInvoice(order.id, e); }}
-      disabled={!!invoiceLoadingId || isCompleted}
-      title={isThisLoading ? t('common', 'processing') : isOtherLoading ? t('status', 'pending_other') : isCompleted ? t('status', 'completed') : t('document', 'invoice')}
+      disabled={!!invoiceLoadingId}
+      title={isThisLoading ? t('common', 'processing') : isOtherLoading ? t('status', 'pending_other') : t('document', 'invoice')}
       className={`relative p-1.5 rounded-lg border transition-all duration-200
         ${isThisLoading ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1'
           : isOtherLoading ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
-            : isCompleted ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
-              : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
+            : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
       {isThisLoading ? <BtnSpinner size={13} colorClass="border-[#C9A84C] !border-t-transparent" /> : <FileText size={13} />}
       {isThisLoading && <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md pointer-events-none z-10">{t('common', 'processing')}</span>}
     </button>
@@ -510,12 +508,13 @@ export default function AccountantOrdersPage() {
     try {
       const params = { page: p, size: pageSize };
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (search.trim()) {
-        params.keyword = search.trim();
-      } else {
-        if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
-        if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
-      }
+      if (search.trim()) params.keyword = search.trim();
+      // Luôn gửi from/to nếu người dùng đã chọn khoảng ngày — kể cả khi có keyword.
+      // Nếu chưa chọn (mặc định), không gửi from/to, để backend tự quyết định
+      // (không filter ngày khi có keyword, hoặc mặc định hôm nay khi không có keyword).
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
+      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+
       if (productFilter) params.productId = productFilter;
       if (customerFilter) params.customerId = customerFilter;
       const res = await accountantApi.getOrders(params);
@@ -540,12 +539,10 @@ export default function AccountantOrdersPage() {
     try {
       const params = {};
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (search.trim()) {
-        params.keyword = search.trim();
-      } else {
-        if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
-        if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
-      }
+      if (search.trim()) params.keyword = search.trim();
+      if (dateRange.from) params.from = new Date(dateRange.from).setHours(0, 0, 0, 0);
+      if (dateRange.to) params.to = new Date(dateRange.to).setHours(23, 59, 59, 999);
+
       if (productFilter) params.productId = productFilter;
       if (customerFilter) params.customerId = customerFilter;
       const res = await accountantApi.exportOrders(params);
