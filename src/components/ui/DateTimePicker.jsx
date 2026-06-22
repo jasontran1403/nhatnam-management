@@ -241,7 +241,8 @@ export default function DateTimePicker({
         <div
           ref={dropdownRef}
           className="fixed bg-white rounded-2xl shadow-2xl border border-[#F0EBE3] z-[9999] overflow-hidden"
-          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
+          // style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
+          style={{ bottom: 0, left: dropPos.left, width: dropPos.width }}>
 
           {/* Tab bar */}
           <div className="flex border-b border-[#F0EBE3] bg-[#FAFAF8]">

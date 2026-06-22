@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, CheckCircle2, Clock, AlertTriangle, Package,
-  ChevronDown, ChevronUp, Image, X, Loader2, Users, ShoppingCart, Factory,
+  ChevronDown, ChevronUp, Image, X, Loader2, Users, ShoppingCart, Factory, FileWarning,
 } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading';
 import { CardSkeleton } from '../../components/ui/Skeleton';
@@ -17,6 +17,7 @@ import { Badge } from '../../components/ui/Badge';
 import {
   ownerProdApi, STATUS_LABELS, progressColor, fmtDate, fmtNum, fmtCurrency,
 } from '../../api/productionModuleApi';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -361,6 +362,9 @@ function BatchCancelModal({ batch, onClose }) {
 export default function OwnerWorkOrderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isSuperFactoryWorker = role === 'SUPER_FACTORY_WORKER';
+  const basePath = isSuperFactoryWorker ? '/super-factory/production' : '/owner/production';
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useMinLoading(true);
   const [selectedBatch, setSelectedBatch] = useState(null);
@@ -378,12 +382,14 @@ export default function OwnerWorkOrderDetailPage() {
   if (loading && !detail) return <div className="p-8"><CardSkeleton lines={6} /></div>;
   if (!detail) return <div className="p-8 text-[#8E8878]">Không tìm thấy lệnh sản xuất</div>;
 
-  const { workOrder: wo, plan, batches, progressPct, currentBatchNumber, currentStepName } = detail;
+  const { workOrder: wo, plan, batches, progressPct, currentBatchNumber, currentStepName, packagingLoss } = detail;
   const color = progressColor(progressPct);
   const totalSteps = plan?.batchSteps?.length || 0;
 
-  const canCancel = ['SCHEDULED','PENDING_PLAN','PLANNED'].includes(wo.status);
-  const canRelease = wo.status === 'SCHEDULED';
+  // SUPER_FACTORY_WORKER chỉ xem chi tiết, không thao tác phát hành/gia hạn/huỷ lệnh
+  const canCancel = !isSuperFactoryWorker && ['SCHEDULED','PENDING_PLAN','PLANNED'].includes(wo.status);
+  const canRelease = !isSuperFactoryWorker && wo.status === 'SCHEDULED';
+  const canExtend = !isSuperFactoryWorker && ['SCHEDULED','PENDING_PLAN','PLANNED','IN_PROGRESS'].includes(wo.status);
 
   const doAction = async (status) => {
     setActing(true);
@@ -398,7 +404,7 @@ export default function OwnerWorkOrderDetailPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/owner/production')}
+        <button onClick={() => navigate(basePath)}
           className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
           <ArrowLeft size={18} />
         </button>
@@ -423,7 +429,7 @@ export default function OwnerWorkOrderDetailPage() {
               Phát hành lệnh
             </PrimaryButton>
           )}
-          {['SCHEDULED','PENDING_PLAN','PLANNED','IN_PROGRESS'].includes(wo.status) && (
+          {canExtend && (
             <SecondaryButton onClick={() => setShowExtend(true)}>
               Gia hạn
             </SecondaryButton>
@@ -436,7 +442,8 @@ export default function OwnerWorkOrderDetailPage() {
         </div>
       </div>
 
-      {/* Metrics */}
+      {/* Metrics — chỉ hiện cho Owner, SUPER_FACTORY_WORKER chỉ xem chi tiết */}
+      {!isSuperFactoryWorker && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Progress ring */}
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 flex items-center gap-4">
@@ -482,6 +489,45 @@ export default function OwnerWorkOrderDetailPage() {
           </p>
         </div>
       </div>
+      )}
+
+      {/* Card Hao hụt đóng gói — chỉ hiện khi TẤT CẢ mẻ đã hoàn thành và đã đối soát đủ
+          (packagingLoss null nếu còn mẻ chưa xong, hoặc chưa chuyển/chưa xác nhận hết kho TP) */}
+      {!isSuperFactoryWorker && packagingLoss && (
+        <div className={`rounded-2xl border shadow-sm p-5 ${packagingLoss.lossQty > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <FileWarning size={16} className={packagingLoss.lossQty > 0 ? 'text-amber-600' : 'text-emerald-600'} />
+            <p className={`text-sm font-semibold ${packagingLoss.lossQty > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
+              Hao hụt đóng gói (sau khi nhập kho thành phẩm)
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-[#8E8878]">Sản lượng thực tế</p>
+              <p className="text-lg font-bold text-[#1C1C1E] mt-0.5">{fmtNum(packagingLoss.totalActualOutputQty)} {wo.outputUnit}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#8E8878]">Đã nhập kho TP</p>
+              <p className="text-lg font-bold text-[#1C1C1E] mt-0.5">
+                {fmtNum(packagingLoss.totalPackagedQty)} {packagingLoss.packagedUnit}
+              </p>
+              <p className="text-xs text-[#8E8878]">({fmtNum(packagingLoss.totalActualReceivedWeight)} {wo.outputUnit})</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#8E8878]">Trọng lượng hao hụt</p>
+              <p className={`text-lg font-bold mt-0.5 ${packagingLoss.lossQty > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {fmtNum(packagingLoss.lossQty)} {wo.outputUnit}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[#8E8878]">Tỷ lệ hao hụt</p>
+              <p className={`text-lg font-bold mt-0.5 ${packagingLoss.lossQty > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {Number(packagingLoss.lossPct || 0).toFixed(2)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Roadmap mẻ */}
@@ -496,7 +542,11 @@ export default function OwnerWorkOrderDetailPage() {
               ) : (
                 batches.map(b => (
                   <BatchRoadmapRow key={b.id} batch={b}
-                    planBatchQty={plan?.batchQtyPerRun}
+                    planBatchQty={
+                      Array.isArray(plan?.batchQtyPerRunList) && plan.batchQtyPerRunList[(b.batchNumber||1)-1] != null
+                        ? plan.batchQtyPerRunList[(b.batchNumber||1)-1]
+                        : plan?.batchQtyPerRun
+                    }
                     onBatchCancelClick={setSelectedBatch} />
                 ))
               )}

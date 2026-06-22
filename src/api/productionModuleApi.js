@@ -129,6 +129,8 @@ export const factoryProdApi = {
     api.get('/api/factory/machines').then(r => r.data.data),
   createMachine: (body) =>
     api.post('/api/factory/machines', body).then(r => r.data.data),
+  getMachineMetrics: (id) =>
+    api.get(`/api/factory/machines/${id}/metrics`).then(r => r.data.data),
 
   // Maintenance
   listMaintenance: (year) =>
@@ -145,6 +147,75 @@ export const factoryProdApi = {
     api.get('/api/factory/step-templates').then(r => r.data.data),
   createStepTemplate: (body) =>
     api.post('/api/factory/step-templates', body).then(r => r.data.data),
+};
+
+// ── Finished Goods Warehouse APIs (Kho thành phẩm — Issue #1 + #2) ─────────────
+
+export const finishedGoodsApi = {
+  // Danh sách tổng hợp theo Tên thành phẩm — search + filter cận date (mọi role liên quan xem được)
+  listSummary: (q, expiryBeforeMs) =>
+    api.get('/api/factory/finished-goods', { params: { q, expiryBeforeMs } }).then(r => r.data.data),
+  // Danh sách kho bán hàng (loại SALE) — cho dropdown chọn kho đích khi chuyển kho (FACTORY_ACCOUNTANT)
+  listSaleWarehouses: () =>
+    api.get('/api/factory-accountant/finished-goods/sale-warehouses').then(r => r.data.data),
+  // Xuất kho — cần lý do (chỉ FACTORY_ACCOUNTANT)
+  exportGoods: (body) =>
+    api.post('/api/factory-accountant/finished-goods/export', body).then(r => r.data.data),
+  // Chuyển kho — cần kho đích (kho bán hàng), tự chuyển ngày SX + HSD (chỉ FACTORY_ACCOUNTANT)
+  transferGoods: (body) =>
+    api.post('/api/factory-accountant/finished-goods/transfer', body).then(r => r.data.data),
+  // Lịch sử giao dịch xuất/chuyển kho (chỉ FACTORY_ACCOUNTANT)
+  listTransactions: (productName, page = 0, size = 20) =>
+    api.get('/api/factory-accountant/finished-goods/transactions', { params: { productName, page, size } }).then(r => r.data.data),
+};
+
+// ── Kho bán thành phẩm + Kho Scrap + Phiếu chuyển kho + Biên bản hao hụt ──────
+// (quy trình "đóng gói & hao hụt" 4 bước)
+
+export const semiFinishedGoodsApi = {
+  // Bước 1 — xem tồn kho bán thành phẩm (mọi role liên quan xem được)
+  listSummary: (q) =>
+    api.get('/api/factory/semi-finished-goods', { params: { q } }).then(r => r.data.data),
+  // Bước 1 — xem kho Scrap (hàng lỗi)
+  listScrap: (page = 0, size = 20) =>
+    api.get('/api/factory/scrap-stock', { params: { page, size } }).then(r => r.data.data),
+  // Bước 2 — Trưởng xưởng/NV xưởng lập phiếu chuyển kho bán TP → kho TP
+  createTransfer: (body) =>
+    api.post('/api/factory/semi-finished-transfers', body).then(r => r.data.data),
+  listTransfers: (status, page = 0, size = 20) =>
+    api.get('/api/factory/semi-finished-transfers', { params: { status, page, size } }).then(r => r.data.data),
+  getTransfer: (id) =>
+    api.get(`/api/factory/semi-finished-transfers/${id}`).then(r => r.data.data),
+  // Bước 3+4 — FACTORY_ACCOUNTANT xác nhận nhận → tự tính hao hụt
+  listTransfersForAccountant: (status, page = 0, size = 20) =>
+    api.get('/api/factory-accountant/semi-finished-transfers', { params: { status, page, size } }).then(r => r.data.data),
+  getTransferForAccountant: (id) =>
+    api.get(`/api/factory-accountant/semi-finished-transfers/${id}`).then(r => r.data.data),
+  confirmReceive: (id, body) =>
+    api.post(`/api/factory-accountant/semi-finished-transfers/${id}/receive`, body).then(r => r.data.data),
+  // Biên bản hao hụt đóng gói
+  listLossReportsForAccountant: (productName, page = 0, size = 20) =>
+    api.get('/api/factory-accountant/packaging-loss-reports', { params: { productName, page, size } }).then(r => r.data.data),
+  listLossReportsForOwner: (productName, page = 0, size = 20) =>
+    api.get('/api/owner/production/packaging-loss-reports', { params: { productName, page, size } }).then(r => r.data.data),
+  // Xuất Excel 3 biểu mẫu (trả về blob — FE tự tạo link tải xuống)
+  exportTransferOut: (id) =>
+    api.get(`/api/factory/semi-finished-transfers/${id}/export-out`, { responseType: 'blob' }),
+  exportTransferIn: (id) =>
+    api.get(`/api/factory-accountant/semi-finished-transfers/${id}/export-in`, { responseType: 'blob' }),
+  exportLossReportForAccountant: (id) =>
+    api.get(`/api/factory-accountant/packaging-loss-reports/${id}/export`, { responseType: 'blob' }),
+  exportLossReportForOwner: (id) =>
+    api.get(`/api/owner/production/packaging-loss-reports/${id}/export`, { responseType: 'blob' }),
+};
+
+// ⚠️ CHỈ DÙNG TRONG MÔI TRƯỜNG TEST — xoá sạch + khởi tạo lại dữ liệu module
+// sản xuất. Hành động KHÔNG THỂ HOÀN TÁC. Xem ProductionResetController phía
+// backend để biết chi tiết phạm vi & thứ tự xoá. Xoá khối này (và nút bấm
+// tương ứng ở UI) trước khi deploy lên môi trường có dữ liệu thật.
+export const productionResetApi = {
+  resetOnly: () => api.post('/api/owner/production-reset/reset-only').then(r => r.data.data),
+  resetAndSeed: () => api.post('/api/owner/production-reset/reset-and-seed').then(r => r.data.data),
 };
 
 // ── Upload APIs ───────────────────────────────────────────────────────────────

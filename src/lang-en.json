@@ -123,6 +123,8 @@
     "operator": "Operator",
     "shipper": "Delivery",
     "factory_worker": "Factory Worker",
+    "super_factory_worker": "Factory Manager",
+    "factory_accountant": "Factory Accountant",
     "hr": "HR"
   },
   "nav": {
@@ -162,9 +164,16 @@
     "quotation": "Quotation",
     "delivering": "Orders",
     "machine_manage": "Machines & Maintenance",
+    "machine_metrics": "Machine metrics",
     "certificates": "Certificates",
     "driver_attendance": "Driver ODO Log",
-    "material_requests": "Material Requests"
+    "material_requests": "Material Requests",
+    "material_stock": "Factory Material Stock",
+    "finished_goods": "Finished Goods Stock",
+    "work_order_history": "Work Order History",
+    "semi_finished_goods": "Semi-finished Goods",
+    "semi_finished_transfers": "Semi-finished Transfers",
+    "packaging_loss_reports": "Packaging Loss Reports"
   },
   "profile": {
     "my_profile": "My Profile",

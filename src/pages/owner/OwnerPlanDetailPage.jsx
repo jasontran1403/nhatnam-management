@@ -17,6 +17,7 @@ import {
 import {
   ownerProdApi, STATUS_LABELS, progressColor, fmtDate, fmtNum, fmtCurrency,
 } from '../../api/productionModuleApi';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -75,6 +76,10 @@ function ChartTooltip({ active, payload, label, unit = '' }) {
 export default function OwnerPlanDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isSuperFactoryWorker = role === 'SUPER_FACTORY_WORKER';
+  const basePath = isSuperFactoryWorker ? '/super-factory/production' : '/owner/production';
+  const woBasePath = isSuperFactoryWorker ? '/super-factory/production/work-orders' : '/owner/production/work-orders';
   const [plan, setPlan]       = useState(null);
   const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useMinLoading(true);
@@ -157,7 +162,7 @@ export default function OwnerPlanDetailPage() {
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/owner/production')}
+        <button onClick={() => navigate(basePath)}
           className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
           <ArrowLeft size={18} />
         </button>
@@ -169,12 +174,7 @@ export default function OwnerPlanDetailPage() {
           <p className="text-sm text-[#8E8878] mt-0.5">{plan.title}</p>
         </div>
         <div className="flex gap-2">
-          {plan.status === 'ACTIVE' && (
-            <PrimaryButton onClick={() => navigate(`/owner/production?createWO=${plan.id}`)}>
-              <Plus size={14} /> Tạo lệnh
-            </PrimaryButton>
-          )}
-          {canCancel && (
+          {canCancel && !isSuperFactoryWorker && (
             <DangerButton loading={acting} onClick={async () => {
               if (!confirm('Huỷ kế hoạch sẽ huỷ tất cả lệnh chưa hoàn thành. Xác nhận?')) return;
               setActing(true);
@@ -185,7 +185,8 @@ export default function OwnerPlanDetailPage() {
         </div>
       </div>
 
-      {/* ── KPI cards ── */}
+      {/* ── KPI cards — chỉ hiện cho Owner ── */}
+      {!isSuperFactoryWorker && (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Progress ring */}
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 flex items-center gap-4">
@@ -221,8 +222,10 @@ export default function OwnerPlanDetailPage() {
           )}
         </div>
       </div>
+      )}
 
-      {/* ── Charts row ── */}
+      {/* ── Charts row — chỉ hiện cho Owner ── */}
+      {!isSuperFactoryWorker && (
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
 
         {/* Area chart: tích luỹ theo thời gian */}
@@ -265,9 +268,10 @@ export default function OwnerPlanDetailPage() {
           </SectionCard>
         </div>
       </div>
+      )}
 
-      {/* Bar chart: sản lượng từng lệnh */}
-      {qtyBarData.length > 0 && (
+      {/* Bar chart: sản lượng từng lệnh — chỉ hiện cho Owner */}
+      {!isSuperFactoryWorker && qtyBarData.length > 0 && (
         <SectionCard>
           <SectionHeader title={`Sản lượng từng lệnh (${plan.outputUnit})`} />
           <div className="p-4">
@@ -292,16 +296,7 @@ export default function OwnerPlanDetailPage() {
 
       {/* ── Work orders table ── */}
       <SectionCard>
-        <SectionHeader title={`Lệnh sản xuất (${orders.length})`}
-          action={
-            plan.status === 'ACTIVE' && (
-              <button onClick={() => navigate(`/owner/production?createWO=${plan.id}`)}
-                className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline">
-                <Plus size={12} /> Tạo lệnh
-              </button>
-            )
-          }
-        />
+        <SectionHeader title={`Lệnh sản xuất (${orders.length})`} />
         <div className="divide-y divide-black/5">
           {orders.length === 0 ? (
             <p className="text-sm text-[#8E8878] italic text-center py-10">Chưa có lệnh sản xuất nào</p>
@@ -312,7 +307,7 @@ export default function OwnerPlanDetailPage() {
               const isActive = o.status === 'IN_PROGRESS';
               return (
                 <button key={o.id}
-                  onClick={() => navigate(`/owner/production/work-orders/${o.id}`)}
+                  onClick={() => navigate(`${woBasePath}/${o.id}`)}
                   className="w-full px-5 py-4 flex items-center gap-4 hover:bg-[#FAF7F2] transition-colors text-left group">
                   {/* Status dot */}
                   <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isActive ? 'animate-pulse' : ''}`}
@@ -338,16 +333,48 @@ export default function OwnerPlanDetailPage() {
                     </p>
                   </div>
 
-                  {/* Progress bar */}
+                  {/* Progress bar — nếu đã có packagingLoss (mọi mẻ xong + đối soát đủ kho TP)
+                      thì đổi sang hiển thị % giữ được (xanh) / % hao hụt (đỏ) kèm label hao hụt.
+                      Nếu chưa có (còn đang sản xuất / chưa đối soát) thì vẫn hiển thị tiến độ như cũ. */}
                   <div className="w-36 hidden sm:block">
-                    <div className="flex justify-between mb-1 text-[10px]">
-                      <span className="text-[#8E8878]">{fmtNum(o.accumulatedQty)} / {fmtNum(o.plannedQty)} {o.outputUnit}</span>
-                      <span className="font-bold" style={{ color: oColor.hex }}>{oPct.toFixed(0)}%</span>
-                    </div>
-                    <div className="h-1.5 bg-black/5 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all${isActive ? ' animate-pulse' : ''}`}
-                        style={{ width: `${Math.min(oPct,100)}%`, backgroundColor: oColor.hex }} />
-                    </div>
+                    {o.packagingLoss ? (
+                      (() => {
+                        const loss = o.packagingLoss;
+                        const lossPct = Number(loss.lossPct || 0);
+                        // Làm tròn % hao hụt hiển thị lên ít nhất 1% nếu có hao hụt thật (dù tính ra <1%),
+                        // để phần đỏ luôn nhìn thấy được trên progress bar theo đúng yêu cầu hiển thị.
+                        const displayLossPct = loss.lossQty > 0 ? Math.max(1, Math.round(lossPct)) : 0;
+                        const keepPct = 100 - displayLossPct;
+                        return (
+                          <>
+                            <div className="flex justify-between mb-1 text-[10px]">
+                              <span className="text-[#8E8878]">{fmtNum(loss.totalActualReceivedWeight)} / {fmtNum(loss.totalActualOutputQty)} {o.outputUnit}</span>
+                              <span className={`font-bold ${loss.lossQty > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{keepPct}%</span>
+                            </div>
+                            <div className="h-1.5 bg-black/5 rounded-full overflow-hidden flex">
+                              <div className="h-full bg-emerald-500" style={{ width: `${keepPct}%` }} />
+                              {displayLossPct > 0 && <div className="h-full bg-red-500" style={{ width: `${displayLossPct}%` }} />}
+                            </div>
+                            {loss.lossQty > 0 && (
+                              <p className="text-[10px] text-red-500 font-medium mt-1">
+                                Hao hụt {fmtNum(loss.lossQty)} {o.outputUnit} / {lossPct.toFixed(2)}%
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <>
+                        <div className="flex justify-between mb-1 text-[10px]">
+                          <span className="text-[#8E8878]">{fmtNum(o.accumulatedQty)} / {fmtNum(o.plannedQty)} {o.outputUnit}</span>
+                          <span className="font-bold" style={{ color: oColor.hex }}>{oPct.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-black/5 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all${isActive ? ' animate-pulse' : ''}`}
+                            style={{ width: `${Math.min(oPct,100)}%`, backgroundColor: oColor.hex }} />
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <ArrowLeft size={14} className="text-[#8E8878] rotate-180 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />

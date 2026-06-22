@@ -29,6 +29,8 @@ export const ROLE_LABELS = {
     SUPER_WAREHOUSE: 'Trưởng kho',
 
     FACTORY_WORKER: 'Nhân viên Xưởng',
+    SUPER_FACTORY_WORKER: 'Trưởng Xưởng Sản Xuất',
+    FACTORY_ACCOUNTANT: 'Kế Toán Kho Xưởng',
 
     HR: 'Hành chính Nhân sự',
 
@@ -40,6 +42,8 @@ const ROLE_COLORS = {
     SELLER: 'bg-blue-100 text-blue-700', SUPER_SELLER: 'bg-blue-200 text-blue-800',
     ACCOUNTANT: 'bg-green-100 text-green-700', SUPER_ACCOUNTANT: 'bg-green-200 text-green-800',
     WAREHOUSE: 'bg-orange-100 text-orange-700', SUPER_WAREHOUSE: 'bg-orange-200 text-orange-800',
+    FACTORY_WORKER: 'bg-cyan-100 text-cyan-700', SUPER_FACTORY_WORKER: 'bg-cyan-200 text-cyan-800',
+    FACTORY_ACCOUNTANT: 'bg-teal-100 text-teal-700',
     HR: 'bg-pink-100 text-pink-700', SUPERADMIN: 'bg-gray-200 text-gray-800',
 };
 

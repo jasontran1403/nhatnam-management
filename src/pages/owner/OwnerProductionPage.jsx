@@ -605,11 +605,15 @@ function RecipeDetailModal({ recipe: r, onClose }) {
                   {idx + 1}
                 </span>
                 <span className="font-medium flex-1">{s.stepName}</span>
-                {s.requiresQc && (
+                {s.controlType === 'PHOTO_WEIGHT' || (!s.controlType && s.requiresQc) ? (
                   <span className="flex items-center gap-0.5 text-amber-600 text-xs flex-shrink-0">
-                    <ShieldCheck size={12} /> KS
+                    <ShieldCheck size={12} /> KS cân ký
                   </span>
-                )}
+                ) : s.controlType === 'VISUAL' ? (
+                  <span className="flex items-center gap-0.5 text-blue-600 text-xs flex-shrink-0">
+                    <Eye size={12} /> KS trực quan
+                  </span>
+                ) : null}
                 <span className="text-[#8E8878] text-xs flex-shrink-0">{fmtDuration(s.durationMinutes)}</span>
                 {s.machineName && (
                   <span className="flex items-center gap-1 text-[#8E8878] text-xs flex-shrink-0">

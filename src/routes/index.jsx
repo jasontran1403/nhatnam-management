@@ -8,7 +8,8 @@ import { useLang } from '../context/LangContext';
 import {
   adminNavRaw, ownerNavRaw, hrNavRaw, sellerNavRaw, warehouseNavRaw,
   superWarehouseNavRaw, accountantNavRaw, superAccountantNavRaw,
-  operatorNavRaw, factoryWorkerNavRaw, buildNav, ROLE_DEFAULT_PATH,
+  operatorNavRaw, factoryWorkerNavRaw, superFactoryWorkerNavRaw, factoryAccountantNavRaw,
+  buildNav, ROLE_DEFAULT_PATH,
 } from '../components/layout/navConfigs';
 
 // Auth
@@ -36,6 +37,9 @@ import DebtOrdersPage from '../pages/shared/DebtOrdersPage';
 import OwnerProductionDashboard from '../pages/owner/OwnerProductionDashboard';
 import OwnerPlanDetailPage from '../pages/owner/OwnerPlanDetailPage';
 import OwnerWorkOrderDetailPage from '../pages/owner/OwnerWorkOrderDetailPage';
+
+// Production v2 — Super Factory Worker (dashboard riêng, tái sử dụng trang chi tiết của Owner)
+import SuperFactoryWorkerDashboard from '../pages/super_factory_worker/SuperFactoryWorkerDashboard';
 
 // Production legacy — Owner (giữ lại cho các route cũ còn trong nav)
 import OwnerMachinePage from '../pages/owner/OwnerMachinePage';
@@ -82,13 +86,18 @@ import OperatorMyBatchesPage from '../pages/operator/OperatorMyBatchesPage';
 import OperatorLandingpagePage from '../pages/operator/OperatorLandingpagePage';
 
 // Factory Worker
-import { FactoryDashboardPage, FactoryHistoryPage } from '../pages/factory_worker/FactoryWorkerPages';
-import FactoryCreateBatchPage from '../pages/factory_worker/FactoryCreateBatchPage';
 import FactoryOrdersPage from '../pages/factory_worker/FactoryOrdersPage';
 import FactoryRecipesPage from '../pages/factory_worker/FactoryRecipesPage';
 import FactoryMachinePage from '../pages/factory_worker/FactoryMachinePage';
+import FactoryMachineMetricsPage from '../pages/factory_worker/FactoryMachineMetricsPage';
 import FactoryMaterialRequestPage from '../pages/factory_worker/FactoryMaterialRequestPage';
 import FactoryMaterialStockPage from '../pages/factory_worker/FactoryMaterialStockPage';
+import FactoryFinishedGoodsPage from '../pages/factory_worker/FactoryFinishedGoodsPage';
+import FactorySemiFinishedGoodsPage from '../pages/factory_worker/FactorySemiFinishedGoodsPage';
+
+// Factory Accountant (Kế toán kho xưởng)
+import FactoryAccountantTransfersPage from '../pages/factory_accountant/FactoryAccountantTransfersPage';
+import PackagingLossReportsPage from '../pages/factory_accountant/PackagingLossReportsPage';
 
 import QuotationPage from '../pages/seller/QuotationPage';
 import SuperAccountantCustomers from '../pages/accountant/SuperAccountantCustomers';
@@ -122,7 +131,7 @@ export default function AppRoutes() {
 
       {/* ── HR */}
       <Route path="/hr"
-        element={<TranslatedLayout rawNav={hrNavRaw} allowedRoles={['HR']} />}>
+        element={<TranslatedLayout rawNav={hrNavRaw} allowedRoles={['HR', 'SUPER_ACCOUNTANT', 'OWNER', 'ADMIN']} />}>
         <Route index element={<Navigate to="/hr/manage" replace />} />
         <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
@@ -166,6 +175,9 @@ export default function AppRoutes() {
         <Route path="production" element={<OwnerProductionDashboard />} />
         <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
         <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
+        <Route path="production/machines/:id/metrics" element={<FactoryMachineMetricsPage />} />
+        {/* Biên bản hao hụt đóng gói — chỉ xem, không thao tác */}
+        <Route path="production/loss-reports" element={<PackagingLossReportsPage />} />
 
         {/* Production legacy — vẫn giữ để backward compat với nav cũ */}
         <Route path="production/old" element={<OwnerProductionPage />} />
@@ -246,6 +258,8 @@ export default function AppRoutes() {
         <Route path="suppliers" element={<SupplierManagementPage />} />
         <Route path="material-requests" element={<SuperAccountantMaterialRequestPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
+        <Route path="manage" element={<HrPage />} />
+        <Route path="salaries" element={<HrSalaryStatusPage />} />
       </Route>
 
       {/* ── OPERATOR */}
@@ -260,18 +274,52 @@ export default function AppRoutes() {
         <Route path="landingpage" element={<OperatorLandingpagePage />} />
       </Route>
 
-      {/* ── FACTORY WORKER */}
+      {/* ── FACTORY WORKER (đã thu gọn: không còn kế hoạch / tạo lệnh SX / biến thể) */}
       <Route path="/factory"
         element={<TranslatedLayout rawNav={factoryWorkerNavRaw} allowedRoles={['FACTORY_WORKER']} />}>
         <Route index element={<Navigate to="/factory/orders" replace />} />
-        <Route path="dashboard" element={<FactoryDashboardPage />} />
         <Route path="orders" element={<FactoryOrdersPage />} />
-        <Route path="recipes" element={<FactoryRecipesPage />} />
-        <Route path="batches" element={<FactoryCreateBatchPage />} />
-        <Route path="history" element={<FactoryHistoryPage />} />
         <Route path="machines" element={<FactoryMachinePage />} />
         <Route path="material-requests" element={<FactoryMaterialRequestPage />} />
+        {/* Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm */}
+        <Route path="semi-finished-goods" element={<FactorySemiFinishedGoodsPage />} />
+        <Route path="finished-goods" element={<FactoryFinishedGoodsPage />} />
+      </Route>
+
+      {/* ── SUPER FACTORY WORKER ── */}
+      <Route path="/super-factory"
+        element={<TranslatedLayout rawNav={superFactoryWorkerNavRaw} allowedRoles={['SUPER_FACTORY_WORKER']} />}>
+        <Route index element={<Navigate to="/super-factory/production" replace />} />
+        {/* Dashboard mặc định: grant kế hoạch/lệnh SX + grant máy móc (2 tab) */}
+        <Route path="production" element={<SuperFactoryWorkerDashboard />} />
+        <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
+        <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
+        {/* Đặt hàng (phiếu đặt hàng) — được tạo + xác nhận nhận hàng */}
+        <Route path="material-requests" element={<FactoryMaterialRequestPage />} />
+        {/* Quản lý tồn kho nguyên liệu */}
         <Route path="material-stock" element={<FactoryMaterialStockPage />} />
+        {/* Quản lý biến thể sản xuất */}
+        <Route path="recipes" element={<FactoryRecipesPage />} />
+        {/* Quản lý máy móc & bảo trì — được tạo bảo trì định kỳ + hỏng sửa chữa đột xuất */}
+        <Route path="machines" element={<FactoryMachinePage />} />
+        {/* Lịch sử lệnh sản xuất */}
+        <Route path="history" element={<FactoryOrdersPage />} />
+        {/* Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm */}
+        <Route path="semi-finished-goods" element={<FactorySemiFinishedGoodsPage />} />
+        {/* Quản lý tồn kho thành phẩm của xưởng */}
+        <Route path="finished-goods" element={<FactoryFinishedGoodsPage />} />
+      </Route>
+
+      {/* ── FACTORY ACCOUNTANT (Kế toán kho xưởng) ── */}
+      <Route path="/factory-accountant"
+        element={<TranslatedLayout rawNav={factoryAccountantNavRaw} allowedRoles={['FACTORY_ACCOUNTANT']} />}>
+        <Route index element={<Navigate to="/factory-accountant/transfers" replace />} />
+        {/* Xác nhận nhận phiếu chuyển kho bán thành phẩm — mặc định khi vào */}
+        <Route path="transfers" element={<FactoryAccountantTransfersPage />} />
+        {/* Quản lý kho thành phẩm — chuyển kho bán hàng / xuất kho */}
+        <Route path="finished-goods" element={<FactoryFinishedGoodsPage />} />
+        {/* Biên bản hao hụt đóng gói */}
+        <Route path="loss-reports" element={<PackagingLossReportsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

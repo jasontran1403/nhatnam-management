@@ -3,11 +3,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ClipboardList, ChevronLeft, ChevronRight, ZoomIn, Factory,
   Lock, Camera, X, Plus, Loader2, CheckCircle2, AlertTriangle,
-  Trash2, ChevronDown, ChevronUp, XCircle, PackageX,
+  Trash2, ChevronDown, ChevronUp, XCircle, PackageX, Eye,
 } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import Modal from '../../components/ui/Modal';
+import DatePicker from '../../components/ui/DatePicker';
+import { addMonths, addYears, startOfDay } from 'date-fns';
 import {
   PrimaryButton, SecondaryButton, Field, inputCls, EmptyState,
 } from '../../components/ui';
@@ -184,13 +186,28 @@ function FactoryGantt({ orders, onOrderClick }) {
 }
 
 // ── Confirm Step Modal ────────────────────────────────────────────────────────
+// Badge hiển thị loại kiểm soát của 1 bước: không KS (ẩn) / KS trực quan (👁) / KS hình ảnh cân ký (📷)
+function StepControlBadge({ step }) {
+  const controlType = step.controlType || (step.requiresQC === true || step.requiresQc === true ? 'PHOTO_WEIGHT' : 'NONE');
+  if (controlType === 'PHOTO_WEIGHT') {
+    return <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-normal">📷 KS cân ký</span>;
+  }
+  if (controlType === 'VISUAL') {
+    return <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-normal">👁 KS trực quan</span>;
+  }
+  return null;
+}
+
 function ConfirmStepModal({ batch, step, onClose, onSaved }) {
   const toast = useToast();
   const [notes, setNotes] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const requiresPhoto = step.requiresQC===true || step.requiresQc===true;
+  // controlType: NONE (không KS) | VISUAL (KS trực quan — chỉ cần xác nhận, không cần ảnh) | PHOTO_WEIGHT (KS hình ảnh cân ký — bắt buộc ảnh)
+  const controlType = step.controlType || (step.requiresQC === true || step.requiresQc === true ? 'PHOTO_WEIGHT' : 'NONE');
+  const requiresPhoto = controlType === 'PHOTO_WEIGHT';
+  const isVisualControl = controlType === 'VISUAL';
   const submit = async () => {
     if (requiresPhoto && attachments.length===0) { setErr('Bước này yêu cầu chụp ảnh kết quả trước khi xác nhận'); return; }
     setSaving(true);
@@ -210,22 +227,29 @@ function ConfirmStepModal({ batch, step, onClose, onSaved }) {
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>Xác nhận hoàn thành</PrimaryButton></div>}>
       <div className="space-y-4">
         {err&&<p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-        {requiresPhoto?(
+        {requiresPhoto ? (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
             <AlertTriangle size={16} className="text-amber-600 flex-shrink-0"/>
-            <p className="text-xs text-amber-700">Bước có kiểm soát — bắt buộc chụp ảnh kết quả (cân ký)</p>
+            <p className="text-xs text-amber-700">Kiểm soát hình ảnh (cân ký) — bắt buộc chụp ảnh kết quả</p>
           </div>
-        ):(
+        ) : isVisualControl ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
+            <Eye size={16} className="text-blue-600 flex-shrink-0"/>
+            <p className="text-xs text-blue-700">Kiểm soát trực quan — kiểm tra bằng mắt rồi xác nhận, không cần ảnh</p>
+          </div>
+        ) : (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
             <CheckCircle2 size={16} className="text-blue-600 flex-shrink-0"/>
             <p className="text-xs text-blue-700">Bước không yêu cầu kiểm soát — có thể xác nhận không cần ảnh</p>
           </div>
         )}
-        <ImageUploader label="Ảnh xác nhận" required={requiresPhoto} uploaded={attachments}
-          onUpload={async(files)=>{
-            const urls = await productionUploadApi.uploadBatchStepImages(batch.id, step.stepSequence, files);
-            setAttachments(p=>[...p,...urls]); return urls;
-          }}/>
+        {requiresPhoto && (
+          <ImageUploader label="Ảnh xác nhận" required={requiresPhoto} uploaded={attachments}
+            onUpload={async(files)=>{
+              const urls = await productionUploadApi.uploadBatchStepImages(batch.id, step.stepSequence, files);
+              setAttachments(p=>[...p,...urls]); return urls;
+            }}/>
+        )}
         <Field label="Ghi chú"><textarea className={inputCls} rows={2} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Kết quả, ghi chú..."/></Field>
       </div>
     </Modal>
@@ -236,9 +260,21 @@ function ConfirmStepModal({ batch, step, onClose, onSaved }) {
 function CompleteBatchInline({ batch, wo, onSaved }) {
   const toast = useToast();
   const [qty, setQty] = useState('');
+  const [scrapQty, setScrapQty] = useState('');
+  const [scrapReason, setScrapReason] = useState('');
+  const [manufactureDate, setManufactureDate] = useState(Date.now());
+  const [expiryDate, setExpiryDate] = useState(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const planQty = Number(wo?.plan?.batchQtyPerRun || batch?.plannedQty || 0);
+  // Lấy sản lượng kế hoạch đúng cho MẺ NÀY từ danh sách từng mẻ (batchQtyPerRunList)
+  // Mẻ 1 → index 0, Mẻ 2 → index 1, ...
+  const batchIndex = (batch?.batchNumber || 1) - 1;
+  const batchQtyList = wo?.plan?.batchQtyPerRunList;
+  const planQty = Number(
+    (Array.isArray(batchQtyList) && batchQtyList[batchIndex] != null)
+      ? batchQtyList[batchIndex]
+      : (wo?.plan?.batchQtyPerRun || batch?.plannedQty || 0)
+  );
   const lowQty = planQty > 0 ? planQty * 0.95 : 0;
   const highQty = planQty > 0 ? planQty * 1.05 : Infinity;
   const validate = (v) => {
@@ -252,10 +288,23 @@ function CompleteBatchInline({ batch, wo, onSaved }) {
   };
   const submit = async () => {
     const e = validate(qty); if (e) { setErr(e); return; }
+    if (!manufactureDate) { setErr('Vui lòng chọn ngày sản xuất'); return; }
+    if (!expiryDate) { setErr('Vui lòng chọn hạn sử dụng'); return; }
+    if (expiryDate < manufactureDate) { setErr('Hạn sử dụng không được trước ngày sản xuất'); return; }
+    const scrapN = Number(scrapQty || 0);
+    if (scrapN < 0 || isNaN(scrapN)) { setErr('Sản lượng lỗi không hợp lệ'); return; }
+    if (scrapN > 0 && !scrapReason.trim()) { setErr('Vui lòng nhập lý do lỗi/huỷ cho sản lượng không đạt'); return; }
     setSaving(true);
     try {
-      const res = await factoryProdApi.completeBatch(batch.id, {actualOutputQty: Number(qty)});
-      toast(`Đã hoàn thành mẻ ${res?.batchCode||batch.batchCode} — ${qty} ${wo.outputUnit}`, 'success', 4000);
+      const res = await factoryProdApi.completeBatch(batch.id, {
+        actualOutputQty: Number(qty),
+        manufactureDate,
+        expiryDate,
+        scrapQty: scrapN > 0 ? scrapN : null,
+        scrapReason: scrapN > 0 ? scrapReason.trim() : null,
+      });
+      const scrapNote = scrapN > 0 ? ` · ${scrapN} ${wo.outputUnit} lỗi (kho scrap)` : '';
+      toast(`Đã hoàn thành mẻ ${res?.batchCode||batch.batchCode} — ${qty} ${wo.outputUnit} đạt (kho bán thành phẩm)${scrapNote}`, 'success', 4000);
       onSaved(true); // true = báo cho parent biết vừa hoàn thành 1 mẻ, để hỏi "bắt đầu mẻ tiếp theo?"
     } catch(ex) {
       toast(ex?.response?.data?.message||'Có lỗi xảy ra','error');
@@ -271,11 +320,55 @@ function CompleteBatchInline({ batch, wo, onSaved }) {
         </p>
       )}
       {err&&<p className="text-xs text-red-600">{err}</p>}
-      <div className="flex gap-2">
-        <input type="number" step="0.1" className={inputCls+' flex-1'} placeholder={`Sản lượng (${wo.outputUnit})`}
-          value={qty} onChange={e=>{setQty(e.target.value);setErr('');}}/>
-        <PrimaryButton loading={saving} disabled={!qty} onClick={submit}>Hoàn thành mẻ</PrimaryButton>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <p className="text-[10px] text-[#8E8878] mb-1">Sản lượng đạt ({wo.outputUnit})</p>
+          <input type="number" step="0.1" className={inputCls} placeholder={`Đạt (${wo.outputUnit})`}
+            value={qty} onChange={e=>{setQty(e.target.value);setErr('');}}/>
+        </div>
+        <div>
+          <p className="text-[10px] text-[#8E8878] mb-1">Sản lượng lỗi/huỷ ({wo.outputUnit})</p>
+          <input type="number" step="0.1" min="0" className={inputCls} placeholder="0"
+            value={scrapQty} onChange={e=>{setScrapQty(e.target.value);setErr('');}}/>
+        </div>
       </div>
+      {Number(scrapQty || 0) > 0 && (
+        <div>
+          <p className="text-[10px] text-[#8E8878] mb-1">Lý do lỗi/huỷ</p>
+          <input type="text" className={inputCls} placeholder="VD: Cháy khâu luộc, rách vỏ bao..."
+            value={scrapReason} onChange={e=>{setScrapReason(e.target.value);setErr('');}}/>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <p className="text-[10px] text-[#8E8878] mb-1">Ngày sản xuất</p>
+          <DatePicker value={manufactureDate} onChange={d=>{setManufactureDate(d);setErr('');}} placeholder="Ngày SX" />
+        </div>
+        <div>
+          <p className="text-[10px] text-[#8E8878] mb-1">Hạn sử dụng</p>
+          <div className="flex flex-wrap gap-1.5 mb-1.5">
+            {[
+              { label: '6 tháng', fn: (d) => addMonths(d, 6) },
+              { label: '1 năm', fn: (d) => addYears(d, 1) },
+              { label: '3 năm', fn: (d) => addYears(d, 3) },
+            ].map(opt => {
+              const computed = startOfDay(opt.fn(new Date(manufactureDate || Date.now()))).getTime();
+              const active = expiryDate === computed;
+              return (
+                <button key={opt.label} type="button"
+                  onClick={() => { setExpiryDate(computed); setErr(''); }}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-colors ${
+                    active ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#F0EBE3] border-black/5'
+                  }`}>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <DatePicker value={expiryDate} onChange={d=>{setExpiryDate(d);setErr('');}} placeholder="Tự chọn ngày" minDate={manufactureDate ? new Date(manufactureDate) : undefined} />
+        </div>
+      </div>
+      <PrimaryButton loading={saving} disabled={!qty} onClick={submit} className="w-full">Hoàn thành mẻ — nhập kho bán thành phẩm</PrimaryButton>
     </div>
   );
 }
@@ -556,8 +649,9 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
                       {batch.steps.map((step,i)=>{
                         const done=step.status==='COMPLETED';
                         const running=step.status==='IN_PROGRESS';
-                        const prevDone=batch.steps.slice(0,i).every(s=>s.status==='COMPLETED');
-                        const canStart=!done&&!running&&batch.status==='IN_PROGRESS'&&prevDone;
+                        // Không còn ràng buộc thứ tự — có thể bắt đầu nhiều bước song song
+                        // (VD: rửa thịt và luộc thịt cùng lúc, không cần rửa hết mới luộc).
+                        const canStart=!done&&!running&&batch.status==='IN_PROGRESS';
                         const isStartingThis = startingStepId === step.id;
                         return (
                           <div key={step.id} className="flex gap-4 relative">
@@ -571,7 +665,7 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
                               <div className="flex items-center justify-between gap-2">
                                 <p className={`text-sm font-semibold ${done?'text-emerald-700':running?'text-[#C9A84C]':'text-[#8E8878]'}`}>
                                   {step.stepName}
-                                  {(step.requiresQC||step.requiresQc)&&<span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-normal">📷 KS</span>}
+                                  <StepControlBadge step={step} />
                                   {running&&<span className="ml-2 text-[10px] bg-[#C9A84C]/10 text-[#C9A84C] px-2 py-0.5 rounded-full font-normal">Đang thực hiện</span>}
                                 </p>
                                 {running&&<PrimaryButton onClick={()=>onConfirmStep(batch,step)} className="!px-3 !py-1 text-xs flex-shrink-0">Hoàn thành</PrimaryButton>}
@@ -807,7 +901,7 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
                   <li key={i} className="flex items-center gap-2 text-sm bg-[#FAF7F2] rounded-xl px-3 py-2">
                     <span className="w-5 h-5 rounded-full bg-[#1C1C1E] text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">{i+1}</span>
                     <span className="font-medium flex-1 text-[#1C1C1E]">{s.stepName}</span>
-                    {s.requiresQc && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">📷 KS</span>}
+                    <StepControlBadge step={s} />
                     <span className="text-xs text-[#8E8878]">{s.durationMinutes} phút</span>
                     {s.machineName && <span className="text-xs text-[#8E8878]">⚙ {s.machineName}</span>}
                   </li>

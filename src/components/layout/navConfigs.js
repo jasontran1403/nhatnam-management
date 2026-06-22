@@ -7,7 +7,7 @@ import {
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
-  Wrench, Settings2, ShoppingBag, Archive,
+  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -89,6 +89,9 @@ export const superAccountantNavRaw = [
   { to: '/super-accountant/warehouse-receipts', labelKey: 'warehouse_receipts', icon: FileText },
   // ── Phiếu đặt hàng nguyên liệu xưởng ────────────────────────────────────
   { to: '/super-accountant/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
+  // ── Quản lý nhân sự (SUPER_ACCOUNTANT được xem HR) ───────────────────────
+  { to: '/super-accountant/manage', labelKey: 'hr_manage', icon: UserCog },
+  { to: '/super-accountant/salaries', labelKey: 'salaries', icon: Receipt },
 ];
 
 export const operatorNavRaw = [
@@ -99,17 +102,41 @@ export const operatorNavRaw = [
   { to: '/operator/landingpage', labelKey: 'landing_page', icon: Globe },
 ];
 
+// ── FACTORY_WORKER: chỉ còn lệnh SX (mặc định), máy móc & bảo trì (chỉ báo sự cố),
+// phiếu đặt hàng (chỉ xác nhận nhận hàng), kho bán thành phẩm (chuyển kho TP),
+// kho thành phẩm xưởng. ────────────────────────────────────────────────────────
 export const factoryWorkerNavRaw = [
-  { to: '/factory/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/factory/orders', labelKey: 'work_orders', icon: ClipboardList },
-  { to: '/factory/recipes', labelKey: 'production_variants', icon: FlaskConical },
-  { to: '/factory/batches', labelKey: 'factory_batches', icon: ClipboardCheck },
-  { to: '/factory/history', labelKey: 'batch_history', icon: Package },
   { to: '/factory/machines', labelKey: 'machine_manage', icon: Wrench },
-  // ── Phiếu đặt hàng nguyên liệu ───────────────────────────────────────────
+  // ── Phiếu đặt hàng nguyên liệu (chỉ xác nhận nhận hàng) ──────────────────
   { to: '/factory/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
-  // ── Kho nguyên liệu xưởng ────────────────────────────────────────────────
-  { to: '/factory/material-stock', labelKey: 'material_stock', icon: Archive },
+  // ── Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm ──
+  { to: '/factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  // ── Kho thành phẩm xưởng ──────────────────────────────────────────────────
+  // { to: '/factory/finished-goods', labelKey: 'finished_goods', icon: Package },
+];
+
+// ── SUPER_FACTORY_WORKER: dashboard sản xuất (kế hoạch/lệnh SX + máy móc) là
+// mặc định, cộng thêm đặt hàng, tồn kho NVL, biến thể SX, máy móc & bảo trì
+// (định kỳ + đột xuất), lịch sử lệnh SX, kho bán thành phẩm, tồn kho thành phẩm. ──
+export const superFactoryWorkerNavRaw = [
+  { to: '/super-factory/production', labelKey: 'production', icon: Factory },
+  { to: '/super-factory/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
+  { to: '/super-factory/material-stock', labelKey: 'material_stock', icon: Archive },
+  { to: '/super-factory/recipes', labelKey: 'production_variants', icon: FlaskConical },
+  { to: '/super-factory/machines', labelKey: 'machine_manage', icon: Wrench },
+  { to: '/super-factory/history', labelKey: 'work_order_history', icon: ClipboardList },
+  { to: '/super-factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  // { to: '/super-factory/finished-goods', labelKey: 'finished_goods', icon: Package },
+];
+
+// ── FACTORY_ACCOUNTANT (Kế toán kho xưởng): xác nhận nhận phiếu chuyển kho bán
+// thành phẩm (mặc định), quản lý kho thành phẩm (chuyển kho bán hàng/xuất kho),
+// biên bản hao hụt đóng gói. ─────────────────────────────────────────────────
+export const factoryAccountantNavRaw = [
+  { to: '/factory-accountant/transfers', labelKey: 'semi_finished_transfers', icon: FileText },
+  { to: '/factory-accountant/finished-goods', labelKey: 'finished_goods', icon: Package },
+  { to: '/factory-accountant/loss-reports', labelKey: 'packaging_loss_reports', icon: ClipboardCheck },
 ];
 
 /** Helper: build translated nav items from raw config + t function */
@@ -132,6 +159,8 @@ export const accountantNav = accountantNavRaw.map(({ to, labelKey, icon }) => ({
 export const superAccountantNav = superAccountantNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 export const operatorNav = operatorNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 export const factoryWorkerNav = factoryWorkerNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
+export const superFactoryWorkerNav = superFactoryWorkerNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
+export const factoryAccountantNav = factoryAccountantNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 
 // Default path cho từng role
 export const ROLE_DEFAULT_PATH = {
@@ -143,7 +172,9 @@ export const ROLE_DEFAULT_PATH = {
   SUPER_ACCOUNTANT: '/super-accountant/dashboard',
   OPERATOR: '/operator/products',
   SHIPPER: '/shipper/dashboard',
-  FACTORY_WORKER: '/factory/dashboard',
+  FACTORY_WORKER: '/factory/orders',
+  SUPER_FACTORY_WORKER: '/super-factory/production',
+  FACTORY_ACCOUNTANT: '/factory-accountant/transfers',
   SELLER: '/seller/dashboard',
   SUPER_SELLER: '/seller/dashboard',
   HR: '/hr/manage',

@@ -59,7 +59,8 @@ export default function DatePicker({ value, onChange, placeholder = 'Chọn ngà
       id="__datepicker_portal__"
       style={{
         position: 'absolute',
-        top: pos.top,
+        // top: pos.top,
+        bottom: 0,
         left: align === 'right' ? undefined : pos.left,
         right: align === 'right' ? 0 : undefined,
         zIndex: 99999,

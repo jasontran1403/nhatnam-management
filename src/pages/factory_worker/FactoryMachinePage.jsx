@@ -8,6 +8,7 @@ import Modal from '../../components/ui/Modal';
 import { PrimaryButton, SecondaryButton, Field, inputCls } from '../../components/ui';
 import { ownerProdApi, factoryProdApi, fmtDate, fmtCurrency } from '../../api/productionModuleApi';
 import { useToast } from '../../components/common/Toast';
+import { useAuth } from '../../context/AuthContext';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const imgUrl = p => p?.startsWith('http') ? p : BASE_URL + '/api/auth' + p;
@@ -544,6 +545,10 @@ function CompleteMaintenanceModal({ item, onClose, onSaved }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function FactoryMachinePage() {
+  const { role } = useAuth();
+  // FACTORY_WORKER chỉ được báo sự cố (CORRECTIVE); SUPER_FACTORY_WORKER (và Owner truy cập
+  // qua route khác) được tạo cả bảo trì định kỳ (PREVENTIVE) lẫn báo sự cố.
+  const canCreatePreventive = role !== 'FACTORY_WORKER';
   const [machines, setMachines] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -600,10 +605,12 @@ export default function FactoryMachinePage() {
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => setCreateFor({ machine, type: 'PREVENTIVE' })}
-                      className="flex items-center gap-1 text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 font-medium">
-                      <Plus size={12}/> Bảo trì định kỳ
-                    </button>
+                    {canCreatePreventive && (
+                      <button onClick={() => setCreateFor({ machine, type: 'PREVENTIVE' })}
+                        className="flex items-center gap-1 text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 font-medium">
+                        <Plus size={12}/> Bảo trì định kỳ
+                      </button>
+                    )}
                     <button onClick={() => setCreateFor({ machine, type: 'CORRECTIVE' })}
                       className="flex items-center gap-1 text-xs px-3 py-1.5 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-medium">
                       <AlertTriangle size={12}/> Báo sự cố

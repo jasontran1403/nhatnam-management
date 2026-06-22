@@ -1,10 +1,10 @@
 // src/pages/owner/OwnerProductionDashboard.jsx
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Factory, Plus, Clock, CheckCircle2, AlertTriangle,
   Wrench, Settings2, ChevronRight, CalendarRange,
-  ClipboardList, X, Loader2, Package, Search, ChevronDown,
+  ClipboardList, X, Loader2, Package, Search, ChevronDown, FileWarning, RotateCcw,
 } from 'lucide-react';
 import { startOfDay } from 'date-fns';
 import useMinLoading from '../../hooks/useMinLoading';
@@ -16,18 +16,18 @@ import {
 } from '../../components/ui';
 import { StatCardSkeleton } from '../../components/ui/Skeleton';
 import {
-  ownerProdApi, STATUS_LABELS, progressColor, fmtDate, fmtNum, fmtCurrency,
+  ownerProdApi, STATUS_LABELS, progressColor, fmtDate, fmtNum, fmtCurrency, productionResetApi,
 } from '../../api/productionModuleApi';
 import { factoryProductApi } from '../../api/productionApi';
 
 const BRAND = '#C9A84C';
 
-function StatusBadge({ status }) {
+export function StatusBadge({ status }) {
   const cfg = STATUS_LABELS[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
-function KpiCard({ icon: Icon, label, value, sub, color = 'text-[#C9A84C]', iconBg = 'bg-[#C9A84C]/10' }) {
+export function KpiCard({ icon: Icon, label, value, sub, color = 'text-[#C9A84C]', iconBg = 'bg-[#C9A84C]/10' }) {
   return (
     <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
       <div className="flex items-start justify-between">
@@ -136,7 +136,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
 }
 
 // ── Multi-product select (tag-style, search + dropdown) ────────────────────────
-function MultiProductSelect({ allProducts, selected, onChange, onCreateNew }) {
+function MultiProductSelect({ allProducts, selected, onChange }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -175,7 +175,10 @@ function MultiProductSelect({ allProducts, selected, onChange, onCreateNew }) {
         </div>
       )}
 
-      {/* Input search + dropdown */}
+      {/* Input search + dropdown — chỉ chọn từ danh sách sản phẩm đã có sẵn
+          (đã liên kết Ingredient), KHÔNG cho tạo sản phẩm mới ở đây nữa. Sản
+          phẩm mới phải được tạo riêng từ trang quản lý sản phẩm xưởng, luôn
+          gắn với 1 Ingredient có sẵn để dữ liệu không bị lệch khi chuyển kho. */}
       <div className="relative">
         <div
           className={`${inputCls} flex items-center gap-2 cursor-pointer min-h-[38px]`}
@@ -219,67 +222,8 @@ function MultiProductSelect({ allProducts, selected, onChange, onCreateNew }) {
                 ))
               )}
             </div>
-            {onCreateNew && (
-              <button
-                className="w-full text-left px-3 py-2.5 text-sm text-[#C9A84C] font-semibold
-                  border-t border-[#F0EBE3] hover:bg-[#FAF7F2] flex items-center gap-1.5"
-                onClick={() => { setOpen(false); onCreateNew(q); }}
-              >
-                <Plus size={13} /> Tạo sản phẩm mới{q ? `: "${q}"` : ''}
-              </button>
-            )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Quick create product modal ────────────────────────────────────────────────
-function QuickCreateProductModal({ initialName = '', onClose, onCreated }) {
-  const [name, setName] = useState(initialName);
-  const [unit, setUnit] = useState('Kg');
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
-
-  const submit = async () => {
-    if (!name.trim()) { setErr('Vui lòng nhập tên sản phẩm'); return; }
-    setSaving(true);
-    try {
-      const created = await factoryProductApi.create({ name: name.trim(), unit });
-      onCreated(created);
-    } catch (e) {
-      setErr(e?.response?.data?.message || 'Có lỗi xảy ra');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[#1C1C1E]">Tạo sản phẩm mới</h3>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
-        </div>
-        {err && <p className="text-xs text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-xl">{err}</p>}
-        <div className="space-y-3">
-          <Field label="Tên sản phẩm *">
-            <input autoFocus className={inputCls} placeholder="VD: Xúc xích heo"
-              value={name} onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && submit()} />
-          </Field>
-          <Field label="Đơn vị">
-            <select className={inputCls} value={unit} onChange={e => setUnit(e.target.value)}>
-              {['Kg', 'Gr', 'Hộp', 'Túi', 'Cái', 'Thùng'].map(u => <option key={u}>{u}</option>)}
-            </select>
-          </Field>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button onClick={onClose}
-            className="flex-1 py-2 text-sm text-[#8E8878] border border-[#E8DDD0] rounded-xl hover:bg-[#FAF7F2]">
-            Huỷ
-          </button>
-          <PrimaryButton className="flex-1" onClick={submit} loading={saving}>Tạo sản phẩm</PrimaryButton>
-        </div>
       </div>
     </div>
   );
@@ -316,9 +260,21 @@ const GANTT_CSS = `
     rgba(191,219,254,0.85) 3px,rgba(191,219,254,0.85) 8px
   ) !important;
 }
+.mday-occupied-done {
+  background: repeating-linear-gradient(
+    45deg,rgba(16,185,129,0.55),rgba(16,185,129,0.55) 3px,
+    rgba(255,255,255,0.85) 3px,rgba(255,255,255,0.85) 8px
+  ) !important;
+}
+.mday-occupied-future {
+  background: repeating-linear-gradient(
+    45deg,rgba(234,179,8,0.65),rgba(234,179,8,0.65) 3px,
+    rgba(255,255,255,0.85) 3px,rgba(255,255,255,0.85) 8px
+  ) !important;
+}
 .mday-inactive { background: rgba(0,0,0,0.04) !important; }
 `;
-function GanttCSS() { return <style>{GANTT_CSS}</style>; }
+export function GanttCSS() { return <style>{GANTT_CSS}</style>; }
 
 // ── DragScroll ────────────────────────────────────────────────────────────────
 function DragScroll({ children, weeksBack, totalWeeks, className = '' }) {
@@ -343,8 +299,8 @@ function DragScroll({ children, weeksBack, totalWeeks, className = '' }) {
     <div ref={ref} className={'overflow-x-auto select-none scrollbar-hide ' + className}
       style={{ cursor: 'grab' }}
       onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
-      onTouchStart={e=>{ts.current=e.touches[0].pageX;tsc.current=ref.current.scrollLeft;}}
-      onTouchMove={e=>{ref.current.scrollLeft=tsc.current-(e.touches[0].pageX-ts.current);}}>
+      onTouchStart={e => { ts.current = e.touches[0].pageX; tsc.current = ref.current.scrollLeft; }}
+      onTouchMove={e => { ref.current.scrollLeft = tsc.current - (e.touches[0].pageX - ts.current); }}>
       {children}
     </div>
   );
@@ -352,41 +308,41 @@ function DragScroll({ children, weeksBack, totalWeeks, className = '' }) {
 
 // ── PRODUCTION GANTT ──────────────────────────────────────────────────────────
 const WO_STATUS_COLOR = {
-  SCHEDULED:'#6366f1',PENDING_PLAN:'#f59e0b',PLANNED:'#3b82f6',
-  IN_PROGRESS:'#f97316',COMPLETED:'#10b981',CANCELLED:'#9ca3af',
+  SCHEDULED: '#6366f1', PENDING_PLAN: '#f59e0b', PLANNED: '#3b82f6',
+  IN_PROGRESS: '#f97316', COMPLETED: '#10b981', CANCELLED: '#9ca3af',
 };
 
-function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
+export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
   const WEEKS_BACK = 8, WEEKS_TOTAL = 32;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const mon = new Date(today); mon.setDate(today.getDate()-((today.getDay()+6)%7)); mon.setHours(0,0,0,0);
-  const wStart = new Date(mon); wStart.setDate(mon.getDate()-WEEKS_BACK*7);
-  const weeks = Array.from({length:WEEKS_TOTAL},(_,i)=>{const d=new Date(wStart);d.setDate(wStart.getDate()+i*7);return d;});
-  const totalMs=WEEKS_TOTAL*7*86400000, startMs=wStart.getTime(), endMs=startMs+totalMs;
-  const pL=ms=>Math.max(0,Math.min(100,((ms-startMs)/totalMs)*100));
-  const pW=(s,e)=>Math.max(0.5,((Math.min(e,endMs)-Math.max(s,startMs))/totalMs)*100);
-  const todayPct=pL(today.getTime());
-  const COL_W=110;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const mon = new Date(today); mon.setDate(today.getDate() - ((today.getDay() + 6) % 7)); mon.setHours(0, 0, 0, 0);
+  const wStart = new Date(mon); wStart.setDate(mon.getDate() - WEEKS_BACK * 7);
+  const weeks = Array.from({ length: WEEKS_TOTAL }, (_, i) => { const d = new Date(wStart); d.setDate(wStart.getDate() + i * 7); return d; });
+  const totalMs = WEEKS_TOTAL * 7 * 86400000, startMs = wStart.getTime(), endMs = startMs + totalMs;
+  const pL = ms => Math.max(0, Math.min(100, ((ms - startMs) / totalMs) * 100));
+  const pW = (s, e) => Math.max(0.5, ((Math.min(e, endMs) - Math.max(s, startMs)) / totalMs) * 100);
+  const todayPct = pL(today.getTime());
+  const COL_W = 110;
 
-  const ordersByPlan={};
-  (orders||[]).forEach(o=>{const k=o.productionPlanId||'__none__';if(!ordersByPlan[k])ordersByPlan[k]=[];ordersByPlan[k].push(o);});
-  const rows=[];
-  (plans||[]).forEach(p=>{rows.push({type:'plan',data:p});(ordersByPlan[p.id]||[]).forEach(o=>rows.push({type:'order',data:o}));});
-  (ordersByPlan['__none__']||[]).forEach(o=>rows.push({type:'order',data:o}));
-  if(!rows.length) return <EmptyState icon={CalendarRange} title="Chưa có kế hoạch hoặc lệnh sản xuất nào"/>;
+  const ordersByPlan = {};
+  (orders || []).forEach(o => { const k = o.productionPlanId || '__none__'; if (!ordersByPlan[k]) ordersByPlan[k] = []; ordersByPlan[k].push(o); });
+  const rows = [];
+  (plans || []).forEach(p => { rows.push({ type: 'plan', data: p }); (ordersByPlan[p.id] || []).forEach(o => rows.push({ type: 'order', data: o })); });
+  (ordersByPlan['__none__'] || []).forEach(o => rows.push({ type: 'order', data: o }));
+  if (!rows.length) return <EmptyState icon={CalendarRange} title="Chưa có kế hoạch hoặc lệnh sản xuất nào" />;
 
-  const LABEL_W=200, ROW_H=36, PLAN_ROW_H=44;
+  const LABEL_W = 200, ROW_H = 36, PLAN_ROW_H = 44;
   return (
     <div>
-      <GanttCSS/>
+      <GanttCSS />
       <div className="flex">
-        <div style={{width:LABEL_W,flexShrink:0}}>
-          <div style={{height:32}}/>
-          {rows.map((row,ri)=>{
-            const isPlan=row.type==='plan'; const d=row.data; const h=isPlan?PLAN_ROW_H:ROW_H;
+        <div style={{ width: LABEL_W, flexShrink: 0 }}>
+          <div style={{ height: 32 }} />
+          {rows.map((row, ri) => {
+            const isPlan = row.type === 'plan'; const d = row.data; const h = isPlan ? PLAN_ROW_H : ROW_H;
             return (
-              <div key={`lbl-${ri}`} style={{height:h,marginBottom:4}} className="flex items-center pr-3">
-                {isPlan?(
+              <div key={`lbl-${ri}`} style={{ height: h, marginBottom: 4 }} className="flex items-center pr-3">
+                {isPlan ? (
                   <div className="w-full">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold tracking-wide">KH</span>
@@ -394,10 +350,10 @@ function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
                     </div>
                     <p className="text-[10px] text-[#8E8878] truncate mt-0.5">{d.title}</p>
                   </div>
-                ):(
+                ) : (
                   <div className="pl-3 w-full">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-[#C9A84C] flex-shrink-0"/>
+                      <span className="w-1 h-1 rounded-full bg-[#C9A84C] flex-shrink-0" />
                       <span className="text-[11px] font-semibold text-[#1C1C1E] truncate">{d.workOrderCode}</span>
                     </div>
                     <p className="text-[9px] text-[#8E8878] truncate pl-2.5">{d.productName}</p>
@@ -408,43 +364,45 @@ function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
           })}
         </div>
         <DragScroll weeksBack={WEEKS_BACK} totalWeeks={WEEKS_TOTAL} className="flex-1 min-w-0">
-          <div style={{minWidth:WEEKS_TOTAL*COL_W,position:'relative'}}>
-            <div className="flex sticky top-0 z-30" style={{height:32,background:'white'}}>
-              {weeks.map((w,i)=>{
-                const isNow=w<=today&&today<new Date(w.getTime()+7*86400000);
-                const isMonth=w.getDate()<=7;
+          <div style={{ minWidth: WEEKS_TOTAL * COL_W, position: 'relative' }}>
+            <div className="flex sticky top-0 z-30" style={{ height: 32, background: 'white' }}>
+              {weeks.map((w, i) => {
+                const isNow = w <= today && today < new Date(w.getTime() + 7 * 86400000);
+                const isMonth = w.getDate() <= 7;
                 return (
-                  <div key={i} style={{flex:'0 0 '+COL_W+'px',width:COL_W}}
+                  <div key={i} style={{ flex: '0 0 ' + COL_W + 'px', width: COL_W }}
                     className={`flex-shrink-0 flex items-center justify-center border-l text-[10px] font-medium
-                      ${isNow?'text-[#C9A84C] font-bold':'text-[#8E8878]'}
-                      ${isMonth?'border-l-2 border-[#C9A84C]/30 bg-[#FAF7F2]':'border-black/5'}`}>
-                    {isMonth?<span className="font-bold">{w.toLocaleDateString('vi',{month:'short'})}</span>:`${w.getDate()}/${w.getMonth()+1}`}
+                      ${isNow ? 'text-[#C9A84C] font-bold' : 'text-[#8E8878]'}
+                      ${isMonth ? 'border-l-2 border-[#C9A84C]/30 bg-[#FAF7F2]' : 'border-black/5'}`}>
+                    {isMonth ? <span className="font-bold">{w.toLocaleDateString('vi', { month: 'short' })}</span> : `${w.getDate()}/${w.getMonth() + 1}`}
                   </div>
                 );
               })}
             </div>
             <div className="absolute top-0 bottom-0 z-20 pointer-events-none"
-              style={{left:`${todayPct}%`,width:1.5,background:`linear-gradient(to bottom,${BRAND},${BRAND}55)`}}/>
-            {rows.map((row,ri)=>{
-              const isPlan=row.type==='plan'; const d=row.data; const h=isPlan?PLAN_ROW_H:ROW_H;
-              const cancelled=d.status==='CANCELLED'; const pct=Number(d.progressPct||0);
-              const s=Number(isPlan?d.startDate:d.scheduledStartDate); const e=Number(isPlan?d.endDate:d.plannedEndDate);
-              if(!s) return <div key={`row-${ri}`} style={{height:h,marginBottom:4}}/>;
-              const left=pL(s); const width=pW(s,e);
-              const color=isPlan?(cancelled?'#9ca3af':'#3b82f6'):(WO_STATUS_COLOR[d.status]||'#9ca3af');
-              const isActive=d.status==='IN_PROGRESS';
+              style={{ left: `${todayPct}%`, width: 1.5, background: `linear-gradient(to bottom,${BRAND},${BRAND}55)` }} />
+            {rows.map((row, ri) => {
+              const isPlan = row.type === 'plan'; const d = row.data; const h = isPlan ? PLAN_ROW_H : ROW_H;
+              const cancelled = d.status === 'CANCELLED'; const pct = Number(d.progressPct || 0);
+              const s = Number(isPlan ? d.startDate : d.scheduledStartDate); const e = Number(isPlan ? d.endDate : d.plannedEndDate);
+              if (!s) return <div key={`row-${ri}`} style={{ height: h, marginBottom: 4 }} />;
+              const left = pL(s); const width = pW(s, e);
+              const color = isPlan ? (cancelled ? '#9ca3af' : '#3b82f6') : (WO_STATUS_COLOR[d.status] || '#9ca3af');
+              const isActive = d.status === 'IN_PROGRESS';
               return (
-                <div key={`row-${ri}`} style={{height:h,marginBottom:4,position:'relative'}}>
-                  <div className="absolute inset-0" style={{background:ri%2===0?'transparent':'rgba(0,0,0,0.012)'}}/>
-                  <button onClick={()=>isPlan?onPlanClick(d.id):onOrderClick(d.id)}
-                    style={{position:'absolute',top:isPlan?6:8,bottom:isPlan?6:8,left:`${left}%`,width:`${width}%`,minWidth:3,
-                      borderRadius:isPlan?6:4,overflow:'hidden',cursor:'pointer',border:'none',padding:0,
-                      background:isPlan?(cancelled?'#d1d5db':'#3b82f6'):(isActive?`linear-gradient(90deg,${color}99 0%,${color}ff 40%,#ffffff44 50%,${color}ff 60%,${color}99 100%)`:cancelled?color+'88':color),
-                      borderLeft:isPlan?`3px solid ${cancelled?'#9ca3af':'#2563eb'}`:undefined,
-                      boxShadow:'0 1px 3px rgba(0,0,0,0.15)'}}
-                    className={isActive?'gantt-shimmer':''}>
+                <div key={`row-${ri}`} style={{ height: h, marginBottom: 4, position: 'relative' }}>
+                  <div className="absolute inset-0" style={{ background: ri % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.012)' }} />
+                  <button onClick={() => isPlan ? onPlanClick(d.id) : onOrderClick(d.id)}
+                    style={{
+                      position: 'absolute', top: isPlan ? 6 : 8, bottom: isPlan ? 6 : 8, left: `${left}%`, width: `${width}%`, minWidth: 3,
+                      borderRadius: isPlan ? 6 : 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: 0,
+                      background: isPlan ? (cancelled ? '#d1d5db' : '#3b82f6') : (isActive ? `linear-gradient(90deg,${color}99 0%,${color}ff 40%,#ffffff44 50%,${color}ff 60%,${color}99 100%)` : cancelled ? color + '88' : color),
+                      borderLeft: isPlan ? `3px solid ${cancelled ? '#9ca3af' : '#2563eb'}` : undefined,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                    }}
+                    className={isActive ? 'gantt-shimmer' : ''}>
                     <div className="h-full w-full flex items-center px-2 overflow-hidden">
-                      {isPlan&&!cancelled&&<div style={{position:'absolute',left:0,top:0,bottom:0,width:`${Math.min(pct,100)}%`,background:'rgba(255,255,255,0.2)',pointerEvents:'none'}}/>}
+                      {isPlan && !cancelled && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(pct, 100)}%`, background: 'rgba(255,255,255,0.2)', pointerEvents: 'none' }} />}
                       <span className="text-white text-[10px] font-bold whitespace-nowrap relative z-10 drop-shadow-sm">{pct.toFixed(0)}%</span>
                     </div>
                   </button>
@@ -463,53 +421,53 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
   const dayDate = new Date(dayMs);
   const dow = dayDate.getDay();
   const monOffset = (dow === 0 ? -6 : 1 - dow);
-  const monDate = new Date(dayDate); monDate.setDate(dayDate.getDate() + monOffset); monDate.setHours(0,0,0,0);
-  const satDate = new Date(monDate); satDate.setDate(monDate.getDate() + 5); satDate.setHours(23,59,59,999);
+  const monDate = new Date(dayDate); monDate.setDate(dayDate.getDate() + monOffset); monDate.setHours(0, 0, 0, 0);
+  const satDate = new Date(monDate); satDate.setDate(monDate.getDate() + 5); satDate.setHours(23, 59, 59, 999);
   const weekStart = monDate.getTime(); const weekEnd = satDate.getTime();
-  const fmt = d => new Date(d).toLocaleDateString('vi', {weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
-  const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit'}) : '—';
-  const dayStart = new Date(dayMs); dayStart.setHours(8,0,0,0);
-  const dayEnd = new Date(dayMs); dayEnd.setHours(18,0,0,0);
+  const fmt = d => new Date(d).toLocaleDateString('vi', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' }) : '—';
+  const dayStart = new Date(dayMs); dayStart.setHours(8, 0, 0, 0);
+  const dayEnd = new Date(dayMs); dayEnd.setHours(18, 0, 0, 0);
   const dayMaints = maintenanceList.filter(mt => {
-    const ms2=Number(mt.actualStart||mt.plannedStart); const me=Number(mt.actualEnd||mt.plannedEnd);
-    return ms2&&me&&ms2<dayEnd.getTime()&&me>dayStart.getTime();
+    const ms2 = Number(mt.actualStart || mt.plannedStart); const me = Number(mt.actualEnd || mt.plannedEnd);
+    return ms2 && me && ms2 < dayEnd.getTime() && me > dayStart.getTime();
   });
-  const totalDowntimeHours = dayMaints.reduce((sum,mt)=>{
-    const ms2=Math.max(Number(mt.actualStart||mt.plannedStart),dayStart.getTime());
-    const me=Math.min(Number(mt.actualEnd||mt.plannedEnd),dayEnd.getTime());
-    return sum+Math.max(0,(me-ms2)/3600000);
-  },0);
-  const workHours = Math.max(0,10-totalDowntimeHours);
+  const totalDowntimeHours = dayMaints.reduce((sum, mt) => {
+    const ms2 = Math.max(Number(mt.actualStart || mt.plannedStart), dayStart.getTime());
+    const me = Math.min(Number(mt.actualEnd || mt.plannedEnd), dayEnd.getTime());
+    return sum + Math.max(0, (me - ms2) / 3600000);
+  }, 0);
+  const workHours = Math.max(0, 10 - totalDowntimeHours);
   return (
-    <Modal open title={`${machine.name} — ${dayDate.toLocaleDateString('vi',{weekday:'long',day:'2-digit',month:'2-digit'})}`} onClose={onClose} size="md"
+    <Modal open title={`${machine.name} — ${dayDate.toLocaleDateString('vi', { weekday: 'long', day: '2-digit', month: '2-digit' })}`} onClose={onClose} size="md"
       footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
       <div className="space-y-4">
         <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1.5">
           <div className="flex justify-between"><span className="text-[#8E8878]">Tuần làm việc</span><span className="font-semibold">{fmt(weekStart)} → {fmt(weekEnd)}</span></div>
           <div className="flex justify-between"><span className="text-[#8E8878]">Ca làm việc</span><span className="font-semibold text-emerald-600">08:00 – 18:00 (10 giờ/ngày)</span></div>
-          <div className="flex justify-between"><span className="text-[#8E8878]">Giờ thực tế hôm nay</span><span className={`font-bold ${workHours<10?'text-amber-600':'text-emerald-600'}`}>{workHours.toFixed(1)}h</span></div>
-          {totalDowntimeHours>0&&<div className="flex justify-between"><span className="text-[#8E8878]">Giờ ngưng máy</span><span className="font-bold text-red-600">{totalDowntimeHours.toFixed(1)}h</span></div>}
+          <div className="flex justify-between"><span className="text-[#8E8878]">Giờ thực tế hôm nay</span><span className={`font-bold ${workHours < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{workHours.toFixed(1)}h</span></div>
+          {totalDowntimeHours > 0 && <div className="flex justify-between"><span className="text-[#8E8878]">Giờ ngưng máy</span><span className="font-bold text-red-600">{totalDowntimeHours.toFixed(1)}h</span></div>}
         </div>
-        {dayMaints.length>0?(
+        {dayMaints.length > 0 ? (
           <div className="space-y-2">
             <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Lý do ngưng máy</p>
-            {dayMaints.map((mt,i)=>{
-              const ms2=Number(mt.actualStart||mt.plannedStart); const me=Number(mt.actualEnd||mt.plannedEnd);
+            {dayMaints.map((mt, i) => {
+              const ms2 = Number(mt.actualStart || mt.plannedStart); const me = Number(mt.actualEnd || mt.plannedEnd);
               return (
                 <div key={i} className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${mt.maintenanceType==='CORRECTIVE'?'bg-red-200 text-red-800':'bg-blue-100 text-blue-700'}`}>
-                      {mt.maintenanceType==='CORRECTIVE'?'🚨 Sự cố':'🔧 Bảo trì'}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${mt.maintenanceType === 'CORRECTIVE' ? 'bg-red-200 text-red-800' : 'bg-blue-100 text-blue-700'}`}>
+                      {mt.maintenanceType === 'CORRECTIVE' ? '🚨 Sự cố' : '🔧 Bảo trì'}
                     </span>
                     <span className="text-sm font-semibold text-[#1C1C1E]">{mt.title}</span>
                   </div>
                   <p className="text-xs text-[#8E8878]">{fmtTime(ms2)} → {fmtTime(me)}</p>
-                  {mt.vendorName&&<p className="text-xs text-[#8E8878]">Đơn vị: {mt.vendorName}</p>}
+                  {mt.vendorName && <p className="text-xs text-[#8E8878]">Đơn vị: {mt.vendorName}</p>}
                 </div>
               );
             })}
           </div>
-        ):(
+        ) : (
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700 font-medium text-center">✓ Máy hoạt động bình thường cả ngày</div>
         )}
       </div>
@@ -517,88 +475,121 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
   );
 }
 
-function MaintenanceGantt({ machines, maintenanceList, occupancyList, onItemClick }) {
-  const DAYS_BACK=30,DAYS_TOTAL=90,COL_W=120,LABEL_W=200,ROW_H=40,WORK_START_H=8,WORK_END_H=18;
-  const today=new Date();today.setHours(0,0,0,0);
-  const dStart=new Date(today);dStart.setDate(today.getDate()-DAYS_BACK);
-  const days=Array.from({length:DAYS_TOTAL},(_,i)=>{const d=new Date(dStart);d.setDate(dStart.getDate()+i);return d;});
-  const totalMs=DAYS_TOTAL*86400000,startMs=dStart.getTime(),endMs=startMs+totalMs;
-  const todayPct=((today.getTime()-startMs)/totalMs)*100;
-  const [clickedDay,setClickedDay]=useState(null);
-  const [clickedOccupancy,setClickedOccupancy]=useState(null);
-  const maintByMachine={};
-  (maintenanceList||[]).forEach(m=>{if(!maintByMachine[m.machineId])maintByMachine[m.machineId]=[];maintByMachine[m.machineId].push(m);});
-  const occByMachine={};
-  (occupancyList||[]).forEach(o=>{if(!occByMachine[o.machineId])occByMachine[o.machineId]=[];occByMachine[o.machineId].push(o);});
-  const rows=[];
-  (machines||[]).forEach(machine=>{
-    rows.push({type:'machine',data:machine});
-    const maints=maintByMachine[machine.id]||[];
-    const groups={};
-    maints.forEach(m=>{const key=m.title||m.id;if(!groups[key])groups[key]={title:m.title,items:[],maintenanceType:m.maintenanceType,status:m.status};groups[key].items.push(m);});
-    Object.values(groups).forEach(group=>rows.push({type:'maint',data:group,machine}));
+export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onItemClick, onMachineClick }) {
+  const DAYS_BACK = 30, DAYS_TOTAL = 90, COL_W = 120, LABEL_W = 200, ROW_H = 40, WORK_START_H = 8, WORK_END_H = 18;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dStart = new Date(today); dStart.setDate(today.getDate() - DAYS_BACK);
+  const days = Array.from({ length: DAYS_TOTAL }, (_, i) => { const d = new Date(dStart); d.setDate(dStart.getDate() + i); return d; });
+  const totalMs = DAYS_TOTAL * 86400000, startMs = dStart.getTime(), endMs = startMs + totalMs;
+  const todayPct = ((today.getTime() - startMs) / totalMs) * 100;
+  const [clickedDay, setClickedDay] = useState(null);
+  const [clickedOccupancy, setClickedOccupancy] = useState(null);
+  const maintByMachine = {};
+  (maintenanceList || []).forEach(m => { if (!maintByMachine[m.machineId]) maintByMachine[m.machineId] = []; maintByMachine[m.machineId].push(m); });
+  const occByMachine = {};
+  (occupancyList || []).forEach(o => { if (!occByMachine[o.machineId]) occByMachine[o.machineId] = []; occByMachine[o.machineId].push(o); });
+  const rows = [];
+  (machines || []).forEach(machine => {
+    rows.push({ type: 'machine', data: machine });
+    const maints = maintByMachine[machine.id] || [];
+    const groups = {};
+    maints.forEach(m => { const key = m.title || m.id; if (!groups[key]) groups[key] = { title: m.title, items: [], maintenanceType: m.maintenanceType, status: m.status }; groups[key].items.push(m); });
+    Object.values(groups).forEach(group => rows.push({ type: 'maint', data: group, machine }));
+
+    // ── Dòng riêng cho mỗi lệnh sản xuất đang/đã/sẽ chiếm máy này ──────────
+    // Group theo workOrderCode + stepName (1 lệnh có thể chạy nhiều mẻ nối tiếp
+    // cùng 1 bước/máy → gộp thành 1 dòng, show tất cả occurrence trong items)
+    const occs = occByMachine[machine.id] || [];
+    const occGroups = {};
+    occs.forEach(o => {
+      const key = `${o.workOrderCode || ''}__${o.stepName || ''}`;
+      if (!occGroups[key]) occGroups[key] = { workOrderCode: o.workOrderCode, stepName: o.stepName, items: [] };
+      occGroups[key].items.push(o);
+    });
+    Object.values(occGroups).forEach(group => rows.push({ type: 'occ', data: group, machine }));
   });
-  if(!machines||!machines.length) return <EmptyState icon={Settings2} title="Chưa có máy nào"/>;
-  const maintColor=item=>{
-    if(item.status==='COMPLETED') return '#22c55e';
-    if(item.status==='MISSED') return '#6b7280';
-    if(item.maintenanceType==='CORRECTIVE') return '#ef4444';
-    if(item.status==='IN_PROGRESS') return '#eab308';
+  if (!machines || !machines.length) return <EmptyState icon={Settings2} title="Chưa có máy nào" />;
+  const maintColor = item => {
+    if (item.status === 'COMPLETED') return '#22c55e';
+    if (item.status === 'MISSED') return '#6b7280';
+    if (item.maintenanceType === 'CORRECTIVE') return '#ef4444';
+    if (item.status === 'IN_PROGRESS') return '#eab308';
     return '#3b82f6';
   };
-  const getDayMaintOverlap=(machineMaints,dayMs)=>{
-    const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
-    return machineMaints.filter(mt=>{const ms2=Number(mt.actualStart||mt.plannedStart),me=Number(mt.actualEnd||mt.plannedEnd);return ms2&&me&&ms2<workEnd&&me>workStart;});
+  const getDayMaintOverlap = (machineMaints, dayMs) => {
+    const workStart = dayMs + WORK_START_H * 3600000, workEnd = dayMs + WORK_END_H * 3600000;
+    return machineMaints.filter(mt => { const ms2 = Number(mt.actualStart || mt.plannedStart), me = Number(mt.actualEnd || mt.plannedEnd); return ms2 && me && ms2 < workEnd && me > workStart; });
   };
-  const getDayOccupancyOverlap=(machineOcc,dayMs)=>{
-    const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
-    const nowMs=Date.now();
-    return (machineOcc||[]).filter(o=>{const ms2=Number(o.startedAt),me=o.completedAt?Number(o.completedAt):nowMs;return ms2&&ms2<workEnd&&me>workStart;});
+  // Occupancy = lịch hoạt động DỰ KIẾN của máy, không phụ thuộc giờ hiện tại.
+  // Điểm kết thúc dùng estimatedEndAt (đã tính ở backend = startedAt + durationMinutes
+  // nếu chưa hoàn thành, hoặc completedAt nếu đã xong) — không dùng Date.now().
+  // Không giới hạn theo giờ hành chính 8h-18h vì sản xuất có thể chạy ngoài giờ đó.
+  const getDayOccupancyOverlap = (machineOcc, dayMs) => {
+    const dayStart = dayMs, dayEnd = dayMs + 86400000;
+    return (machineOcc || []).filter(o => {
+      const ms2 = Number(o.startedAt);
+      const me = o.estimatedEndAt != null ? Number(o.estimatedEndAt) : (o.completedAt ? Number(o.completedAt) : ms2);
+      return ms2 && me && ms2 < dayEnd && me > dayStart;
+    });
   };
-  const WORK_MS=(WORK_END_H-WORK_START_H)*3600000;
-  const msToWorkLeft=ms=>{
-    const msDay=new Date(ms);msDay.setHours(0,0,0,0);
-    const di=Math.round((msDay.getTime()-dStart.getTime())/86400000);
-    const dayWorkStart=msDay.getTime()+WORK_START_H*3600000,dayWorkEnd=msDay.getTime()+WORK_END_H*3600000;
-    const clampedMs=Math.max(dayWorkStart,Math.min(ms,dayWorkEnd));
-    return di*COL_W+((clampedMs-dayWorkStart)/WORK_MS)*COL_W;
+
+  const WORK_MS = (WORK_END_H - WORK_START_H) * 3600000;
+  const msToWorkLeft = ms => {
+    const msDay = new Date(ms); msDay.setHours(0, 0, 0, 0);
+    const di = Math.round((msDay.getTime() - dStart.getTime()) / 86400000);
+    const dayWorkStart = msDay.getTime() + WORK_START_H * 3600000, dayWorkEnd = msDay.getTime() + WORK_END_H * 3600000;
+    const clampedMs = Math.max(dayWorkStart, Math.min(ms, dayWorkEnd));
+    return di * COL_W + ((clampedMs - dayWorkStart) / WORK_MS) * COL_W;
   };
-  const msToWorkWidth=(s,e)=>{
-    const sDay=new Date(s);sDay.setHours(0,0,0,0);const eDay=new Date(e);eDay.setHours(0,0,0,0);
-    const diS=Math.round((sDay.getTime()-dStart.getTime())/86400000),diE=Math.round((eDay.getTime()-dStart.getTime())/86400000);
-    let totalPx=0;
-    for(let di=diS;di<=diE;di++){
-      const dayMs2=dStart.getTime()+di*86400000,dayWorkStart=dayMs2+WORK_START_H*3600000,dayWorkEnd=dayMs2+WORK_END_H*3600000;
-      const segS=Math.max(s,dayWorkStart),segE=Math.min(e,dayWorkEnd);
-      if(segE>segS)totalPx+=((segE-segS)/WORK_MS)*COL_W;
+  const msToWorkWidth = (s, e) => {
+    const sDay = new Date(s); sDay.setHours(0, 0, 0, 0); const eDay = new Date(e); eDay.setHours(0, 0, 0, 0);
+    const diS = Math.round((sDay.getTime() - dStart.getTime()) / 86400000), diE = Math.round((eDay.getTime() - dStart.getTime()) / 86400000);
+    let totalPx = 0;
+    for (let di = diS; di <= diE; di++) {
+      const dayMs2 = dStart.getTime() + di * 86400000, dayWorkStart = dayMs2 + WORK_START_H * 3600000, dayWorkEnd = dayMs2 + WORK_END_H * 3600000;
+      const segS = Math.max(s, dayWorkStart), segE = Math.min(e, dayWorkEnd);
+      if (segE > segS) totalPx += ((segE - segS) / WORK_MS) * COL_W;
     }
-    return Math.max(4,totalPx);
+    return Math.max(4, totalPx);
   };
   return (
     <div>
-      <GanttCSS/>
+      <GanttCSS />
       <div className="flex">
-        <div style={{width:LABEL_W,flexShrink:0}}>
-          <div style={{height:32}}/>
-          {rows.map((row,ri)=>{
-            const isMachine=row.type==='machine';const d=row.data;
+        <div style={{ width: LABEL_W, flexShrink: 0 }}>
+          <div style={{ height: 32 }} />
+          {rows.map((row, ri) => {
+            const isMachine = row.type === 'machine'; const d = row.data;
             return (
-              <div key={`lbl-${ri}`} style={{height:ROW_H,marginBottom:4}} className="flex items-center pr-3">
-                {isMachine?(
+              <div key={`lbl-${ri}`} style={{ height: ROW_H, marginBottom: 4 }} className="flex items-center pr-3">
+                {isMachine ? (
                   <div className="flex items-center gap-2 w-full">
-                    {(()=>{
-                      const nowMs=Date.now();const machineMaintList=maintByMachine[d.id]||[];
-                      const inActiveMaint=machineMaintList.some(mt=>{const ms2=Number(mt.actualStart||mt.plannedStart),me=Number(mt.actualEnd||mt.plannedEnd);return ms2&&me&&nowMs>=ms2&&nowMs<=me;});
-                      const machineOccList=occByMachine[d.id]||[];
-                      const inActiveOcc=machineOccList.some(o=>{const ms2=Number(o.startedAt),me=o.completedAt?Number(o.completedAt):nowMs;return ms2&&nowMs>=ms2&&nowMs<=me;});
-                      const dotCls=inActiveMaint?'bg-red-400 animate-pulse':inActiveOcc?'bg-blue-400 animate-pulse':d.status==='ACTIVE'?'bg-emerald-400 animate-pulse':'bg-gray-300';
-                      return <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotCls}`}/>;
+                    {(() => {
+                      const nowMs = Date.now(); const machineMaintList = maintByMachine[d.id] || [];
+                      const inActiveMaint = machineMaintList.some(mt => { const ms2 = Number(mt.actualStart || mt.plannedStart), me = Number(mt.actualEnd || mt.plannedEnd); return ms2 && me && nowMs >= ms2 && nowMs <= me; });
+                      const machineOccList = occByMachine[d.id] || [];
+                      const inActiveOcc = machineOccList.some(o => { const ms2 = Number(o.startedAt), me = o.completedAt ? Number(o.completedAt) : nowMs; return ms2 && nowMs >= ms2 && nowMs <= me; });
+                      const dotCls = inActiveMaint ? 'bg-red-400 animate-pulse' : inActiveOcc ? 'bg-blue-400 animate-pulse' : d.status === 'ACTIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-300';
+                      return <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotCls}`} />;
                     })()}
-                    <div className="min-w-0"><p className="text-xs font-bold text-[#1C1C1E] truncate">{d.name}</p>{d.factoryName&&<p className="text-[9px] text-[#8E8878] truncate">{d.factoryName}</p>}</div>
+                    <div className="min-w-0">
+                      <button onClick={() => onMachineClick?.(d.id)}
+                        className="text-xs font-bold text-[#1C1C1E] truncate hover:text-[#C9A84C] hover:underline transition-colors block text-left">
+                        {d.name}
+                      </button>
+                      {d.factoryName && <p className="text-[9px] text-[#8E8878] truncate">{d.factoryName}</p>}
+                    </div>
                   </div>
-                ):(
+                ) : row.type === 'occ' ? (
                   <div className="pl-4 flex items-center gap-1.5 w-full">
-                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{backgroundColor:d.maintenanceType==='CORRECTIVE'?'#ef4444':'#3b82f6'}}/>
+                    <span className="w-1 h-1 rounded-full flex-shrink-0 bg-blue-500" />
+                    <span className="text-[10px] text-[#8E8878] truncate block">
+                      {d.workOrderCode}{d.stepName ? ` — ${d.stepName}` : ''}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="pl-4 flex items-center gap-1.5 w-full">
+                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: d.maintenanceType === 'CORRECTIVE' ? '#ef4444' : '#3b82f6' }} />
                     <span className="text-[10px] text-[#8E8878] truncate block">{d.title}</span>
                   </div>
                 )}
@@ -607,71 +598,100 @@ function MaintenanceGantt({ machines, maintenanceList, occupancyList, onItemClic
           })}
         </div>
         <DragScroll weeksBack={DAYS_BACK} totalWeeks={DAYS_TOTAL} className="flex-1 min-w-0">
-          <div style={{minWidth:DAYS_TOTAL*COL_W,position:'relative'}}>
-            <div className="flex sticky top-0 z-30" style={{height:32,background:'white'}}>
-              {days.map((d,i)=>{
-                const isToday=d.getTime()===today.getTime();const isSun=d.getDay()===0;const isSat=d.getDay()===6;const isFirstOfMonth=d.getDate()===1;
+          <div style={{ minWidth: DAYS_TOTAL * COL_W, position: 'relative' }}>
+            <div className="flex sticky top-0 z-30" style={{ height: 32, background: 'white' }}>
+              {days.map((d, i) => {
+                const isToday = d.getTime() === today.getTime(); const isSun = d.getDay() === 0; const isSat = d.getDay() === 6; const isFirstOfMonth = d.getDate() === 1;
                 return (
-                  <div key={i} style={{flex:`0 0 ${COL_W}px`,width:COL_W}}
+                  <div key={i} style={{ flex: `0 0 ${COL_W}px`, width: COL_W }}
                     className={`flex-shrink-0 flex items-center justify-center border-l text-[10px] font-medium
-                      ${isToday?'bg-[#C9A84C]/10 text-[#C9A84C] font-bold border-[#C9A84C]/30':isSun||isSat?'bg-gray-50 text-gray-400 border-black/5':'text-[#8E8878] border-black/5'}
-                      ${isFirstOfMonth?'border-l-2 border-[#C9A84C]/40':''}`}>
+                      ${isToday ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-bold border-[#C9A84C]/30' : isSun || isSat ? 'bg-gray-50 text-gray-400 border-black/5' : 'text-[#8E8878] border-black/5'}
+                      ${isFirstOfMonth ? 'border-l-2 border-[#C9A84C]/40' : ''}`}>
                     <div className="text-center leading-tight">
-                      {isFirstOfMonth?<><span className="font-bold block">{d.toLocaleDateString('vi',{month:'short'})}</span><span className="text-[9px]">{d.getDate()}</span></>
-                        :<><span className="block">{['CN','T2','T3','T4','T5','T6','T7'][d.getDay()]}</span><span className="font-semibold">{d.getDate()}</span></>}
+                      {isFirstOfMonth ? <><span className="font-bold block">{d.toLocaleDateString('vi', { month: 'short' })}</span><span className="text-[9px]">{d.getDate()}</span></>
+                        : <><span className="block">{['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()]}</span><span className="font-semibold">{d.getDate()}</span></>}
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{left:`${todayPct}%`,width:2,background:`linear-gradient(to bottom,${BRAND},${BRAND}55)`}}/>
-            {rows.map((row,ri)=>{
-              const isMachine=row.type==='machine';const d=row.data;const machineMaints=isMachine?(maintByMachine[d.id]||[]):[];const machineOcc=isMachine?(occByMachine[d.id]||[]):[];
+            <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{ left: `${todayPct}%`, width: 2, background: `linear-gradient(to bottom,${BRAND},${BRAND}55)` }} />
+            {rows.map((row, ri) => {
+              const isMachine = row.type === 'machine'; const d = row.data; const machineMaints = isMachine ? (maintByMachine[d.id] || []) : []; const machineOcc = isMachine ? (occByMachine[d.id] || []) : [];
+              const isOcc = row.type === 'occ';
               return (
-                <div key={`row-${ri}`} style={{height:ROW_H,marginBottom:4,position:'relative'}}>
-                  <div className="absolute inset-0" style={{background:ri%2===0?'transparent':'rgba(0,0,0,0.012)'}}/>
-                  {isMachine?(
-                    <div className="absolute" style={{top:6,bottom:6,left:0,right:0}}>
-                      {days.map((dayDate,di)=>{
-                        const dayMs=dayDate.getTime();const isSun=dayDate.getDay()===0;const dayLeft=di*COL_W;
-                        if(isSun) return <div key={di} style={{position:'absolute',top:0,bottom:0,left:dayLeft,width:COL_W,background:'rgba(0,0,0,0.025)',borderRadius:3}}/>;
-                        const workStart=dayMs+WORK_START_H*3600000,workEnd=dayMs+WORK_END_H*3600000;
-                        const maintOverlaps=getDayMaintOverlap(machineMaints,dayMs);
-                        const occOverlaps=getDayOccupancyOverlap(machineOcc,dayMs);
-                        // Gộp 2 loại "chiếm dụng" (bảo trì + đang SX) thành 1 timeline, bảo trì ưu tiên hiển thị nếu trùng giờ
-                        const blocks=[
-                          ...maintOverlaps.map(mt=>({start:Math.max(Number(mt.actualStart||mt.plannedStart),workStart),end:Math.min(Number(mt.actualEnd||mt.plannedEnd),workEnd),kind:'maint'})),
-                          ...occOverlaps.map(o=>({start:Math.max(Number(o.startedAt),workStart),end:Math.min(o.completedAt?Number(o.completedAt):Date.now(),workEnd),kind:'occupied',data:o})),
-                        ].sort((a,b)=>a.start-b.start);
-                        const totalWork=workEnd-workStart;const hasBlock=blocks.length>0;
+                <div key={`row-${ri}`} style={{ height: ROW_H, marginBottom: 4, position: 'relative' }}>
+                  <div className="absolute inset-0" style={{ background: ri % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.012)' }} />
+                  {isOcc ? (
+                    <>
+                      {(d.items || []).map((o, ii) => {
+                        const s = Number(o.startedAt);
+                        const e = o.estimatedEndAt != null ? Number(o.estimatedEndAt) : (o.completedAt ? Number(o.completedAt) : s);
+                        if (!s || s > endMs || e < startMs) return null;
+                        const nowMs = Date.now();
+                        const isDone = e < nowMs;
+                        const isFuture = s > nowMs;
+                        const color = isDone ? '#10b981' : isFuture ? '#eab308' : '#2563eb';
+                        const barLeft = msToWorkLeft(s); const barW = msToWorkWidth(s, e);
                         return (
-                          <div key={di} onClick={()=>setClickedDay({machine:d,dayMs})} className="mday-active"
-                            style={{position:'absolute',top:0,bottom:0,left:dayLeft,width:COL_W-2,borderRadius:4,cursor:'pointer'}}>
-                            {hasBlock&&blocks.map((seg,si)=>{
-                              const segLeft2=((seg.start-workStart)/totalWork)*100,segWidth2=((seg.end-seg.start)/totalWork)*100;
-                              if(segWidth2<=0)return null;
+                          <button key={ii} onClick={() => setClickedOccupancy(o)}
+                            title={`${o.workOrderCode || ''} — Mẻ ${o.batchCode || ''}\nBước: ${o.stepName || ''}\nBắt đầu: ${o.startedAt ? new Date(Number(o.startedAt)).toLocaleString('vi-VN') : ''}\n${o.completedAt ? 'Hoàn thành' : 'Dự kiến hoàn thành'}: ${o.completedAt ? new Date(Number(o.completedAt)).toLocaleString('vi-VN') : (o.estimatedEndAt != null ? new Date(Number(o.estimatedEndAt)).toLocaleString('vi-VN') : '—')}`}
+                            style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: color + 'cc', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
+                            <span className="text-white text-[9px] font-bold whitespace-nowrap truncate drop-shadow-sm">
+                              {o.workOrderCode}{' '}{o.startedAt ? new Date(Number(o.startedAt)).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </>
+                  ) : isMachine ? (
+                    <div className="absolute" style={{ top: 6, bottom: 6, left: 0, right: 0 }}>
+                      {days.map((dayDate, di) => {
+                        const dayMs = dayDate.getTime(); const isSun = dayDate.getDay() === 0; const dayLeft = di * COL_W;
+                        if (isSun) return <div key={di} style={{ position: 'absolute', top: 0, bottom: 0, left: dayLeft, width: COL_W, background: 'rgba(0,0,0,0.025)', borderRadius: 3 }} />;
+                        const workStart = dayMs + WORK_START_H * 3600000, workEnd = dayMs + WORK_END_H * 3600000;
+                        const dayFullStart = dayMs, dayFullEnd = dayMs + 86400000;
+                        const maintOverlaps = getDayMaintOverlap(machineMaints, dayMs);
+                        const occOverlaps = getDayOccupancyOverlap(machineOcc, dayMs);
+                        const blocks = [
+                          ...maintOverlaps.map(mt => ({ start: Math.max(Number(mt.actualStart || mt.plannedStart), workStart), end: Math.min(Number(mt.actualEnd || mt.plannedEnd), workEnd), kind: 'maint' })),
+                          ...occOverlaps.map(o => {
+                            const oStart = Number(o.startedAt);
+                            const oEnd = o.estimatedEndAt != null ? Number(o.estimatedEndAt) : (o.completedAt ? Number(o.completedAt) : oStart);
+                            return { start: Math.max(oStart, dayFullStart), end: Math.min(oEnd, dayFullEnd), kind: 'occupied', data: o };
+                          }),
+                        ].sort((a, b) => a.start - b.start);
+                        const totalDay = dayFullEnd - dayFullStart; const hasBlock = blocks.length > 0;
+                        return (
+                          <div key={di} onClick={() => setClickedDay({ machine: d, dayMs })} className="mday-active"
+                            style={{ position: 'absolute', top: 0, bottom: 0, left: dayLeft, width: COL_W - 2, borderRadius: 4, cursor: 'pointer' }}>
+                            {hasBlock && blocks.map((seg, si) => {
+                              const totalRef = seg.kind === 'maint' ? (workEnd - workStart) : totalDay;
+                              const refStart = seg.kind === 'maint' ? workStart : dayFullStart;
+                              const segLeft2 = ((seg.start - refStart) / totalRef) * 100, segWidth2 = ((seg.end - seg.start) / totalRef) * 100;
+                              if (segWidth2 <= 0) return null;
                               return (
                                 <div key={si}
-                                  className={seg.kind==='maint'?'mday-maint':'mday-occupied'}
-                                  onClick={seg.kind==='occupied'?(e)=>{e.stopPropagation();setClickedOccupancy(seg.data);}:undefined}
-                                  style={{position:'absolute',top:0,bottom:0,left:`${segLeft2}%`,width:`${segWidth2}%`}}/>
+                                  className={seg.kind === 'maint' ? 'mday-maint' : 'mday-occupied'}
+                                  onClick={seg.kind === 'occupied' ? (e) => { e.stopPropagation(); setClickedOccupancy(seg.data); } : undefined}
+                                  style={{ position: 'absolute', top: 0, bottom: 0, left: `${segLeft2}%`, width: `${segWidth2}%`, cursor: seg.kind === 'occupied' ? 'pointer' : undefined }} />
                               );
                             })}
                           </div>
                         );
                       })}
                     </div>
-                  ):(
+                  ) : (
                     <>
-                      {(d.items||[]).map((item,ii)=>{
-                        const s=Number(item.actualStart||item.plannedStart),e=Number(item.actualEnd||item.plannedEnd||(s+86400000*2));
-                        if(!s||s>endMs||e<startMs) return null;
-                        const color=maintColor(item);const barLeft=msToWorkLeft(s);const barW=msToWorkWidth(s,e);
+                      {(d.items || []).map((item, ii) => {
+                        const s = Number(item.actualStart || item.plannedStart), e = Number(item.actualEnd || item.plannedEnd || (s + 86400000 * 2));
+                        if (!s || s > endMs || e < startMs) return null;
+                        const color = maintColor(item); const barLeft = msToWorkLeft(s); const barW = msToWorkWidth(s, e);
                         return (
-                          <button key={ii} onClick={()=>onItemClick(item)}
-                            style={{position:'absolute',top:6,bottom:6,left:barLeft,width:Math.max(barW,4),borderRadius:4,overflow:'hidden',cursor:'pointer',border:'none',padding:'0 6px',backgroundColor:color+'cc',boxShadow:'0 1px 3px rgba(0,0,0,0.2)',zIndex:10}}>
+                          <button key={ii} onClick={() => onItemClick(item)}
+                            style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: color + 'cc', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
                             <span className="text-white text-[9px] font-bold whitespace-nowrap truncate drop-shadow-sm">
-                              {item.title?.length>10?item.title.slice(0,8)+'…':item.title}{' '}{item.plannedStart?new Date(item.plannedStart).toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'}):''}
+                              {item.title?.length > 10 ? item.title.slice(0, 8) + '…' : item.title}{' '}{item.plannedStart ? new Date(item.plannedStart).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
                           </button>
                         );
@@ -682,23 +702,26 @@ function MaintenanceGantt({ machines, maintenanceList, occupancyList, onItemClic
               );
             })}
             <div className="flex flex-wrap gap-4 mt-3 px-1 pb-1 text-[10px] text-[#8E8878]">
-              {[['#10b981','Đang hoạt động'],['#2563eb','Đang sản xuất (lệnh)'],['#ef4444','Bảo trì/Sự cố'],['#3b82f6','Theo lịch'],['#eab308','Đang xử lý'],['#22c55e','Hoàn thành']].map(([c,l])=>(
-                <span key={l} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{backgroundColor:c}}/>{l}</span>
+              {[['#10b981', 'Đang hoạt động'], ['#2563eb', 'Đang sản xuất (lệnh)'], ['#ef4444', 'Bảo trì/Sự cố'], ['#3b82f6', 'Theo lịch'], ['#eab308', 'Đang xử lý'], ['#22c55e', 'Hoàn thành']].map(([c, l]) => (
+                <span key={l} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ backgroundColor: c }} />{l}</span>
               ))}
             </div>
           </div>
         </DragScroll>
       </div>
-      {clickedDay&&<MachineWeekModal machine={clickedDay.machine} dayMs={clickedDay.dayMs} maintenanceList={maintByMachine[clickedDay.machine.id]||[]} onClose={()=>setClickedDay(null)}/>}
-      {clickedOccupancy&&<MachineOccupancyModal occupancy={clickedOccupancy} onClose={()=>setClickedOccupancy(null)}/>}
+      {clickedDay && <MachineWeekModal machine={clickedDay.machine} dayMs={clickedDay.dayMs} maintenanceList={maintByMachine[clickedDay.machine.id] || []} onClose={() => setClickedDay(null)} />}
+      {clickedOccupancy && <MachineOccupancyModal occupancy={clickedOccupancy} onClose={() => setClickedOccupancy(null)} />}
     </div>
   );
 }
 
 // ── Machine Occupancy Detail (click vào sọc chéo xanh dương) ─────────────────
-function MachineOccupancyModal({ occupancy, onClose }) {
+export function MachineOccupancyModal({ occupancy, onClose }) {
   const o = occupancy;
   const isRunning = !o.completedAt;
+  const endLabel = o.completedAt
+    ? new Date(Number(o.completedAt)).toLocaleString('vi-VN')
+    : (o.estimatedEndAt != null ? new Date(Number(o.estimatedEndAt)).toLocaleString('vi-VN') : null);
   return (
     <Modal open title="Máy đang được sử dụng" onClose={onClose} size="sm"
       footer={<div className="flex justify-end"><SecondaryButton onClick={onClose}>Đóng</SecondaryButton></div>}>
@@ -709,9 +732,16 @@ function MachineOccupancyModal({ occupancy, onClose }) {
           <p className="text-xs text-blue-500">
             Bắt đầu: {new Date(Number(o.startedAt)).toLocaleString('vi-VN')}
           </p>
-          {isRunning
-            ? <p className="text-xs font-semibold text-blue-600">⏳ Đang thực hiện</p>
-            : <p className="text-xs text-blue-500">Hoàn thành: {new Date(Number(o.completedAt)).toLocaleString('vi-VN')}</p>}
+          {isRunning ? (
+            <>
+              <p className="text-xs font-semibold text-blue-600">⏳ Đang thực hiện</p>
+              {endLabel && (
+                <p className="text-xs text-blue-500">Dự kiến hoàn thành: {endLabel}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-blue-500">Hoàn thành: {endLabel}</p>
+          )}
         </div>
       </div>
     </Modal>
@@ -719,28 +749,28 @@ function MachineOccupancyModal({ occupancy, onClose }) {
 }
 
 // ── MAINTENANCE DETAIL MODAL ──────────────────────────────────────────────────
-function MaintenanceDetailModal({ item, onClose }) {
-  const BASE=import.meta.env.VITE_API_BASE_URL||'http://localhost:8080';
-  const img=p=>p?.startsWith('http')?p:BASE+'/api/auth'+p;
+export function MaintenanceDetailModal({ item, onClose }) {
+  const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  const img = p => p?.startsWith('http') ? p : BASE + '/api/auth' + p;
   return (
     <Modal open title={item.title} onClose={onClose} size="lg" footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
       <div className="space-y-5">
         <div className="flex gap-3 flex-wrap">
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${item.status==='COMPLETED'?'bg-emerald-100 text-emerald-700':item.maintenanceType==='CORRECTIVE'?'bg-red-100 text-red-700':'bg-blue-100 text-blue-700'}`}>
-            {item.maintenanceType==='CORRECTIVE'?'🚨 Sự cố phát sinh':'🔧 Bảo trì định kỳ'}
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+            {item.maintenanceType === 'CORRECTIVE' ? '🚨 Sự cố phát sinh' : '🔧 Bảo trì định kỳ'}
           </span>
           <span className="text-xs px-2.5 py-1 rounded-full bg-[#FAF7F2] text-[#8E8878]">{item.machineName}</span>
-          <StatusBadge status={item.status}/>
+          <StatusBadge status={item.status} />
         </div>
         <div className="grid grid-cols-2 gap-3 text-sm">
-          {[{label:'Bắt đầu kế hoạch',value:fmtDate(item.plannedStart)},{label:'Kết thúc dự kiến',value:fmtDate(item.plannedEnd)},{label:'Thực tế hoàn thành',value:fmtDate(item.actualEnd)||'—'},{label:'Giờ downtime',value:item.actualDowntimeHours?`${item.actualDowntimeHours}h`:`${item.plannedDowntimeHours||0}h (KH)`},{label:'Chi phí',value:item.actualCost?fmtCurrency(item.actualCost):item.estimatedCost?`~${fmtCurrency(item.estimatedCost)}`:'—'},{label:'Đơn vị thi công',value:item.vendorName||'—'}].map(s=>(
+          {[{ label: 'Bắt đầu kế hoạch', value: fmtDate(item.plannedStart) }, { label: 'Kết thúc dự kiến', value: fmtDate(item.plannedEnd) }, { label: 'Thực tế hoàn thành', value: fmtDate(item.actualEnd) || '—' }, { label: 'Giờ downtime', value: item.actualDowntimeHours ? `${item.actualDowntimeHours}h` : `${item.plannedDowntimeHours || 0}h (KH)` }, { label: 'Chi phí', value: item.actualCost ? fmtCurrency(item.actualCost) : item.estimatedCost ? `~${fmtCurrency(item.estimatedCost)}` : '—' }, { label: 'Đơn vị thi công', value: item.vendorName || '—' }].map(s => (
             <div key={s.label} className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-0.5">{s.label}</p><p className="font-semibold text-[#1C1C1E]">{s.value}</p></div>
           ))}
         </div>
-        {item.description&&<div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Nội dung</p><p className="text-sm">{item.description}</p></div>}
-        {item.completionNotes&&<div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Ghi chú hoàn thành</p><p className="text-sm">{item.completionNotes}</p></div>}
-        {[['Ảnh trước bảo trì',item.beforeImages],['Ảnh sau bảo trì',item.afterImages],['Chứng từ',item.receiptImages]].map(([label,imgs])=>imgs?.length>0&&(
-          <div key={label}><p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}</p><div className="flex gap-2 flex-wrap">{imgs.map((url,i)=><a key={i} href={img(url)} target="_blank" rel="noreferrer"><img src={img(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-black/10 hover:scale-105 transition-transform"/></a>)}</div></div>
+        {item.description && <div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Nội dung</p><p className="text-sm">{item.description}</p></div>}
+        {item.completionNotes && <div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Ghi chú hoàn thành</p><p className="text-sm">{item.completionNotes}</p></div>}
+        {[['Ảnh trước bảo trì', item.beforeImages], ['Ảnh sau bảo trì', item.afterImages], ['Chứng từ', item.receiptImages]].map(([label, imgs]) => imgs?.length > 0 && (
+          <div key={label}><p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}</p><div className="flex gap-2 flex-wrap">{imgs.map((url, i) => <a key={i} href={img(url)} target="_blank" rel="noreferrer"><img src={img(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-black/10 hover:scale-105 transition-transform" /></a>)}</div></div>
         ))}
       </div>
     </Modal>
@@ -748,15 +778,12 @@ function MaintenanceDetailModal({ item, onClose }) {
 }
 
 // ── CREATE PLAN MODAL — multi-product + search dropdown ───────────────────────
-function CreatePlanModal({ products, onClose, onSaved }) {
+export function CreatePlanModal({ products, onClose, onSaved }) {
   const [form, setForm] = useState({ title: '', targetQty: '', notes: '' });
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [quickCreateName, setQuickCreateName] = useState('');
-  const [localProducts, setLocalProducts] = useState(products);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -784,67 +811,50 @@ function CreatePlanModal({ products, onClose, onSaved }) {
     } finally { setSaving(false); }
   };
 
-  const handleProductCreated = (newProd) => {
-    setLocalProducts(prev => [...prev, newProd]);
-    setSelectedProductIds(prev => [...prev, newProd.id]);
-    setShowQuickCreate(false);
-  };
-
   return (
-    <>
-      <Modal open title="Tạo kế hoạch sản xuất" onClose={onClose} size="md"
-        footer={
-          <div className="flex justify-end gap-2">
-            <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
-            <PrimaryButton onClick={submit} loading={saving}>Tạo kế hoạch</PrimaryButton>
-          </div>
-        }>
-        <div className="space-y-4">
-          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-
-          <Field label="Tiêu đề" required>
-            <input className={inputCls} value={form.title} onChange={e => set('title', e.target.value)} placeholder="VD: Kế hoạch Q3 2026"/>
-          </Field>
-
-          <Field label="Sản phẩm" required>
-            <MultiProductSelect
-              allProducts={localProducts}
-              selected={selectedProductIds}
-              onChange={setSelectedProductIds}
-              onCreateNew={(name) => { setQuickCreateName(name); setShowQuickCreate(true); }}
-            />
-          </Field>
-
-          <Field label="Sản lượng mục tiêu" required>
-            <input type="number" className={inputCls} value={form.targetQty}
-              onChange={e => set('targetQty', e.target.value)} placeholder="VD: 5000"/>
-          </Field>
-
-          <Field label="Thời gian kế hoạch" required>
-            <div className="pt-1">
-              <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange}/>
-            </div>
-          </Field>
-
-          <Field label="Ghi chú">
-            <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)}/>
-          </Field>
+    <Modal open title="Tạo kế hoạch sản xuất" onClose={onClose} size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
+          <PrimaryButton onClick={submit} loading={saving}>Tạo kế hoạch</PrimaryButton>
         </div>
-      </Modal>
+      }>
+      <div className="space-y-4">
+        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
 
-      {showQuickCreate && (
-        <QuickCreateProductModal
-          initialName={quickCreateName}
-          onClose={() => setShowQuickCreate(false)}
-          onCreated={handleProductCreated}
-        />
-      )}
-    </>
+        <Field label="Tiêu đề" required>
+          <input className={inputCls} value={form.title} onChange={e => set('title', e.target.value)} placeholder="VD: Kế hoạch Q3 2026" />
+        </Field>
+
+        <Field label="Sản phẩm" required>
+          <MultiProductSelect
+            allProducts={products}
+            selected={selectedProductIds}
+            onChange={setSelectedProductIds}
+          />
+        </Field>
+
+        <Field label="Sản lượng mục tiêu" required>
+          <input type="number" className={inputCls} value={form.targetQty}
+            onChange={e => set('targetQty', e.target.value)} placeholder="VD: 5000" />
+        </Field>
+
+        <Field label="Thời gian kế hoạch" required>
+          <div className="pt-1">
+            <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange} />
+          </div>
+        </Field>
+
+        <Field label="Ghi chú">
+          <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
+        </Field>
+      </div>
+    </Modal>
   );
 }
 
 // ── CREATE WORK ORDER MODAL — block sản phẩm khi chưa chọn kế hoạch ──────────
-function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onClose, onSaved }) {
+export function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onClose, onSaved }) {
   const [form, setForm] = useState({
     productionPlanId: prefilledPlanId ? String(prefilledPlanId) : '',
     factoryProductId: '',
@@ -862,8 +872,8 @@ function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onC
   // Sản phẩm trong kế hoạch: ưu tiên factoryProductIds (array), fallback factoryProductId (single)
   const planProductIds = selectedPlan
     ? (selectedPlan.factoryProductIds?.length
-        ? selectedPlan.factoryProductIds
-        : selectedPlan.factoryProductId ? [selectedPlan.factoryProductId] : [])
+      ? selectedPlan.factoryProductIds
+      : selectedPlan.factoryProductId ? [selectedPlan.factoryProductId] : [])
     : [];
   const planProducts = planProductIds.length > 0
     ? products.filter(p => planProductIds.includes(p.id))
@@ -1000,18 +1010,18 @@ function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onC
 
           <Field label="Tổng sản lượng" required>
             <input type="number" className={inputCls} value={form.plannedQty}
-              onChange={e => set('plannedQty', e.target.value)} placeholder="VD: 500"/>
+              onChange={e => set('plannedQty', e.target.value)} placeholder="VD: 500" />
           </Field>
 
           <Field label="Thời gian sản xuất" required>
             <div className="pt-1">
               <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange}
-                placeholder={selectedPlan ? `Từ ${fmtDate(selectedPlan.startDate)} trở đi` : 'Chọn ngày'}/>
+                placeholder={selectedPlan ? `Từ ${fmtDate(selectedPlan.startDate)} trở đi` : 'Chọn ngày'} />
             </div>
           </Field>
 
           <Field label="Ghi chú">
-            <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)}/>
+            <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
           </Field>
 
           {factories?.length > 0 && (
@@ -1031,7 +1041,7 @@ function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onC
             </div>
             <button onClick={() => set('scheduledMode', !form.scheduledMode)}
               className={`w-12 h-6 rounded-full transition-colors relative ${form.scheduledMode ? 'bg-[#C9A84C]' : 'bg-black/15'}`}>
-              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${form.scheduledMode ? 'left-6' : 'left-0.5'}`}/>
+              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${form.scheduledMode ? 'left-6' : 'left-0.5'}`} />
             </button>
           </div>
         </div>
@@ -1046,7 +1056,7 @@ function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onC
             </div>
           }>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-3">
-            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5"/>
+            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-800">
               <p className="font-semibold">Tổng sản lượng sẽ vượt kế hoạch!</p>
               <p className="mt-1">Tổng: <b>{fmtNum(overPlanConfirm.newTotal)}</b> / Mục tiêu: <b>{fmtNum(overPlanConfirm.targetQty)}</b></p>
@@ -1059,40 +1069,40 @@ function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onC
 }
 
 // ── ADD MACHINE MODAL ─────────────────────────────────────────────────────────
-function AddMachineModal({ factories, onClose, onSaved }) {
-  const [form, setForm] = useState({name:'',capacityHoursPerMonth:'',description:'',manufacturer:'',serialNumber:'',purchaseCost:'',factoryId:''});
+export function AddMachineModal({ factories, onClose, onSaved }) {
+  const [form, setForm] = useState({ name: '', capacityHoursPerMonth: '', description: '', manufacturer: '', serialNumber: '', purchaseCost: '', factoryId: '' });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const submit=async()=>{
-    if(!form.name||!form.capacityHoursPerMonth){setErr('Vui lòng nhập tên máy và công suất');return;}
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const submit = async () => {
+    if (!form.name || !form.capacityHoursPerMonth) { setErr('Vui lòng nhập tên máy và công suất'); return; }
     setSaving(true);
-    try{
-      await ownerProdApi.createMachine({name:form.name,capacityHoursPerMonth:Number(form.capacityHoursPerMonth),description:form.description,manufacturer:form.manufacturer,serialNumber:form.serialNumber,purchaseCost:form.purchaseCost?Number(form.purchaseCost):null,factoryId:form.factoryId?Number(form.factoryId):null});
+    try {
+      await ownerProdApi.createMachine({ name: form.name, capacityHoursPerMonth: Number(form.capacityHoursPerMonth), description: form.description, manufacturer: form.manufacturer, serialNumber: form.serialNumber, purchaseCost: form.purchaseCost ? Number(form.purchaseCost) : null, factoryId: form.factoryId ? Number(form.factoryId) : null });
       onSaved();
-    }catch(e){setErr(e?.response?.data?.message||'Có lỗi xảy ra');}finally{setSaving(false);}
+    } catch (e) { setErr(e?.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSaving(false); }
   };
   return (
     <Modal open title="Thêm máy / dây chuyền" onClose={onClose} size="md"
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>Thêm máy</PrimaryButton></div>}>
       <div className="space-y-4">
-        {err&&<p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-        <Field label="Tên máy / dây chuyền" required><input className={inputCls} placeholder="VD: Máy xay thịt A" value={form.name} onChange={e=>set('name',e.target.value)}/></Field>
-        <Field label="Công suất (giờ/tháng)" required><input type="number" className={inputCls} value={form.capacityHoursPerMonth} onChange={e=>set('capacityHoursPerMonth',e.target.value)}/></Field>
-        {factories?.length>0&&(
+        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        <Field label="Tên máy / dây chuyền" required><input className={inputCls} placeholder="VD: Máy xay thịt A" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
+        <Field label="Công suất (giờ/tháng)" required><input type="number" className={inputCls} value={form.capacityHoursPerMonth} onChange={e => set('capacityHoursPerMonth', e.target.value)} /></Field>
+        {factories?.length > 0 && (
           <Field label="Thuộc xưởng">
-            <select className={inputCls} value={form.factoryId} onChange={e=>set('factoryId',e.target.value)}>
+            <select className={inputCls} value={form.factoryId} onChange={e => set('factoryId', e.target.value)}>
               <option value="">-- Chưa gán xưởng --</option>
-              {factories.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+              {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </Field>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Nhà sản xuất"><input className={inputCls} value={form.manufacturer} onChange={e=>set('manufacturer',e.target.value)}/></Field>
-          <Field label="Số serial"><input className={inputCls} value={form.serialNumber} onChange={e=>set('serialNumber',e.target.value)}/></Field>
+          <Field label="Nhà sản xuất"><input className={inputCls} value={form.manufacturer} onChange={e => set('manufacturer', e.target.value)} /></Field>
+          <Field label="Số serial"><input className={inputCls} value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} /></Field>
         </div>
-        <Field label="Giá trị máy (₫)"><input type="number" className={inputCls} value={form.purchaseCost} onChange={e=>set('purchaseCost',e.target.value)}/></Field>
-        <Field label="Mô tả"><textarea className={inputCls} rows={2} value={form.description} onChange={e=>set('description',e.target.value)}/></Field>
+        <Field label="Giá trị máy (₫)"><input type="number" className={inputCls} value={form.purchaseCost} onChange={e => set('purchaseCost', e.target.value)} /></Field>
+        <Field label="Mô tả"><textarea className={inputCls} rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></Field>
       </div>
     </Modal>
   );
@@ -1101,6 +1111,7 @@ function AddMachineModal({ factories, onClose, onSaved }) {
 // ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
 export default function OwnerProductionDashboard() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [dashboard, setDashboard] = useState(null);
   const [plans, setPlans] = useState([]);
   const [products, setProducts] = useState([]);
@@ -1109,11 +1120,14 @@ export default function OwnerProductionDashboard() {
   const [occupancy, setOccupancy] = useState([]);
   const [loading, setLoading] = useMinLoading(true);
   const [showCreatePlan, setShowCreatePlan] = useState(false);
-  const [showCreateWO, setShowCreateWO] = useState(false);
+  const [showCreateWorkOrder, setShowCreateWorkOrder] = useState(false);
   const [showAddMachine, setShowAddMachine] = useState(false);
-  const [prefilledPlan, setPrefilledPlan] = useState(null);
+  const [resetting, setResetting] = useState(false);
   const [selectedMaint, setSelectedMaint] = useState(null);
-  const [activeSection, setActiveSection] = useState('orders');
+  // Cho phép quay lại đúng tab đã xem trước đó (VD: từ trang Metric máy back về ?tab=machines)
+  const [activeSection, setActiveSection] = useState(
+    searchParams.get('tab') === 'machines' ? 'machines' : 'orders'
+  );
 
   const load = async () => {
     setLoading(true);
@@ -1141,11 +1155,45 @@ export default function OwnerProductionDashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const onSaved = () => { setShowCreatePlan(false); setShowCreateWO(false); setPrefilledPlan(null); load(); };
+  // Auto-refresh occupancy mỗi 60 giây khi đang xem tab machines — để Gantt cập nhật realtime
+  useEffect(() => {
+    if (activeSection !== 'machines') return;
+    const refreshOccupancy = async () => {
+      const now = Date.now();
+      const fromMs = now - 30 * 86400000;
+      const toMs = now + 60 * 86400000;
+      try {
+        const occ = await ownerProdApi.listMachineOccupancy(fromMs, toMs);
+        setOccupancy(occ || []);
+      } catch (_) { }
+    };
+    const timer = setInterval(refreshOccupancy, 60000);
+    refreshOccupancy(); // immediate refresh khi chuyển sang tab machines
+    return () => clearInterval(timer);
+  }, [activeSection]);
+
+  const onSaved = () => { setShowCreatePlan(false); setShowCreateWorkOrder(false); load(); };
+
+  const handleResetTestData = async () => {
+    if (!window.confirm(
+      '⚠️ XOÁ SẠCH dữ liệu module sản xuất (kế hoạch, lệnh, mẻ, biến thể, nguyên liệu, ' +
+      'thành phẩm, bán thành phẩm, scrap, phiếu chuyển kho, biên bản hao hụt...) và tạo ' +
+      'lại sản phẩm từ Ingredient hiện có.\n\nHÀNH ĐỘNG KHÔNG THỂ HOÀN TÁC.\n\nBạn CHẮC CHẮN muốn tiếp tục?'
+    )) return;
+    if (!window.confirm('Xác nhận LẦN CUỐI: toàn bộ dữ liệu sản xuất sẽ bị xoá vĩnh viễn. Tiếp tục?')) return;
+    setResetting(true);
+    try {
+      const result = await productionResetApi.resetAndSeed();
+      alert(`Đã xoá ${result.reset.tablesCleared} bảng, kích hoạt lại ${result.reset.machinesReactivated} máy, và tạo lại ${result.seed.factoryProductsCreated} sản phẩm từ ${result.seed.totalIngredients} nguyên liệu.`);
+      load();
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Có lỗi xảy ra khi reset dữ liệu');
+    } finally { setResetting(false); }
+  };
 
   if (loading && !dashboard) return (
     <div className="p-6 space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[...Array(4)].map((_,i) => <StatCardSkeleton key={i}/>)}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <StatCardSkeleton key={i} />)}</div>
     </div>
   );
 
@@ -1154,48 +1202,60 @@ export default function OwnerProductionDashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <PageHeader icon={Factory} title="Quản lý sản xuất" subtitle="Kế hoạch · Lệnh sản xuất · Máy móc"/>
+        <PageHeader icon={Factory} title="Quản lý sản xuất" subtitle="Kế hoạch · Lệnh sản xuất · Máy móc" />
         <div className="flex gap-2">
-          <PrimaryButton onClick={() => setShowCreatePlan(true)}><Plus size={15}/> Kế hoạch mới</PrimaryButton>
+          {/* ⚠️ CHỈ DÙNG MÔI TRƯỜNG TEST — xoá nút này (và productionResetApi) trước khi
+              deploy lên môi trường có dữ liệu thật. Xem ProductionResetController backend. */}
+          <button onClick={handleResetTestData} disabled={resetting}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl
+              bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50">
+            <RotateCcw size={13} /> {resetting ? 'Đang xoá...' : 'Reset dữ liệu (test)'}
+          </button>
+          <SecondaryButton onClick={() => navigate('/owner/production/loss-reports')}>
+            <FileWarning size={15} /> Hao hụt đóng gói
+          </SecondaryButton>
+          <SecondaryButton onClick={() => setShowCreateWorkOrder(true)}>
+            <ClipboardList size={15} /> Tạo lệnh sản xuất
+          </SecondaryButton>
+          <PrimaryButton onClick={() => setShowCreatePlan(true)}><Plus size={15} /> Kế hoạch mới</PrimaryButton>
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          {icon:CalendarRange,label:'Kế hoạch đang chạy',value:d.totalActivePlans||0,color:'text-blue-600',iconBg:'bg-blue-50'},
-          {icon:ClipboardList,label:'Tổng lệnh SX',value:d.totalWorkOrders||0,color:'text-[#1C1C1E]',iconBg:'bg-[#FAF7F2]'},
-          {icon:Factory,label:'Đang sản xuất',value:d.inProgressOrders||0,color:'text-orange-600',iconBg:'bg-orange-50'},
-          {icon:Clock,label:'Chờ phương án',value:d.pendingPlanOrders||0,color:d.pendingPlanOrders>0?'text-amber-600':'text-[#8E8878]',iconBg:'bg-amber-50'},
-          {icon:CheckCircle2,label:'Hoàn thành',value:d.completedOrders||0,color:'text-emerald-600',iconBg:'bg-emerald-50'},
-          {icon:Settings2,label:'Máy hoạt động',value:`${d.activeMachines||0}/${d.totalMachines||0}`,color:'text-[#C9A84C]',iconBg:'bg-[#C9A84C]/10'},
-        ].map(kpi => <KpiCard key={kpi.label} {...kpi}/>)}
+          { icon: CalendarRange, label: 'Kế hoạch đang chạy', value: d.totalActivePlans || 0, color: 'text-blue-600', iconBg: 'bg-blue-50' },
+          { icon: ClipboardList, label: 'Tổng lệnh SX', value: d.totalWorkOrders || 0, color: 'text-[#1C1C1E]', iconBg: 'bg-[#FAF7F2]' },
+          { icon: Factory, label: 'Đang sản xuất', value: d.inProgressOrders || 0, color: 'text-orange-600', iconBg: 'bg-orange-50' },
+          { icon: Clock, label: 'Chờ phương án', value: d.pendingPlanOrders || 0, color: d.pendingPlanOrders > 0 ? 'text-amber-600' : 'text-[#8E8878]', iconBg: 'bg-amber-50' },
+          { icon: CheckCircle2, label: 'Hoàn thành', value: d.completedOrders || 0, color: 'text-emerald-600', iconBg: 'bg-emerald-50' },
+          { icon: Settings2, label: 'Máy hoạt động', value: `${d.activeMachines || 0}/${d.totalMachines || 0}`, color: 'text-[#C9A84C]', iconBg: 'bg-[#C9A84C]/10' },
+        ].map(kpi => <KpiCard key={kpi.label} {...kpi} />)}
       </div>
 
       {d.pendingPlanOrders > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-          <AlertTriangle size={18} className="text-amber-600 flex-shrink-0"/>
+          <AlertTriangle size={18} className="text-amber-600 flex-shrink-0" />
           <p className="text-sm text-amber-800 font-medium">{d.pendingPlanOrders} lệnh đang chờ nhân viên xưởng lập phương án sản xuất</p>
         </div>
       )}
 
       <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
-        {[{id:'orders',label:'Timeline sản xuất',icon:ClipboardList},{id:'machines',label:'Máy móc',icon:Settings2}].map(s => (
+        {[{ id: 'orders', label: 'Timeline sản xuất', icon: ClipboardList }, { id: 'machines', label: 'Máy móc', icon: Settings2 }].map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
-            <s.icon size={14}/>{s.label}
+            <s.icon size={14} />{s.label}
           </button>
         ))}
       </div>
 
       {activeSection === 'orders' && (
         <SectionCard>
-          <SectionHeader title="Timeline 39 tuần — Kế hoạch & Lệnh sản xuất"
-            action={<button onClick={() => setShowCreateWO(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12}/> Tạo lệnh</button>}/>
+          <SectionHeader title="Timeline 39 tuần — Kế hoạch & Lệnh sản xuất" />
           <div className="p-4">
             <ProductionGantt
               plans={d.recentPlans || []} orders={d.calendarItems || []}
               onPlanClick={id => navigate(`/owner/production/plans/${id}`)}
-              onOrderClick={id => navigate(`/owner/production/work-orders/${id}`)}/>
+              onOrderClick={id => navigate(`/owner/production/work-orders/${id}`)} />
           </div>
         </SectionCard>
       )}
@@ -1203,20 +1263,19 @@ export default function OwnerProductionDashboard() {
       {activeSection === 'machines' && (
         <SectionCard>
           <SectionHeader title="Máy móc & lịch bảo trì — 39 tuần"
-            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12}/> Thêm máy</button>}/>
+            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12} /> Thêm máy</button>} />
           <div className="p-4">
-            <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy} onItemClick={setSelectedMaint}/>
+            <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy}
+              onItemClick={setSelectedMaint}
+              onMachineClick={id => navigate(`/owner/production/machines/${id}/metrics`)} />
           </div>
         </SectionCard>
       )}
 
-      {showCreatePlan && <CreatePlanModal products={products} onClose={() => setShowCreatePlan(false)} onSaved={onSaved}/>}
-      {(showCreateWO || prefilledPlan) && (
-        <CreateWorkOrderModal plans={plans} products={products} factories={factories} prefilledPlanId={prefilledPlan?.id}
-          onClose={() => { setShowCreateWO(false); setPrefilledPlan(null); }} onSaved={onSaved}/>
-      )}
-      {selectedMaint && <MaintenanceDetailModal item={selectedMaint} onClose={() => setSelectedMaint(null)}/>}
-      {showAddMachine && <AddMachineModal factories={factories} onClose={() => setShowAddMachine(false)} onSaved={onSaved}/>}
+      {showCreatePlan && <CreatePlanModal products={products} onClose={() => setShowCreatePlan(false)} onSaved={onSaved} />}
+      {showCreateWorkOrder && <CreateWorkOrderModal plans={plans} products={products} factories={factories} onClose={() => setShowCreateWorkOrder(false)} onSaved={onSaved} />}
+      {selectedMaint && <MaintenanceDetailModal item={selectedMaint} onClose={() => setSelectedMaint(null)} />}
+      {showAddMachine && <AddMachineModal factories={factories} onClose={() => setShowAddMachine(false)} onSaved={onSaved} />}
     </div>
   );
 }

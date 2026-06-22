@@ -123,6 +123,8 @@
     "operator": "Nhập liệu",
     "shipper": "Giao hàng",
     "factory_worker": "Nhân viên nhà máy",
+    "super_factory_worker": "Trưởng xưởng sản xuất",
+    "factory_accountant": "Kế toán kho xưởng",
     "hr": "Nhân sự"
   },
   "nav": {
@@ -162,9 +164,16 @@
     "quotation": "Báo giá",
     "delivering": "Đơn hàng",
     "machine_manage": "Máy & Bảo trì",
+    "machine_metrics": "Metric máy",
     "certificates": "Chứng nhận",
     "driver_attendance": "Điểm danh ODO",
-    "material_requests": "Phiếu đặt hàng"
+    "material_requests": "Phiếu đặt hàng",
+    "material_stock": "Kho nguyên liệu xưởng",
+    "finished_goods": "Kho thành phẩm",
+    "work_order_history": "Lịch sử lệnh sản xuất",
+    "semi_finished_goods": "Kho bán thành phẩm",
+    "semi_finished_transfers": "Phiếu chuyển kho bán TP",
+    "packaging_loss_reports": "Biên bản hao hụt đóng gói"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

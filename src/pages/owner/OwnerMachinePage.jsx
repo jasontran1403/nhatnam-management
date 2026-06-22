@@ -1,6 +1,7 @@
 // OwnerMachinePage.jsx
 // Trang quản lý máy móc / dây chuyền sản xuất (Owner only)
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Settings2, ToggleLeft, ToggleRight, Pencil, X, Check } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { Field, inputCls, PrimaryButton } from '../../components/ui';
@@ -72,6 +73,7 @@ function MachineModal({ machine, onClose, onSaved }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function OwnerMachinePage() {
+  const navigate = useNavigate();
   const [machines, setMachines] = useState([]);
   const [loading, setLoading] = useMinLoading();
   const [modal, setModal] = useState(null); // null | 'create' | machine obj
@@ -167,7 +169,10 @@ export default function OwnerMachinePage() {
               </div>
             </div>
             <div className="p-4">
-              <p className="font-semibold text-[#1C1C1E] text-sm truncate">{m.name}</p>
+              <button onClick={() => navigate(`/owner/production/machines/${m.id}/metrics`)}
+                className="font-semibold text-[#1C1C1E] text-sm truncate hover:text-[#C9A84C] hover:underline transition-colors text-left">
+                {m.name}
+              </button>
               {m.description && (
                 <p className="text-xs text-[#8E8878] mt-0.5 truncate">{m.description}</p>
               )}

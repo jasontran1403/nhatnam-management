@@ -21,6 +21,8 @@ function getRoleLabel(role, t) {
     OPERATOR:         'bg-teal-100 text-teal-700 border-teal-200',
     SHIPPER:          'bg-sky-100 text-sky-700 border-sky-200',
     FACTORY_WORKER:   'bg-cyan-100 text-cyan-700 border-cyan-200',
+    SUPER_FACTORY_WORKER: 'bg-cyan-200 text-cyan-800 border-cyan-300',
+    FACTORY_ACCOUNTANT: 'bg-teal-100 text-teal-700 border-teal-200',
     HR:               'bg-pink-100 text-pink-700 border-pink-200',
   };
   return {
@@ -39,6 +41,9 @@ function getRedirectPath(role) {
     case 'SUPER_ACCOUNTANT': return '/super-accountant/dashboard';
     case 'OPERATOR':         return '/operator/products';
     case 'SHIPPER':          return '/shipper/dashboard';
+    case 'FACTORY_WORKER':   return '/factory/orders';
+    case 'SUPER_FACTORY_WORKER': return '/super-factory/production';
+    case 'FACTORY_ACCOUNTANT': return '/factory-accountant/transfers';
     case 'HR':               return '/hr/manage';
     default:                 return '/seller/dashboard';
   }

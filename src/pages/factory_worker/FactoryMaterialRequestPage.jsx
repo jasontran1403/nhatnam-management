@@ -12,6 +12,7 @@ import {
   factoryMaterialRequestApi, STATUS_CONFIG, UNITS, fmtTs, fmtDateTime, countdownInfo,
 } from '../../api/materialRequestApi.js';
 import { useToast } from '../../components/common/Toast.jsx';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Countdown badge ────────────────────────────────────────────────────────────
 function CountdownBadge({ targetMs, label = 'Nhận hàng dự kiến' }) {
@@ -159,12 +160,19 @@ function RequestCard({ req, onReceive }) {
         <div className="px-5 pb-4 border-t border-black/5">
           <div className="mt-3 space-y-2">
             {req.items.map((item, i) => (
-              <div key={item.id || i} className="flex items-center justify-between text-sm">
+              <div key={item.id || i} className="flex items-start justify-between text-sm gap-2">
                 <span className="text-[#1C1C1E]">{item.materialName}</span>
                 <div className="text-right">
-                  <span className="text-[#1C1C1E] font-medium">{item.qtyRequested} {item.unit}</span>
-                  {item.qtyReceived != null && (
-                    <span className="ml-2 text-emerald-600 text-xs">(thực nhận: {item.qtyReceived} {item.unit})</span>
+                  <div>
+                    <span className="text-[#1C1C1E] font-medium">{item.qtyRequested} {item.unit}</span>
+                    {item.qtyReceived != null && (
+                      <span className="ml-2 text-emerald-600 text-xs">(thực nhận: {item.qtyReceived} {item.unit})</span>
+                    )}
+                  </div>
+                  {item.weighingLogs?.length > 0 && (
+                    <p className="text-[11px] text-[#8E8878] mt-0.5">
+                      {item.weighingLogs.length} lần cân: {item.weighingLogs.join(' + ')} = {item.qtyReceived} {item.unit}
+                    </p>
                   )}
                 </div>
               </div>
@@ -199,19 +207,99 @@ function RequestCard({ req, onReceive }) {
 }
 
 // ── Receive Modal ──────────────────────────────────────────────────────────────
+// ── Nhập nhiều lần cân cho 1 nguyên liệu, tự cộng dồn ra tổng thực nhận ───────
+function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
+  // weighings: array string (mỗi lần cân, để giữ nguyên input người dùng đang gõ)
+  const setWeighing = (idx, val) => {
+    const next = weighings.map((w, i) => i === idx ? val : w);
+    onChange(next);
+  };
+  const addRow = () => onChange([...weighings, '']);
+  const removeRow = (idx) => {
+    if (weighings.length <= 1) { onChange(['']); return; }
+    onChange(weighings.filter((_, i) => i !== idx));
+  };
+  const setMax = () => onChange([String(qtyRequested)]);
+
+  const total = weighings.reduce((sum, w) => {
+    const n = parseFloat(w);
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+  const validCount = weighings.filter(w => parseFloat(w) > 0).length;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Các lần cân ({unit})</p>
+        <button type="button" onClick={setMax}
+          className="text-xs font-semibold text-[#C9A84C] hover:underline px-2 py-0.5">
+          Tối đa ({qtyRequested})
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        {weighings.map((w, idx) => (
+          <div key={idx} className="flex items-center gap-1.5">
+            <span className="text-xs text-[#8E8878] w-5 flex-shrink-0 text-center">{idx + 1}.</span>
+            <input
+              type="number" min="0" step="0.001" value={w}
+              onChange={e => setWeighing(idx, e.target.value)}
+              className={inputCls + ' flex-1'} placeholder={`Lần cân ${idx + 1}`} />
+            <button type="button" onClick={() => removeRow(idx)}
+              className="text-[#8E8878] hover:text-red-500 flex-shrink-0 p-1">
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={addRow}
+        className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-[#1A2B1A] bg-[#E8F0E8] px-2.5 py-1.5 rounded-lg hover:bg-[#D8E8D8] transition-colors">
+        <Plus size={12} /> Thêm lần cân
+      </button>
+      <div className="mt-2 flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-[#E8DDD0]">
+        <span className="text-xs text-[#8E8878]">
+          Tổng {validCount > 0 ? `(${validCount} lần cân)` : ''}
+        </span>
+        <span className="text-sm font-bold text-[#1C1C1E]">{total.toFixed(3).replace(/\.?0+$/, '')} {unit}</span>
+      </div>
+    </div>
+  );
+}
+
 function ReceiveModal({ req, onClose, onDone }) {
   const toast = useToast();
   const [notes, setNotes] = useState('');
-  const [items, setItems] = useState((req.items || []).map(i => ({ ...i, qtyReceived: i.qtyRequested, expiryDate: null })));
+  // Mỗi item: weighings = mảng string các lần cân. Mặc định 1 dòng trống.
+  const [items, setItems] = useState((req.items || []).map(i => ({
+    ...i,
+    weighings: [''],
+    expiryDate: null,
+  })));
   const [saving, setSaving] = useState(false);
   const setItem = (idx, key, val) => setItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+  const setWeighings = (idx, arr) => setItem(idx, 'weighings', arr);
+
+  const totalOf = (weighings) => weighings.reduce((sum, w) => {
+    const n = parseFloat(w);
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
 
   const handleSubmit = async () => {
     setSaving(true);
     try {
       await factoryMaterialRequestApi.receive(req.id, {
         notes,
-        items: items.map(it => ({ itemId: it.id, qtyReceived: parseFloat(it.qtyReceived) || 0, expiryDate: it.expiryDate || null })),
+        items: items.map(it => {
+          // Chỉ giữ lại các lần cân hợp lệ (> 0) để lưu làm nhật ký đối chiếu
+          const validLogs = it.weighings.map(w => parseFloat(w)).filter(n => Number.isFinite(n) && n > 0);
+          const qtyReceived = validLogs.reduce((s, n) => s + n, 0);
+          return {
+            itemId: it.id,
+            qtyReceived,
+            expiryDate: it.expiryDate || null,
+            // Chỉ gửi nhật ký khi có từ 2 lần cân trở lên (1 lần thì không cần lưu breakdown)
+            weighingLogs: validLogs.length > 1 ? validLogs : null,
+          };
+        }),
       });
       toast('Xác nhận nhận hàng thành công', 'success');
       onDone();
@@ -223,30 +311,44 @@ function ReceiveModal({ req, onClose, onDone }) {
   return (
     <Modal open onClose={onClose} title={`Xác nhận nhận hàng — ${req.requestCode}`} size="lg">
       <div className="space-y-4" style={{ minHeight: 520 }}>
-        <p className="text-sm text-[#8E8878]">Nhập số lượng thực nhận và hạn sử dụng (nếu có) cho từng nguyên liệu.</p>
+        <p className="text-sm text-[#8E8878]">
+          Nhập từng lần cân (mỗi rổ/lần cân 1 dòng) — hệ thống sẽ tự cộng dồn ra tổng thực nhận.
+          Dùng nút "Tối đa" nếu nhận đủ đúng số lượng đã đặt.
+        </p>
         <div className="space-y-3">
-          {items.map((item, idx) => (
-            <div key={item.id || idx} className="bg-[#FAF7F2] rounded-xl p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-[#1C1C1E]">{item.materialName}</span>
-                <span className="text-xs text-[#8E8878]">Đặt: {item.qtyRequested} {item.unit}</span>
+          {items.map((item, idx) => {
+            const total = totalOf(item.weighings);
+            const diff = total - Number(item.qtyRequested || 0);
+            return (
+              <div key={item.id || idx} className="bg-[#FAF7F2] rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-[#1C1C1E]">{item.materialName}</span>
+                  <span className="text-xs text-[#8E8878]">Đặt: {item.qtyRequested} {item.unit}</span>
+                </div>
+
+                <WeighingInput
+                  qtyRequested={item.qtyRequested}
+                  unit={item.unit}
+                  weighings={item.weighings}
+                  onChange={arr => setWeighings(idx, arr)}
+                />
+
+                {total > 0 && Math.abs(diff) > 0.001 && (
+                  <p className={`mt-1.5 text-xs font-medium ${diff > 0 ? 'text-amber-600' : 'text-orange-600'}`}>
+                    {diff > 0
+                      ? `Vượt ${diff.toFixed(3).replace(/\.?0+$/, '')} ${item.unit} so với đặt hàng`
+                      : `Thiếu ${Math.abs(diff).toFixed(3).replace(/\.?0+$/, '')} ${item.unit} so với đặt hàng`}
+                  </p>
+                )}
+
+                <div className="mt-2">
+                  <Field label="Hạn sử dụng (không bắt buộc)">
+                    <DatePicker value={item.expiryDate} onChange={val => setItem(idx, 'expiryDate', val)} placeholder="Chọn ngày hết hạn" minDate={new Date()} />
+                  </Field>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="Thực nhận">
-                  <input type="number" min="0" step="0.001" value={item.qtyReceived}
-                    onChange={e => setItem(idx, 'qtyReceived', e.target.value)} className={inputCls} placeholder="0" />
-                </Field>
-                <Field label="Đơn vị">
-                  <input className={inputCls} value={item.unit} disabled />
-                </Field>
-              </div>
-              <div className="mt-2">
-                <Field label="Hạn sử dụng (không bắt buộc)">
-                  <DatePicker value={item.expiryDate} onChange={val => setItem(idx, 'expiryDate', val)} placeholder="Chọn ngày hết hạn" minDate={new Date()} />
-                </Field>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <Field label="Ghi chú">
           <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} placeholder="Ghi chú thêm (nếu có)" />
@@ -375,6 +477,9 @@ function CreateModal({ onClose, onDone, allMaterials }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FactoryMaterialRequestPage() {
+  const { role } = useAuth();
+  // FACTORY_WORKER chỉ được xác nhận nhận hàng, không được tạo phiếu đặt hàng mới.
+  const canCreate = role !== 'FACTORY_WORKER';
   const [data, setData] = useState(null);
   const [allMaterials, setAllMaterials] = useState([]); // từ factory_material
   const [loading, setLoading] = useMinLoading();
@@ -414,10 +519,12 @@ export default function FactoryMaterialRequestPage() {
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-[#1C1C1E]">Phiếu đặt hàng nguyên liệu</h1>
-        <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 bg-[#1A2B1A] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#243524] transition-colors">
-          <Plus size={16} /> Tạo phiếu
-        </button>
+        {canCreate && (
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 bg-[#1A2B1A] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#243524] transition-colors">
+            <Plus size={16} /> Tạo phiếu
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 space-y-3">

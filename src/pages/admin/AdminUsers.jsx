@@ -29,7 +29,9 @@ const getRoleConfig = (t) => [
   { value: 'SUPER_WAREHOUSE',  label: 'Trưởng xưởng' },
   { value: 'WAREHOUSE',        label: 'Nhân viên kho' },
   { value: 'OPERATOR',         label: 'Nhân viên nhập liệu' },
+  { value: 'SUPER_FACTORY_WORKER', label: 'Trưởng xưởng sản xuất' },
   { value: 'FACTORY_WORKER',   label: 'Nhân viên xưởng SX' },
+  { value: 'FACTORY_ACCOUNTANT', label: 'Kế toán kho xưởng' },
   { value: 'HR',               label: 'Nhân viên nhân sự' },
 ];
 
@@ -38,6 +40,7 @@ const CONFLICT_GROUPS = [
   ['WAREHOUSE',  'SUPER_WAREHOUSE'],
   ['SELLER',     'SUPER_SELLER'],
   ['OWNER',      'ADMIN'],
+  ['FACTORY_WORKER', 'SUPER_FACTORY_WORKER'],
 ];
 
 // ── Helpers (dùng ROLE_LABEL động) ───────────────────────────────────────────
