@@ -1,12 +1,13 @@
 // src/pages/hr/HrPage.jsx
 import { useLang } from '../../context/LangContext';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users, FileText, Clock, Plus, Search, ChevronDown, ChevronUp,
-  DollarSign, Calendar, UserCog, X, Check, Loader2, AlertCircle, Download,
+  DollarSign, Calendar, UserCog, X, Check, Loader2, AlertCircle, Download, Upload,
+  Calculator, Send, Eye,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
-import { hrSalaryApi, hrLeaveApi, hrOtApi, hrEmployeeApi } from '../../api/hrApi';
+import { hrSalaryApi, hrLeaveApi, hrOtApi, hrEmployeeApi, payrollApi } from '../../api/hrApi';
 import { downloadBlob } from '../../api/services';
 import api from '../../api/axios';
 import {
@@ -21,31 +22,18 @@ import { useToast } from '../../components/common/Toast';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 
 
-// ── Salary Modal (single) ─────────────────────────────────────────────────────
+// ── Salary Modal (single) — chỉ còn lương trước thuế ──────────────────────────
 function SalaryModal({ user, onClose, onSaved }) {
   const { t } = useLang();
   const toast = useToast();
-  const [form, setForm] = useState({
-    baseSalary: '', socialInsuranceRate: '8', socialInsuranceSalary: '',
-    bonus: '', mealAllowance: '', transportAllowance: '',
-  });
+  const [baseSalary, setBaseSalary] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const num = (v) => (v === '' ? null : Number(v));
-
   const submit = async () => {
+    if (!baseSalary) { toast('Vui lòng nhập lương trước thuế', 'error'); return; }
     setSaving(true);
     try {
-      await hrSalaryApi.set({
-        userId: user.id,
-        baseSalary: num(form.baseSalary),
-        socialInsuranceRate: num(form.socialInsuranceRate),
-        socialInsuranceSalary: num(form.socialInsuranceSalary),
-        bonus: num(form.bonus),
-        mealAllowance: num(form.mealAllowance),
-        transportAllowance: num(form.transportAllowance),
-      });
+      await hrSalaryApi.set({ userId: user.id, baseSalary: Number(baseSalary) });
       toast(t('hr', 'salary_pending_owner'), 'success');
       onSaved();
       onClose();
@@ -57,34 +45,11 @@ function SalaryModal({ user, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title={`${t('hr', 'update_salary')} — ${user.fullName}`}>
       <div className="space-y-3 py-1">
-        <Field label="Lương cơ bản (VNĐ)" required>
-          <input className={inputCls} type="number" value={form.baseSalary}
-            onChange={e => set('baseSalary', e.target.value)} placeholder="VD: 8000000" />
+        <Field label="Lương trước thuế (VNĐ/tháng)" required
+          hint="Lương GROSS cơ bản — chưa gồm phụ cấp, thưởng. Phụ cấp/thưởng/ngày công/người phụ thuộc sẽ nhập khi Tính lương hàng tháng.">
+          <input className={inputCls} type="number" value={baseSalary}
+            onChange={e => setBaseSalary(e.target.value)} placeholder="VD: 12000000" autoFocus />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tỷ lệ BHXH NLĐ (%)">
-            <input className={inputCls} type="number" value={form.socialInsuranceRate}
-              onChange={e => set('socialInsuranceRate', e.target.value)} />
-          </Field>
-          <Field label="Mức lương đóng BHXH (VNĐ)">
-            <input className={inputCls} type="number" value={form.socialInsuranceSalary}
-              onChange={e => set('socialInsuranceSalary', e.target.value)} />
-          </Field>
-        </div>
-        <Field label="Bonus tháng (VNĐ)">
-          <input className={inputCls} type="number" value={form.bonus}
-            onChange={e => set('bonus', e.target.value)} />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Phụ cấp cơm (VNĐ/ngày)">
-            <input className={inputCls} type="number" value={form.mealAllowance}
-              onChange={e => set('mealAllowance', e.target.value)} />
-          </Field>
-          <Field label="Phụ cấp xăng (VNĐ/tháng)">
-            <input className={inputCls} type="number" value={form.transportAllowance}
-              onChange={e => set('transportAllowance', e.target.value)} />
-          </Field>
-        </div>
       </div>
       <div className="flex gap-2 pt-3">
         <SecondaryButton onClick={onClose} className="flex-1">Huỷ</SecondaryButton>
@@ -94,30 +59,17 @@ function SalaryModal({ user, onClose, onSaved }) {
   );
 }
 
-// ── Batch Salary Modal ────────────────────────────────────────────────────────
+// ── Batch Salary Modal — chỉ còn lương trước thuế ─────────────────────────────
 function BatchSalaryModal({ userIds, onClose, onSaved }) {
   const toast = useToast();
-  const [form, setForm] = useState({
-    baseSalary: '', socialInsuranceRate: '8', socialInsuranceSalary: '',
-    bonus: '', mealAllowance: '', transportAllowance: '',
-  });
+  const [baseSalary, setBaseSalary] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const num = (v) => (v === '' ? null : Number(v));
-
   const submit = async () => {
+    if (!baseSalary) { toast('Vui lòng nhập lương trước thuế', 'error'); return; }
     setSaving(true);
     try {
-      await hrSalaryApi.setBatch({
-        userIds,
-        baseSalary: num(form.baseSalary),
-        socialInsuranceRate: num(form.socialInsuranceRate),
-        socialInsuranceSalary: num(form.socialInsuranceSalary),
-        bonus: num(form.bonus),
-        mealAllowance: num(form.mealAllowance),
-        transportAllowance: num(form.transportAllowance),
-      });
+      await hrSalaryApi.setBatch({ userIds, baseSalary: Number(baseSalary) });
       toast(`Đã gửi phiếu lương cho ${userIds.length} nhân viên`, 'success');
       onSaved();
       onClose();
@@ -129,37 +81,14 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title={`Set lương hàng loạt (${userIds.length} nhân viên)`}>
       <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-3">
-        Các thông số dưới sẽ được áp dụng cho tất cả nhân viên đã chọn.
+        Lương trước thuế dưới sẽ được áp dụng cho tất cả nhân viên đã chọn.
       </p>
       <div className="space-y-3 py-1">
-        <Field label="Lương cơ bản (VNĐ)" required>
-          <input className={inputCls} type="number" value={form.baseSalary}
-            onChange={e => set('baseSalary', e.target.value)} placeholder="VD: 8000000" />
+        <Field label="Lương trước thuế (VNĐ/tháng)" required
+          hint="Lương GROSS cơ bản — chưa gồm phụ cấp, thưởng.">
+          <input className={inputCls} type="number" value={baseSalary}
+            onChange={e => setBaseSalary(e.target.value)} placeholder="VD: 12000000" autoFocus />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tỷ lệ BHXH NLĐ (%)">
-            <input className={inputCls} type="number" value={form.socialInsuranceRate}
-              onChange={e => set('socialInsuranceRate', e.target.value)} />
-          </Field>
-          <Field label="Mức lương đóng BHXH (VNĐ)">
-            <input className={inputCls} type="number" value={form.socialInsuranceSalary}
-              onChange={e => set('socialInsuranceSalary', e.target.value)} />
-          </Field>
-        </div>
-        <Field label="Bonus tháng (VNĐ)">
-          <input className={inputCls} type="number" value={form.bonus}
-            onChange={e => set('bonus', e.target.value)} />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Phụ cấp cơm (VNĐ/ngày)">
-            <input className={inputCls} type="number" value={form.mealAllowance}
-              onChange={e => set('mealAllowance', e.target.value)} />
-          </Field>
-          <Field label="Phụ cấp xăng (VNĐ/tháng)">
-            <input className={inputCls} type="number" value={form.transportAllowance}
-              onChange={e => set('transportAllowance', e.target.value)} />
-          </Field>
-        </div>
       </div>
       <div className="flex gap-2 pt-3">
         <SecondaryButton onClick={onClose} className="flex-1">Huỷ</SecondaryButton>
@@ -172,7 +101,11 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
 // ── Info Modal (dept/pos) ─────────────────────────────────────────────────────
 function InfoModal({ user, onClose, onSaved }) {
   const toast = useToast();
-  const [form, setForm] = useState({ department: user.department || '', position: user.position || '' });
+  const [form, setForm] = useState({
+    department: user.department || '',
+    division: user.division || '',
+    position: user.position || '',
+  });
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -190,10 +123,15 @@ function InfoModal({ user, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title={`Thông tin — ${user.fullName}`}>
       <div className="space-y-3 py-1">
-        <Field label="Bộ phận / Phòng ban">
+        <Field label="Bộ phận">
           <input className={inputCls} value={form.department}
             onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
             placeholder="VD: Kinh doanh, Kế toán, Xưởng sản xuất…" />
+        </Field>
+        <Field label="Phòng ban">
+          <input className={inputCls} value={form.division}
+            onChange={e => setForm(f => ({ ...f, division: e.target.value }))}
+            placeholder="VD: Phòng Kinh doanh 1, Phòng Kế toán tổng hợp…" />
         </Field>
         <Field label="Chức vụ">
           <input className={inputCls} value={form.position}
@@ -383,6 +321,91 @@ function CreateOtModal({ users, onClose, onSaved }) {
   );
 }
 
+// ── Import Employees/Salaries Modal ───────────────────────────────────────────
+function ImportEmployeesModal({ onClose, onDone }) {
+  const [step, setStep] = useState('upload');
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const fileRef = useRef(null);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setUploadError(null);
+    try {
+      const res = await hrSalaryApi.importAll(file);
+      const body = res?.data || {};
+      const d = body.data ?? body;
+      setResult({ updated: d.updated ?? 0, skipped: d.skipped ?? 0, errors: d.errors || [] });
+      setStep('result');
+      if ((d.updated ?? 0) > 0) onDone();
+    } catch (e) {
+      setUploadError(e?.response?.data?.message || e?.response?.data?.data?.message || 'Lỗi import dữ liệu nhân sự');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Import dữ liệu nhân sự"
+      subtitle={step === 'upload' ? 'Dùng file Export từ hệ thống — file chỉ import được 1 lần' : 'Kết quả import'}
+      size="sm">
+      {step === 'upload' ? (
+        <div className="flex flex-col items-center gap-4 py-4">
+          <div className="w-14 h-14 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
+            {uploading
+              ? <div className="w-7 h-7 border-[3px] border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              : <Upload size={24} className="text-[#C9A84C]" />}
+          </div>
+          <div className="text-center space-y-1.5">
+            <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
+            <p className="text-xs text-[#8E8878]">Hệ thống cập nhật đúng nhân viên theo cột <strong>ID</strong> — không dùng thứ tự dòng.</p>
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
+              ⚠ Chỉ import được file vừa Export, và số lượng nhân viên phải khớp với hiện tại.
+            </p>
+            {uploadError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-left">
+                <span className="text-red-500 shrink-0 mt-0.5">✕</span>
+                <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+              </div>
+            )}
+          </div>
+          {!uploading && (
+            <label className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+              <Upload size={14} /> Chọn file .xlsx
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
+            </label>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{result?.updated ?? 0}</p>
+              <p className="text-xs text-emerald-700 mt-0.5">Cập nhật thành công</p>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+              <p className="text-2xl font-bold text-red-500">{result?.skipped ?? 0}</p>
+              <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
+            </div>
+          </div>
+          {result?.errors?.length > 0 && (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-40 overflow-y-auto">
+              <p className="text-xs font-semibold text-red-600 mb-1.5">Chi tiết lỗi:</p>
+              {result.errors.map((err, i) => (
+                <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 last:border-0">{err}</p>
+              ))}
+            </div>
+          )}
+          <SecondaryButton onClick={onClose} className="w-full">Đóng</SecondaryButton>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 // ── Employees Tab ─────────────────────────────────────────────────────────────
 function EmployeesTab() {
   const toast = useToast();
@@ -395,6 +418,8 @@ function EmployeesTab() {
   const [salaryModal, setSalaryModal] = useState(null);
   const [batchModal, setBatchModal] = useState(false);
   const [infoModal, setInfoModal] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -413,6 +438,24 @@ function EmployeesTab() {
   const toggleOne = (id) =>
     setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const res = await hrSalaryApi.exportAll();
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const disposition = res.headers?.['content-disposition'] || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      downloadBlob(blob, match ? match[1] : 'bang-luong-nhan-su.xlsx');
+      toast('Đã xuất file Excel', 'success');
+    } catch {
+      toast('Lỗi khi export dữ liệu nhân sự', 'error');
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -428,6 +471,14 @@ function EmployeesTab() {
             <DollarSign size={14} /> Set lương ({selected.length})
           </PrimaryButton>
         )}
+        <SecondaryButton onClick={() => setImportOpen(true)}>
+          <Upload size={14} /> Import
+        </SecondaryButton>
+        <SecondaryButton onClick={handleExport} disabled={exporting}>
+          {exporting
+            ? <><Loader2 size={14} className="animate-spin" /> Đang xuất...</>
+            : <><Download size={14} /> Export</>}
+        </SecondaryButton>
       </div>
 
       <SectionCard>
@@ -441,6 +492,7 @@ function EmployeesTab() {
                   onChange={toggleAll} className="w-4 h-4 accent-amber-500" /></Th>
                 <Th>Họ tên</Th>
                 <Th>Bộ phận</Th>
+                <Th>Phòng ban</Th>
                 <Th>Chức vụ</Th>
                 <Th>Role</Th>
                 <Th right>Thao tác</Th>
@@ -456,6 +508,7 @@ function EmployeesTab() {
                     <div className="text-xs text-[#8E8878]">{u.username}</div>
                   </Td>
                   <Td><span className="text-sm">{u.department || '—'}</span></Td>
+                  <Td><span className="text-sm">{u.division || '—'}</span></Td>
                   <Td><span className="text-sm">{u.position || '—'}</span></Td>
                   <Td><Badge variant="default">{u.role}</Badge></Td>
                   <Td right>
@@ -483,6 +536,7 @@ function EmployeesTab() {
       {salaryModal && <SalaryModal user={salaryModal} onClose={() => setSalaryModal(null)} onSaved={load} />}
       {batchModal && <BatchSalaryModal userIds={selected} onClose={() => setBatchModal(false)} onSaved={() => { setBatchModal(false); setSelected([]); }} />}
       {infoModal && <InfoModal user={infoModal} onClose={() => setInfoModal(null)} onSaved={load} />}
+      {importOpen && <ImportEmployeesModal onClose={() => setImportOpen(false)} onDone={load} />}
     </div>
   );
 }
@@ -751,6 +805,324 @@ function DriverReportModal({ onClose }) {
   );
 }
 
+// ── Payroll Tab — Tính lương hàng tháng ───────────────────────────────────────
+const PAYROLL_STATUS_LABEL = {
+  DRAFT: { label: 'Đã export, chưa import', cls: 'bg-amber-50 text-amber-700' },
+  PENDING_APPROVAL: { label: 'Chờ Owner duyệt', cls: 'bg-blue-50 text-blue-700' },
+  APPROVED: { label: 'Đã duyệt', cls: 'bg-emerald-50 text-emerald-700' },
+  REJECTED: { label: 'Bị từ chối', cls: 'bg-red-50 text-red-700' },
+};
+
+function PayrollStatusBadge({ status }) {
+  const cfg = PAYROLL_STATUS_LABEL[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
+}
+
+const MONTH_NAMES = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+  'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+
+/** Đọc message lỗi từ response — backend có thể trả JSON (lỗi) dù request xin blob. */
+async function readErrorMessage(err, fallback) {
+  try {
+    const blob = err?.response?.data;
+    if (blob instanceof Blob) {
+      const text = await blob.text();
+      try { return JSON.parse(text)?.message || fallback; } catch { return text || fallback; }
+    }
+    return err?.response?.data?.message || fallback;
+  } catch { return fallback; }
+}
+
+// ── Modal: Tạo phiếu lương (chọn tháng/năm + export) ──────────────────────────
+function CreatePayrollModal({ onClose, onExported }) {
+  const toast = useToast();
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await payrollApi.createAndExport(month, year);
+      downloadBlob(res.data, `tinh-luong-${month}-${year}.xlsx`);
+      toast('Đã tạo phiếu lương và xuất file Excel. Vui lòng điền thông tin rồi import lại.', 'success');
+      onExported();
+      onClose();
+    } catch (e) {
+      const msg = await readErrorMessage(e, 'Lỗi khi tạo phiếu lương');
+      toast(msg, 'error');
+    } finally { setExporting(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Tạo phiếu lương tháng">
+      <div className="space-y-4 py-1">
+        <p className="text-sm text-[#8E8878]">
+          Hệ thống sẽ export file Excel danh sách nhân viên đã được duyệt lương cơ bản.
+          Điền số ngày công, số người phụ thuộc, thưởng, phụ cấp, lương đóng BHXH/BHYT/BHTN
+          rồi import lại để tính lương.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Tháng" required>
+            <select className={selectCls} value={month} onChange={e => setMonth(Number(e.target.value))}>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Năm" required>
+            <input className={inputCls} type="number" value={year} onChange={e => setYear(Number(e.target.value))} />
+          </Field>
+        </div>
+      </div>
+      <div className="flex gap-2 pt-3">
+        <SecondaryButton onClick={onClose} className="flex-1">Huỷ</SecondaryButton>
+        <PrimaryButton onClick={handleExport} loading={exporting} className="flex-1">
+          <Download size={14} /> Tạo & Export Excel
+        </PrimaryButton>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Modal: Import Excel đã điền → tính lương ──────────────────────────────────
+function ImportPayrollModal({ onClose, onDone }) {
+  const [step, setStep] = useState('upload');
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const fileRef = useRef(null);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setUploadError(null);
+    try {
+      const res = await payrollApi.importBatch(file);
+      const body = res?.data || {};
+      if (body.success === false) {
+        setUploadError(body.message || 'Lỗi import dữ liệu lương');
+      } else {
+        setResult(body.data || null);
+        setStep('result');
+        onDone();
+      }
+    } catch (e) {
+      setUploadError(e?.response?.data?.message || 'Lỗi import dữ liệu lương');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Import file tính lương" size="sm">
+      {step === 'upload' ? (
+        <div className="flex flex-col items-center gap-4 py-4">
+          <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
+            {uploading
+              ? <div className="w-7 h-7 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              : <Calculator size={24} className="text-emerald-600" />}
+          </div>
+          <div className="text-center space-y-1.5">
+            <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang tính lương...' : 'Chọn file Excel đã điền'}</p>
+            <p className="text-xs text-[#8E8878]">Hệ thống sẽ tự tính BHXH/BHYT/BHTN và thuế TNCN theo luật hiện hành.</p>
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
+              ⚠ Chỉ import được file vừa tạo phiếu lương — mỗi file chỉ import 1 lần.
+            </p>
+            {uploadError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-left">
+                <span className="text-red-500 shrink-0 mt-0.5">✕</span>
+                <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+              </div>
+            )}
+          </div>
+          {!uploading && (
+            <label className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 transition-colors">
+              <Upload size={14} /> Chọn file .xlsx
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+                onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
+            </label>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4 py-2">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-emerald-600">{result?.employeeCount ?? 0}</p>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              Nhân viên đã tính lương — tháng {result?.month}/{result?.year}
+            </p>
+          </div>
+          <p className="text-sm text-[#8E8878] text-center">
+            Phiếu lương đã được gửi cho Owner duyệt. Bạn có thể xem chi tiết ở danh sách bên dưới.
+          </p>
+          <SecondaryButton onClick={onClose} className="w-full">Đóng</SecondaryButton>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── Modal: Xem chi tiết các phiếu lương trong batch ───────────────────────────
+function PayrollDetailModal({ batch, onClose }) {
+  const toast = useToast();
+  const [payslips, setPayslips] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    payrollApi.getPayslips(batch.id)
+      .then(data => setPayslips(Array.isArray(data) ? data : []))
+      .catch(() => { toast('Không tải được chi tiết phiếu lương', 'error'); setPayslips([]); })
+      .finally(() => setLoading(false));
+  }, [batch.id]);
+
+  return (
+    <Modal open onClose={onClose} size="2xl"
+      title={`Chi tiết phiếu lương — ${MONTH_NAMES[batch.month]}/${batch.year}`}>
+      {loading ? <LoadingSpinner /> : payslips.length === 0 ? (
+        <EmptyState icon={FileText} title="Chưa có dữ liệu" />
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Nhân viên</Th>
+                <Th right>Lương GROSS</Th>
+                <Th right>Người phụ thuộc</Th>
+                <Th right>Tổng bảo hiểm</Th>
+                <Th right>Thu nhập tính thuế</Th>
+                <Th right>Thuế TNCN</Th>
+                <Th right>Lương NET</Th>
+              </Tr>
+            </Thead>
+            <tbody>
+              {payslips.map(p => (
+                <Tr key={p.id}>
+                  <Td>
+                    <div className="font-medium">{p.userFullName}</div>
+                    <div className="text-xs text-[#8E8878]">{p.department || '—'} {p.division ? `· ${p.division}` : ''}</div>
+                  </Td>
+                  <Td right>{formatCurrency(p.grossSalary)}</Td>
+                  <Td right>{p.dependents ?? 0}</Td>
+                  <Td right>{formatCurrency(p.totalInsuranceAmount)}</Td>
+                  <Td right>{formatCurrency(p.taxableIncome)}</Td>
+                  <Td right>{formatCurrency(p.personalIncomeTax)}</Td>
+                  <Td right><span className="font-semibold text-emerald-700">{formatCurrency(p.netSalary)}</span></Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function PayrollTab() {
+  const toast = useToast();
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [detailBatch, setDetailBatch] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await payrollApi.listBatches({ size: 50 });
+      const list = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : []);
+      setBatches(list);
+    } catch { toast('Không tải được danh sách phiếu lương', 'error'); setBatches([]); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDownload = async (batch) => {
+    setDownloadingId(batch.id);
+    try {
+      const res = await payrollApi.downloadPayslips(batch.id);
+      downloadBlob(res.data, `phieu-luong-${batch.month}-${batch.year}.xlsx`);
+      toast('Đã tải phiếu lương', 'success');
+    } catch (e) {
+      const msg = await readErrorMessage(e, 'Lỗi khi tải phiếu lương');
+      toast(msg, 'error');
+    } finally { setDownloadingId(null); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <p className="text-sm text-[#8E8878]">
+          Tạo phiếu lương tháng → điền file Excel → import để tính lương → chờ Owner duyệt → tải phiếu lương về chi lương.
+        </p>
+        <div className="flex gap-2">
+          <SecondaryButton onClick={() => setImportOpen(true)}>
+            <Upload size={14} /> Import file đã điền
+          </SecondaryButton>
+          <PrimaryButton onClick={() => setCreateOpen(true)}>
+            <Calculator size={14} /> Tạo phiếu lương
+          </PrimaryButton>
+        </div>
+      </div>
+
+      <SectionCard>
+        {loading ? <LoadingSpinner /> : batches.length === 0 ? (
+          <EmptyState icon={Calculator} title="Chưa có phiếu lương nào" description="Bấm 'Tạo phiếu lương' để bắt đầu." />
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Tháng</Th>
+                <Th right>Số nhân viên</Th>
+                <Th>Trạng thái</Th>
+                <Th>Người tạo</Th>
+                <Th>Ngày tạo</Th>
+                <Th right>Thao tác</Th>
+              </Tr>
+            </Thead>
+            <tbody>
+              {batches.map(b => (
+                <Tr key={b.id}>
+                  <Td><span className="font-medium">{MONTH_NAMES[b.month]}/{b.year}</span></Td>
+                  <Td right>{b.employeeCount ?? '—'}</Td>
+                  <Td><PayrollStatusBadge status={b.status} />
+                    {b.rejectReason && <p className="text-xs text-red-500 mt-1 max-w-[200px]">{b.rejectReason}</p>}
+                  </Td>
+                  <Td>{b.createdByName || '—'}</Td>
+                  <Td>{formatDateTime(b.createdAt)}</Td>
+                  <Td right>
+                    <div className="flex gap-1.5 justify-end">
+                      {(b.status === 'PENDING_APPROVAL' || b.status === 'APPROVED') && (
+                        <SecondaryButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setDetailBatch(b)}>
+                          <Eye size={12} /> Xem
+                        </SecondaryButton>
+                      )}
+                      {b.status === 'APPROVED' && (
+                        <PrimaryButton className="!px-2.5 !py-1.5 text-xs"
+                          loading={downloadingId === b.id}
+                          onClick={() => handleDownload(b)}>
+                          <Download size={12} /> Tải phiếu lương
+                        </PrimaryButton>
+                      )}
+                    </div>
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </SectionCard>
+
+      {createOpen && <CreatePayrollModal onClose={() => setCreateOpen(false)} onExported={load} />}
+      {importOpen && <ImportPayrollModal onClose={() => setImportOpen(false)} onDone={load} />}
+      {detailBatch && <PayrollDetailModal batch={detailBatch} onClose={() => setDetailBatch(null)} />}
+    </div>
+  );
+}
+
+
 export default function HrPage() {
   const { t } = useLang();
   const [tab, setTab] = useState('employees');
@@ -760,6 +1132,7 @@ export default function HrPage() {
 
   const TABS = [
     { id: 'employees', label: 'Quản lý nhân viên', icon: Users },
+    { id: 'payroll', label: 'Tính lương', icon: Calculator },
     { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
     { id: 'ot', label: 'Phiếu OT', icon: Clock },
   ];
@@ -775,6 +1148,7 @@ export default function HrPage() {
       </div>
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'employees' && <EmployeesTab />}
+      {tab === 'payroll' && <PayrollTab />}
       {tab === 'leaves' && <LeavesTab />}
       {tab === 'ot' && <OtTab />}
       {showDriverReport && <DriverReportModal onClose={() => setShowDriverReport(false)} />}

@@ -15,6 +15,7 @@ export const hrSalaryApi = {
   setBatch:   (data)        => api.post('/api/hr/salaries/batch', data).then(r),
   list:       (params)      => api.get('/api/hr/salaries', { params }).then(r),
   approve:    (id)          => api.put(`/api/hr/salaries/${id}/approve`).then(r),
+  bulkApprove:(salaryIds)   => api.put('/api/hr/salaries/bulk-approve', { salaryIds }).then(r),
   reject:     (id, data)    => api.put(`/api/hr/salaries/${id}/reject`, data).then(r),
   exportAll:  (params)      => api.get('/api/hr/salaries/export', { params, responseType: 'blob' }),
   importAll:  (file) => {
@@ -42,7 +43,22 @@ export const hrOtApi = {
   get:    (id)         => api.get(`/api/hr/overtimes/${id}`).then(r),
 };
 
-// ── Payslip ───────────────────────────────────────────────────────────────────
-export const hrPayslipApi = {
-  get: (userId) => api.get(`/api/hr/payslip/${userId}`).then(r),
+// ── Payroll (Tính lương hàng tháng) ─────────────────────────────────────────────
+export const payrollApi = {
+  // Tạo phiếu lương tháng + export Excel (trả về blob để download)
+  createAndExport: (month, year) =>
+    api.get('/api/hr/payroll/export', { params: { month, year }, responseType: 'blob' }),
+  // Import file đã điền → tính lương
+  importBatch: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/api/hr/payroll/batches/import', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  listBatches: (params)      => api.get('/api/hr/payroll/batches', { params }).then(r),
+  getBatch:    (id)          => api.get(`/api/hr/payroll/batches/${id}`).then(r),
+  getPayslips: (id)          => api.get(`/api/hr/payroll/batches/${id}/payslips`).then(r),
+  getMyPayslips: (userId)    => api.get('/api/hr/payroll/my-payslips', { params: { userId } }).then(r),
+  approveBatch: (id)         => api.put(`/api/hr/payroll/batches/${id}/approve`).then(r),
+  rejectBatch:  (id, data)   => api.put(`/api/hr/payroll/batches/${id}/reject`, data).then(r),
+  // Tải file phiếu lương chi tiết (sau khi Owner duyệt) — trả blob
+  downloadPayslips: (id)     => api.get(`/api/hr/payroll/batches/${id}/download`, { responseType: 'blob' }),
 };

@@ -522,8 +522,7 @@ export default function ProductFormModal({
                   {/* Preview giá thùng */}
                   {form.unitsPerBox && parseInt(form.unitsPerBox) > 0 && tiers[0]?.price && (
                     <div className="bg-[#FDF8ED] rounded-lg px-3 py-2 flex items-center justify-between">
-                      <span className="text-xs text-[#8E8878]">Giá 1 thùng ({form.unitsPerBox} {
-    const { t } = useLang();form.unit})</span>
+                      <span className="text-xs text-[#8E8878]">Giá 1 thùng ({form.unitsPerBox} {form.unit})</span>
                       <span className="text-sm font-bold text-[#C9A84C]">
                         {new Intl.NumberFormat('vi-VN').format(
                           parseInt(form.unitsPerBox) * (parseFloat(tiers[0].price) || 0)

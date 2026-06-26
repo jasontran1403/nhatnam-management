@@ -9,7 +9,9 @@ import {
   Plus, Trash2, X, ChevronDown, ChevronUp,
   ImagePlus, Box, Search, Edit2, AlertTriangle,
   Package, Tag, Layers, Download, Upload, Hash,
+  ArrowUpAZ, ArrowDownAZ,
 } from 'lucide-react';
+
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
@@ -39,7 +41,7 @@ function generateSKU(productName, category, productId) {
       .trim();
 
   // 1. Prefix danh mục (3 ký tự)
-  const catLower = (category || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g,'d');
+  const catLower = (category || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
   let catCode = 'PRD';
   for (const [key, val] of Object.entries(CATEGORY_PREFIX)) {
     if (catLower.includes(key)) { catCode = val; break; }
@@ -311,9 +313,9 @@ function IngredientSelect({ ingredients, value, onChange }) {
             <div className="flex-1 overflow-auto p-2">
               {filtered.length === 0
                 ? <div className="flex flex-col items-center justify-center h-full text-[#B0A898]">
-                    <Search size={32} className="mb-2 opacity-30" />
-                    <p className="text-sm italic">Không tìm thấy</p>
-                  </div>
+                  <Search size={32} className="mb-2 opacity-30" />
+                  <p className="text-sm italic">Không tìm thấy</p>
+                </div>
                 : filtered.map(i => (
                   <div key={i.id}
                     onClick={() => { onChange(i.id); setOpen(false); setSearch(''); }}
@@ -364,20 +366,20 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
         hasWholesale: hasTiers,
         tiers: hasTiers
           ? editProduct.tiers.map((t, idx) => ({
-              _id: `tier-${idx}-${Date.now()}`,
-              tierName: t.tierName || `Sỉ ${idx + 1}`,
-              minQty: t.minQuantity ?? DEFAULT_TIERS[idx]?.minQty ?? 0,
-              maxQty: t.maxQuantity ?? DEFAULT_TIERS[idx]?.maxQty ?? null,
-              price: t.price != null ? String(t.price) : '',
-            }))
+            _id: `tier-${idx}-${Date.now()}`,
+            tierName: t.tierName || `Sỉ ${idx + 1}`,
+            minQty: t.minQuantity ?? DEFAULT_TIERS[idx]?.minQty ?? 0,
+            maxQty: t.maxQuantity ?? DEFAULT_TIERS[idx]?.maxQty ?? null,
+            price: t.price != null ? String(t.price) : '',
+          }))
           : DEFAULT_TIERS.map(t => ({ ...t, _id: `${t._id}-${Date.now()}`, price: '' })),
         ingredients: (editProduct.ingredients && editProduct.ingredients.length > 0)
           ? editProduct.ingredients.map(ing => ({
-              _id: Date.now() + Math.random(),
-              ingredientId: String(ing.ingredientId || ''),
-              quantity: ing.quantity != null ? ing.quantity : 1,
-              canOverride: ing.canOverride || false,
-            }))
+            _id: Date.now() + Math.random(),
+            ingredientId: String(ing.ingredientId || ''),
+            quantity: ing.quantity != null ? ing.quantity : 1,
+            canOverride: ing.canOverride || false,
+          }))
           : [emptyIngredient()],
         _uploading: false,
       });
@@ -473,12 +475,12 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           unitsPerBox: form.unitsPerBox ? parseInt(form.unitsPerBox, 10) : null,
           tiers: form.hasWholesale
             ? form.tiers.map((tier, idx) => ({
-                tierName: tier.tierName,
-                minQuantity: tier.minQty,
-                maxQuantity: tier.maxQty,
-                price: Number(String(tier.price).replace(/[^0-9]/g, '')),
-                sortOrder: idx,
-              }))
+              tierName: tier.tierName,
+              minQuantity: tier.minQty,
+              maxQuantity: tier.maxQty,
+              price: Number(String(tier.price).replace(/[^0-9]/g, '')),
+              sortOrder: idx,
+            }))
             : [],
           ingredients: form.ingredients
             .filter(ing => ing.ingredientId)
@@ -771,8 +773,8 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
           {imgSrc(product.imageUrl)
             ? <img src={imgSrc(product.imageUrl)} alt={product.name} className="w-full h-full object-cover" />
             : <div className="w-full h-full flex items-center justify-center">
-                <Package size={20} className="text-[#D3CFC8]" />
-              </div>}
+              <Package size={20} className="text-[#D3CFC8]" />
+            </div>}
         </div>
 
         {/* Info */}
@@ -854,20 +856,21 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OperatorProductBatchPage() {
   const toast = useToast();
-  const [products, setProducts]     = useState([]);
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [ingredients, setIngredients] = useState([]);
-  const [loading, setLoading]       = useState(false);
-  const [search, setSearch]         = useState('');
-  const [filterCat, setFilterCat]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
 
   // Modal tạo/sửa
-  const [modalOpen, setModalOpen]   = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
 
   // Modal xóa
   const [deleteModal, setDeleteModal] = useState({ open: false, product: null });
-  const [deleting, setDeleting]     = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Import/Export
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -906,8 +909,14 @@ export default function OperatorProductBatchPage() {
       const q = normalize(search);
       list = list.filter(p => normalize(p.name).includes(q));
     }
+    if (sortOrder === 'asc' || sortOrder === 'desc') {
+      list = [...list].sort((a, b) => {
+        const cmp = (a.name || '').localeCompare(b.name || '', 'vi', { sensitivity: 'base' });
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
+    }
     return list;
-  }, [products, filterCat, search]);
+  }, [products, filterCat, search, sortOrder]);
 
   const handleEdit = (product) => {
     setEditProduct(product);
@@ -993,6 +1002,17 @@ export default function OperatorProductBatchPage() {
                 placeholder="Tìm tên sản phẩm..."
                 className="pl-8 pr-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] w-48" />
             </div>
+
+            <button
+              onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? '' : 'asc')}
+              title={sortOrder === 'asc' ? 'Đang sort A→Z' : sortOrder === 'desc' ? 'Đang sort Z→A' : 'Sort theo tên'}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all
+    ${sortOrder
+                  ? 'border-[#C9A84C] text-[#C9A84C] bg-[#C9A84C]/10'
+                  : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C]'}`}>
+              {sortOrder === 'desc' ? <ArrowDownAZ size={14} /> : <ArrowUpAZ size={14} />}
+              {sortOrder === 'asc' ? 'A → Z' : sortOrder === 'desc' ? 'Z → A' : 'Sort tên'}
+            </button>
 
             {/* Import */}
             <button onClick={() => setImportModalOpen(true)}

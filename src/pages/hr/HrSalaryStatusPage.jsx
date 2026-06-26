@@ -57,7 +57,7 @@ function ImportSalariesModal({ open, onClose, onDone }) {
           </div>
           <div className="text-center space-y-1.5">
             <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
-            <p className="text-xs text-[#8E8878]">Backend dựa vào cột <strong>STT</strong> để cập nhật đúng nhân viên.</p>
+            <p className="text-xs text-[#8E8878]">Hệ thống cập nhật đúng nhân viên theo cột <strong>ID</strong> — không dùng thứ tự dòng.</p>
             <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
               ⚠ Mỗi file chỉ import được <strong>1 lần</strong>. Export lại nếu muốn import tiếp.
             </p>
@@ -200,8 +200,7 @@ export default function HrSalaryStatusPage() {
               <Tr>
                 <Th>Nhân viên</Th>
                 <Th>Bộ phận</Th>
-                <Th right>Lương CB</Th>
-                <Th right>Bonus</Th>
+                <Th right>Lương trước thuế</Th>
                 <Th>Trạng thái</Th>
                 <Th>Lý do từ chối</Th>
                 <Th>Duyệt bởi</Th>
@@ -219,7 +218,6 @@ export default function HrSalaryStatusPage() {
                     </Td>
                     <Td>{s.department || '—'}</Td>
                     <Td right>{s.baseSalary ? formatCurrency(s.baseSalary) : '—'}</Td>
-                    <Td right>{s.bonus ? formatCurrency(s.bonus) : '—'}</Td>
                     <Td>
                       <Badge variant={cfg.variant || 'default'}>{cfg.label || s.status}</Badge>
                     </Td>

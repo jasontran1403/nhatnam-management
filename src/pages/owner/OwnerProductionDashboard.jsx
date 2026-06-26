@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Factory, Plus, Clock, CheckCircle2, AlertTriangle,
   Wrench, Settings2, ChevronRight, CalendarRange,
-  ClipboardList, X, Loader2, Package, Search, ChevronDown, FileWarning, RotateCcw,
+  ClipboardList, X, Loader2, Package, Search, ChevronDown, FileWarning, RotateCcw, Check,
 } from 'lucide-react';
 import { startOfDay } from 'date-fns';
 import useMinLoading from '../../hooks/useMinLoading';
@@ -49,6 +49,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -58,6 +59,9 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
 
   // Reset q khi đóng
   useEffect(() => { if (!open) setQ(''); }, [open]);
+  // Focus thủ công sau khi mở — tránh autoFocus kéo bàn phím mobile lên ngay
+  // lúc mở khiến layout nhảy và "nuốt" mất lượt chạm chọn đầu tiên.
+  useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
 
   const selected = items.find(i => i.id === value);
   const filtered = q.trim()
@@ -69,6 +73,8 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
   return (
     <div className="relative" ref={ref}>
       <div
+        role="button"
+        tabIndex={0}
         onClick={handleOpen}
         className={`${inputCls} flex items-center gap-2 cursor-pointer min-h-[38px]
           ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
@@ -79,6 +85,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
         </span>
         {selected && !disabled && (
           <button
+            type="button"
             onClick={e => { e.stopPropagation(); onChange(''); }}
             className="text-[#8E8878] hover:text-red-500 flex-shrink-0"
           >
@@ -95,7 +102,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
           rounded-xl shadow-lg mt-1 overflow-hidden">
           <div className="p-2 border-b border-[#F0EBE3]">
             <input
-              autoFocus
+              ref={inputRef}
               className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
                 focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
               placeholder="Tìm..."
@@ -110,10 +117,16 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
             ) : (
               filtered.map(item => (
                 <button
+                  type="button"
                   key={item.id}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] transition-colors
-                    ${value === item.id ? 'bg-[#F0EBE3] font-medium text-[#1C1C1E]' : 'text-[#1C1C1E]'}`}
-                  onClick={() => { onChange(item.id); setOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] active:bg-[#F0EBE3] transition-colors
+    ${value === item.id ? 'bg-[#F0EBE3] font-medium text-[#1C1C1E]' : 'text-[#1C1C1E]'}`}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onChange(item.id);
+                    setOpen(false);
+                  }}
                 >
                   {item.name}{item.unit ? ` (${item.unit})` : ''}
                 </button>
@@ -122,6 +135,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
           </div>
           {onCreateNew && (
             <button
+              type="button"
               className="w-full text-left px-3 py-2.5 text-sm text-[#C9A84C] font-semibold
                 border-t border-[#F0EBE3] hover:bg-[#FAF7F2] flex items-center gap-1.5"
               onClick={() => { setOpen(false); onCreateNew(q); }}
@@ -136,37 +150,64 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
 }
 
 // ── Multi-product select (tag-style, search + dropdown) ────────────────────────
+// Lưu ý quan trọng: KHÔNG dùng document.addEventListener('mousedown', ...) để
+// đóng dropdown khi click ra ngoài — global listener này chạy TRƯỚC khi React
+// xử lý onClick của item trong dropdown (mousedown luôn fire trước click), nên
+// nó có thể đóng dropdown / thay đổi DOM giữa lúc click đang diễn ra, khiến
+// click vào đúng item lại rơi vào item khác (DOM đã re-render dưới ngón tay).
+// Dùng onBlur trên wrapper (kết hợp tabIndex để wrapper nhận được focus/blur
+// event của các con) là cách chuẩn và an toàn hơn nhiều cho combobox kiểu này.
 function MultiProductSelect({ allProducts, selected, onChange }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+  const closeTimer = useRef(null);
 
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
 
-  useEffect(() => { if (!open) setQ(''); }, [open]);
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
-  const available = allProducts.filter(p =>
-    !selected.includes(p.id) &&
-    (!q.trim() || p.name.toLowerCase().includes(q.toLowerCase()))
-  );
+  // Đóng dropdown khi focus rời khỏi toàn bộ wrapper (kể cả qua phím Tab).
+  // Dùng setTimeout để cho phép click vào 1 item con (mousedown -> blur ->
+  // click) vẫn kịp chạy onClick của item đó trước khi dropdown bị đóng/unmount.
+  const handleBlur = () => {
+    closeTimer.current = setTimeout(() => {
+      if (!wrapRef.current?.contains(document.activeElement)) setOpen(false);
+    }, 120);
+  };
+
+  // QUAN TRỌNG: danh sách dropdown KHÔNG được lọc bỏ item đã chọn — nếu lọc bỏ,
+  // mỗi lần chọn 1 sản phẩm thì các item phía dưới nó sẽ "nhảy" lên lấp chỗ
+  // trống ngay trong lúc người dùng đang click liên tiếp để chọn nhiều sản
+  // phẩm, khiến lần click tiếp theo rơi vào đúng item vừa "trồi" lên vị trí đó
+  // — kết quả: chọn nhầm/bỏ lỡ sản phẩm, hoặc nhìn như vừa chọn vừa mất sản
+  // phẩm. Giữ nguyên thứ tự cố định, chỉ đổi trạng thái tick/highlight.
+  const filtered = q.trim()
+    ? allProducts.filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
+    : allProducts;
   const selectedItems = allProducts.filter(p => selected.includes(p.id));
 
+  const removeTag = (id) => onChange(prev => prev.filter(x => x !== id));
+  const toggleProduct = (id) => {
+    onChange(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   return (
-    <div ref={ref}>
-      {/* Tags đã chọn */}
+    <div ref={wrapRef} onBlur={handleBlur} tabIndex={-1}>
+      {/* Tags đã chọn — mỗi tag là 1 hàng riêng biệt, nút X có vùng bấm 24x24px
+          (không phải icon 11px trần) để tránh bấm nhầm sang text cạnh bên. */}
       {selectedItems.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {selectedItems.map(p => (
             <span key={p.id}
-              className="flex items-center gap-1 bg-[#1A2B1A] text-white text-xs px-2.5 py-1 rounded-full">
-              {p.name}{p.unit ? ` (${p.unit})` : ''}
+              className="flex items-center gap-1 bg-[#1A2B1A] text-white text-xs pl-2.5 py-1 rounded-full">
+              <span>{p.name}{p.unit ? ` (${p.unit})` : ''}</span>
               <button
-                onClick={() => onChange(selected.filter(id => id !== p.id))}
-                className="hover:text-red-300 transition-colors ml-0.5"
+                type="button"
+                onClick={() => removeTag(p.id)}
+                className="w-6 h-6 -mr-1 flex items-center justify-center hover:text-red-300 transition-colors flex-shrink-0"
+                aria-label={`Xoá ${p.name}`}
               >
                 <X size={11} />
               </button>
@@ -180,8 +221,9 @@ function MultiProductSelect({ allProducts, selected, onChange }) {
           phẩm mới phải được tạo riêng từ trang quản lý sản phẩm xưởng, luôn
           gắn với 1 Ingredient có sẵn để dữ liệu không bị lệch khi chuyển kho. */}
       <div className="relative">
-        <div
-          className={`${inputCls} flex items-center gap-2 cursor-pointer min-h-[38px]`}
+        <button
+          type="button"
+          className={`${inputCls} w-full flex items-center gap-2 cursor-pointer min-h-[38px] text-left`}
           onClick={() => setOpen(o => !o)}
         >
           <Search size={13} className="text-[#8E8878] flex-shrink-0" />
@@ -189,37 +231,65 @@ function MultiProductSelect({ allProducts, selected, onChange }) {
             {selected.length === 0 ? 'Chọn sản phẩm...' : `Đã chọn ${selected.length} sản phẩm`}
           </span>
           <ChevronDown size={13} className={`text-[#8E8878] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
-        </div>
+        </button>
 
         {open && (
           <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#E8DDD0]
             rounded-xl shadow-lg mt-1 overflow-hidden">
-            <div className="p-2 border-b border-[#F0EBE3]">
-              <input
-                autoFocus
-                className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
-                  focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
-                placeholder="Tìm sản phẩm..."
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                onClick={e => e.stopPropagation()}
-              />
+            <div className="sticky top-0 z-20 bg-white p-2 border-b border-[#F0EBE3]">
+              <div className="flex items-center gap-2">
+                <input
+                  ref={inputRef}
+                  className="flex-1 min-w-0 text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
+        focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+                  placeholder="Tìm sản phẩm..."
+                  value={q}
+                  onChange={e => setQ(e.target.value)}
+                />
+
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(false);
+                    setQ('');
+                  }}
+                  className="w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center
+        text-[#8E8878] bg-[#FAF7F2] border border-[#E8DDD0]
+        hover:text-red-500 hover:bg-red-50 active:bg-red-100"
+                  aria-label="Đóng dropdown"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
             <div className="max-h-48 overflow-y-auto">
-              {available.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-[#8E8878] italic">
-                  {allProducts.length === selected.length ? 'Đã chọn tất cả' : 'Không tìm thấy'}
-                </div>
+              {filtered.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-[#8E8878] italic">Không tìm thấy</div>
               ) : (
-                available.map(item => (
-                  <button
-                    key={item.id}
-                    className="w-full text-left px-3 py-2 text-sm text-[#1C1C1E] hover:bg-[#FAF7F2] transition-colors"
-                    onClick={() => { onChange([...selected, item.id]); setQ(''); }}
-                  >
-                    {item.name}{item.unit ? ` (${item.unit})` : ''}
-                  </button>
-                ))
+                filtered.map(item => {
+                  const checked = selected.includes(item.id);
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleProduct(item.id);
+                      }}
+                      className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm transition-colors active:bg-[#F0EBE3]
+    ${checked ? 'bg-[#FAF7F2] text-[#1C1C1E] font-medium' : 'text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0
+    ${checked ? 'bg-[#1A2B1A] border-[#1A2B1A]' : 'border-[#E8DDD0]'}`}>
+                        {checked && <Check size={11} className="text-white" />}
+                      </span>
+                      <span className="flex-1">{item.name}{item.unit ? ` (${item.unit})` : ''}</span>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>

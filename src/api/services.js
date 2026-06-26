@@ -119,6 +119,10 @@ export const orderApi = {
     api.put(`/api/seller/orders/${id}/items`, data),
   superSellerUpdateOrder: (id, data) =>
     api.put(`/api/seller/orders/${id}/super-edit`, data),
+  checkSuperCancelInfo: (id) =>
+    api.get(`/api/seller/orders/${id}/super-cancel/check`),
+  superSellerCancelOrder: (id, data) =>
+    api.put(`/api/seller/orders/${id}/super-cancel`, data),
   searchStaff: (keyword) =>
     api.get('/api/seller/orders/super-edit/staff-search', { params: { keyword } }),
   searchDrivers: (keyword, vehicleType) =>

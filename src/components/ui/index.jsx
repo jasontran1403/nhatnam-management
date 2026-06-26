@@ -123,14 +123,21 @@ export function IconButton({ icon: Icon, label, onClick, className = '' }) {
 
 export function Field({ label, children, required, hint, error }) {
   return (
-    <label className="block">
+    // Dùng <div> thay vì <label> — label HTML tự động forward click/focus tới
+    // control con đầu tiên bên trong nó. Với input/select đơn giản thì vô hại,
+    // nhưng với các custom dropdown nhiều bước (search input + list item + tag
+    // xoá) như MultiProductSelect/SearchDropdown, hành vi forward này khiến
+    // click vào ô input bị browser "chuyển tiếp" thành click vào nút xoá tag
+    // hoặc phần tử ẩn đầu tiên, gây mất lựa chọn đã chọn và dropdown không mở
+    // được trên mobile (touch event bị label nuốt mất).
+    <div className="block">
       <span className="block text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider mb-1.5">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </span>
       {children}
       {hint && !error && <p className="text-xs text-[#8E8878] mt-1">{hint}</p>}
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
-    </label>
+    </div>
   );
 }
 

@@ -6,6 +6,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, orderApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
+import SuperSellerCancelOrderModal from '../../components/seller/SuperSellerCancelOrderModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import { formatPrice } from '../../utils/formatPrice';
@@ -247,7 +248,9 @@ function StatusActionButtons({ order, onCancel, onEdit, loading, disabled, isSup
   const locked = (status === 'COMPLETED' || isCancelled || status === 'FAILED') && !canEdit;
   if (locked) return <span className="text-[10px] text-[#C4B9A8]">—</span>;
 
-  const canCancel = CANCELLABLE_STATUSES.has(status);
+  // SUPER_SELLER: hủy được mọi trạng thái trừ CANCELLED
+  // Seller thường: chỉ hủy được các trạng thái chưa xử lý xong (CANCELLABLE_STATUSES)
+  const canCancel = isSuperSeller ? !isCancelled : CANCELLABLE_STATUSES.has(status);
   if (!canEdit && !canCancel) return null;
   if (disabled) return <span className="text-[10px] text-[#C4B9A8] italic">Chỉ xem</span>;
 
@@ -863,7 +866,12 @@ export default function OrdersPage() {
       )}
 
       {cancelTarget && (
-        <CancelOrderModal order={cancelTarget} onClose={() => setCancelTarget(null)} onConfirm={handleCancelConfirm} loading={cancelLoading} />
+        isSuperSeller ? (
+          <SuperSellerCancelOrderModal order={cancelTarget} onClose={() => setCancelTarget(null)}
+            onCancelled={() => { setCancelTarget(null); fetchOrders(); }} />
+        ) : (
+          <CancelOrderModal order={cancelTarget} onClose={() => setCancelTarget(null)} onConfirm={handleCancelConfirm} loading={cancelLoading} />
+        )
       )}
 
       <EditOrderModal

@@ -11,12 +11,6 @@ import { PageHeader, EmptyState, formatDateTime } from '../../components/ui';
 import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 
-const STATUS_MAP = {
-  PENDING:  { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200',      icon: Clock },
-  APPROVED: { label: t('status', 'approved'),  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-  REJECTED: { label: t('status', 'rejected_short'),   cls: 'bg-red-50 text-red-600 border-red-200',             icon: XCircle },
-};
-
 const fmtCur = (v) => v == null ? '—' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
 
 export default function HrSalaryApprovalPage() {
@@ -28,6 +22,12 @@ export default function HrSalaryApprovalPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
   const [detail, setDetail] = useState(null);
+
+  const STATUS_MAP = {
+    PENDING:  { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200',      icon: Clock },
+    APPROVED: { label: t('status', 'approved'),  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+    REJECTED: { label: t('status', 'rejected_short'),   cls: 'bg-red-50 text-red-600 border-red-200',             icon: XCircle },
+  };
 
   const load = useCallback(async (p = 0) => {
     setLoading(true);
@@ -48,8 +48,8 @@ export default function HrSalaryApprovalPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      <PageHeader icon={Receipt} title=t('hr','salary_slips_processed')
-        subtitle=t('hr','salary_request_list') />
+      <PageHeader icon={Receipt} title={t('hr','salary_slips_processed')}
+        subtitle={t('hr','salary_request_list')} />
 
       <div className="flex gap-2">
         {[['',t('batch','status_filter_all')], ['PENDING',t('status','pending')], ['APPROVED',t('status','approved')], ['REJECTED',t('status','rejected_short')]].map(([val, label]) => (
@@ -63,14 +63,14 @@ export default function HrSalaryApprovalPage() {
         ))}
       </div>
 
-      {loading ? <TableSkeleton cols={6} rows={10} /> : items.length === 0 ? (
-        <EmptyState icon={Receipt} title=t('common','no_data') />
+      {loading ? <TableSkeleton cols={5} rows={10} /> : items.length === 0 ? (
+        <EmptyState icon={Receipt} title={t('common','no_data')} />
       ) : (
         <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
-                {[t('employee','employee'),t('employee','department'),'Lương CB','Bonus','Phụ cấp',t('common','status'),'Ngày tạo',''].map(h => (
+                {[t('employee','employee'),t('employee','department'),'Lương trước thuế',t('common','status'),'Ngày tạo',''].map(h => (
                   <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase">{h}</th>
                 ))}
               </tr>
@@ -85,8 +85,6 @@ export default function HrSalaryApprovalPage() {
                     <td className="px-3 py-3 font-medium text-[#1C1C1E]">{s.userFullName}</td>
                     <td className="px-3 py-3 text-xs text-[#5C4E3D]">{s.department}</td>
                     <td className="px-3 py-3 text-xs">{fmtCur(s.baseSalary)}</td>
-                    <td className="px-3 py-3 text-xs">{fmtCur(s.bonus)}</td>
-                    <td className="px-3 py-3 text-xs">{fmtCur((s.mealAllowance||0)+(s.transportAllowance||0))}</td>
                     <td className="px-3 py-3">
                       <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border w-fit ${st.cls}`}>
                         <Icon size={11} /> {st.label}
@@ -107,15 +105,15 @@ export default function HrSalaryApprovalPage() {
       {/* Detail modal */}
       {detail && (
         <Modal open={!!detail} onClose={() => setDetail(null)} title="Chi tiết phiếu lương" size="md">
-          <SalaryDetail s={detail} />
+          <SalaryDetail s={detail} statusMap={STATUS_MAP} t={t} />
         </Modal>
       )}
     </div>
   );
 }
 
-function SalaryDetail({ s }) {
-  const st = STATUS_MAP[s.status] || STATUS_MAP.PENDING;
+function SalaryDetail({ s, statusMap, t }) {
+  const st = statusMap[s.status] || statusMap.PENDING;
   const Icon = st.icon;
   return (
     <div className="space-y-4">
@@ -129,12 +127,7 @@ function SalaryDetail({ s }) {
           [t('employee','employee'), s.userFullName],
           [t('employee','department'), s.department],
           ['Chức vụ', s.position || '—'],
-          ['Lương cơ bản', fmtCur(s.baseSalary)],
-          ['Tỷ lệ BHXH', s.socialInsuranceRate + '%'],
-          ['Mức lương đóng BHXH', fmtCur(s.socialInsuranceSalary)],
-          ['Bonus', fmtCur(s.bonus)],
-          ['Phụ cấp cơm', fmtCur(s.mealAllowance)],
-          ['Phụ cấp xăng', fmtCur(s.transportAllowance)],
+          ['Lương trước thuế', fmtCur(s.baseSalary)],
           ['HR lập', s.createdByName || '—'],
           ['Owner duyệt', s.approvedByName || '—'],
         ].map(([label, value]) => (
@@ -153,5 +146,3 @@ function SalaryDetail({ s }) {
     </div>
   );
 }
-
-const fmtCur = (v) => v == null ? '—' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);

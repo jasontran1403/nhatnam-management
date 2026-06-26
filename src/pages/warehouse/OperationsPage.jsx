@@ -84,7 +84,7 @@ function emptyRow(mode) {
 function FormShell({ title, warehouseName, onSubmit, loading, error, success, children }) {
   const { t } = useLang();
   return (
-    <div className="wh-card">
+    <div className="wh-card" style={{ paddingBottom: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{title}</h2>
         {warehouseName && (
@@ -99,11 +99,34 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
       </div>
       {error && <div className="wh-alert wh-alert-error">⚠️ {error}</div>}
       {success && <div className="wh-alert wh-alert-success">✅ {success}</div>}
-      {children}
-      <hr className="wh-sep" />
-      <button className="wh-btn wh-btn-primary" onClick={onSubmit} disabled={loading}>
-        {loading ? t('common', 'processing') : t('common', 'confirm')}
-      </button>
+
+      {/* Phần nội dung form — cuộn được riêng nếu quá dài */}
+      <div style={{ paddingBottom: 16 }}>
+        {children}
+      </div>
+
+      {/* Nút Xác nhận — sticky ở đáy viewport trên mobile */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'var(--wh-surface, #fff)',
+          paddingTop: 12,
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+          marginLeft: -16,
+          marginRight: -16,
+          paddingLeft: 16,
+          paddingRight: 16,
+          borderTop: '1px solid var(--wh-border, #eee)',
+          zIndex: 5,
+        }}
+      >
+        <button className="wh-btn wh-btn-primary" onClick={onSubmit} disabled={loading} style={{ width: '100%' }}>
+          {loading ? t('common', 'processing') : t('common', 'confirm')}
+        </button>
+      </div>
     </div>
   );
 }

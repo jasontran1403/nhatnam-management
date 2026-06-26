@@ -1,13 +1,14 @@
 // src/pages/owner/OwnerEmployeesPage.jsx
-// Owner xem nhân sự: tab Nhân viên, Phiếu nghỉ, Phiếu OT, Duyệt lương
+// Owner xem nhân sự: tab Nhân viên, Phiếu nghỉ, Phiếu OT, Duyệt lương, Duyệt phiếu lương
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users, Calendar, Clock, DollarSign, Check, X, FileText,
-  Search, ChevronDown,
+  Search, ChevronDown, Calculator, Download, Eye,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
-import { hrSalaryApi, hrLeaveApi, hrOtApi, hrPayslipApi } from '../../api/hrApi';
+import { hrSalaryApi, hrLeaveApi, hrOtApi, payrollApi } from '../../api/hrApi';
+import { downloadBlob } from '../../api/services';
 import {
   PageHeader, SectionCard, Table, Thead, Th, Td, Tr,
   EmptyState, LoadingSpinner, Field, inputCls, selectCls,
@@ -18,93 +19,6 @@ import { Badge } from '../../components/ui/Badge';
 import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/common/Toast';
-
-
-// ── Payslip Modal ─────────────────────────────────────────────────────────────
-function PayslipModal({ userId, userName, onClose }) {
-  const { t } = useLang();
-  const toast = useToast();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    hrPayslipApi.get(userId)
-      .then(setData)
-      .catch(() => toast(t('common', 'error_retry'), 'error'))
-      .finally(() => setLoading(false));
-  }, [userId]);
-
-  const fmtVnd = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + ' ₫';
-  const monthName = data ? t('hr', 'month_label').replace('{m}', data.month).replace('{y}', data.year) : '';
-
-  return (
-    <Modal open onClose={onClose} title={`${t('hr', 'salary_slip')} — ${userName}`} size="lg">
-      {loading ? <LoadingSpinner /> : !data ? (
-        <EmptyState icon={DollarSign} title="Không có dữ liệu lương" />
-      ) : (
-        <div className="space-y-4">
-          {/* Header gradient */}
-          <div className="rounded-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-[#C9A84C] to-[#E8C76A] px-5 py-4 text-white">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs opacity-80 font-medium uppercase tracking-wider">Phiếu lương</p>
-                  <h2 className="text-xl font-bold mt-0.5">{data.userFullName}</h2>
-                  <p className="text-sm opacity-90">{data.department} {data.position ? `— ${data.position}` : ''}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs opacity-80">{monthName}</p>
-                  <p className="text-2xl font-bold">{fmtVnd(data.netSalary)}</p>
-                  <p className="text-xs opacity-80">Thực nhận</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2 column details */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* Left: Thu nhập */}
-            <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Thu nhập</p>
-              <Row label="Lương CB" val={fmtVnd(data.baseSalary)} />
-              <Row label="Phụ cấp cơm" val={fmtVnd(data.mealAllowance)} />
-              <Row label="Phụ cấp xăng" val={fmtVnd(data.transportAllowance)} />
-              <Row label="Bonus" val={fmtVnd(data.bonus)} />
-              <Row label={`OT (${data.otHours}h)`} val={fmtVnd(data.otPay)} />
-              <div className="border-t border-black/10 pt-2 mt-2">
-                <Row label="Tổng thu" val={fmtVnd(data.grossSalary)} bold />
-              </div>
-            </div>
-
-            {/* Right: Khấu trừ & Công */}
-            <div className="space-y-3">
-              <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Khấu trừ</p>
-                <Row label={`BHXH (${data.socialInsuranceRate}%)`} val={fmtVnd(data.socialInsuranceAmount)} red />
-                <div className="border-t border-black/10 pt-2 mt-2">
-                  <Row label="Tổng khấu trừ" val={fmtVnd(data.totalDeductions)} bold red />
-                </div>
-              </div>
-              <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Chấm công</p>
-                <Row label="Công chuẩn" val={`${data.standardWorkdays} ngày`} />
-                <Row label="Nghỉ phép có lương" val={`${data.paidLeaveDays} ngày`} />
-                <Row label="Nghỉ không lương" val={`${data.unpaidLeaveDays} ngày`} red={data.unpaidLeaveDays > 0} />
-                <Row label="Công thực tế" val={`${data.actualWorkdays} ngày`} bold />
-              </div>
-            </div>
-          </div>
-
-          {/* Net */}
-          <div className="bg-[#1C1C1E] rounded-xl px-5 py-4 flex items-center justify-between text-white">
-            <span className="font-semibold">Thực nhận {monthName}</span>
-            <span className="text-2xl font-bold text-[#C9A84C]">{fmtVnd(data.netSalary)}</span>
-          </div>
-        </div>
-      )}
-    </Modal>
-  );
-}
 
 function Row({ label, val, bold, red }) {
   return (
@@ -129,7 +43,7 @@ function RejectModal({ salary, onClose, onDone }) {
       toast('Đã từ chối phiếu lương', 'success');
       onDone();
       onClose();
-    } catch (e) { toast(e.message || t('common', 'error'), 'error'); }
+    } catch (e) { toast(e.message || 'Lỗi khi xử lý', 'error'); }
     finally { setSaving(false); }
   };
 
@@ -158,7 +72,6 @@ function EmployeesTab() {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [payslip, setPayslip] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -191,7 +104,6 @@ function EmployeesTab() {
                 <Th>Họ tên</Th>
                 <Th>Bộ phận</Th>
                 <Th>Chức vụ</Th>
-                <Th right>Phiếu lương</Th>
               </Tr>
             </Thead>
             <tbody>
@@ -203,11 +115,6 @@ function EmployeesTab() {
                   </Td>
                   <Td>{u.department || '—'}</Td>
                   <Td>{u.position || '—'}</Td>
-                  <Td right>
-                    <SecondaryButton className="!px-3 !py-1.5 text-xs" onClick={() => setPayslip(u)}>
-                      <FileText size={12} /> Xem phiếu lương
-                    </SecondaryButton>
-                  </Td>
                 </Tr>
               ))}
             </tbody>
@@ -219,9 +126,6 @@ function EmployeesTab() {
           </div>
         )}
       </SectionCard>
-
-      {payslip && <PayslipModal userId={payslip.id} userName={payslip.fullName}
-        onClose={() => setPayslip(null)} />}
     </div>
   );
 }
@@ -364,6 +268,8 @@ function SalaryApprovalTab() {
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [rejectModal, setRejectModal] = useState(null);
   const [approving, setApproving] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -371,11 +277,18 @@ function SalaryApprovalTab() {
       const data = await hrSalaryApi.list({ status: statusFilter || undefined, page, size: 20 });
       setRows(data.content ?? data);
       setTotalPages(data.totalPages ?? 1);
+      setSelected([]);
     } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
   }, [page, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const pendingRows = rows.filter(r => r.status === 'PENDING');
+  const toggleAll = () =>
+    setSelected(selected.length === pendingRows.length ? [] : pendingRows.map(r => r.id));
+  const toggleOne = (id) =>
+    setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
   const handleApprove = async (id) => {
     setApproving(id);
@@ -387,21 +300,39 @@ function SalaryApprovalTab() {
     finally { setApproving(null); }
   };
 
+  const handleBulkApprove = async () => {
+    if (selected.length === 0) return;
+    setBulkApproving(true);
+    try {
+      await hrSalaryApi.bulkApprove(selected);
+      toast(`Đã duyệt ${selected.length} phiếu lương`, 'success');
+      load();
+    } catch (e) { toast(e.message || t('common', 'error'), 'error'); }
+    finally { setBulkApproving(false); }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        {[
-          { val: 'PENDING', label: t('status', 'pending') },
-          { val: 'APPROVED', label: t('status', 'approved') },
-          { val: 'REJECTED', label: t('common', 'reject') },
-          { val: '', label: t('common', 'all') },
-        ].map(({ val, label }) => (
-          <button key={val} onClick={() => { setStatusFilter(val); setPage(0); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
-              ${statusFilter === val ? 'bg-[#1C1C1E] text-white' : 'bg-white border border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex gap-2">
+          {[
+            { val: 'PENDING', label: t('status', 'pending') },
+            { val: 'APPROVED', label: t('status', 'approved') },
+            { val: 'REJECTED', label: t('common', 'reject') },
+            { val: '', label: t('common', 'all') },
+          ].map(({ val, label }) => (
+            <button key={val} onClick={() => { setStatusFilter(val); setPage(0); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
+                ${statusFilter === val ? 'bg-[#1C1C1E] text-white' : 'bg-white border border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {statusFilter === 'PENDING' && selected.length > 0 && (
+          <PrimaryButton onClick={handleBulkApprove} loading={bulkApproving}>
+            <Check size={14} /> Duyệt đã chọn ({selected.length})
+          </PrimaryButton>
+        )}
       </div>
 
       <SectionCard>
@@ -411,13 +342,14 @@ function SalaryApprovalTab() {
           <Table>
             <Thead>
               <Tr>
+                {statusFilter === 'PENDING' && (
+                  <Th><input type="checkbox" checked={selected.length === pendingRows.length && pendingRows.length > 0}
+                    onChange={toggleAll} className="w-4 h-4 accent-amber-500" /></Th>
+                )}
                 <Th>Nhân viên</Th>
                 <Th>Bộ phận</Th>
-                <Th right>Lương CB</Th>
-                <Th right>BHXH</Th>
-                <Th right>Bonus</Th>
-                <Th right>Cơm</Th>
-                <Th right>Xăng</Th>
+                <Th>Phòng ban</Th>
+                <Th right>Lương trước thuế</Th>
                 <Th>Trạng thái</Th>
                 <Th>Ngày gửi</Th>
                 {statusFilter === 'PENDING' && <Th right>Thao tác</Th>}
@@ -426,18 +358,21 @@ function SalaryApprovalTab() {
             <tbody>
               {rows.map(s => (
                 <Tr key={s.id}>
+                  {statusFilter === 'PENDING' && (
+                    <Td>
+                      {s.status === 'PENDING' && (
+                        <input type="checkbox" checked={selected.includes(s.id)}
+                          onChange={() => toggleOne(s.id)} className="w-4 h-4 accent-amber-500" />
+                      )}
+                    </Td>
+                  )}
                   <Td>
                     <div className="font-medium">{s.userFullName}</div>
                     <div className="text-xs text-[#8E8878]">{s.position || '—'}</div>
                   </Td>
                   <Td>{s.department || '—'}</Td>
+                  <Td>{s.division || '—'}</Td>
                   <Td right>{s.baseSalary ? formatCurrency(s.baseSalary) : '—'}</Td>
-                  <Td right>
-                    {s.socialInsuranceRate != null ? `${s.socialInsuranceRate}%` : '—'}
-                  </Td>
-                  <Td right>{s.bonus ? formatCurrency(s.bonus) : '—'}</Td>
-                  <Td right>{s.mealAllowance ? formatCurrency(s.mealAllowance) : '—'}</Td>
-                  <Td right>{s.transportAllowance ? formatCurrency(s.transportAllowance) : '—'}</Td>
                   <Td>
                     <Badge variant={
                       s.status === 'APPROVED' ? 'success' :
@@ -486,12 +421,288 @@ function SalaryApprovalTab() {
   );
 }
 
+// ── Payroll Approval Tab — Owner duyệt toàn bộ phiếu lương tháng 1 lần ────────
+const MONTH_NAMES_OWNER = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+  'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+
+const PAYROLL_STATUS_LABEL_OWNER = {
+  DRAFT: { label: 'Đã export, chưa import', cls: 'bg-amber-50 text-amber-700' },
+  PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-blue-50 text-blue-700' },
+  APPROVED: { label: 'Đã duyệt', cls: 'bg-emerald-50 text-emerald-700' },
+  REJECTED: { label: 'Đã từ chối', cls: 'bg-red-50 text-red-700' },
+};
+
+function PayrollStatusBadgeOwner({ status }) {
+  const cfg = PAYROLL_STATUS_LABEL_OWNER[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
+}
+
+async function readErrorMessageOwner(err, fallback) {
+  try {
+    const blob = err?.response?.data;
+    if (blob instanceof Blob) {
+      const text = await blob.text();
+      try { return JSON.parse(text)?.message || fallback; } catch { return text || fallback; }
+    }
+    return err?.response?.data?.message || fallback;
+  } catch { return fallback; }
+}
+
+// ── Modal: từ chối toàn bộ phiếu lương tháng ──────────────────────────────────
+function RejectPayrollModal({ batch, onClose, onDone }) {
+  const toast = useToast();
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!reason.trim()) return toast('Cần nhập lý do từ chối', 'error');
+    setSaving(true);
+    try {
+      await payrollApi.rejectBatch(batch.id, { rejectReason: reason });
+      toast('Đã từ chối phiếu lương', 'success');
+      onDone();
+      onClose();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi xử lý', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Từ chối phiếu lương">
+      <p className="text-sm text-[#8E8878] mb-3">
+        Phiếu lương tháng <b>{MONTH_NAMES_OWNER[batch.month]}/{batch.year}</b> — {batch.employeeCount} nhân viên.
+        HR/Kế toán sẽ cần tạo lại phiếu lương từ đầu sau khi bị từ chối.
+      </p>
+      <Field label="Lý do từ chối" required>
+        <textarea className={inputCls} rows={3} value={reason}
+          onChange={e => setReason(e.target.value)} placeholder="Nhập lý do từ chối…" />
+      </Field>
+      <div className="flex gap-2 pt-3">
+        <SecondaryButton onClick={onClose} className="flex-1">Huỷ</SecondaryButton>
+        <DangerButton onClick={submit} loading={saving} className="flex-1">Từ chối</DangerButton>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Modal: xem chi tiết từng phiếu lương trong batch ──────────────────────────
+function PayrollBatchDetailModal({ batch, onClose, onApproved }) {
+  const toast = useToast();
+  const [payslips, setPayslips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [approving, setApproving] = useState(false);
+
+  useEffect(() => {
+    payrollApi.getPayslips(batch.id)
+      .then(data => setPayslips(Array.isArray(data) ? data : []))
+      .catch(() => { toast('Không tải được chi tiết phiếu lương', 'error'); setPayslips([]); })
+      .finally(() => setLoading(false));
+  }, [batch.id]);
+
+  const handleApprove = async () => {
+    setApproving(true);
+    try {
+      await payrollApi.approveBatch(batch.id);
+      toast('Đã duyệt phiếu lương', 'success');
+      onApproved();
+      onClose();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi duyệt', 'error'); }
+    finally { setApproving(false); }
+  };
+
+  const totalNet = payslips.reduce((sum, p) => sum + (p.netSalary || 0), 0);
+
+  return (
+    <Modal open onClose={onClose} size="2xl"
+      title={`Chi tiết phiếu lương — ${MONTH_NAMES_OWNER[batch.month]}/${batch.year}`}>
+      {loading ? <LoadingSpinner /> : payslips.length === 0 ? (
+        <EmptyState icon={FileText} title="Chưa có dữ liệu" />
+      ) : (
+        <div className="space-y-3">
+          <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-[#8E8878]">Tổng lương NET phải chi tháng này</span>
+            <span className="text-lg font-bold text-emerald-700">{formatCurrency(totalNet)}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>Nhân viên</Th>
+                  <Th right>Lương GROSS</Th>
+                  <Th right>Người phụ thuộc</Th>
+                  <Th right>Tổng bảo hiểm</Th>
+                  <Th right>Thu nhập tính thuế</Th>
+                  <Th right>Thuế TNCN</Th>
+                  <Th right>Lương NET</Th>
+                </Tr>
+              </Thead>
+              <tbody>
+                {payslips.map(p => (
+                  <Tr key={p.id}>
+                    <Td>
+                      <div className="font-medium">{p.userFullName}</div>
+                      <div className="text-xs text-[#8E8878]">{p.department || '—'} {p.division ? `· ${p.division}` : ''}</div>
+                    </Td>
+                    <Td right>{formatCurrency(p.grossSalary)}</Td>
+                    <Td right>{p.dependents ?? 0}</Td>
+                    <Td right>{formatCurrency(p.totalInsuranceAmount)}</Td>
+                    <Td right>{formatCurrency(p.taxableIncome)}</Td>
+                    <Td right>{formatCurrency(p.personalIncomeTax)}</Td>
+                    <Td right><span className="font-semibold text-emerald-700">{formatCurrency(p.netSalary)}</span></Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+          {batch.status === 'PENDING_APPROVAL' && (
+            <div className="flex gap-2 pt-2">
+              <PrimaryButton onClick={handleApprove} loading={approving} className="flex-1">
+                <Check size={14} /> Duyệt toàn bộ phiếu lương ({payslips.length} nhân viên)
+              </PrimaryButton>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function PayrollApprovalTab() {
+  const toast = useToast();
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('PENDING_APPROVAL');
+  const [detailBatch, setDetailBatch] = useState(null);
+  const [rejectBatch, setRejectBatch] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await payrollApi.listBatches({ status: statusFilter || undefined, size: 50 });
+      const list = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : []);
+      setBatches(list);
+    } catch { toast('Không tải được danh sách phiếu lương', 'error'); setBatches([]); }
+    finally { setLoading(false); }
+  }, [statusFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleQuickApprove = async (batch) => {
+    setApprovingId(batch.id);
+    try {
+      await payrollApi.approveBatch(batch.id);
+      toast('Đã duyệt phiếu lương', 'success');
+      load();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi duyệt', 'error'); }
+    finally { setApprovingId(null); }
+  };
+
+  const handleDownload = async (batch) => {
+    setDownloadingId(batch.id);
+    try {
+      const res = await payrollApi.downloadPayslips(batch.id);
+      downloadBlob(res.data, `phieu-luong-${batch.month}-${batch.year}.xlsx`);
+      toast('Đã tải phiếu lương', 'success');
+    } catch (e) {
+      const msg = await readErrorMessageOwner(e, 'Lỗi khi tải phiếu lương');
+      toast(msg, 'error');
+    } finally { setDownloadingId(null); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        {[
+          { val: 'PENDING_APPROVAL', label: 'Chờ duyệt' },
+          { val: 'APPROVED', label: 'Đã duyệt' },
+          { val: 'REJECTED', label: 'Đã từ chối' },
+          { val: '', label: 'Tất cả' },
+        ].map(({ val, label }) => (
+          <button key={val} onClick={() => setStatusFilter(val)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
+              ${statusFilter === val ? 'bg-[#1C1C1E] text-white' : 'bg-white border border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <SectionCard>
+        {loading ? <LoadingSpinner /> : batches.length === 0 ? (
+          <EmptyState icon={Calculator} title="Không có phiếu lương nào" />
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Tháng</Th>
+                <Th right>Số nhân viên</Th>
+                <Th>Trạng thái</Th>
+                <Th>Người tạo</Th>
+                <Th>Ngày gửi</Th>
+                <Th right>Thao tác</Th>
+              </Tr>
+            </Thead>
+            <tbody>
+              {batches.map(b => (
+                <Tr key={b.id}>
+                  <Td><span className="font-medium">{MONTH_NAMES_OWNER[b.month]}/{b.year}</span></Td>
+                  <Td right>{b.employeeCount ?? '—'}</Td>
+                  <Td>
+                    <PayrollStatusBadgeOwner status={b.status} />
+                    {b.rejectReason && <p className="text-xs text-red-500 mt-1 max-w-[200px]">{b.rejectReason}</p>}
+                  </Td>
+                  <Td>{b.createdByName || '—'}</Td>
+                  <Td>{formatDateTime(b.importedAt || b.createdAt)}</Td>
+                  <Td right>
+                    <div className="flex gap-1.5 justify-end">
+                      <SecondaryButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setDetailBatch(b)}>
+                        <Eye size={12} /> Xem
+                      </SecondaryButton>
+                      {b.status === 'PENDING_APPROVAL' && (
+                        <>
+                          <PrimaryButton className="!px-2.5 !py-1.5 text-xs"
+                            loading={approvingId === b.id}
+                            onClick={() => handleQuickApprove(b)}>
+                            <Check size={12} /> Duyệt
+                          </PrimaryButton>
+                          <DangerButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setRejectBatch(b)}>
+                            <X size={12} /> Từ chối
+                          </DangerButton>
+                        </>
+                      )}
+                      {b.status === 'APPROVED' && (
+                        <SecondaryButton className="!px-2.5 !py-1.5 text-xs"
+                          loading={downloadingId === b.id}
+                          onClick={() => handleDownload(b)}>
+                          <Download size={12} /> Tải
+                        </SecondaryButton>
+                      )}
+                    </div>
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </SectionCard>
+
+      {detailBatch && (
+        <PayrollBatchDetailModal batch={detailBatch} onClose={() => setDetailBatch(null)} onApproved={load} />
+      )}
+      {rejectBatch && (
+        <RejectPayrollModal batch={rejectBatch} onClose={() => setRejectBatch(null)} onDone={load} />
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'employees', label: 'Nhân viên', icon: Users },
   { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
   { id: 'ot', label: 'Phiếu OT', icon: Clock },
   { id: 'salary', label: 'Duyệt lương', icon: DollarSign },
+  { id: 'payroll', label: 'Duyệt phiếu lương', icon: Calculator },
 ];
 
 export default function OwnerEmployeesPage() {
@@ -509,6 +720,7 @@ export default function OwnerEmployeesPage() {
       {tab === 'leaves' && <LeavesTab />}
       {tab === 'ot' && <OtTab />}
       {tab === 'salary' && <SalaryApprovalTab />}
+      {tab === 'payroll' && <PayrollApprovalTab />}
     </div>
   );
 }
