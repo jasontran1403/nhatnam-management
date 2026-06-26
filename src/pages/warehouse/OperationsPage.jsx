@@ -101,7 +101,7 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
       {success && <div className="wh-alert wh-alert-success">✅ {success}</div>}
 
       {/* Phần nội dung form — cuộn được riêng nếu quá dài */}
-      <div style={{ paddingBottom: 16 }}>
+      <div style={{ paddingBottom: 30 }}>
         {children}
       </div>
 
@@ -114,7 +114,7 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
           right: 0,
           background: 'var(--wh-surface, #fff)',
           paddingTop: 12,
-          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
           marginLeft: -16,
           marginRight: -16,
           paddingLeft: 16,
