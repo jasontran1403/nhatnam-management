@@ -114,7 +114,7 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
           right: 0,
           background: 'var(--wh-surface, #fff)',
           paddingTop: 12,
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          paddingBottom: 'max(36px, env(safe-area-inset-bottom))',
           marginLeft: -16,
           marginRight: -16,
           paddingLeft: 16,
