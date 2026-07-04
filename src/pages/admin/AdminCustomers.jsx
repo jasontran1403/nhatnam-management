@@ -6,9 +6,10 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
-  Edit2, MapPin, Star, Plus, Trash2,
+  Edit2, MapPin, Star, Plus, Trash2, ArrowUp, ArrowDown, ChevronsUpDown,
 } from 'lucide-react';
 import { adminCustomerApi } from '../../api/adminApi';
+import { formatPrice } from '../../utils/formatPrice';
 import useDebounce from '../../utils/useDebounce.js';
 import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
@@ -697,6 +698,8 @@ export default function AdminCustomers() {
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
+  // Sort theo công nợ chưa thanh toán: null (mặc định) → 'desc' (cao→thấp) → 'asc' (thấp→cao)
+  const [debtSort, setDebtSort] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [historyCustomerId, setHistoryCustomerId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -774,11 +777,18 @@ export default function AdminCustomers() {
       if (filters.type) params.type = filters.type;
       if (filters.isActive !== '') params.isActive = filters.isActive;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
+      if (debtSort) params.debtSort = debtSort;
       const res = await adminCustomerApi.list(params);
       setData(res);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [page, debouncedQ, filters.type, filters.isActive, filters.sellerId]);
+  }, [page, debouncedQ, filters.type, filters.isActive, filters.sellerId, debtSort]);
+
+  // Bấm header "Công nợ (chưa TT)": desc → asc → tắt sort
+  const cycleDebtSort = useCallback(() => {
+    setPage(0);
+    setDebtSort(prev => prev === 'desc' ? 'asc' : prev === 'asc' ? null : 'desc');
+  }, []);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setSelectedIds(new Set()); }, [page, filters]);
@@ -940,6 +950,16 @@ export default function AdminCustomers() {
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">NV Kinh doanh</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Chiết khấu</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Công nợ</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
+                      <button onClick={cycleDebtSort}
+                        className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[#C9A84C] transition-colors"
+                        title="Sắp xếp theo công nợ chưa thanh toán">
+                        Công nợ (chưa TT)
+                        {debtSort === 'desc' ? <ArrowDown size={13} className="text-[#C9A84C]" />
+                          : debtSort === 'asc' ? <ArrowUp size={13} className="text-[#C9A84C]" />
+                          : <ChevronsUpDown size={13} className="opacity-50" />}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">Trạng thái</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Thao tác</th>
                   </tr>
@@ -1008,6 +1028,11 @@ export default function AdminCustomers() {
                         <td className="px-4 py-3 text-right" onClick={e => openDebtDays(c, e)}>
                           <span className={`text-xs font-semibold cursor-pointer hover:underline ${c.debtDays > 0 ? 'text-orange-600' : 'text-[#C4B9A8]'}`}>
                             {c.debtDays > 0 ? `${c.debtDays} ngày` : '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`text-xs font-semibold ${c.unpaidDebt > 0 ? 'text-red-600' : 'text-[#C4B9A8]'}`}>
+                            {c.unpaidDebt > 0 ? formatPrice(c.unpaidDebt) : '—'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -1088,6 +1113,7 @@ export default function AdminCustomers() {
                         </p>
                         <p className="text-xs text-[#8E8878]">{c.phone} · CK {c.discountRate || 0}%</p>
                         {c.debtDays > 0 && <p className="text-[10px] text-orange-500">📋 Công nợ {c.debtDays} ngày</p>}
+                        {c.unpaidDebt > 0 && <p className="text-[10px] font-semibold text-red-600">💰 Chưa TT: {formatPrice(c.unpaidDebt)}</p>}
                         {isCompany && (
                           c.sellerName
                             ? <p className="text-[10px] text-sky-600 mt-0.5">👤 {c.sellerName}</p>

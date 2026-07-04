@@ -541,10 +541,7 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
 // ── DeliveryTimeModal ─────────────────────────────────────────────────────
 // isOwner: chỉ OWNER mới thấy toggle "Tính KPI"
 function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
-  const defaultDelivery = (() => {
-    const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
-  })();
-  const [deliveryDate, setDeliveryDate] = useState(defaultDelivery);
+  const [deliveryDate, setDeliveryDate] = useState(null);
   const [orderedBy, setOrderedBy] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [showPrices, setShowPrices] = useState(true);
@@ -583,9 +580,9 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
               className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAFAF8]" />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">🕐 Ngày & giờ giao hàng</label>
+            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">🕐 Ngày & giờ giao hàng <span className="normal-case font-normal text-[#C4B9A8]">(tuỳ chọn)</span></label>
             {DTPicker
-              ? <DTPicker value={deliveryDate} onChange={setDeliveryDate} minDate={new Date()} placeholder="Chọn ngày & giờ giao hàng" />
+              ? <DTPicker value={deliveryDate} onChange={setDeliveryDate} minDate={new Date()} placeholder="Không hẹn giờ giao — bấm để chọn" />
               : <div className="h-11 rounded-xl border-2 border-[#E8DDD0] animate-pulse bg-[#FAFAF8]" />}
           </div>
         </div>
@@ -633,7 +630,6 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
               recipientName.trim() || null,
               isOwner ? includeKpi : true,
             )}
-            disabled={!deliveryDate}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-40 flex items-center justify-center gap-2"
           >
             <Receipt size={15} /> Tạo đơn hàng

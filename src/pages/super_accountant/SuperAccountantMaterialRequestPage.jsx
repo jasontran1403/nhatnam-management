@@ -1,6 +1,7 @@
 // src/pages/super_accountant/SuperAccountantMaterialRequestPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Package, ChevronDown, ChevronUp, Plus, X, Check, Camera, Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Search, Package, ChevronDown, ChevronUp, Plus, X, Check, Camera, Loader2, Trash2, Info } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
@@ -8,7 +9,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import DateRangePicker from '../../components/ui/DateRangePicker.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import {
-  accountantMaterialRequestApi, STATUS_CONFIG, fmtTs, fmtDateTime, countdownInfo,
+  accountantMaterialRequestApi, STATUS_CONFIG, fmtTs, fmtDateTime, countdownInfo, fmtVND, PAYMENT_METHODS,
 } from '../../api/materialRequestApi.js';
 import { factoryProdApi } from '../../api/productionModuleApi.js';
 import { useToast } from '../../components/common/Toast.jsx';
@@ -78,8 +79,8 @@ function cardBg(req) {
   return 'bg-white';
 }
 
-// ── Upload hóa đơn ────────────────────────────────────────────────────────────
-function InvoiceUploader({ requestId, value = [], onChange }) {
+// ── Upload hóa đơn / chứng từ thanh toán ──────────────────────────────────────
+function InvoiceUploader({ requestId, value = [], onChange, label = 'Hóa đơn / Chứng từ', required = true }) {
   const fileRef = useRef();
   const videoRef = useRef();
   const canvasRef = useRef();
@@ -137,7 +138,7 @@ function InvoiceUploader({ requestId, value = [], onChange }) {
   return (
     <div>
       <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
-        Hóa đơn / Chứng từ <span className="text-red-500">*</span>
+        {label} {required && <span className="text-red-500">*</span>}
       </p>
       <div className="flex gap-2 flex-wrap">
         {value.map((url, i) => (
@@ -182,47 +183,141 @@ function InvoiceUploader({ requestId, value = [], onChange }) {
   );
 }
 
-// ── Vendor search ─────────────────────────────────────────────────────────────
-function VendorSearchInput({ value, onChange }) {
-  const [q, setQ] = useState(value?.vendorName || '');
-  const [results, setResults] = useState([]);
+// ── Vendor select — bắt buộc chọn từ danh mục NCC có sẵn (không nhập tự do) ──
+// Dùng portal để render danh sách ra <body> — tránh bị modal (overflow-y-auto)
+// cắt mất phần dropdown khi ô chọn nằm gần đáy modal.
+function VendorSelectDropdown({ value, onChange, vendors: vendorsProp, loading: loadingProp }) {
+  const [vendors, setVendors] = useState(vendorsProp || []);
+  const [loading, setLoading] = useState(!vendorsProp && loadingProp !== false);
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [search, setSearch] = useState('');
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, dropUp: false });
+  const triggerRef = useRef(null);
+  const popRef = useRef(null);
+
+  // Nếu danh sách NCC được truyền từ ngoài vào (vd: danh sách NCC vừa thêm
+  // trong cùng phiếu), dùng luôn — không tự fetch lại.
+  useEffect(() => {
+    if (vendorsProp) { setVendors(vendorsProp); setLoading(false); return; }
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await factoryProdApi.listVendors('', 'MATERIAL');
+        setVendors(res || []);
+      } catch { setVendors([]); }
+      finally { setLoading(false); }
+    })();
+  }, [vendorsProp]);
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    if (!open) return;
+    const handler = (e) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target) &&
+          popRef.current && !popRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const calcPos = useCallback(() => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    const estListHeight = 260; // search bar + max-h danh sách
+    const spaceBelow = window.innerHeight - r.bottom;
+    const dropUp = spaceBelow < estListHeight && r.top > spaceBelow;
+    setPos({
+      top: dropUp ? r.top + window.scrollY : r.bottom + window.scrollY + 4,
+      left: r.left + window.scrollX,
+      width: r.width,
+      dropUp,
+    });
   }, []);
 
-  const search = async (text) => {
-    setQ(text);
-    onChange({ vendorName: text });
-    if (!text.trim()) { setResults([]); return; }
-    try {
-      const res = await factoryProdApi.listVendors(text, 'MATERIAL');
-      setResults(res || []); setOpen(true);
-    } catch { setResults([]); }
+  const toggleOpen = () => {
+    if (!open) calcPos();
+    setOpen(o => !o);
   };
 
+  useEffect(() => {
+    if (!open) return;
+    calcPos();
+    const onScrollOrResize = () => calcPos();
+    window.addEventListener('resize', onScrollOrResize);
+    window.addEventListener('scroll', onScrollOrResize, true);
+    return () => {
+      window.removeEventListener('resize', onScrollOrResize);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+    };
+  }, [open, calcPos]);
+
+  const filtered = vendors.filter(v => v.name.toLowerCase().includes(search.toLowerCase()));
+
   const select = (v) => {
-    setQ(v.name); setOpen(false);
+    setOpen(false); setSearch('');
     onChange({ vendorId: v.id, vendorName: v.name, contactPerson: v.contactPerson || '', contactPhone: v.contactPhone || '' });
   };
 
+  const dropdown = open ? createPortal(
+    <div
+      ref={popRef}
+      style={{
+        position: 'absolute',
+        top: pos.dropUp ? undefined : pos.top,
+        bottom: pos.dropUp ? (window.innerHeight - pos.top + window.scrollY + 4) : undefined,
+        left: pos.left,
+        width: pos.width,
+        zIndex: 9999,
+      }}
+      className="bg-white border border-[#E8DDD0] rounded-xl shadow-2xl overflow-hidden"
+    >
+      <div className="p-2 border-b border-black/5 relative">
+        <Search size={12} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#8E8878]"/>
+        <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Tìm nhà cung cấp..."
+          className="w-full pl-7 pr-2 py-1.5 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"/>
+      </div>
+      <div className="max-h-44 overflow-auto">
+        {filtered.length === 0 && (
+          <p className="text-center py-4 text-xs text-[#8E8878]">
+            {loading ? 'Đang tải...' : 'Không có nhà cung cấp — hãy tạo trong trang Công nợ NCC'}
+          </p>
+        )}
+        {filtered.map(v => (
+          <button key={v.id} className="w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] border-b border-black/5 last:border-0" onClick={() => select(v)}>
+            <p className="font-medium text-[#1C1C1E]">{v.name}</p>
+            {(v.contactPerson || v.contactPhone) && (
+              <p className="text-xs text-[#8E8878]">{v.contactPerson}{v.contactPerson && v.contactPhone ? ' · ' : ''}{v.contactPhone}</p>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div className="relative" ref={ref}>
-      <input className={inputCls} placeholder="Tên nhà cung cấp..." value={q} onChange={e => search(e.target.value)} onFocus={() => results.length && setOpen(true)}/>
-      {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#E8DDD0] rounded-xl shadow-lg mt-1 max-h-40 overflow-auto">
-          {results.map(v => (
-            <button key={v.id} className="w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2]" onClick={() => select(v)}>
-              <p className="font-medium text-[#1C1C1E]">{v.name}</p>
-              {v.contactPhone && <p className="text-xs text-[#8E8878]">{v.contactPhone}</p>}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="relative" ref={triggerRef}>
+      <div
+        onClick={toggleOpen}
+        className={`flex items-center justify-between px-3 py-2.5 rounded-xl border cursor-pointer transition text-sm ${value?.vendorId ? 'border-[#C9A84C] bg-white' : 'border-[#E8DDD0] bg-[#FAF7F2]'}`}
+      >
+        {value?.vendorId ? (
+          <div className="min-w-0">
+            <p className="font-medium text-[#1C1C1E] truncate">{value.vendorName}</p>
+            {(value.contactPerson || value.contactPhone) && (
+              <p className="text-xs text-[#8E8878] truncate">
+                {value.contactPerson}{value.contactPerson && value.contactPhone ? ' · ' : ''}{value.contactPhone}
+              </p>
+            )}
+          </div>
+        ) : (
+          <span className="text-[#8E8878]">{loading ? 'Đang tải...' : 'Chọn nhà cung cấp...'}</span>
+        )}
+        <ChevronDown size={14} className={`text-[#8E8878] flex-shrink-0 ml-2 transition-transform ${open ? 'rotate-180' : ''}`}/>
+      </div>
+      {dropdown}
     </div>
   );
 }
@@ -234,7 +329,11 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
   const [deliveryDate, setDeliveryDate] = useState(null);    // timestamp ms (chỉ ngày)
   const [deliveryTime, setDeliveryTime] = useState('08:00'); // "HH:mm"
   const [vendors, setVendors] = useState([{ vendorId: null, vendorName: '', contactPerson: '', contactPhone: '' }]);
+  // itemId -> vendorId (NCC nào cung cấp nguyên liệu này)
+  const [itemVendorId, setItemVendorId] = useState({});
   const [saving, setSaving] = useState(false);
+
+  const items = req.items || [];
 
   // Combine date + time thành timestamp
   const getEstDeliveryMs = () => {
@@ -245,18 +344,62 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
     return d.getTime();
   };
 
+  // Chỉ những NCC đã thật sự chọn (có vendorId) mới tính là hợp lệ để gán cho nguyên liệu
+  const validVendors = vendors.filter(v => v.vendorId);
+
   const addVendor = () => setVendors(p => [...p, { vendorId: null, vendorName: '', contactPerson: '', contactPhone: '' }]);
   const removeVendor = (i) => setVendors(p => p.filter((_, idx) => idx !== i));
   const setVendor = (i, data) => setVendors(p => p.map((v, idx) => idx === i ? { ...v, ...data } : v));
 
+  // Nếu chỉ có đúng 1 NCC hợp lệ, tự gán mặc định NCC đó cho tất cả nguyên liệu
+  // chưa được gán (giúp đỡ phải chọn lại thủ công cho trường hợp phổ biến nhất).
+  // Lưu ý: gán theo vendorId (ổn định) thay vì vị trí trong mảng — vì vị trí có
+  // thể đổi khi thêm/xoá NCC, còn vendorId thì không.
+  useEffect(() => {
+    if (validVendors.length !== 1) return;
+    const onlyVendorId = validVendors[0].vendorId;
+    setItemVendorId(prev => {
+      const next = { ...prev };
+      let changed = false;
+      items.forEach(it => {
+        if (next[it.id] == null) { next[it.id] = onlyVendorId; changed = true; }
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validVendors.length, validVendors[0]?.vendorId, items.length]);
+
+  // Nếu NCC nào bị xoá khỏi danh sách, bỏ gán của các nguyên liệu đang gán cho NCC đó
+  useEffect(() => {
+    const validIds = new Set(validVendors.map(v => v.vendorId));
+    setItemVendorId(prev => {
+      const next = {};
+      let changed = false;
+      Object.entries(prev).forEach(([itemId, vendorId]) => {
+        if (vendorId != null && validIds.has(vendorId)) next[itemId] = vendorId;
+        else changed = true;
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validVendors.map(v => v.vendorId).join(',')]);
+
+  const setItemVendor = (itemId, vendorId) => setItemVendorId(p => ({ ...p, [itemId]: vendorId }));
+
+  const allItemsAssigned = items.length > 0 && items.every(it => itemVendorId[it.id] != null);
+
   const handleSubmit = async () => {
     const estDelivery = getEstDeliveryMs();
     if (!estDelivery) { toast('Vui lòng chọn thời gian giao hàng dự kiến', 'error'); return; }
+    if (validVendors.length === 0) { toast('Vui lòng chọn ít nhất 1 nhà cung cấp từ danh mục', 'error'); return; }
+    if (!allItemsAssigned) { toast('Vui lòng gán nhà cung cấp cho tất cả nguyên liệu', 'error'); return; }
     setSaving(true);
     try {
+      const vendorIndexById = new Map(validVendors.map((v, i) => [v.vendorId, i]));
       await accountantMaterialRequestApi.confirmOrder(req.id, {
         estimatedDelivery: estDelivery,
-        vendors: vendors.filter(v => v.vendorName.trim()).map((v, i) => ({ ...v, sortOrder: i })),
+        vendors: validVendors.map((v, i) => ({ ...v, sortOrder: i })),
+        items: items.map(it => ({ itemId: it.id, vendorIndex: vendorIndexById.get(itemVendorId[it.id]) })),
       });
       toast('Đã xác nhận đặt hàng', 'success');
       onDone();
@@ -266,19 +409,8 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
   };
 
   return (
-    <Modal open onClose={onClose} title={`Xác nhận đặt hàng — ${req.requestCode}`}>
+    <Modal open onClose={onClose} title={`Xác nhận đặt hàng — ${req.requestCode}`} size="lg">
       <div className="space-y-4">
-        {/* Danh sách nguyên liệu */}
-        <div className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Nguyên liệu đặt</p>
-          {(req.items || []).map((it, i) => (
-            <div key={i} className="flex items-center justify-between text-sm">
-              <span className="text-[#1C1C1E] font-medium">{it.materialName}</span>
-              <span className="text-[#8E8878]">{it.qtyRequested} {it.unit}</span>
-            </div>
-          ))}
-        </div>
-
         {/* Thời gian giao hàng — ngày + giờ phút */}
         <div>
           <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
@@ -327,16 +459,58 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
                     <button onClick={() => removeVendor(i)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
                   )}
                 </div>
-                <VendorSearchInput value={v} onChange={data => setVendor(i, data)}/>
-                <div className="grid grid-cols-2 gap-2">
-                  <input className={inputCls} placeholder="Người liên hệ" value={v.contactPerson}
-                    onChange={e => setVendor(i, { contactPerson: e.target.value })}/>
-                  <input className={inputCls} placeholder="Số điện thoại" value={v.contactPhone}
-                    onChange={e => setVendor(i, { contactPhone: e.target.value })}/>
-                </div>
+                <VendorSelectDropdown value={v} onChange={data => setVendor(i, data)}/>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Gán nguyên liệu cho từng NCC — bắt buộc ──────────────────────────── */}
+        <div>
+          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+            Gán nguyên liệu cho nhà cung cấp <span className="text-red-500">*</span>
+          </p>
+          {validVendors.length === 0 ? (
+            <p className="text-sm text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">
+              Chọn nhà cung cấp ở trên trước, sau đó gán từng nguyên liệu cho NCC tương ứng.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {items.map((it, i) => {
+                const assignedVendorId = itemVendorId[it.id];
+                const unassigned = assignedVendorId == null;
+                return (
+                  <div key={it.id} className={`rounded-xl p-3 ${unassigned ? 'bg-red-50 border border-red-200' : 'bg-[#FAF7F2]'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#1C1C1E] truncate">{it.materialName}</p>
+                        <p className="text-xs text-[#8E8878]">{it.qtyRequested} {it.unit}</p>
+                      </div>
+                      {validVendors.length === 1 ? (
+                        <div className="text-xs font-semibold text-[#1C1C1E] bg-white px-3 py-2 rounded-lg border border-[#E8DDD0] whitespace-nowrap max-w-[40%] truncate flex-shrink-0">
+                          {validVendors[0].vendorName}
+                        </div>
+                      ) : (
+                        <select
+                          className={`${inputCls} w-28 sm:w-32 flex-shrink-0 text-xs`}
+                          value={assignedVendorId ?? ''}
+                          onChange={e => setItemVendor(it.id, e.target.value === '' ? null : Number(e.target.value))}
+                        >
+                          <option value="">— Chọn NCC —</option>
+                          {validVendors.map(v => (
+                            <option key={v.vendorId} value={v.vendorId}>{v.vendorName}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    {unassigned && (
+                      <p className="text-xs text-red-500 mt-1.5">Chưa gán nhà cung cấp cho nguyên liệu này.</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">
@@ -350,17 +524,148 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
   );
 }
 
-// ── Complete Modal ─────────────────────────────────────────────────────────────
+// ── Complete Modal — nhập đơn giá từng NL, chọn NCC, Thanh toán/Công nợ theo NCC ──
 function CompleteModal({ req, onClose, onDone }) {
   const toast = useToast();
-  const [invoiceImages, setInvoiceImages] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const handleComplete = async () => {
-    if (invoiceImages.length === 0) { toast('Vui lòng upload ít nhất 1 hóa đơn', 'error'); return; }
+  const vendors = req.vendors || [];
+  const singleVendor = vendors.length === 1 ? vendors[0] : null;
+
+  const receivedItems = (req.items || []).filter(it => it.qtyReceived != null && Number(it.qtyReceived) > 0);
+
+  // itemId -> requestVendorId
+  const [itemVendors, setItemVendors] = useState(() => {
+    const init = {};
+    receivedItems.forEach(it => {
+      init[it.id] = it.requestVendorId || (singleVendor ? singleVendor.id : null);
+    });
+    return init;
+  });
+
+  // itemId -> giá nguyên liệu (string nhập tay)
+  const [materialAmounts, setMaterialAmounts] = useState(() => {
+    const init = {};
+    receivedItems.forEach(it => {
+      // Nếu phiếu đã có lineAmount/unitPrice cũ (hoàn thành rồi), gợi ý lại giá NL từ costBreakdown nếu có
+      const materialEntry = it.costBreakdown?.find(b => b.label === 'Giá nguyên liệu');
+      init[it.id] = materialEntry ? String(materialEntry.amount) : '';
+    });
+    return init;
+  });
+
+  // Danh sách phí/thuế tuỳ chỉnh: [{ id, label, amount, itemIds: [] }]
+  const [customEntries, setCustomEntries] = useState([]);
+
+  const setItemVendor = (itemId, vendorId) => setItemVendors(p => ({ ...p, [itemId]: vendorId }));
+  const setMaterialAmount = (itemId, val) => setMaterialAmounts(p => ({ ...p, [itemId]: val }));
+
+  const addCustomEntry = () => setCustomEntries(p => [
+    ...p,
+    { id: Date.now() + Math.random(), label: '', amount: '', itemIds: receivedItems.map(it => it.id) },
+  ]);
+  const removeCustomEntry = (id) => setCustomEntries(p => p.filter(e => e.id !== id));
+  const updateCustomEntry = (id, patch) => setCustomEntries(p => p.map(e => e.id === id ? { ...e, ...patch } : e));
+  const toggleCustomEntryItem = (entryId, itemId) => setCustomEntries(p => p.map(e => {
+    if (e.id !== entryId) return e;
+    const has = e.itemIds.includes(itemId);
+    return { ...e, itemIds: has ? e.itemIds.filter(x => x !== itemId) : [...e.itemIds, itemId] };
+  }));
+
+  // ── Tính tổng tiền từng dòng nguyên liệu (giá NL + phần phân bổ phí/thuế) ──
+  const itemTotals = {};
+  receivedItems.forEach(it => {
+    itemTotals[it.id] = Number(materialAmounts[it.id]) || 0;
+  });
+  for (const ce of customEntries) {
+    const amount = Number(ce.amount) || 0;
+    if (!amount || ce.itemIds.length === 0) continue;
+    const scopeMaterialTotal = ce.itemIds.reduce((s, id) => s + (Number(materialAmounts[id]) || 0), 0);
+    ce.itemIds.forEach(id => {
+      const share = scopeMaterialTotal > 0
+        ? amount * ((Number(materialAmounts[id]) || 0) / scopeMaterialTotal)
+        : amount / ce.itemIds.length;
+      itemTotals[id] = (itemTotals[id] || 0) + share;
+    });
+  }
+
+  // Tính tổng theo NCC
+  const totalsByVendor = {};
+  for (const it of receivedItems) {
+    const vendorId = itemVendors[it.id];
+    if (!vendorId) continue;
+    const amount = itemTotals[it.id] || 0;
+    if (!amount) continue;
+    totalsByVendor[vendorId] = (totalsByVendor[vendorId] || 0) + amount;
+  }
+  const vendorsWithAmount = vendors.filter(v => totalsByVendor[v.id] > 0);
+  const grandTotal = Object.values(totalsByVendor).reduce((s, v) => s + v, 0);
+  const grandMaterialTotal = receivedItems.reduce((s, it) => s + (Number(materialAmounts[it.id]) || 0), 0);
+
+  // requestVendorId -> { action, paymentMethod, paymentInfo, proofImages }
+  const [vendorDecisions, setVendorDecisions] = useState(() => {
+    const init = {};
+    vendors.forEach(v => {
+      init[v.id] = { action: null, paymentMethod: 'BANK', paymentInfo: '', proofImages: [] };
+    });
+    return init;
+  });
+  const setVendorDecision = (vendorId, patch) =>
+    setVendorDecisions(p => ({ ...p, [vendorId]: { ...p[vendorId], ...patch } }));
+
+  const allVendorsAssigned = receivedItems.every(it => !!itemVendors[it.id]);
+  const allMaterialEntered = receivedItems.every(it => Number(materialAmounts[it.id]) > 0);
+  const allCustomValid = customEntries.every(ce => ce.label.trim() && Number(ce.amount) > 0 && ce.itemIds.length > 0);
+
+  const allDecisionsValid = vendorsWithAmount.every(v => {
+    const d = vendorDecisions[v.id];
+    if (!d || !d.action) return false;
+    if (d.action === 'PAID') return d.proofImages.length > 0 && d.paymentMethod;
+    return true;
+  });
+  const vendorsWithoutCatalogLink = vendorsWithAmount.filter(v =>
+    vendorDecisions[v.id]?.action === 'DEBT' && !v.vendorId);
+
+  const canSubmit = receivedItems.length > 0 && allVendorsAssigned && allMaterialEntered && allCustomValid
+    && vendorsWithAmount.length > 0 && allDecisionsValid && vendorsWithoutCatalogLink.length === 0;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) { toast('Vui lòng nhập đầy đủ giá nguyên liệu, phí/thuế và xử lý thanh toán cho tất cả NCC', 'error'); return; }
     setSaving(true);
     try {
-      await accountantMaterialRequestApi.complete(req.id, { invoiceImages });
+      const itemVendorsPayload = receivedItems.map(it => ({
+        itemId: it.id,
+        requestVendorId: itemVendors[it.id],
+      }));
+      const costEntriesPayload = [
+        ...receivedItems.map(it => ({
+          type: 'MATERIAL',
+          label: 'Giá nguyên liệu',
+          amount: Number(materialAmounts[it.id]),
+          itemIds: [it.id],
+        })),
+        ...customEntries.map(ce => ({
+          type: 'CUSTOM',
+          label: ce.label.trim(),
+          amount: Number(ce.amount),
+          itemIds: ce.itemIds,
+        })),
+      ];
+      const vendorPayments = vendorsWithAmount.map(v => {
+        const d = vendorDecisions[v.id];
+        return {
+          requestVendorId: v.id,
+          action: d.action,
+          paymentMethod: d.action === 'PAID' ? d.paymentMethod : null,
+          paymentInfo: d.action === 'PAID' ? d.paymentInfo : null,
+          proofImages: d.action === 'PAID' ? d.proofImages : [],
+        };
+      });
+      await accountantMaterialRequestApi.complete(req.id, {
+        itemVendors: itemVendorsPayload,
+        costEntries: costEntriesPayload,
+        vendorPayments,
+      });
       toast('Hoàn thành phiếu thành công', 'success');
       onDone();
     } catch (e) { toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error'); }
@@ -368,17 +673,213 @@ function CompleteModal({ req, onClose, onDone }) {
   };
 
   return (
-    <Modal open onClose={onClose} title={`Hoàn thành phiếu — ${req.requestCode}`}>
-      <div className="space-y-4">
+    <Modal open onClose={onClose} title={`Hoàn thành phiếu — ${req.requestCode}`} size="lg">
+      <div className="space-y-5">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
           <p className="text-sm font-medium text-emerald-700">✓ Đã nhận hàng</p>
-          <p className="text-xs text-emerald-600 mt-0.5">Upload hóa đơn / chứng từ để đóng phiếu.</p>
+          <p className="text-xs text-emerald-600 mt-0.5">
+            Nhập giá nguyên liệu cho từng dòng, thêm các loại phí/thuế (nếu có — có thể áp dụng chung cho nhiều nguyên liệu), hệ thống sẽ tự tính ra đơn giá/đơn vị.
+          </p>
         </div>
-        <InvoiceUploader requestId={req.id} value={invoiceImages} onChange={setInvoiceImages}/>
-        {invoiceImages.length === 0 && <p className="text-xs text-red-500">Bắt buộc ít nhất 1 hóa đơn.</p>}
+
+        {/* ── Giá nguyên liệu từng dòng ── */}
+        <div>
+          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+            Giá nguyên liệu (theo số lượng thực nhận)
+          </p>
+          {vendors.length === 0 && (
+            <p className="text-sm text-red-500 mb-2">
+              Phiếu này chưa có nhà cung cấp nào. Vui lòng quay lại bước "Xác nhận đặt hàng" để thêm NCC trước khi hoàn thành.
+            </p>
+          )}
+          <div className="space-y-2">
+            {receivedItems.map(it => {
+              const totalAmount = itemTotals[it.id] || 0;
+              const unitPrice = totalAmount && Number(it.qtyReceived) ? totalAmount / Number(it.qtyReceived) : 0;
+              return (
+                <div key={it.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[#1C1C1E]">{it.materialName}</span>
+                    <span className="text-xs text-[#8E8878]">{it.qtyReceived} {it.unit}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {vendors.length > 1 ? (
+                      <select className={inputCls} value={itemVendors[it.id] || ''}
+                        onChange={e => setItemVendor(it.id, Number(e.target.value) || null)}>
+                        <option value="">— Chọn NCC —</option>
+                        {vendors.map(v => <option key={v.id} value={v.id}>{v.vendorName}</option>)}
+                      </select>
+                    ) : (
+                      <div className="flex items-center px-3 py-2 text-sm text-[#8E8878] bg-white rounded-lg border border-[#E8DDD0]">
+                        {singleVendor ? singleVendor.vendorName : '— Chưa có NCC —'}
+                      </div>
+                    )}
+                    <input
+                      type="number" min="0" step="0.01"
+                      className={inputCls}
+                      placeholder="Tổng tiền nguyên liệu (đ)"
+                      value={materialAmounts[it.id]}
+                      onChange={e => setMaterialAmount(it.id, e.target.value)}
+                    />
+                  </div>
+                  {totalAmount > 0 && (
+                    <p className="text-right text-xs text-[#1C1C1E] font-semibold">
+                      Thành tiền: <span className="text-[#C9A84C]">{fmtVND(totalAmount)}</span>
+                      <span className="text-[#8E8878] font-normal"> ({fmtVND(unitPrice)}/{it.unit})</span>
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            {receivedItems.length === 0 && (
+              <p className="text-sm text-red-500">Không có nguyên liệu nào có số lượng thực nhận.</p>
+            )}
+          </div>
+          {grandMaterialTotal > 0 && (
+            <p className="text-right text-xs text-[#8E8878] mt-1.5">
+              Tổng tiền nguyên liệu: <span className="font-semibold text-[#1C1C1E]">{fmtVND(grandMaterialTotal)}</span>
+            </p>
+          )}
+        </div>
+
+        {/* ── Phí/thuế tuỳ chỉnh (chia sẻ giữa nhiều nguyên liệu) ── */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+              Giá/phí khác (thuế, phí lưu kho, vận chuyển...)
+            </p>
+            <button onClick={addCustomEntry}
+              className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:underline">
+              <Plus size={13} /> Thêm giá/phí
+            </button>
+          </div>
+
+          {customEntries.length === 0 ? (
+            <p className="text-xs text-[#8E8878] flex items-center gap-1.5">
+              <Info size={12} /> Mặc định chỉ tính giá nguyên liệu. Bấm "Thêm giá/phí" nếu có thuế, phí áp dụng chung cho nhiều nguyên liệu (VD: thuế hải quan, phí lưu kho của cả lô hàng).
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {customEntries.map(ce => (
+                <div key={ce.id} className="bg-white border border-[#E8DDD0] rounded-xl p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input className={inputCls} placeholder="Tên loại giá/phí (VD: Thuế hải quan)"
+                      value={ce.label} onChange={e => updateCustomEntry(ce.id, { label: e.target.value })} />
+                    <input type="number" min="0" step="0.01" className={`${inputCls} w-40`} placeholder="Số tiền (đ)"
+                      value={ce.amount} onChange={e => updateCustomEntry(ce.id, { amount: e.target.value })} />
+                    <button onClick={() => removeCustomEntry(ce.id)}
+                      className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8E8878] mb-1">Áp dụng cho nguyên liệu nào:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {receivedItems.map(it => {
+                        const checked = ce.itemIds.includes(it.id);
+                        return (
+                          <button key={it.id} onClick={() => toggleCustomEntryItem(ce.id, it.id)}
+                            className={`text-xs px-2 py-1 rounded-full border transition ${checked
+                              ? 'bg-[#C9A84C]/10 border-[#C9A84C] text-[#C9A84C] font-semibold'
+                              : 'bg-white border-[#E8DDD0] text-[#8E8878]'}`}>
+                            {checked ? '✓ ' : ''}{it.materialName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {ce.itemIds.length === 0 && (
+                      <p className="text-xs text-red-500 mt-1">Chưa chọn nguyên liệu áp dụng</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Thanh toán / Công nợ theo từng NCC ── */}
+        {vendorsWithAmount.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+              Thanh toán cho từng nhà cung cấp
+            </p>
+            <div className="space-y-3">
+              {vendorsWithAmount.map(v => {
+                const total = totalsByVendor[v.id] || 0;
+                const d = vendorDecisions[v.id];
+                const missingCatalogLink = d.action === 'DEBT' && !v.vendorId;
+                return (
+                  <div key={v.id} className="bg-white border border-[#E8DDD0] rounded-xl p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-[#1C1C1E]">{v.vendorName}</p>
+                      <p className="text-sm font-bold text-[#C9A84C]">{fmtVND(total)}</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${d.action === 'PAID' ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}
+                        onClick={() => setVendorDecision(v.id, { action: 'PAID' })}>
+                        Thanh toán luôn
+                      </button>
+                      <button
+                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${d.action === 'DEBT' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}
+                        onClick={() => setVendorDecision(v.id, { action: 'DEBT' })}>
+                        Công nợ
+                      </button>
+                    </div>
+
+                    {d.action === 'PAID' && (
+                      <div className="space-y-2 pt-1">
+                        <div className="grid grid-cols-2 gap-2">
+                          <select className={inputCls} value={d.paymentMethod}
+                            onChange={e => setVendorDecision(v.id, { paymentMethod: e.target.value })}>
+                            {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                          </select>
+                          <input className={inputCls}
+                            placeholder={d.paymentMethod === 'CASH' ? 'Ghi chú tiền mặt' : 'Số TK / nội dung CK'}
+                            value={d.paymentInfo}
+                            onChange={e => setVendorDecision(v.id, { paymentInfo: e.target.value })}/>
+                        </div>
+                        <InvoiceUploader
+                          requestId={req.id}
+                          value={d.proofImages}
+                          onChange={imgs => setVendorDecision(v.id, { proofImages: imgs })}
+                          label="Chứng từ thanh toán"
+                        />
+                        {d.proofImages.length === 0 && (
+                          <p className="text-xs text-red-500">Bắt buộc ít nhất 1 ảnh chứng từ.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {d.action === 'DEBT' && missingCatalogLink && (
+                      <p className="text-xs text-red-500">
+                        NCC này chưa liên kết với danh mục Nhà cung cấp nên không thể ghi công nợ.
+                        Vui lòng quay lại bước "Xác nhận đặt hàng" và chọn NCC có sẵn trong danh mục.
+                      </p>
+                    )}
+                    {d.action === 'DEBT' && !missingCatalogLink && (
+                      <p className="text-xs text-amber-700">
+                        Sẽ cộng {fmtVND(total)} vào công nợ của {v.vendorName}.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {grandTotal > 0 && (
+          <div className="pt-2 border-t border-black/5 flex items-center justify-between">
+            <span className="text-sm font-semibold text-[#1C1C1E]">Tổng tiền phiếu</span>
+            <span className="text-lg font-bold text-[#C9A84C]">{fmtVND(grandTotal)}</span>
+          </div>
+        )}
+
         <div className="flex gap-2 pt-2">
           <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
-          <PrimaryButton className="flex-1" onClick={handleComplete} disabled={saving || invoiceImages.length === 0}>
+          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving || !canSubmit}>
             {saving ? 'Đang xử lý...' : 'Hoàn thành phiếu'}
           </PrimaryButton>
         </div>
@@ -432,12 +933,25 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
             <div className="space-y-2">
               {(req.items || []).map((it, i) => (
                 <div key={i} className="flex items-center justify-between bg-[#FAF7F2] rounded-xl px-3 py-2">
-                  <span className="text-sm text-[#1C1C1E] font-medium">{it.materialName}</span>
+                  <div>
+                    <span className="text-sm text-[#1C1C1E] font-medium">{it.materialName}</span>
+                    {it.suppliedByVendorName && (
+                      <p className="text-xs text-[#8E8878]">{it.suppliedByVendorName}</p>
+                    )}
+                  </div>
                   <div className="text-right">
                     <span className="text-sm font-semibold text-[#1C1C1E]">{it.qtyRequested}</span>
                     <span className="text-xs text-[#8E8878] ml-1">{it.unit}</span>
                     {it.qtyReceived != null && (
                       <span className="ml-2 text-xs text-emerald-600">(nhận: {it.qtyReceived})</span>
+                    )}
+                    {it.lineAmount != null && (
+                      <p className="text-xs text-[#C9A84C] font-semibold">{fmtVND(it.lineAmount)}</p>
+                    )}
+                    {it.costBreakdown?.length > 1 && (
+                      <p className="text-[10px] text-[#8E8878] mt-0.5">
+                        {it.costBreakdown.map((b, bi) => `${b.label}: ${fmtVND(b.amount)}`).join(' · ')}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -450,9 +964,20 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
             <div className="mt-3 pt-3 border-t border-black/5">
               <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">Nhà cung cấp</p>
               {req.vendors.map((v, i) => (
-                <p key={i} className="text-xs text-[#1C1C1E]">
-                  {v.vendorName}{v.contactPerson ? ` · ${v.contactPerson}` : ''}{v.contactPhone ? ` · ${v.contactPhone}` : ''}
-                </p>
+                <div key={i} className="flex items-center justify-between text-xs text-[#1C1C1E] py-0.5">
+                  <span>
+                    {v.vendorName}{v.contactPerson ? ` · ${v.contactPerson}` : ''}{v.contactPhone ? ` · ${v.contactPhone}` : ''}
+                  </span>
+                  {v.paymentStatus === 'PAID' && (
+                    <span className="text-emerald-600 font-semibold">Đã thanh toán {fmtVND(v.totalAmount)}</span>
+                  )}
+                  {v.paymentStatus === 'DEBT' && (
+                    <span className="text-amber-700 font-semibold">
+                      Công nợ {fmtVND(v.debtRemaining)}
+                      {v.debtSettlementStatus === 'SETTLED' ? ' (đã trả hết)' : v.debtSettlementStatus === 'PARTIAL' ? ' (đã trả 1 phần)' : ''}
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -483,7 +1008,10 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
           )}
 
           {req.status === 'COMPLETED' && req.completedAt && (
-            <p className="mt-3 text-xs text-gray-500">✓ Hoàn thành {fmtDateTime(req.completedAt)}</p>
+            <p className="mt-3 text-xs text-gray-500">
+              ✓ Hoàn thành {fmtDateTime(req.completedAt)}
+              {req.totalAmount != null && <> · Tổng tiền: <span className="font-semibold text-[#1C1C1E]">{fmtVND(req.totalAmount)}</span></>}
+            </p>
           )}
         </div>
       )}

@@ -6,9 +6,11 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
+  ArrowUp, ArrowDown, ChevronsUpDown,
   Edit2, MapPin, Star, Plus, Trash2,
 } from 'lucide-react';
 import { adminCustomerApi } from '../../api/adminApi';
+import { formatPrice } from '../../utils/formatPrice';
 import useDebounce from '../../utils/useDebounce.js';
 import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
@@ -591,11 +593,15 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SuperAccountantCustomers() {
   const { t } = useLang();
+  const toast = useToast();
   const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
   const debouncedQ = useDebounce(filters.q, 600);
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
+  const [exporting, setExporting] = useState(false);
+  // Sort công nợ chưa thanh toán: null → 'desc' (cao→thấp) → 'asc' (thấp→cao)
+  const [debtSort, setDebtSort] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [historyCustomerId, setHistoryCustomerId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -641,11 +647,49 @@ export default function SuperAccountantCustomers() {
       if (filters.type) params.type = filters.type;
       if (filters.isActive !== '') params.isActive = filters.isActive;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
+      if (debtSort) params.debtSort = debtSort;
       const res = await adminCustomerApi.list(params);
       setData(res);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [page, debouncedQ, filters.type, filters.isActive, filters.sellerId]);
+  }, [page, debouncedQ, filters.type, filters.isActive, filters.sellerId, debtSort]);
+
+  // Bấm header "Công nợ (chưa TT)": desc → asc → tắt
+  const cycleDebtSort = useCallback(() => {
+    setPage(0);
+    setDebtSort(prev => prev === 'desc' ? 'asc' : prev === 'asc' ? null : 'desc');
+  }, []);
+
+  // Export — dùng cùng endpoint với OWNER nên ra file y hệt.
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const params = {};
+      if (debouncedQ) params.q = debouncedQ;
+      if (filters.type) params.type = filters.type;
+      if (filters.isActive !== '') params.isActive = filters.isActive;
+      if (filters.sellerId !== '') params.sellerId = filters.sellerId;
+      const res = await adminCustomerApi.exportAll(params);
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = res.headers?.['content-disposition'] || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : 'danh-sach-khach-hang.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      toast(e?.response?.data?.message || 'Lỗi khi export', 'error');
+    } finally {
+      setExporting(false);
+    }
+  }, [debouncedQ, filters.type, filters.isActive, filters.sellerId, toast]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setSelectedIds(new Set()); }, [page, filters]);
@@ -718,9 +762,12 @@ export default function SuperAccountantCustomers() {
               if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
             }} />
           </label>
-          <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
-            <Download size={13} /> Export
+          <button onClick={handleExport} disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            {exporting
+              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              : <Download size={13} />}
+            {exporting ? 'Đang xuất...' : 'Export'}
           </button>
         </div>
       </div>
@@ -801,6 +848,16 @@ export default function SuperAccountantCustomers() {
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">NV Kinh doanh</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Chiết khấu</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Công nợ</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
+                      <button onClick={cycleDebtSort}
+                        className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[#C9A84C] transition-colors"
+                        title="Sắp xếp theo công nợ chưa thanh toán">
+                        Công nợ (chưa TT)
+                        {debtSort === 'desc' ? <ArrowDown size={13} className="text-[#C9A84C]" />
+                          : debtSort === 'asc' ? <ArrowUp size={13} className="text-[#C9A84C]" />
+                          : <ChevronsUpDown size={13} className="opacity-50" />}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">Trạng thái</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Thao tác</th>
                   </tr>
@@ -870,6 +927,11 @@ export default function SuperAccountantCustomers() {
                             {c.debtDays > 0 ? `${c.debtDays} ngày` : '—'}
                           </span>
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`text-xs font-semibold ${c.unpaidDebt > 0 ? 'text-red-600' : 'text-[#C4B9A8]'}`}>
+                            {c.unpaidDebt > 0 ? formatPrice(c.unpaidDebt) : '—'}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-center">
                           {c.isActive
                             ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>
@@ -914,6 +976,7 @@ export default function SuperAccountantCustomers() {
                         </p>
                         <p className="text-xs text-[#8E8878]">{c.phone} · CK {c.discountRate || 0}%</p>
                         {c.debtDays > 0 && <p className="text-[10px] text-orange-500">📋 Công nợ {c.debtDays} ngày</p>}
+                        {c.unpaidDebt > 0 && <p className="text-[10px] font-semibold text-red-600">💰 Chưa TT: {formatPrice(c.unpaidDebt)}</p>}
                         {isCompany && (
                           c.sellerName
                             ? <p className="text-[10px] text-sky-600 mt-0.5">👤 {c.sellerName}</p>

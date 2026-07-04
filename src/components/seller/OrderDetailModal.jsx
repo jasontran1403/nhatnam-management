@@ -430,6 +430,22 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                     </div>
                   </>
                 )}
+                {o.receiptNumbers?.length > 0 && (
+                  <>
+                    <div className="hidden md:block w-px bg-[#E8E0D6] self-stretch mx-1" />
+                    <div className="block md:hidden h-px bg-[#E8E0D6] my-2" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-[#8E8878] uppercase tracking-wide mb-1">Số phiếu thu</p>
+                      <div className="flex flex-wrap gap-1">
+                        {o.receiptNumbers.map((rn, i) => (
+                          <span key={i} className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-0.5">
+                            {rn}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

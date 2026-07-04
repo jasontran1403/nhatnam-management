@@ -1,10 +1,10 @@
 // src/pages/owner/OwnerEmployeesPage.jsx
 // Owner xem nhân sự: tab Nhân viên, Phiếu nghỉ, Phiếu OT, Duyệt lương, Duyệt phiếu lương
 import { useLang } from '../../context/LangContext';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users, Calendar, Clock, DollarSign, Check, X, FileText,
-  Search, ChevronDown, Calculator, Download, Eye,
+  Search, ChevronDown, Calculator, Download, Eye, ListChecks,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { hrSalaryApi, hrLeaveApi, hrOtApi, payrollApi } from '../../api/hrApi';
@@ -19,12 +19,32 @@ import { Badge } from '../../components/ui/Badge';
 import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/common/Toast';
+import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
 
 function Row({ label, val, bold, red }) {
   return (
     <div className="flex justify-between items-center">
       <span className="text-xs text-[#8E8878]">{label}</span>
       <span className={`text-sm ${bold ? 'font-bold' : 'font-medium'} ${red ? 'text-red-600' : 'text-[#1C1C1E]'}`}>{val}</span>
+    </div>
+  );
+}
+
+/** Thanh lọc: ô tìm tên nhân viên + chọn bộ phận (dropdown, không gõ tự do). */
+function EmployeeFilterBar({ q, setQ, dept, setDept, deptOptions, showSearch = true }) {
+  return (
+    <div className="flex flex-wrap gap-2 items-center">
+      {showSearch && (
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <input className={`${inputCls} pl-8`} value={q}
+            onChange={e => setQ(e.target.value)} placeholder="Tìm nhân viên…" />
+        </div>
+      )}
+      <select className={`${selectCls} max-w-[240px]`} value={dept} onChange={e => setDept(e.target.value)}>
+        <option value="">Tất cả bộ phận</option>
+        {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
+      </select>
     </div>
   );
 }
@@ -135,64 +155,68 @@ function LeavesTab() {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [q, setQ] = useState('');
+  const [dept, setDept] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await hrLeaveApi.list({ page, size: 20 });
+      const data = await hrLeaveApi.list({ page: 0, size: 500 });
       setRows(data.content ?? data);
-      setTotalPages(data.totalPages ?? 1);
     } catch { toast('Không tải được phiếu nghỉ', 'error'); }
     finally { setLoading(false); }
-  }, [page]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  const deptOptions = useMemo(
+    () => [...new Set((rows || []).map(l => l.department).filter(Boolean))].sort(),
+    [rows]);
+  const filtered = (rows || []).filter(l =>
+    (!q.trim() || (l.userFullName || '').toLowerCase().includes(q.trim().toLowerCase())) &&
+    (!dept || l.department === dept));
+
   return (
-    <SectionCard>
-      {loading ? <LoadingSpinner /> : rows.length === 0 ? (
-        <EmptyState icon={Calendar} title="Chưa có phiếu nghỉ" />
-      ) : (
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>Nhân viên</Th>
-              <Th>Loại</Th>
-              <Th>Từ ngày</Th>
-              <Th>Đến ngày</Th>
-              <Th>Số ngày</Th>
-              <Th>Bàn giao</Th>
-              <Th>SĐT</Th>
-              <Th>Ngày tạo</Th>
-            </Tr>
-          </Thead>
-          <tbody>
-            {rows.map(l => (
-              <Tr key={l.id}>
-                <Td>
-                  <div className="font-medium">{l.userFullName}</div>
-                  {l.department && <div className="text-xs text-[#8E8878]">{l.department}</div>}
-                </Td>
-                <Td><Badge variant={l.leaveType === 'PAID' ? 'success' : 'warning'}>{LEAVE_LABEL[l.leaveType]}</Badge></Td>
-                <Td>{formatDate(l.leaveDate)}</Td>
-                <Td>{formatDate(l.leaveEndDate)}</Td>
-                <Td>{l.leaveDays} ngày</Td>
-                <Td>{l.handoverTo || '—'}</Td>
-                <Td>{l.contactPhone || '—'}</Td>
-                <Td>{formatDateTime(l.createdAt)}</Td>
+    <div className="space-y-4">
+      <EmployeeFilterBar q={q} setQ={setQ} dept={dept} setDept={setDept} deptOptions={deptOptions} />
+      <SectionCard>
+        {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
+          <EmptyState icon={Calendar} title="Chưa có phiếu nghỉ" />
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Nhân viên</Th>
+                <Th>Loại</Th>
+                <Th>Từ ngày</Th>
+                <Th>Đến ngày</Th>
+                <Th>Số ngày</Th>
+                <Th>Bàn giao</Th>
+                <Th>SĐT</Th>
+                <Th>Ngày tạo</Th>
               </Tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
-      {totalPages > 1 && (
-        <div className="px-4 py-3 border-t border-black/5">
-          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
-        </div>
-      )}
-    </SectionCard>
+            </Thead>
+            <tbody>
+              {filtered.map(l => (
+                <Tr key={l.id}>
+                  <Td>
+                    <div className="font-medium">{l.userFullName}</div>
+                    {l.department && <div className="text-xs text-[#8E8878]">{l.department}</div>}
+                  </Td>
+                  <Td><Badge variant={l.leaveType === 'PAID' ? 'success' : 'warning'}>{l.leaveType === 'PAID' ? 'Có lương' : 'Không lương'}</Badge></Td>
+                  <Td>{formatDate(l.leaveDate)}</Td>
+                  <Td>{formatDate(l.leaveEndDate)}</Td>
+                  <Td>{l.leaveDays} ngày</Td>
+                  <Td>{l.handoverTo || '—'}</Td>
+                  <Td>{l.contactPhone || '—'}</Td>
+                  <Td>{formatDateTime(l.createdAt)}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </SectionCard>
+    </div>
   );
 }
 
@@ -201,59 +225,68 @@ function OtTab() {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [q, setQ] = useState('');
+  const [dept, setDept] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await hrOtApi.list({ page, size: 20 });
+      const data = await hrOtApi.list({ page: 0, size: 500 });
       setRows(data.content ?? data);
-      setTotalPages(data.totalPages ?? 1);
     } catch { toast('Không tải được đơn OT', 'error'); }
     finally { setLoading(false); }
-  }, [page]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  const deptOptions = useMemo(
+    () => [...new Set((rows || [])
+      .flatMap(o => (o.employees || []).map(e => e.department))
+      .filter(Boolean))].sort(),
+    [rows]);
+  const filtered = (rows || []).filter(o => {
+    const emps = o.employees || [];
+    const okName = !q.trim() || emps.some(e => (e.fullName || '').toLowerCase().includes(q.trim().toLowerCase()));
+    const okDept = !dept || emps.some(e => e.department === dept);
+    return okName && okDept;
+  });
+
   return (
-    <SectionCard>
-      {loading ? <LoadingSpinner /> : rows.length === 0 ? (
-        <EmptyState icon={Clock} title="Chưa có đơn OT" />
-      ) : (
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>Ngày OT</Th>
-              <Th>Giờ</Th>
-              <Th>Số giờ</Th>
-              <Th>Nhân viên</Th>
-              <Th>Lý do</Th>
-              <Th>Ngày tạo</Th>
-            </Tr>
-          </Thead>
-          <tbody>
-            {rows.map(o => (
-              <Tr key={o.id}>
-                <Td>{formatDate(o.otDate)}</Td>
-                <Td>{o.startTime} — {o.endTime}</Td>
-                <Td>{o.otHours}h</Td>
-                <Td>
-                  <div className="text-sm">{(o.employees || []).map(e => e.fullName).join(', ')}</div>
-                </Td>
-                <Td><span className="text-sm text-[#8E8878] line-clamp-1">{o.reason}</span></Td>
-                <Td>{formatDateTime(o.createdAt)}</Td>
+    <div className="space-y-4">
+      <EmployeeFilterBar q={q} setQ={setQ} dept={dept} setDept={setDept} deptOptions={deptOptions} />
+      <SectionCard>
+        {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
+          <EmptyState icon={Clock} title="Chưa có đơn OT" />
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Ngày OT</Th>
+                <Th>Giờ</Th>
+                <Th>Số giờ</Th>
+                <Th>Nhân viên</Th>
+                <Th>Lý do</Th>
+                <Th>Ngày tạo</Th>
               </Tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
-      {totalPages > 1 && (
-        <div className="px-4 py-3 border-t border-black/5">
-          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
-        </div>
-      )}
-    </SectionCard>
+            </Thead>
+            <tbody>
+              {filtered.map(o => (
+                <Tr key={o.id}>
+                  <Td>{formatDate(o.otDate)}</Td>
+                  <Td>{o.startTime} — {o.endTime}</Td>
+                  <Td>{o.otHours}h</Td>
+                  <Td>
+                    <div className="text-sm">{(o.employees || []).map(e => e.fullName).join(', ')}</div>
+                  </Td>
+                  <Td><span className="text-sm text-[#8E8878] line-clamp-1">{o.reason}</span></Td>
+                  <Td>{formatDateTime(o.createdAt)}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </SectionCard>
+    </div>
   );
 }
 
@@ -265,7 +298,7 @@ function SalaryApprovalTab() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('PENDING');
+  const [statusFilter, setStatusFilter] = useState('');
   const [rejectModal, setRejectModal] = useState(null);
   const [approving, setApproving] = useState(null);
   const [selected, setSelected] = useState([]);
@@ -316,10 +349,10 @@ function SalaryApprovalTab() {
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex gap-2">
           {[
-            { val: 'PENDING', label: t('status', 'pending') },
-            { val: 'APPROVED', label: t('status', 'approved') },
-            { val: 'REJECTED', label: t('common', 'reject') },
             { val: '', label: t('common', 'all') },
+            { val: 'APPROVED', label: t('status', 'approved') },
+            { val: 'PENDING', label: t('status', 'pending') },
+            { val: 'REJECTED', label: t('common', 'reject') },
           ].map(({ val, label }) => (
             <button key={val} onClick={() => { setStatusFilter(val); setPage(0); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
@@ -350,6 +383,8 @@ function SalaryApprovalTab() {
                 <Th>Bộ phận</Th>
                 <Th>Phòng ban</Th>
                 <Th right>Lương trước thuế</Th>
+                <Th right>Phụ cấp</Th>
+                <Th right>Thưởng</Th>
                 <Th>Trạng thái</Th>
                 <Th>Ngày gửi</Th>
                 {statusFilter === 'PENDING' && <Th right>Thao tác</Th>}
@@ -373,6 +408,8 @@ function SalaryApprovalTab() {
                   <Td>{s.department || '—'}</Td>
                   <Td>{s.division || '—'}</Td>
                   <Td right>{s.baseSalary ? formatCurrency(s.baseSalary) : '—'}</Td>
+                  <Td right>{s.allowance ? formatCurrency(s.allowance) : '—'}</Td>
+                  <Td right>{s.bonus ? formatCurrency(s.bonus) : '—'}</Td>
                   <Td>
                     <Badge variant={
                       s.status === 'APPROVED' ? 'success' :
@@ -566,6 +603,130 @@ function PayrollBatchDetailModal({ batch, onClose, onApproved }) {
   );
 }
 
+// ── Salary Breakdown Detail Modal — giống mẫu phiếu lương chi tiết ───────────
+function SalaryBreakdownDetailModal({ row, onClose }) {
+  return (
+    <Modal open onClose={onClose} title={`Chi tiết lương — ${row.userFullName}`} size="md">
+      <SalaryBreakdownCards row={row} />
+      <div className="pt-3">
+        <SecondaryButton onClick={onClose} className="w-full">Đóng</SecondaryButton>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Salary Breakdown Tab — Owner xem lương + breakdown từng nhân viên ────────
+function SalaryBreakdownTab() {
+  const toast = useToast();
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [detailRow, setDetailRow] = useState(null);
+  const [q, setQ] = useState('');
+  const [dept, setDept] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await hrSalaryApi.getBreakdown();
+      setSummary(data);
+    } catch { toast('Không tải được breakdown lương', 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const deptOptions = useMemo(
+    () => [...new Set((summary?.rows || []).map(r => r.department).filter(Boolean))].sort(),
+    [summary]);
+  const rows = (summary?.rows || []).filter(r =>
+    (!q.trim() || (r.userFullName || '').toLowerCase().includes(q.trim().toLowerCase())) &&
+    (!dept || r.department === dept));
+
+  const totals = rows.reduce((t, r) => ({
+    base: t.base + (r.baseSalary || 0),
+    employerIns: t.employerIns + (r.employerInsuranceTotal || 0),
+    empPit: t.empPit + (r.employeeInsuranceTotal || 0) + (r.personalIncomeTax || 0),
+    allowance: t.allowance + (r.allowance || 0),
+    bonus: t.bonus + (r.effectiveBonus || 0),
+    net: t.net + (r.netSalary || 0),
+    cost: t.cost + (r.totalCost || 0),
+  }), { base: 0, employerIns: 0, empPit: 0, allowance: 0, bonus: 0, net: 0, cost: 0 });
+
+  return (
+    <div className="space-y-4">
+      <EmployeeFilterBar q={q} setQ={setQ} dept={dept} setDept={setDept} deptOptions={deptOptions} />
+
+      <SectionCard>
+        {loading ? <LoadingSpinner /> : rows.length === 0 ? (
+          <EmptyState icon={DollarSign} title="Chưa có dữ liệu lương" description="Lương sẽ hiện ở đây sau khi được cập nhật cho nhân viên" />
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>Nhân viên</Th>
+                  <Th right>Mức lương cơ bản</Th>
+                  <Th right>Mức lương đóng bảo hiểm</Th>
+                  <Th right>DN đóng bảo hiểm</Th>
+                  <Th right>NV đóng thuế + bảo hiểm</Th>
+                  <Th right>Tổng phụ cấp</Th>
+                  <Th right>Tổng thưởng (theo KPI)</Th>
+                  <Th right>Lương thực nhận (NET)</Th>
+                  <Th right>Chi tiết</Th>
+                </Tr>
+              </Thead>
+              <tbody>
+                {rows.map(r => (
+                  <Tr key={r.userId}>
+                    <Td>
+                      <div className="font-medium">{r.userFullName}</div>
+                      <div className="text-xs text-[#8E8878]">{r.department || '—'} {r.position ? `· ${r.position}` : ''}</div>
+                    </Td>
+                    <Td right>{formatCurrency(r.baseSalary)}</Td>
+                    <Td right>{formatCurrency(r.insuranceSalary)}</Td>
+                    <Td right>{formatCurrency(r.employerInsuranceTotal)}</Td>
+                    <Td right>{formatCurrency((r.employeeInsuranceTotal || 0) + (r.personalIncomeTax || 0))}</Td>
+                    <Td right>{formatCurrency(r.allowance)}</Td>
+                    <Td right>{formatCurrency(r.effectiveBonus)}</Td>
+                    <Td right><span className="font-semibold text-emerald-700">{formatCurrency(r.netSalary)}</span></Td>
+                    <Td right>
+                      <SecondaryButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setDetailRow(r)}>
+                        <Eye size={12} /> Xem
+                      </SecondaryButton>
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+              {summary && (
+                <tfoot>
+                  <tr className="border-t-2 border-[#E8DDD0] bg-[#FAF7F2]">
+                    <td className="px-4 py-3 font-bold text-[#1C1C1E] text-sm">Tổng cộng ({rows.length} nhân viên)</td>
+                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.base)}</td>
+                    <td className="px-4 py-3" />
+                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.employerIns)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.empPit)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.allowance)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.bonus)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700 text-sm">{formatCurrency(totals.net)}</td>
+                    <td className="px-4 py-3" />
+                  </tr>
+                  <tr className="bg-[#FAF7F2]">
+                    <td colSpan={9} className="px-4 py-2 text-xs text-[#8E8878]">
+                      Tổng chi phí doanh nghiệp (gồm bảo hiểm DN đóng): <strong>{formatCurrency(totals.cost)}</strong>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </Table>
+          </div>
+        )}
+      </SectionCard>
+
+      {detailRow && <SalaryBreakdownDetailModal row={detailRow} onClose={() => setDetailRow(null)} />}
+    </div>
+  );
+}
+
 function PayrollApprovalTab() {
   const toast = useToast();
   const [batches, setBatches] = useState([]);
@@ -698,16 +859,17 @@ function PayrollApprovalTab() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'employees', label: 'Nhân viên', icon: Users },
+  { id: 'breakdown', label: 'Lương nhân sự', icon: ListChecks },
+  { id: 'salary', label: 'Duyệt lương', icon: DollarSign },
+  // { id: 'employees', label: 'Nhân viên', icon: Users },
   { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
   { id: 'ot', label: 'Phiếu OT', icon: Clock },
-  { id: 'salary', label: 'Duyệt lương', icon: DollarSign },
-  { id: 'payroll', label: 'Duyệt phiếu lương', icon: Calculator },
+  // { id: 'payroll', label: 'Duyệt phiếu lương', icon: Calculator },
 ];
 
 export default function OwnerEmployeesPage() {
   const { t } = useLang();
-  const [tab, setTab] = useState('employees');
+  const [tab, setTab] = useState('breakdown');
 
   const LEAVE_LABEL = { PAID: t('hr', 'leave_paid'), UNPAID: t('hr', 'leave_unpaid') };
 
@@ -716,11 +878,12 @@ export default function OwnerEmployeesPage() {
     <div className="p-4 sm:p-6 space-y-5">
       <PageHeader icon={Users} title="Nhân sự" subtitle="Quản lý & duyệt lương nhân viên" />
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
-      {tab === 'employees' && <EmployeesTab />}
+      {/* {tab === 'employees' && <EmployeesTab />} */}
       {tab === 'leaves' && <LeavesTab />}
       {tab === 'ot' && <OtTab />}
       {tab === 'salary' && <SalaryApprovalTab />}
-      {tab === 'payroll' && <PayrollApprovalTab />}
+      {tab === 'breakdown' && <SalaryBreakdownTab />}
+      {/* {tab === 'payroll' && <PayrollApprovalTab />} */}
     </div>
   );
 }

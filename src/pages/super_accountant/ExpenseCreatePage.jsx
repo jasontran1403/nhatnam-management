@@ -6,6 +6,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import { expenseApi } from '../../api/services';
 import { accountantSupplierApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
+import ExpenseDatePeriodPicker, { defaultExpenseWhen } from '../../components/ui/ExpenseDatePeriodPicker';
 import { Plus, Trash2, Upload, X, Receipt, Send, Building2, ChevronDown } from 'lucide-react';
 
 function formatVND(n) {
@@ -13,6 +14,20 @@ function formatVND(n) {
 }
 function parseVND(s) {
   return Number(String(s).replace(/[^0-9]/g, '')) || 0;
+}
+
+// Nhãn hiển thị thời điểm phiếu chi ở danh sách lịch sử: ưu tiên "Ngày chi", nếu
+// phiếu tạo theo kỳ (chỉ có tháng) thì hiển thị "Kỳ Tháng M/YYYY".
+function formatWhenLabel(v) {
+  if (v?.expenseDate) {
+    const d = new Date(v.expenseDate);
+    return `Ngày ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  }
+  if (v?.expensePeriod) {
+    const [y, m] = v.expensePeriod.split('-');
+    return `Kỳ Tháng ${Number(m)}/${y}`;
+  }
+  return '';
 }
 
 export default function ExpenseCreatePage() {
@@ -27,6 +42,8 @@ export default function ExpenseCreatePage() {
   const [supplierSearch, setSupplierSearch]   = useState('');
 
   const [reason, setReason]                   = useState('');
+  // Thời điểm phiếu chi — mặc định chế độ "Ngày" = hôm nay
+  const [when, setWhen]                       = useState(defaultExpenseWhen());
   const [requestedByName, setRequestedByName] = useState('');
   const [items, setItems]                     = useState([{ id: 1, itemName: '', amount: '', note: '' }]);
   const [images, setImages]                   = useState([]);
@@ -94,12 +111,15 @@ export default function ExpenseCreatePage() {
       await expenseApi.create({
         vendorName: vendorName.trim() || null,
         reason: reason.trim(),
+        // Chế độ "Ngày" → gửi expenseDate; chế độ "Kỳ" → gửi expensePeriod
+        expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
+        expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
         requestedByName: requestedByName.trim() || null,
         items: validItems.map(i => ({ itemName: i.itemName.trim(), amount: parseVND(i.amount), note: i.note.trim() || null })),
         imageUrls: uploadedUrls,
       });
       toast('Phiếu chi đã gửi, chờ ADMIN/OWNER duyệt', 'success');
-      setVendorName(''); setReason(''); setRequestedByName('');
+      setVendorName(''); setReason(''); setRequestedByName(''); setWhen(defaultExpenseWhen());
       setItems([{ id: 1, itemName: '', amount: '', note: '' }]);
       setImages([]); setSupplierSearch('');
       if (listLoaded) loadMyVouchers();
@@ -220,6 +240,16 @@ export default function ExpenseCreatePage() {
               className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
           </div>
 
+          {/* Thời điểm chi — chọn NGÀY (mặc định hôm nay) hoặc KỲ (tháng) */}
+          <div>
+            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Thời điểm chi</label>
+            <ExpenseDatePeriodPicker value={when} onChange={setWhen} />
+            <p className="text-xs text-[#8E8878] mt-1">
+              Mặc định là <b>ngày hôm nay</b>. Chọn <b>Ngày</b> để ghi đúng ngày phát sinh (tiện tạo lại phiếu chi cũ);
+              hoặc chọn <b>Kỳ</b> để tính khoản chi vào cả tháng. Kỳ cho phép cả tháng hiện tại và tương lai.
+            </p>
+          </div>
+
           {/* Người yêu cầu */}
           <div>
             <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Người yêu cầu</label>
@@ -323,6 +353,7 @@ export default function ExpenseCreatePage() {
                     <p className="font-mono font-bold text-[#C9A84C] text-xs">{v.voucherCode}</p>
                     <p className="text-[#1C1C1E] font-medium truncate">{v.reason}</p>
                     {v.vendorName && <p className="text-xs text-[#8E8878] truncate">{v.vendorName}</p>}
+                    {formatWhenLabel(v) && <p className="text-xs text-[#8E8878]">{formatWhenLabel(v)}</p>}
                   </div>
                   <div className="text-right flex-shrink-0 ml-2">
                     <p className="font-bold text-[#1C1C1E]">{formatVND(v.totalAmount)}</p>

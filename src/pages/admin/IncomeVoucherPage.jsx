@@ -88,7 +88,7 @@ function VoucherRow({ v, onOpenLightbox, onOpenDetail }) {
         className="border-b border-[#F0EBE3] hover:bg-[#FAF7F2] cursor-pointer"
         onClick={() => setOpen(o => !o)}
       >
-        <td className="px-3 py-3 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{v.voucherCode}</td>
+        <td className="px-3 py-3 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{v.receiptNumber || v.voucherCode}</td>
         <td className="px-3 py-3 max-w-[180px]">
           <p className="font-medium text-[#1C1C1E] text-sm truncate">{v.reason}</p>
           {v.payerName && <p className="text-xs text-[#8E8878] truncate">{v.payerName}</p>}
@@ -235,7 +235,7 @@ export default function IncomeVoucherPage() {
               <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
-                    {['Mã phiếu', 'Lý do / Người nộp', 'Người lập', t('order','total_amount'), t('common','status'), 'Ngày tạo', ''].map(h => (
+                    {['Số phiếu thu', 'Lý do / Người nộp', 'Người lập', t('order','total_amount'), t('common','status'), 'Ngày tạo', ''].map(h => (
                       <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
                     ))}
                   </tr>

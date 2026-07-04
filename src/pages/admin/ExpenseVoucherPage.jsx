@@ -5,13 +5,11 @@ import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { adminExpenseApi } from '../../api/adminApi';
 import { useToast } from '../../components/common/Toast';
-import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, BadgeCheck, X, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
+import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState,
-  SecondaryButton, DangerButton,
   formatCurrency, formatDateTime,
 } from '../../components/ui';
-import Modal from '../../components/ui/Modal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 
 
@@ -129,7 +127,7 @@ function SummaryCard({ icon: Icon, label, value, accent }) {
   );
 }
 
-function VoucherRow({ v, onApprove, onReject, onOpenLightbox, statusMap }) {
+function VoucherRow({ v, onOpenLightbox, statusMap }) {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const total = v.totalAmount ?? v.items?.reduce((s, i) => s + Number(i.amount), 0) ?? 0;
@@ -142,29 +140,26 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox, statusMap }) {
         <td className="px-3 py-3 max-w-[180px]">
           <p className="font-medium text-[#1C1C1E] text-sm truncate">{v.reason}</p>
           {v.vendorName && <p className="text-xs text-[#8E8878] truncate">{v.vendorName}</p>}
+          {v.expenseDate ? (
+            <p className="text-[10px] text-[#8E8878] mt-0.5">
+              Ngày chi: {(() => { const d = new Date(v.expenseDate); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}
+            </p>
+          ) : v.expensePeriod && (
+            <p className="text-[10px] text-[#8E8878] mt-0.5">
+              Kỳ: {(() => { const [y, m] = v.expensePeriod.split('-'); return `Tháng ${Number(m)}/${y}`; })()}
+            </p>
+          )}
+          {v.voucherType === 'VENDOR_DEBT_PAYMENT' && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 mt-1">
+              <Wallet size={9} /> Trả công nợ NCC
+            </span>
+          )}
         </td>
         <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.createdByName}</td>
         <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.requestedByName || v.createdByName}</td>
         <td className="px-3 py-3 text-right font-bold text-[#C9A84C] whitespace-nowrap">{formatCurrency(total)}</td>
         <td className="px-3 py-3 whitespace-nowrap"><StatusBadge status={v.status} statusMap={statusMap} /></td>
         <td className="px-3 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDateTime(v.createdAt)}</td>
-        <td className="px-3 py-3">
-          {v.status === 'PENDING' && (
-            <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
-              <button onClick={() => onApprove(v.id)}
-                className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs rounded-lg font-semibold whitespace-nowrap">
-                Duyệt
-              </button>
-              <button onClick={() => onReject(v.id)}
-                className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded-lg font-semibold whitespace-nowrap">
-                Từ chối
-              </button>
-            </div>
-          )}
-          {v.status !== 'PENDING' && (
-            <span className="text-xs text-[#8E8878]">{v.approvedByName || '—'}</span>
-          )}
-        </td>
         <td className="px-2 py-3 text-[#8E8878]">
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </td>
@@ -172,7 +167,7 @@ function VoucherRow({ v, onApprove, onReject, onOpenLightbox, statusMap }) {
 
       {open && (
         <tr className="bg-[#FAF7F2]">
-          <td colSpan={9} className="px-6 py-4">
+          <td colSpan={8} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">Các khoản chi</p>
@@ -228,9 +223,6 @@ export default function ExpenseVoucherPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState('');
-  const [rejectModal, setRejectModal] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [actioning, setActioning] = useState(false);
 
   const STATUS_MAP = {
     PENDING: { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
@@ -273,42 +265,16 @@ export default function ExpenseVoucherPage() {
 
   useEffect(() => { load(0); }, [load]);
 
-  const handleApprove = async (id) => {
-    setActioning(true);
-    try {
-      await adminExpenseApi.approve(id, null);
-      toast('Đã duyệt phiếu chi', 'success');
-      load(page);
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi duyệt', 'error'); }
-    finally { setActioning(false); }
-  };
-
-  const handleReject = async () => {
-    if (!rejectReason.trim()) { toast('Vui lòng nhập lý do từ chối', 'error'); return; }
-    setActioning(true);
-    try {
-      await adminExpenseApi.reject(rejectModal, rejectReason);
-      toast('Đã từ chối phiếu chi', 'success');
-      setRejectModal(null); setRejectReason('');
-      load(page);
-    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi từ chối', 'error'); }
-    finally { setActioning(false); }
-  };
-
   const totalAmount = vouchers.reduce((s, v) => s + Number(v.totalAmount || 0), 0);
-  const approvedAmount = vouchers.filter(v => v.status === 'APPROVED').reduce((s, v) => s + Number(v.totalAmount || 0), 0);
-  const approvedCount = vouchers.filter(v => v.status === 'APPROVED').length;
-  const pendingCount = vouchers.filter(v => v.status === 'PENDING').length;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader icon={Receipt} title="Phiếu chi phí"
-        subtitle={pendingCount > 0 ? `${pendingCount} chờ duyệt` : 'Tất cả phiếu chi'} />
+        subtitle="Kế toán lập phiếu là chi luôn — chỉ xem, không cần duyệt" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SummaryCard icon={DollarSign} label="Tổng số tiền phiếu chi" value={formatCurrency(totalAmount)} accent="gold" />
         <SummaryCard icon={FileText} label="Tổng số phiếu chi" value={vouchers.length + ' phiếu'} accent="blue" />
-        <SummaryCard icon={BadgeCheck} label="Tổng phiếu đã duyệt" value={approvedCount + ' phiếu — ' + formatCurrency(approvedAmount)} accent="green" />
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -348,7 +314,7 @@ export default function ExpenseVoucherPage() {
             <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
-                  {['Mã phiếu', 'Lý do / Đơn vị', 'Người lập', 'Người yêu cầu', t('order', 'total_amount'), t('common', 'status'), 'Ngày tạo', 'Hành động', ''].map(h => (
+                  {['Mã phiếu', 'Lý do / Đơn vị', 'Người lập', 'Người yêu cầu', t('order', 'total_amount'), t('common', 'status'), 'Ngày tạo', ''].map(h => (
                     <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -356,8 +322,6 @@ export default function ExpenseVoucherPage() {
               <tbody>
                 {vouchers.map(v => (
                   <VoucherRow key={v.id} v={v}
-                    onApprove={handleApprove}
-                    onReject={(id) => { setRejectModal(id); setRejectReason(''); }}
                     onOpenLightbox={openLightbox}
                     statusMap={STATUS_MAP} />
                 ))}
@@ -378,24 +342,6 @@ export default function ExpenseVoucherPage() {
             </button>
           ))}
         </div>
-      )}
-
-      {/* Reject modal */}
-      {rejectModal && (
-        <Modal title="Từ chối phiếu chi" onClose={() => setRejectModal(null)}>
-          <div className="space-y-4">
-            <p className="text-sm text-[#5C4E3D]">Nhập lý do từ chối:</p>
-            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
-              className="w-full border border-[#E8DDD0] rounded-xl p-3 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-              placeholder="Lý do từ chối..." />
-            <div className="flex gap-3 justify-end">
-              <SecondaryButton onClick={() => setRejectModal(null)}>Huỷ</SecondaryButton>
-              <DangerButton onClick={handleReject} disabled={actioning}>
-                {actioning ? 'Đang xử lý...' : 'Xác nhận từ chối'}
-              </DangerButton>
-            </div>
-          </div>
-        </Modal>
       )}
 
       {/* Lightbox */}

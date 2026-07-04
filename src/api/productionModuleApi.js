@@ -107,6 +107,11 @@ export const factoryProdApi = {
     api.post(`/api/factory/batches/${batchId}/steps/${stepSeq}/complete`, body).then(r => r.data.data),
   completeBatch: (batchId, body) =>
     api.post(`/api/factory/batches/${batchId}/complete`, body).then(r => r.data.data),
+  // Công đoạn cấp lệnh (bước chung / bước riêng)
+  startStageRun: (stepId, body) =>
+    api.post(`/api/factory/work-order-steps/${stepId}/start`, body || {}).then(r => r.data.data),
+  completeStageRun: (stepId, body) =>
+    api.post(`/api/factory/work-order-steps/${stepId}/complete`, body).then(r => r.data.data),
   cancelBatch: (batchId, body) =>
     api.post(`/api/factory/batches/${batchId}/cancel`, body).then(r => r.data.data),
   // Danh sách NVL đã trừ kho (chưa hoàn) của lệnh sản xuất — dùng cho form huỷ mẻ
@@ -223,6 +228,8 @@ export const productionResetApi = {
 export const productionUploadApi = {
   uploadBatchStepImages: (batchId, stepSeq, files) =>
     uploadFiles('/api/upload/production/batch-step', { batchId, stepSeq }, files),
+  uploadWorkOrderStepImages: (stepId, files) =>
+    uploadFiles('/api/upload/production/work-order-step', { stepId }, files),
   uploadBatchCancelImages: (batchId, files) =>
     uploadFiles('/api/upload/production/batch-cancel', { batchId }, files),
   uploadMaintenanceBefore: (maintenanceId, files) =>

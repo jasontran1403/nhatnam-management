@@ -130,7 +130,7 @@ export default function IncomeListPage() {
           <input
             value={searchText}
             onChange={e => handleSearchChange(e.target.value)}
-            placeholder="Tìm mã phiếu, lý do, người nộp tiền..."
+            placeholder="Tìm số phiếu thu, lý do, người nộp tiền..."
             className="w-full pl-9 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]"
           />
           {searchText && (
@@ -266,7 +266,7 @@ function IncomeCard({ v, onClick }) {
       {/* Row 1: mã + badge + tiền */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold text-[#C9A84C]">{v.voucherCode}</span>
+          <span className="font-mono text-xs font-bold text-[#C9A84C]">Số phiếu thu {v.receiptNumber || v.voucherCode}</span>
           <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isBankTransfer ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
             {isBankTransfer ? 'CK' : 'TM'}
           </span>

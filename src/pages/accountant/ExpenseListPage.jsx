@@ -6,7 +6,7 @@ import DateRangePicker from '../../components/ui/DateRangePicker';
 import {
   Receipt, Search, ChevronLeft, ChevronRight,
   X, Plus, CheckCircle, XCircle, Clock,
-  Building2, Eye, TrendingDown, TrendingUp
+  Building2, Eye, TrendingDown, TrendingUp, Wallet
 } from 'lucide-react';
 import ExpenseCreateModal from './ExpenseCreateModal';
 import ExpenseDetailModal from './ExpenseDetailModal';
@@ -161,6 +161,11 @@ export default function ExpenseListPage() {
                     <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${s.cls}`}>
                       <StatusIcon size={9} /> {s.label}
                     </span>
+                    {v.voucherType === 'VENDOR_DEBT_PAYMENT' && (
+                      <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700">
+                        <Wallet size={9} /> Trả công nợ NCC
+                      </span>
+                    )}
                   </div>
                   <p className="font-bold text-[#1C1C1E] text-sm">{formatVND(v.totalAmount)}</p>
                 </div>

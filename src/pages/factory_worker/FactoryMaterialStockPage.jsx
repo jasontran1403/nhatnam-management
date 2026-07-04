@@ -1,13 +1,9 @@
 // src/pages/factory_worker/FactoryMaterialStockPage.jsx
 import { useState, useEffect } from 'react';
-import { Package, AlertTriangle, ChevronDown, ChevronUp, Search, Plus } from 'lucide-react';
+import { Package, AlertTriangle, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
-import Modal from '../../components/ui/Modal.jsx';
-import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
-import { factoryMaterialRequestApi, UNITS } from '../../api/materialRequestApi.js';
-import { useToast } from '../../components/common/Toast.jsx';
-import api from '../../api/axios.js';
+import { factoryMaterialRequestApi } from '../../api/materialRequestApi.js';
 
 function fmtQty(v) {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(Number(v || 0));
@@ -23,64 +19,6 @@ function daysLeft(ms) {
   return Math.ceil((ms - Date.now()) / 86400000);
 }
 
-// ── Add Material Modal — chỉ tạo loại nguyên liệu (tên + đơn vị) ─────────────
-function AddStockModal({ onClose, onDone }) {
-  const toast = useToast();
-  const [materialName, setMaterialName] = useState('');
-  const [unit, setUnit] = useState('Kg');
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!materialName.trim()) {
-      toast('Vui lòng nhập tên nguyên liệu', 'error'); return;
-    }
-    setSaving(true);
-    try {
-      await api.post('/api/factory/materials', {
-        name: materialName.trim(),
-        unit,
-      });
-      toast('Đã thêm nguyên liệu', 'success');
-      onDone();
-    } catch (e) {
-      toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <Modal open onClose={onClose} title="Thêm nguyên liệu">
-      <div className="space-y-4">
-        <p className="text-sm text-[#8E8878]">
-          Tạo loại nguyên liệu mới. Số lượng và hạn sử dụng sẽ được cập nhật theo từng lô khi đặt hàng.
-        </p>
-
-        <Field label="Tên nguyên liệu *">
-          <input
-            autoFocus
-            className={inputCls}
-            placeholder="VD: Thịt heo, Muối, Tiêu..."
-            value={materialName}
-            onChange={e => setMaterialName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          />
-        </Field>
-
-        <Field label="Đơn vị tính">
-          <select className={inputCls} value={unit} onChange={e => setUnit(e.target.value)}>
-            {UNITS.map(u => <option key={u}>{u}</option>)}
-          </select>
-        </Field>
-
-        <div className="flex gap-2 pt-2">
-          <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
-          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Đang lưu...' : 'Thêm nguyên liệu'}
-          </PrimaryButton>
-        </div>
-      </div>
-    </Modal>
-  );
-}
 
 // ── Stock Card ────────────────────────────────────────────────────────────────
 function StockCard({ item }) {
@@ -154,7 +92,6 @@ export default function FactoryMaterialStockPage() {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -176,13 +113,6 @@ export default function FactoryMaterialStockPage() {
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-[#1C1C1E]">Kho nguyên liệu xưởng</h1>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 bg-[#1A2B1A] text-white text-sm font-semibold
-            px-4 py-2.5 rounded-xl hover:bg-[#243524] transition-colors"
-        >
-          <Plus size={16} /> Thêm nguyên liệu
-        </button>
       </div>
 
       {/* Summary */}
@@ -229,13 +159,6 @@ export default function FactoryMaterialStockPage() {
             </div>
           )
       }
-
-      {showAdd && (
-        <AddStockModal
-          onClose={() => setShowAdd(false)}
-          onDone={() => { setShowAdd(false); load(); }}
-        />
-      )}
     </div>
   );
 }

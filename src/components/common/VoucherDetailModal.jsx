@@ -148,7 +148,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
                 <p className="font-bold text-[#1C1C1E] text-sm">
                   {isExpense ? t('voucher', 'expense_title') : t('voucher', 'income_title')}
                 </p>
-                <p className="font-mono text-xs text-[#C9A84C]">{voucher.voucherCode}</p>
+                <p className="font-mono text-xs text-[#C9A84C]">{!isExpense ? (voucher.receiptNumber || voucher.voucherCode) : voucher.voucherCode}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">

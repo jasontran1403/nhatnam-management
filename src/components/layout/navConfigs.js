@@ -7,7 +7,7 @@ import {
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
-  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity,
+  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -76,6 +76,7 @@ export const accountantNavRaw = [
   { to: '/accountant/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/accountant/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/accountant/customers', labelKey: 'customers', icon: Users },
+  { to: '/accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
   { to: '/accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
 ];
@@ -84,6 +85,7 @@ export const superAccountantNavRaw = [
   { to: '/super-accountant/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/super-accountant/history', labelKey: 'orders', icon: ShoppingCart },
   { to: '/super-accountant/customers', labelKey: 'customers', icon: Users },
+  { to: '/super-accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
   { to: '/super-accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/super-accountant/warehouse-receipts', labelKey: 'warehouse_receipts', icon: FileText },

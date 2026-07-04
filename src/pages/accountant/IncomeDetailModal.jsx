@@ -31,7 +31,7 @@ export default function IncomeDetailModal({ voucher: v, onClose }) {
               {isBankTransfer ? <CreditCard size={18} className="text-blue-500" /> : <Banknote size={18} className="text-[#C9A84C]" />}
             </div>
             <div>
-              <p className="font-mono text-sm font-bold text-[#C9A84C]">{v.voucherCode}</p>
+              <p className="font-mono text-sm font-bold text-[#C9A84C]">Số phiếu thu {v.receiptNumber || v.voucherCode}</p>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isBankTransfer ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
                 {isBankTransfer ? 'Chuyển khoản' : 'Tiền mặt'}
               </span>

@@ -342,7 +342,7 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
 }
 
 // ── OrderCard mobile ──────────────────────────────────────────────────────────
-function OrderCard({ o, actionLoading, invoiceLoadingId, detailLoading, onComplete, onPartialPayment, onUpdatePaymentMethod, onInvoice, onUploadReceipt, onDetail }) {
+function OrderCard({ o, actionLoading, invoiceLoadingId, detailLoading, onComplete, onPartialPayment, onUpdatePaymentMethod, onInvoice, onUploadReceipt, onDetail, onFilterReceipt }) {
   const { t } = useLang();
   const isCompleted = o.status === 'COMPLETED' || o.status === 'CANCELLED';
   const isActioning = actionLoading === o.id;
@@ -365,6 +365,16 @@ function OrderCard({ o, actionLoading, invoiceLoadingId, detailLoading, onComple
               </span>
             )}
           </div>
+          {o.receiptNumbers?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {o.receiptNumbers.map((rn, i) => (
+                <button key={i} onClick={() => onFilterReceipt?.(rn)}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  📄 {rn}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="text-sm font-semibold text-[#1C1C1E] mt-0.5">{o.customerName}</p>
           {o.customerPhone && <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>}
         </div>
@@ -466,6 +476,7 @@ export default function AccountantOrdersPage() {
   const [loading, setLoading] = useMinLoading();
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [receiptNumberFilter, setReceiptNumberFilter] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [productFilter, setProductFilter] = useState('');
@@ -509,6 +520,7 @@ export default function AccountantOrdersPage() {
       const params = { page: p, size: pageSize };
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (search.trim()) params.keyword = search.trim();
+      if (receiptNumberFilter) params.receiptNumber = receiptNumberFilter;
       // Luôn gửi from/to nếu người dùng đã chọn khoảng ngày — kể cả khi có keyword.
       // Nếu chưa chọn (mặc định), không gửi from/to, để backend tự quyết định
       // (không filter ngày khi có keyword, hoặc mặc định hôm nay khi không có keyword).
@@ -524,7 +536,7 @@ export default function AccountantOrdersPage() {
       setPage(p);
     } catch { toast(t('common', 'error_retry'), 'error'); }
     finally { setLoading(false); }
-  }, [statusFilter, dateRange, search, productFilter, customerFilter, pageSize]);
+  }, [statusFilter, dateRange, search, productFilter, customerFilter, pageSize, receiptNumberFilter]);
 
   useEffect(() => { fetchOrders(0); }, [fetchOrders]);
   useEffect(() => {
@@ -707,6 +719,11 @@ export default function AccountantOrdersPage() {
             />
             {productFilter && <button onClick={() => setProductFilter('')} className="flex items-center gap-1 px-2 py-1 bg-[#C9A84C]/10 text-[#C9A84C] rounded-lg text-xs font-medium">{t('common', 'deselect')} <X size={10} /></button>}
             {customerFilter && <button onClick={() => setCustomerFilter('')} className="flex items-center gap-1 px-2 py-1 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium">{t('common', 'deselect')} <X size={10} /></button>}
+            {receiptNumberFilter && (
+              <button onClick={() => setReceiptNumberFilter(null)} className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-medium">
+                Phiếu thu: {receiptNumberFilter} <X size={10} />
+              </button>
+            )}
           </div>
           <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
           <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0" title={t('common', 'export')}>
@@ -821,6 +838,17 @@ export default function AccountantOrdersPage() {
                               {detailLoading === o.id && <div className="w-3 h-3 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" />}
                               {isThisInvoice && <span className="flex gap-0.5 items-center">{[0, 1, 2].map(i => <span key={i} className="w-1 h-1 rounded-full bg-[#C9A84C] animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>}
                             </div>
+                            {o.receiptNumbers?.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {o.receiptNumbers.map((rn, i) => (
+                                  <button key={i} onClick={e => { e.stopPropagation(); setReceiptNumberFilter(rn); }}
+                                    title="Xem các đơn có cùng phiếu thu"
+                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition">
+                                    📄 {rn}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDate(o.createdAt)}</td>
                           <td className="px-4 py-3">
@@ -893,6 +921,7 @@ export default function AccountantOrdersPage() {
                   onInvoice={handleInvoice}
                   onUploadReceipt={handleUploadReceipt}
                   onDetail={handleMobileDetail}
+                  onFilterReceipt={setReceiptNumberFilter}
                 />
               ))}
             </div>

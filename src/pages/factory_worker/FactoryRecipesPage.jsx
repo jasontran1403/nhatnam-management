@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLang } from '../../context/LangContext';
 import { TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   FlaskConical, Plus, Edit2, X, Power, Clock, ShieldCheck, Wrench, Package,
-  Eye, Check, ChevronLeft, ChevronRight, Info,
+  Eye, Check, ChevronLeft, ChevronRight, Info, Search,
 } from 'lucide-react';
 import {
   factoryRecipeApi, factoryWorkerApi, stepTemplateApi, factoryMachineApi,
@@ -16,21 +17,23 @@ import {
 import { Badge } from '../../components/ui/Badge';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const fmtDuration = (mins) => {
+const fmtDuration = (mins, t) => {
   const m = Number(mins) || 0;
-  if (m < 60) return `${m} phút`;
+  const minLabel = t ? t('production', 'duration_minute') : 'phút';
+  const hourLabel = t ? t('production', 'duration_hour') : 'giờ';
+  if (m < 60) return `${m} ${minLabel}`;
   const h = Math.floor(m / 60);
   const rem = m % 60;
-  return rem === 0 ? `${h} giờ` : `${h} giờ ${rem} phút`;
+  return rem === 0 ? `${h} ${hourLabel}` : `${h} ${hourLabel} ${rem} ${minLabel}`;
 };
 
 // ── Loại kiểm soát cho mỗi bước xử lý ───────────────────────────────────────
 // NONE: không kiểm soát · VISUAL: kiểm soát trực quan (xác nhận bằng mắt, không cần ảnh)
 // PHOTO_WEIGHT: kiểm soát hình ảnh cân ký (bắt buộc chụp ảnh lúc cân ký)
-const CONTROL_TYPES = [
-  { value: 'NONE', label: 'Không kiểm soát', desc: 'Xác nhận tự do, không yêu cầu gì thêm', icon: null },
-  { value: 'VISUAL', label: 'Kiểm soát trực quan', desc: 'Nhân viên kiểm tra bằng mắt rồi xác nhận, không cần ảnh', icon: Eye },
-  { value: 'PHOTO_WEIGHT', label: 'Kiểm soát hình ảnh (cân ký)', desc: 'Bắt buộc chụp ảnh lúc cân ký khi xác nhận', icon: ShieldCheck },
+const getControlTypes = (t) => [
+  { value: 'NONE', label: t('production', 'recipe_control_none'), desc: t('production', 'recipe_control_none_desc'), icon: null },
+  { value: 'VISUAL', label: t('production', 'recipe_control_visual'), desc: t('production', 'recipe_control_visual_desc'), icon: Eye },
+  { value: 'PHOTO_WEIGHT', label: t('production', 'recipe_control_photo_weight'), desc: t('production', 'recipe_control_photo_weight_desc'), icon: ShieldCheck },
 ];
 
 function controlTypeOf(step) {
@@ -38,15 +41,90 @@ function controlTypeOf(step) {
   return step?.requiresQc ? 'PHOTO_WEIGHT' : 'NONE';
 }
 
+// ── ProductSearchSelect ───────────────────────────────────────────────────────
+// Input search + dropdown để chọn sản phẩm, thay cho <select> thường khi danh
+// sách thành phẩm dài, khó tìm bằng cách cuộn dropdown gốc.
+function ProductSearchSelect({ products, value, onChange, placeholder }) {
+  const { t } = useLang();
+  const effectivePlaceholder = placeholder || t('production', 'recipe_search_product_placeholder');
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+  const dropRef = useRef(null);
+
+  const selected = products.find(p => String(p.id) === String(value));
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Khi mở dropdown, hiển thị toàn bộ danh sách trước (chưa gõ gì) hoặc lọc theo query
+  const norm = (s) => (s || '').toLowerCase();
+  const filtered = query.trim()
+    ? products.filter(p => norm(p.name).includes(norm(query)))
+    : products;
+
+  const pick = (p) => {
+    onChange(String(p.id));
+    setQuery('');
+    setOpen(false);
+  };
+
+  return (
+    <div ref={dropRef} className="relative">
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+        <input
+          ref={inputRef}
+          className={inputCls + ' pl-9'}
+          value={open ? query : (selected ? `${selected.name} (${selected.unit})` : '')}
+          placeholder={effectivePlaceholder}
+          onFocus={() => { setOpen(true); setQuery(''); }}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        />
+        {selected && !open && (
+          <button type="button" onClick={() => { onChange(''); setQuery(''); }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-red-500">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border border-black/10 shadow-lg py-1 max-h-56 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2.5 text-xs text-[#8E8878] italic">{t('production', 'recipe_no_product_found')}</p>
+          ) : (
+            filtered.map(p => (
+              <button key={p.id} type="button" onClick={() => pick(p)}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors
+                  ${String(p.id) === String(value) ? 'bg-[#C9A84C]/10 text-[#A07830] font-semibold' : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'}`}>
+                <span className="truncate">{p.name}</span>
+                <span className="text-[#8E8878] text-[10px] flex-shrink-0">{p.unit}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ControlTypeIcon({ controlType, requiresQc }) {
+  const { t } = useLang();
   const ct = controlType || (requiresQc ? 'PHOTO_WEIGHT' : 'NONE');
-  if (ct === 'PHOTO_WEIGHT') return <ShieldCheck size={12} className="text-amber-500 flex-shrink-0" title="Kiểm soát hình ảnh (cân ký)" />;
-  if (ct === 'VISUAL') return <Eye size={12} className="text-blue-500 flex-shrink-0" title="Kiểm soát trực quan" />;
+  if (ct === 'PHOTO_WEIGHT') return <ShieldCheck size={12} className="text-amber-500 flex-shrink-0" title={t('production', 'recipe_control_photo_weight')} />;
+  if (ct === 'VISUAL') return <Eye size={12} className="text-blue-500 flex-shrink-0" title={t('production', 'recipe_control_visual')} />;
   return null;
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FactoryRecipesPage() {
+  const { t } = useLang();
   const [recipes, setRecipes] = useState([]);
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -94,21 +172,21 @@ export default function FactoryRecipesPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader
         icon={FlaskConical}
-        title="Biến thể sản xuất"
-        subtitle="Khai báo các biến thể sản xuất cho từng thành phẩm — mỗi biến thể gồm nguyên liệu, các bước xử lý và máy móc sử dụng"
+        title={t('production', 'recipe_title')}
+        subtitle={t('production', 'recipe_subtitle')}
         action={
           <PrimaryButton onClick={openCreate}>
-            <Plus size={15} /> Tạo biến thể mới
+            <Plus size={15} /> {t('production', 'recipe_create_new')}
           </PrimaryButton>
         }
       />
 
       {/* Filter by product */}
       <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm flex flex-wrap items-center gap-3">
-        <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Lọc theo thành phẩm</span>
+        <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'recipe_filter_by_product')}</span>
         <select className={inputCls + ' max-w-xs'} value={productFilter}
           onChange={e => setProductFilter(e.target.value)}>
-          <option value="">Tất cả thành phẩm</option>
+          <option value="">{t('production', 'recipe_all_products')}</option>
           {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </div>
@@ -116,8 +194,8 @@ export default function FactoryRecipesPage() {
       {loading ? (
         <TableSkeleton cols={4} rows={6} />
       ) : filteredRecipes.length === 0 ? (
-        <EmptyState icon={FlaskConical} title="Chưa có biến thể sản xuất nào"
-          description="Tạo biến thể đầu tiên cho một thành phẩm để bắt đầu lập phương án sản xuất" />
+        <EmptyState icon={FlaskConical} title={t('production', 'recipe_empty_title')}
+          description={t('production', 'recipe_empty_desc')} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredRecipes.map(r => (
@@ -144,6 +222,7 @@ export default function FactoryRecipesPage() {
 
 // ── Recipe Card ───────────────────────────────────────────────────────────────
 function RecipeCard({ recipe: r, onEdit, onToggle }) {
+  const { t } = useLang();
   return (
     <div className={`bg-white rounded-2xl border border-black/5 shadow-sm p-4 sm:p-5 space-y-3 ${!r.isActive ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-2">
@@ -152,7 +231,7 @@ function RecipeCard({ recipe: r, onEdit, onToggle }) {
           <p className="text-xs text-[#8E8878] mt-0.5">{r.factoryProductName}</p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={onToggle} title={r.isActive ? 'Tắt biến thể' : 'Bật biến thể'}
+          <button onClick={onToggle} title={r.isActive ? t('production', 'recipe_disable') : t('production', 'recipe_enable')}
             className={`p-2 rounded-lg transition-colors ${r.isActive ? 'text-emerald-600 hover:bg-emerald-50' : 'text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
             <Power size={15} />
           </button>
@@ -164,11 +243,11 @@ function RecipeCard({ recipe: r, onEdit, onToggle }) {
 
       <div className="flex flex-wrap gap-1.5">
         <Badge className="bg-[#C9A84C]/10 text-[#A07830] ring-[#C9A84C]/30">
-          Sản lượng chuẩn: {r.standardOutputQty} {r.outputUnit}
+          {t('production', 'recipe_standard_output')}: {r.standardOutputQty} {r.outputUnit}
         </Badge>
         {r.packagingQty != null && (
           <Badge className="bg-blue-50 text-blue-700 ring-blue-200">
-            Đóng gói chuẩn: {r.packagingQty} {r.outputUnit}/{r.packagingUnit || 'túi'}
+            {t('production', 'recipe_standard_packaging')}: {r.packagingQty} {r.outputUnit}/{r.packagingUnit || 'túi'}
           </Badge>
         )}
       </div>
@@ -176,7 +255,7 @@ function RecipeCard({ recipe: r, onEdit, onToggle }) {
       {/* Materials */}
       <div>
         <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5 flex items-center gap-1">
-          <Package size={12} /> Nguyên liệu
+          <Package size={12} /> {t('production', 'recipe_materials')}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {(r.items || []).map(i => (
@@ -184,14 +263,14 @@ function RecipeCard({ recipe: r, onEdit, onToggle }) {
               {i.materialName}: {i.standardQty} {i.unit}
             </Badge>
           ))}
-          {(r.items || []).length === 0 && <span className="text-xs text-[#8E8878] italic">Chưa có nguyên liệu</span>}
+          {(r.items || []).length === 0 && <span className="text-xs text-[#8E8878] italic">{t('production', 'recipe_no_materials')}</span>}
         </div>
       </div>
 
       {/* Steps */}
       <div>
         <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5 flex items-center gap-1">
-          <Clock size={12} /> Các bước
+          <Clock size={12} /> {t('production', 'recipe_steps')}
         </p>
         <ol className="space-y-1">
           {(r.steps || []).map((s, idx) => (
@@ -201,7 +280,7 @@ function RecipeCard({ recipe: r, onEdit, onToggle }) {
               </span>
               <span className="font-medium flex-1 truncate">{s.stepName}</span>
               <ControlTypeIcon controlType={s.controlType} requiresQc={s.requiresQc} />
-              <span className="text-[#8E8878] flex-shrink-0">{fmtDuration(s.durationMinutes)}</span>
+              <span className="text-[#8E8878] flex-shrink-0">{fmtDuration(s.durationMinutes, t)}</span>
               {s.machineName && (
                 <span className="flex items-center gap-0.5 text-[#8E8878] flex-shrink-0">
                   <Wrench size={11} /> {s.machineName}
@@ -209,7 +288,7 @@ function RecipeCard({ recipe: r, onEdit, onToggle }) {
               )}
             </li>
           ))}
-          {(r.steps || []).length === 0 && <span className="text-xs text-[#8E8878] italic">Chưa có bước nào</span>}
+          {(r.steps || []).length === 0 && <span className="text-xs text-[#8E8878] italic">{t('production', 'recipe_no_steps')}</span>}
         </ol>
       </div>
     </div>
@@ -237,6 +316,8 @@ function StepDots({ step, total = 3 }) {
 }
 
 function RecipeFormModal({ recipe, products, materials, stepTemplates, machines, onClose, onSaved, onStepTemplateCreated }) {
+  const { t } = useLang();
+  const CONTROL_TYPES = getControlTypes(t);
   const [wizardStep, setWizardStep] = useState(1);
   const [form, setForm] = useState({
     factoryProductId: recipe?.factoryProductId || '',
@@ -256,6 +337,8 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
       controlType: controlTypeOf(s),
       durationMinutes: s.durationMinutes,
       machineId: s.machineId || '',
+      shared: s.shared || false,
+      capacityPerRun: s.capacityPerRun != null ? s.capacityPerRun : '',
     })) || [],
   });
   const [saving, setSaving] = useState(false);
@@ -270,7 +353,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
   // ── Step 1 validation ─────────────────────────────────────────────────────
   const validateStep1 = () => {
     if (!form.factoryProductId || !form.name.trim() || !form.standardOutputQty) {
-      setErr('Vui lòng điền đầy đủ: thành phẩm, tên biến thể, định lượng chuẩn'); return false;
+      setErr(t('production', 'recipe_err_step1')); return false;
     }
     setErr(''); return true;
   };
@@ -281,9 +364,9 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
   const removeItem = (idx) => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
 
   const validateStep2 = () => {
-    if (form.items.length === 0) { setErr('Vui lòng thêm ít nhất 1 nguyên liệu'); return false; }
+    if (form.items.length === 0) { setErr(t('production', 'recipe_err_step2_empty')); return false; }
     if (form.items.some(it => !it.factoryMaterialId || !it.standardQty)) {
-      setErr('Vui lòng điền đầy đủ thông tin nguyên liệu (hoặc xoá dòng trống)'); return false;
+      setErr(t('production', 'recipe_err_step2_incomplete')); return false;
     }
     setErr(''); return true;
   };
@@ -297,6 +380,8 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
       controlType: 'NONE',
       durationMinutes: '',
       machineId: '',
+      shared: false,
+      capacityPerRun: '',
     }],
   }));
   const setStep = (idx, k, v) => setForm(f => ({ ...f, steps: f.steps.map((s, i) => i === idx ? { ...s, [k]: v } : s) }));
@@ -327,7 +412,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
     // rất nhanh có thể gọi save() 2 lần trước khi React re-render disable nút).
     if (saving) return;
     if (form.steps.some(s => !s.stepName?.trim() || !s.durationMinutes)) {
-      setErr('Mỗi bước cần có tên và thời gian hoàn thành (phút)'); return;
+      setErr(t('production', 'recipe_err_step3')); return;
     }
     setSaving(true);
     setErr('');
@@ -353,32 +438,35 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
           requiresQc: (s.controlType || 'NONE') !== 'NONE',
           durationMinutes: Number(s.durationMinutes),
           machineId: s.machineId ? Number(s.machineId) : null,
+          shared: !!s.shared,
+          capacityPerRun: s.shared && s.capacityPerRun !== '' && s.capacityPerRun != null
+            ? Number(s.capacityPerRun) : null,
         })),
       };
       if (recipe) await factoryRecipeApi.update(recipe.id, payload);
       else await factoryRecipeApi.create(payload);
       onSaved();
     } catch (e) {
-      setErr(e?.response?.data?.message || e.message || 'Có lỗi xảy ra, vui lòng thử lại');
+      setErr(e?.response?.data?.message || e.message || t('production', 'recipe_err_generic'));
     } finally { setSaving(false); }
   };
 
   const stepTitles = {
-    1: 'Bước 1/3 — Thông tin chung',
-    2: 'Bước 2/3 — Nguyên liệu',
-    3: 'Bước 3/3 — Các bước xử lý',
+    1: t('production', 'recipe_step_1_title'),
+    2: t('production', 'recipe_step_2_title'),
+    3: t('production', 'recipe_step_3_title'),
   };
 
   return (
-    <Modal open title={`${recipe ? 'Sửa biến thể' : 'Tạo biến thể mới'} · ${stepTitles[wizardStep]}`} onClose={handleClose} size="xl"
+    <Modal open title={`${recipe ? t('production', 'recipe_edit') : t('production', 'recipe_create')} · ${stepTitles[wizardStep]}`} onClose={handleClose} size="xl"
       footer={
         <div className="flex items-center justify-between w-full">
           <StepDots step={wizardStep} />
           <div className="flex gap-2">
-            <SecondaryButton onClick={handleClose} disabled={saving}>Huỷ</SecondaryButton>
+            <SecondaryButton onClick={handleClose} disabled={saving}>{t('production', 'recipe_cancel')}</SecondaryButton>
             {wizardStep > 1 && (
               <SecondaryButton onClick={() => { setErr(''); setWizardStep(s => s - 1); }} disabled={saving}>
-                <ChevronLeft size={14} /> Quay lại
+                <ChevronLeft size={14} /> {t('production', 'recipe_back')}
               </SecondaryButton>
             )}
             {wizardStep < 3 && (
@@ -387,12 +475,12 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                 if (wizardStep === 2 && !validateStep2()) return;
                 setWizardStep(s => s + 1);
               }}>
-                Tiếp tục <ChevronRight size={14} />
+                {t('production', 'recipe_continue')} <ChevronRight size={14} />
               </PrimaryButton>
             )}
             {wizardStep === 3 && (
               <PrimaryButton onClick={save} loading={saving}>
-                <Check size={14} /> Hoàn tất & Lưu
+                <Check size={14} /> {t('production', 'recipe_finish_save')}
               </PrimaryButton>
             )}
           </div>
@@ -404,20 +492,17 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
         {/* ════════════ STEP 1: Thông tin chung ════════════ */}
         {wizardStep === 1 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Sản phẩm" required hint="Biến thể sẽ áp dụng cho thành phẩm này">
-              <select className={inputCls} value={form.factoryProductId}
-                onChange={e => setForm(f => ({ ...f, factoryProductId: e.target.value }))}>
-                <option value="">Chọn thành phẩm</option>
-                {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.unit})</option>)}
-              </select>
+            <Field label={t('production', 'recipe_field_product')} required hint={t('production', 'recipe_field_product_hint')}>
+              <ProductSearchSelect products={products} value={form.factoryProductId}
+                onChange={val => setForm(f => ({ ...f, factoryProductId: val }))} />
             </Field>
 
-            <Field label="Tên biến thể" required hint="Tên tự đặt để dễ nhớ, không được trùng trong cùng thành phẩm">
-              <input className={inputCls} value={form.name} placeholder="VD: Xúc xích biến thể 1"
+            <Field label={t('production', 'recipe_field_name')} required hint={t('production', 'recipe_field_name_hint')}>
+              <input className={inputCls} value={form.name} placeholder={t('production', 'recipe_field_name_placeholder')}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </Field>
 
-            <Field label="Định lượng chuẩn (sản lượng thành phẩm)" required>
+            <Field label={t('production', 'recipe_field_standard_output')} required>
               <div className="flex gap-2">
                 <input type="number" min="0" step="0.001" className={inputCls} value={form.standardOutputQty}
                   onChange={e => setForm(f => ({ ...f, standardOutputQty: e.target.value }))} />
@@ -429,7 +514,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
               </div>
             </Field>
 
-            <Field label="Định lượng đóng gói chuẩn" hint="VD: 0.5 — dùng để ước tính số gói dự kiến, không bắt buộc">
+            <Field label={t('production', 'recipe_field_standard_packaging')} hint={t('production', 'recipe_field_standard_packaging_hint')}>
               <div className="flex gap-2">
                 <input type="number" min="0" step="0.001" className={inputCls} value={form.packagingQty}
                   placeholder="VD: 0.5" onChange={e => setForm(f => ({ ...f, packagingQty: e.target.value }))} />
@@ -443,8 +528,8 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
               </div>
             </Field>
 
-            <Field label="Mô tả">
-              <input className={inputCls} value={form.notes} placeholder="Mô tả ngắn về biến thể này (không bắt buộc)"
+            <Field label={t('production', 'recipe_field_notes')}>
+              <input className={inputCls} value={form.notes} placeholder={t('production', 'recipe_field_notes_placeholder')}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </Field>
           </div>
@@ -455,11 +540,11 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider flex items-center gap-1.5">
-                <Package size={13} /> Nguyên liệu
+                <Package size={13} /> {t('production', 'recipe_section_materials')}
               </span>
               <button onClick={addItem}
                 className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:text-[#A07830] transition-colors">
-                <Plus size={13} /> Thêm nguyên liệu
+                <Plus size={13} /> {t('production', 'recipe_add_material')}
               </button>
             </div>
 
@@ -469,24 +554,24 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                 return (
                   <div key={idx} className="flex gap-2 items-end bg-[#FAF7F2] rounded-xl p-3 border border-black/5">
                     <div className="flex-1">
-                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">Nguyên liệu</label>
+                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_material')}</label>
                       <select className={inputCls} value={item.factoryMaterialId}
                         onChange={e => {
                           const m = materials.find(m => m.id === Number(e.target.value));
                           setItem(idx, 'factoryMaterialId', e.target.value);
                           if (m) setItem(idx, 'unit', m.unit);
                         }}>
-                        <option value="">Chọn nguyên liệu</option>
+                        <option value="">{t('production', 'recipe_select_material')}</option>
                         {materials.map(m => <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>)}
                       </select>
                     </div>
                     <div className="w-28">
-                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">Số lượng</label>
+                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_quantity')}</label>
                       <input type="number" min="0" step="0.001" className={inputCls} value={item.standardQty}
                         onChange={e => setItem(idx, 'standardQty', e.target.value)} />
                     </div>
                     <div className="w-20">
-                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">Đơn vị</label>
+                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_unit')}</label>
                       <div className="px-3 py-2.5 bg-white border border-black/10 rounded-xl text-sm text-[#8E8878] font-medium">
                         {mat?.unit || item.unit || '—'}
                       </div>
@@ -499,7 +584,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                 );
               })}
               {form.items.length === 0 && (
-                <p className="text-xs text-[#8E8878] italic text-center py-6">Chưa có nguyên liệu nào — nhấn "Thêm nguyên liệu" để bắt đầu</p>
+                <p className="text-xs text-[#8E8878] italic text-center py-6">{t('production', 'recipe_no_materials_added')}</p>
               )}
             </div>
           </div>
@@ -510,7 +595,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider flex items-center gap-1.5">
-                <Clock size={13} /> Các bước xử lý
+                <Clock size={13} /> {t('production', 'recipe_section_steps')}
               </span>
             </div>
 
@@ -524,12 +609,12 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
               ))}
               <div className="flex items-center gap-1">
                 <input className="px-2.5 py-1.5 text-xs rounded-lg border border-black/10 w-36"
-                  placeholder="Tên bước mới..." value={newStepName}
+                  placeholder={t('production', 'recipe_new_step_placeholder')} value={newStepName}
                   onChange={e => setNewStepName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); createStepTemplate(); } }} />
                 <button onClick={createStepTemplate}
                   className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#1C1C1E] text-white hover:bg-black transition-colors">
-                  Tạo mẫu
+                  {t('production', 'recipe_create_template')}
                 </button>
               </div>
             </div>
@@ -552,27 +637,27 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
 
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2">
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">Tên bước</label>
+                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_step_name')}</label>
                         <input className={inputCls} value={step_.stepName}
                           onChange={e => setStep(idx, 'stepName', e.target.value)} />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">Thời gian (phút)</label>
+                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_duration')}</label>
                         <input type="number" min="1" className={inputCls} value={step_.durationMinutes}
                           onChange={e => setStep(idx, 'durationMinutes', e.target.value)} />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">Máy sử dụng</label>
+                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_machine')}</label>
                         <select className={inputCls} value={step_.machineId}
                           onChange={e => setStep(idx, 'machineId', e.target.value)}>
-                          <option value="">Không dùng máy</option>
+                          <option value="">{t('production', 'recipe_no_machine')}</option>
                           {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                         </select>
                       </div>
 
                       {/* ── Loại kiểm soát: Không KS / Trực quan / Hình ảnh cân ký ── */}
                       <div className="sm:col-span-4">
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">Kiểm soát</label>
+                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_control')}</label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                           {CONTROL_TYPES.map(ct => {
                             const active = (step_.controlType || 'NONE') === ct.value;
@@ -592,6 +677,27 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                           })}
                         </div>
                       </div>
+
+                      {/* ── Bước chung / riêng + công suất mỗi lần ── */}
+                      <div className="sm:col-span-4 border-t border-black/5 pt-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" className="w-4 h-4 accent-[#C9A84C]"
+                            checked={!!step_.shared}
+                            onChange={e => setStep(idx, 'shared', e.target.checked)} />
+                          <span className="text-xs font-semibold text-[#1C1C1E]">{t('production', 'recipe_field_shared')}</span>
+                        </label>
+                        <p className="text-[10px] text-[#8E8878] mt-0.5 ml-6 leading-snug">{t('production', 'recipe_field_shared_hint')}</p>
+                        {step_.shared && (
+                          <div className="mt-2 ml-6">
+                            <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_capacity')}</label>
+                            <input type="number" min="0" step="0.001" className={inputCls + ' max-w-[200px]'}
+                              placeholder={t('production', 'recipe_field_capacity_ph')}
+                              value={step_.capacityPerRun}
+                              onChange={e => setStep(idx, 'capacityPerRun', e.target.value)} />
+                            <p className="text-[10px] text-[#8E8878] mt-0.5 leading-snug">{t('production', 'recipe_field_capacity_hint')}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <button onClick={() => removeStep(idx)}
@@ -602,7 +708,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                 </div>
               ))}
               {form.steps.length === 0 && (
-                <p className="text-xs text-[#8E8878] italic text-center py-6">Chưa có bước nào — chọn mẫu bước phía trên hoặc tạo mẫu mới</p>
+                <p className="text-xs text-[#8E8878] italic text-center py-6">{t('production', 'recipe_no_steps_added')}</p>
               )}
             </div>
           </div>

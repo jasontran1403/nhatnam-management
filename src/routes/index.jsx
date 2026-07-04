@@ -35,6 +35,8 @@ import DebtOrdersPage from '../pages/shared/DebtOrdersPage';
 
 // Production v2 — Owner
 import OwnerProductionDashboard from '../pages/owner/OwnerProductionDashboard';
+import OwnerVendorDebtPage from '../pages/owner/OwnerVendorDebtPage';
+import OwnerMaterialStockPage from '../pages/owner/OwnerMaterialStockPage';
 import OwnerPlanDetailPage from '../pages/owner/OwnerPlanDetailPage';
 import OwnerWorkOrderDetailPage from '../pages/owner/OwnerWorkOrderDetailPage';
 
@@ -75,6 +77,7 @@ import AccountantCustomersPage from '../pages/accountant/AccountantCustomersPage
 import SupplierManagementPage from '../pages/accountant/SupplierManagementPage';
 import AccountantWarehouseReceiptsPage from '../pages/accountant/AccountantWarehouseReceiptsPage';
 import ExpenseListPage from '../pages/accountant/ExpenseListPage';
+import AccountantVendorDebtPage from '../pages/accountant/AccountantVendorDebtPage';
 import IncomeListPage from '../pages/accountant/IncomeListPage';
 import SuperAccountantMaterialRequestPage from '../pages/super_accountant/SuperAccountantMaterialRequestPage';
 
@@ -178,6 +181,11 @@ export default function AppRoutes() {
         <Route path="production/machines/:id/metrics" element={<FactoryMachineMetricsPage />} />
         {/* Biên bản hao hụt đóng gói — chỉ xem, không thao tác */}
         <Route path="production/loss-reports" element={<PackagingLossReportsPage />} />
+        {/* Công nợ nhà cung cấp — chỉ xem */}
+        <Route path="production/vendor-debts" element={<OwnerVendorDebtPage />} />
+        <Route path="production/vendor-debts/:vendorId" element={<OwnerVendorDebtPage />} />
+        {/* Tồn kho nguyên liệu sản xuất — chỉ xem */}
+        <Route path="production/material-stock" element={<OwnerMaterialStockPage />} />
 
         {/* Production legacy — vẫn giữ để backward compat với nav cũ */}
         <Route path="production/old" element={<OwnerProductionPage />} />
@@ -242,6 +250,8 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="customers" element={<AccountantCustomersPage />} />
         <Route path="suppliers" element={<SupplierManagementPage />} />
+        <Route path="vendor-debts" element={<AccountantVendorDebtPage />} />
+        <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />
         <Route path="incomes" element={<IncomeListPage />} />
         <Route path="expenses" element={<ExpenseListPage />} />
       </Route>
@@ -256,6 +266,8 @@ export default function AppRoutes() {
         <Route path="expenses" element={<ExpenseListPage />} />
         <Route path="incomes" element={<IncomeListPage />} />
         <Route path="suppliers" element={<SupplierManagementPage />} />
+        <Route path="vendor-debts" element={<AccountantVendorDebtPage />} />
+        <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />
         <Route path="material-requests" element={<SuperAccountantMaterialRequestPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
         <Route path="manage" element={<HrPage />} />

@@ -227,8 +227,9 @@ export const incomeApi = {
   listMy: (params) => api.get('/api/income-vouchers/my', { params }),
   listAll: (params) => api.get('/api/income-vouchers', { params }),
   listByDate: (from, to, params) => api.get('/api/income-vouchers/by-date', { params: { from, to, ...params } }),
-  search: (q, params) => api.get('/api/income-vouchers/search', { params: { q, ...params } }),
+  search: (q, from, to, params) => api.get('/api/income-vouchers/search', { params: { q, from, to, ...params } }),
   getById: (id) => api.get(`/api/income-vouchers/${id}`),
+  nextReceiptNumber: () => api.get('/api/income-vouchers/next-receipt-number'),
   exportReport: (from, to) =>
     api.get('/api/income-vouchers/export', { params: { from, to }, responseType: 'blob' }),
   uploadImage: (file) => {

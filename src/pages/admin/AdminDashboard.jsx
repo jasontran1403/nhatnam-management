@@ -6,7 +6,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, DollarSign, ShoppingCart, Users, Package,
-  UserPlus, Clock, CheckCircle2, XCircle, Trophy, Medal,
+  UserPlus, Clock, Trophy, Medal,
   ChevronDown, CalendarDays, TrendingUp, TrendingDown, Minus, Crown,
   AlertTriangle, Wallet,
 } from 'lucide-react';
@@ -17,7 +17,7 @@ import {
 import { adminDashboardApi, getImageUrl } from '../../api/adminApi';
 import StatCard from '../../components/ui/StatCard';
 import { PageHeader, EmptyState, formatCurrency, formatNumber } from '../../components/ui';
-import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
+import DateRangePicker, { presetToRange, previousMonthRange } from '../../components/ui/DateRangePicker';
 
 // ── CountUp hook ──────────────────────────────────────────────────────────────
 function useCountUp(target, duration = 800) {
@@ -52,6 +52,25 @@ function AnimCurrency({ value }) {
 function AnimNumber({ value }) {
   const v = useCountUp(value);
   return <>{formatNumber(Math.round(v))}</>;
+}
+function AnimDecimal({ value }) {
+  const v = useCountUp(value);
+  // Tồn kho có thể có số lẻ (VD: 12.5 kg) — giữ tối đa 2 chữ số thập phân, bỏ số 0 thừa
+  return <>{new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(v)}</>;
+}
+// Rút gọn số lớn để không tràn khỏi card trên mobile (VD: 137.995.016,35 → "138,0 triệu").
+// Số nhỏ (< 100.000) vẫn hiển thị đầy đủ như bình thường — chỉ rút gọn khi thực sự dài.
+function formatCompactQty(v) {
+  const n = Number(v) || 0;
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(n / 1_000_000_000) + ' tỷ';
+  if (abs >= 1_000_000) return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(n / 1_000_000) + ' triệu';
+  if (abs >= 100_000) return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(n / 1_000) + ' nghìn';
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(n);
+}
+function AnimCompactQty({ value }) {
+  const v = useCountUp(value);
+  return <>{formatCompactQty(v)}</>;
 }
 
 
@@ -164,7 +183,7 @@ export default function AdminDashboard() {
     FAILED: 'Thất bại',
   };
 
-  const [preset, setPreset] = useState('today');
+  const [preset, setPreset] = useState('fixedmonth');
   const [stats, setStats] = useState(null);
   const [debtStats, setDebtStats] = useState(null);
   const [topProducts, setTopProducts] = useState([]);
@@ -173,7 +192,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useMinLoading();
   const [productSort, setProductSort] = useState('revenue');
   const [sellerSort, setSellerSort] = useState('revenue');
-  const [range, setRange] = useState(() => presetToRange('today'));
+  const [range, setRange] = useState(() => previousMonthRange().range);
 
   const load = useCallback(async (r, ps, ss) => {
     if (!r) return;
@@ -273,7 +292,7 @@ export default function AdminDashboard() {
             {loading ? (
               <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
             ) : (
-              <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums">
+              <p className="text-xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
                 {c.isCurrency ? <AnimCurrency value={c.value ?? 0} /> : <AnimNumber value={c.value ?? 0} />}
               </p>
             )}
@@ -285,7 +304,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-           ROW 2 — 4 card: KH (mới + tổng) | Đang xử lý | Hoàn thành | Đã hủy
+           ROW 2 — 4 card: KH (mới + tổng) | Tồn kho Kem | Tồn kho Gia vị | Tồn kho Xúc xích
       ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
@@ -300,21 +319,30 @@ export default function AdminDashboard() {
           {loading ? (
             <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
           ) : (
-            <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums">
+            <p className="text-xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
               <AnimNumber value={stats?.totalCustomers ?? 0} />
             </p>
           )}
           {!loading && (
-            <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+            <p className="text-[10px] text-emerald-600 mt-1 font-medium truncate">
               +<AnimNumber value={stats?.newCustomersToday ?? 0} /> mới kỳ này
             </p>
           )}
         </div>
 
         {[
-          { label: 'Đơn đang xử lý', icon: Clock, accent: 'purple', value: stats?.totalActiveOrders },
-          { label: 'Đã hoàn thành', icon: CheckCircle2, accent: 'green', value: stats?.completedOrdersAllTime },
-          { label: t('status', 'cancelled2'), icon: XCircle, accent: 'red', value: stats?.cancelledOrdersAllTime },
+          {
+            label: 'Tổng tồn kho Kem', icon: Package, accent: 'purple',
+            value: stats?.creamStockQty, unit: 'hộp', subValue: stats?.creamStockValue,
+          },
+          {
+            label: 'Tổng tồn kho Gia vị', icon: Package, accent: 'green',
+            value: stats?.spiceStockQty, unit: 'kg', subValue: stats?.spiceStockValue,
+          },
+          {
+            label: 'Tổng tồn kho Xúc xích', icon: Package, accent: 'red',
+            value: stats?.sausageStockQty, unit: 'kg', subValue: stats?.sausageStockValue,
+          },
         ].map((c, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
@@ -327,10 +355,15 @@ export default function AdminDashboard() {
             </div>
             {loading
               ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
-              : <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums">
-                <AnimNumber value={c.value ?? 0} />
+              : <p className="text-xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
+                <AnimCompactQty value={c.value ?? 0} /> <span className="text-xs sm:text-sm font-medium text-[#8E8878]">{c.unit}</span>
               </p>
             }
+            {!loading && (
+              <p className="text-[10px] sm:text-xs text-[#8E8878] mt-1 truncate">
+                Giá trị: <span className="font-semibold text-[#1C1C1E]"><AnimCurrency value={c.subValue ?? 0} /></span>
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -354,7 +387,7 @@ export default function AdminDashboard() {
           </div>
           {loading
             ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
-            : <p className="text-2xl sm:text-3xl font-bold text-orange-500 tabular-nums">
+            : <p className="text-xl sm:text-3xl font-bold text-orange-500 tabular-nums break-words leading-tight">
               <AnimNumber value={debtStats?.nearingDeadline ?? 0} />
             </p>
           }
@@ -376,7 +409,7 @@ export default function AdminDashboard() {
           </div>
           {loading
             ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
-            : <p className="text-2xl sm:text-3xl font-bold text-red-500 tabular-nums">
+            : <p className="text-xl sm:text-3xl font-bold text-red-500 tabular-nums break-words leading-tight">
               <AnimNumber value={debtStats?.overdueCount ?? 0} />
             </p>
           }

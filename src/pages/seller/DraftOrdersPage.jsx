@@ -204,9 +204,7 @@ function WarningModal({ open, type, items, onClose }) {
   );
 }
 function OrderInfoModal({ open, draft, onClose, onConfirm }) {
-  const [deliveryDate, setDeliveryDate] = useState(() => {
-    const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d;
-  });
+  const [deliveryDate, setDeliveryDate] = useState(null);
   const [orderedBy, setOrderedBy] = useState('');
   const [receiverName, setReceiverName] = useState('');
   const [showPrices, setShowPrices] = useState(true);
@@ -218,7 +216,7 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
     setReceiverName(draft?.receiverName || '');
     setDeliveryDate(draft?.deliveryDatetime
       ? new Date(draft.deliveryDatetime)
-      : (() => { const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); return d; })());
+      : null);
     if (draft?.customerId) {
       setCustomer({ id: draft.customerId, name: draft.customerName, phone: draft.customerPhone, contactName: draft.customerName });
     } else {
@@ -276,8 +274,8 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
                 className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">🕐 Ngày & giờ giao hàng</label>
-              <DateTimePicker value={deliveryDate} onChange={setDeliveryDate} minDate={new Date()} placeholder="Chọn ngày & giờ giao hàng" />
+              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">🕐 Ngày & giờ giao hàng <span className="normal-case font-normal text-[#C4B9A8]">(tuỳ chọn)</span></label>
+              <DateTimePicker value={deliveryDate} onChange={setDeliveryDate} minDate={new Date()} placeholder="Không hẹn giờ giao — bấm để chọn" />
             </div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <div onClick={() => setShowPrices(v => !v)}

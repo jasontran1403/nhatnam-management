@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Factory, Plus, Clock, CheckCircle2, AlertTriangle,
   Wrench, Settings2, ChevronRight, CalendarRange,
-  ClipboardList, X, Loader2, Package, Search, ChevronDown, FileWarning, RotateCcw, Check,
+  ClipboardList, X, Loader2, Package, Search, ChevronDown, FileWarning, RotateCcw, Check, Wallet,
 } from 'lucide-react';
 import { startOfDay } from 'date-fns';
 import useMinLoading from '../../hooks/useMinLoading';
@@ -1284,9 +1284,15 @@ export default function OwnerProductionDashboard() {
           <SecondaryButton onClick={() => navigate('/owner/production/loss-reports')}>
             <FileWarning size={15} /> Hao hụt đóng gói
           </SecondaryButton>
-          <SecondaryButton onClick={() => setShowCreateWorkOrder(true)}>
-            <ClipboardList size={15} /> Tạo lệnh sản xuất
+          <SecondaryButton onClick={() => navigate('/owner/production/material-stock')}>
+            <Package size={15} /> Tồn kho nguyên liệu
           </SecondaryButton>
+          <SecondaryButton onClick={() => navigate('/owner/production/vendor-debts')}>
+            <Wallet size={15} /> Công nợ NCC
+          </SecondaryButton>
+          {/* <SecondaryButton onClick={() => setShowCreateWorkOrder(true)}>
+            <ClipboardList size={15} /> Tạo lệnh sản xuất
+          </SecondaryButton> */}
           <PrimaryButton onClick={() => setShowCreatePlan(true)}><Plus size={15} /> Kế hoạch mới</PrimaryButton>
         </div>
       </div>

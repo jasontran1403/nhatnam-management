@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users, FileText, Clock, Plus, Search, ChevronDown, ChevronUp,
   DollarSign, Calendar, UserCog, X, Check, Loader2, AlertCircle, Download, Upload,
-  Calculator, Send, Eye,
+  Calculator, Send, Eye, Trash2,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
-import { hrSalaryApi, hrLeaveApi, hrOtApi, hrEmployeeApi, payrollApi } from '../../api/hrApi';
+import { hrSalaryApi, hrLeaveApi, hrOtApi, hrEmployeeApi, payrollApi, allowanceLabelApi } from '../../api/hrApi';
 import { downloadBlob } from '../../api/services';
 import api from '../../api/axios';
 import {
@@ -20,20 +20,145 @@ import Modal from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/common/Toast';
 import DateRangePicker from '../../components/ui/DateRangePicker';
+import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
+
+// ── Helper: format số kiểu Việt Nam khi gõ (chỉ số nguyên, có dấu chấm ngăn cách) ──
+const digitsOnly = (s) => String(s ?? '').replace(/[^\d]/g, '');
+const formatVnInt = (s) => {
+  const d = digitsOnly(s);
+  return d ? Number(d).toLocaleString('vi-VN') : '';
+};
+const toNumber = (s) => Number(digitsOnly(s) || 0);
+
+/** Ô nhập tiền VNĐ: hiển thị có ngăn cách hàng nghìn, chỉ cho số nguyên. */
+function MoneyInput({ value, onChange, placeholder, autoFocus, className }) {
+  return (
+    <input
+      className={className || inputCls}
+      inputMode="numeric"
+      value={formatVnInt(value)}
+      onChange={(e) => onChange(digitsOnly(e.target.value))}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+    />
+  );
+}
 
 
-// ── Salary Modal (single) — chỉ còn lương trước thuế ──────────────────────────
+
+// ── Salary Modal (single) — lương trước thuế + phụ cấp + thưởng ──────────────
+function TaxToggle({ value, onChange }) {
+  return (
+    <button type="button" onClick={() => onChange(!value)}
+      className={`shrink-0 text-[11px] px-2 py-1 rounded-md border transition ${
+        value ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-[#F5F1EA] border-[#E8E0D6] text-[#8E8878]'}`}
+      title="Khoản này có tính vào thu nhập chịu thuế TNCN hay không">
+      {value ? 'Chịu thuế' : 'Miễn thuế'}
+    </button>
+  );
+}
+
 function SalaryModal({ user, onClose, onSaved }) {
   const { t } = useLang();
   const toast = useToast();
   const [baseSalary, setBaseSalary] = useState('');
+  const [insuranceSalary, setInsuranceSalary] = useState('');
+  const [allowances, setAllowances] = useState([]); // [{label, amount, taxable}]
+  const [bonus, setBonus] = useState('');
+  const [bonusTaxable, setBonusTaxable] = useState(false);
+  const [dependents, setDependents] = useState('0');
   const [saving, setSaving] = useState(false);
+  const [loadingCurrent, setLoadingCurrent] = useState(true);
+  const [current, setCurrent] = useState(null);
+
+  const [labels, setLabels] = useState([]);
+  const [newLabelFor, setNewLabelFor] = useState(-1); // index đang tạo nhãn mới
+  const [newLabelText, setNewLabelText] = useState('');
+
+  const [preview, setPreview] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
+
+  // Tải lương hiện hành + danh mục nhãn phụ cấp
+  useEffect(() => {
+    let active = true;
+    setLoadingCurrent(true);
+    Promise.all([
+      hrSalaryApi.getCurrent(user.id).catch(() => null),
+      allowanceLabelApi.list().catch(() => []),
+    ]).then(([data, lbls]) => {
+      if (!active) return;
+      if (Array.isArray(lbls)) setLabels(lbls);
+      setCurrent(data);
+      if (data) {
+        setBaseSalary(data.baseSalary != null ? String(data.baseSalary) : '');
+        setInsuranceSalary(data.insuranceSalary != null && data.insuranceSalary > 0 ? String(data.insuranceSalary) : '');
+        setBonus(data.bonus != null ? String(data.bonus) : '');
+        setBonusTaxable(!!data.bonusTaxable);
+        setDependents(data.dependents != null ? String(data.dependents) : '0');
+        if (Array.isArray(data.allowances) && data.allowances.length > 0) {
+          setAllowances(data.allowances.map(a => ({
+            label: a.label || '', amount: String(a.amount ?? ''), taxable: !!a.taxable,
+          })));
+        } else if (data.allowance) {
+          setAllowances([{ label: 'Phụ cấp', amount: String(data.allowance), taxable: false }]);
+        }
+      }
+    }).finally(() => { if (active) setLoadingCurrent(false); });
+    return () => { active = false; };
+  }, [user.id]);
+
+  // Payload gửi lên (dùng cho cả preview lẫn submit)
+  const buildPayload = useCallback(() => ({
+    userId: user.id,
+    baseSalary: toNumber(baseSalary),
+    insuranceSalary: toNumber(insuranceSalary),
+    bonus: toNumber(bonus),
+    bonusTaxable,
+    dependents: Number(digitsOnly(dependents) || 0),
+    allowances: allowances
+      .filter(a => toNumber(a.amount) > 0)
+      .map(a => ({ label: a.label || 'Phụ cấp', amount: toNumber(a.amount), taxable: !!a.taxable })),
+  }), [user.id, baseSalary, insuranceSalary, bonus, bonusTaxable, dependents, allowances]);
+
+  // Live preview (debounce 450ms) — gọi cùng công thức backend để khớp màn Owner
+  useEffect(() => {
+    if (loadingCurrent) return;
+    if (toNumber(baseSalary) <= 0) { setPreview(null); return; }
+    setPreviewing(true);
+    const payload = buildPayload();
+    const timer = setTimeout(() => {
+      hrSalaryApi.preview(payload)
+        .then(setPreview)
+        .catch(() => setPreview(null))
+        .finally(() => setPreviewing(false));
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [buildPayload, loadingCurrent, baseSalary]);
+
+  const addAllowance = () => setAllowances(a => [...a, { label: labels[0]?.name || 'Phụ cấp', amount: '', taxable: false }]);
+  const updateAllowance = (i, patch) => setAllowances(a => a.map((x, idx) => idx === i ? { ...x, ...patch } : x));
+  const removeAllowance = (i) => setAllowances(a => a.filter((_, idx) => idx !== i));
+
+  const onSelectLabel = (i, val) => {
+    if (val === '__new__') { setNewLabelFor(i); setNewLabelText(''); }
+    else updateAllowance(i, { label: val });
+  };
+  const confirmNewLabel = async (i) => {
+    const name = newLabelText.trim();
+    if (!name) { setNewLabelFor(-1); return; }
+    try {
+      const created = await allowanceLabelApi.create(name);
+      setLabels(ls => ls.some(l => l.name === created.name) ? ls : [...ls, created]);
+      updateAllowance(i, { label: created.name });
+    } catch (e) { toast(e.message || 'Không tạo được nhãn', 'error'); }
+    finally { setNewLabelFor(-1); setNewLabelText(''); }
+  };
 
   const submit = async () => {
-    if (!baseSalary) { toast('Vui lòng nhập lương trước thuế', 'error'); return; }
+    if (toNumber(baseSalary) <= 0) { toast('Vui lòng nhập lương cơ bản', 'error'); return; }
     setSaving(true);
     try {
-      await hrSalaryApi.set({ userId: user.id, baseSalary: Number(baseSalary) });
+      await hrSalaryApi.set(buildPayload());
       toast(t('hr', 'salary_pending_owner'), 'success');
       onSaved();
       onClose();
@@ -42,34 +167,142 @@ function SalaryModal({ user, onClose, onSaved }) {
     } finally { setSaving(false); }
   };
 
+  const statusLabel = current?.status === 'PENDING' ? 'Đang chờ Owner duyệt'
+    : current?.status === 'APPROVED' ? 'Đã được duyệt'
+    : current?.status === 'REJECTED' ? 'Đã bị từ chối' : null;
+
   return (
-    <Modal open onClose={onClose} title={`${t('hr', 'update_salary')} — ${user.fullName}`}>
-      <div className="space-y-3 py-1">
-        <Field label="Lương trước thuế (VNĐ/tháng)" required
-          hint="Lương GROSS cơ bản — chưa gồm phụ cấp, thưởng. Phụ cấp/thưởng/ngày công/người phụ thuộc sẽ nhập khi Tính lương hàng tháng.">
-          <input className={inputCls} type="number" value={baseSalary}
-            onChange={e => setBaseSalary(e.target.value)} placeholder="VD: 12000000" autoFocus />
-        </Field>
-      </div>
+    <Modal open onClose={onClose} title={`${t('hr', 'update_salary')} — ${user.fullName}`} size="xl">
+      {loadingCurrent ? (
+        <div className="py-6 flex justify-center"><Loader2 size={20} className="animate-spin text-[#8E8878]" /></div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-5">
+          {/* ── Cột trái: form nhập ── */}
+          <div className="space-y-3 py-1">
+            {current && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                Lương hiện tại: <strong>{Number(current.baseSalary || 0).toLocaleString('vi-VN')}đ</strong>
+                {statusLabel && <span> — {statusLabel}</span>}
+                {current.rejectReason && <p className="mt-1 text-red-600">Lý do từ chối: {current.rejectReason}</p>}
+                <p className="mt-1 text-amber-600">Lưu lại sẽ tạo phiếu lương mới chờ Owner duyệt.</p>
+              </div>
+            )}
+
+            <Field label="Lương cơ bản (VNĐ/tháng)" required
+              hint="Lương NET thực nhận cố định — chưa gồm phụ cấp, thưởng. Hệ thống tự suy ngược GROSS, bảo hiểm & thuế TNCN.">
+              <MoneyInput value={baseSalary} onChange={setBaseSalary} placeholder="VD: 7.719.000" autoFocus />
+            </Field>
+
+            <Field label="Lương đóng thuế/bảo hiểm (VNĐ/tháng)"
+              hint="Căn cứ đóng BHXH/BHYT/BHTN — bảo hiểm (NLĐ 10,5% & DN 21,5%) tính cố định trên mức này. Để trống = bằng lương cơ bản.">
+              <MoneyInput value={insuranceSalary} onChange={setInsuranceSalary} placeholder="VD: 5.682.000" />
+            </Field>
+
+            {/* Phụ cấp động */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-[#1C1C1E]">Phụ cấp</label>
+                <button type="button" onClick={addAllowance}
+                  className="text-xs text-[#8B6F47] font-medium flex items-center gap-1 hover:underline">
+                  <Plus size={13} /> Thêm khoản
+                </button>
+              </div>
+              <div className="space-y-2">
+                {allowances.length === 0 && (
+                  <p className="text-xs text-[#A8A090]">Chưa có phụ cấp. Bấm "Thêm khoản" để thêm (cơm trưa, xăng xe…).</p>
+                )}
+                {allowances.map((a, i) => (
+                  <div key={i} className="flex flex-wrap items-center gap-1.5">
+                    {newLabelFor === i ? (
+                      <div className="flex items-center gap-1 flex-1 min-w-[140px]">
+                        <input className={`${inputCls} !py-1.5 text-sm`} autoFocus value={newLabelText}
+                          onChange={e => setNewLabelText(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && confirmNewLabel(i)}
+                          placeholder="Tên khoản phụ cấp mới" />
+                        <button type="button" className="text-emerald-600" onClick={() => confirmNewLabel(i)}><Check size={16} /></button>
+                        <button type="button" className="text-[#8E8878]" onClick={() => setNewLabelFor(-1)}><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <select className={`${selectCls} !py-1.5 text-sm flex-1 min-w-[130px]`}
+                        value={a.label} onChange={e => onSelectLabel(i, e.target.value)}>
+                        {!labels.some(l => l.name === a.label) && a.label && <option value={a.label}>{a.label}</option>}
+                        {labels.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                        <option value="__new__">＋ Tạo nhãn mới…</option>
+                      </select>
+                    )}
+                    <div className="w-[120px]">
+                      <MoneyInput className={`${inputCls} !py-1.5 text-sm`} value={a.amount}
+                        onChange={v => updateAllowance(i, { amount: v })} placeholder="Số tiền" />
+                    </div>
+                    <TaxToggle value={a.taxable} onChange={v => updateAllowance(i, { taxable: v })} />
+                    <button type="button" className="text-red-400 hover:text-red-600 p-1" onClick={() => removeAllowance(i)}>
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Thưởng */}
+            <Field label="Thưởng (VNĐ/tháng)"
+              hint="Thưởng KPI — sẽ được nhân theo tỷ lệ KPI đạt được khi tính lương.">
+              <div className="flex items-center gap-1.5">
+                <div className="flex-1"><MoneyInput value={bonus} onChange={setBonus} placeholder="VD: 8.360.000" /></div>
+                <TaxToggle value={bonusTaxable} onChange={setBonusTaxable} />
+              </div>
+            </Field>
+
+            <Field label="Số người phụ thuộc"
+              hint="Mỗi người phụ thuộc giảm trừ thêm 6.200.000đ/tháng khi tính thuế TNCN.">
+              <input className={inputCls} inputMode="numeric" value={dependents}
+                onChange={e => setDependents(digitsOnly(e.target.value))} placeholder="0" />
+            </Field>
+          </div>
+
+          {/* ── Cột phải: preview giống màn Owner ── */}
+          <div className="md:border-l md:border-[#E8E0D6] md:pl-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">Xem trước chi tiết lương</p>
+              {previewing && <Loader2 size={13} className="animate-spin text-[#8E8878]" />}
+            </div>
+            {preview ? (
+              <SalaryBreakdownCards row={preview} />
+            ) : (
+              <div className="text-xs text-[#A8A090] py-8 text-center">Nhập lương cơ bản để xem chi tiết bảo hiểm, thuế và lương thực nhận.</div>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex gap-2 pt-3">
         <SecondaryButton onClick={onClose} className="flex-1">Huỷ</SecondaryButton>
-        <PrimaryButton onClick={submit} loading={saving} className="flex-1">Gửi duyệt</PrimaryButton>
+        <PrimaryButton onClick={submit} loading={saving} disabled={loadingCurrent} className="flex-1">Gửi duyệt</PrimaryButton>
       </div>
     </Modal>
   );
 }
 
-// ── Batch Salary Modal — chỉ còn lương trước thuế ─────────────────────────────
+// ── Batch Salary Modal — lương thực nhận + phụ cấp + thưởng + người phụ thuộc ──
 function BatchSalaryModal({ userIds, onClose, onSaved }) {
   const toast = useToast();
   const [baseSalary, setBaseSalary] = useState('');
+  const [insuranceSalary, setInsuranceSalary] = useState('');
+  const [allowance, setAllowance] = useState('');
+  const [bonus, setBonus] = useState('');
+  const [dependents, setDependents] = useState('0');
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!baseSalary) { toast('Vui lòng nhập lương trước thuế', 'error'); return; }
+    if (!baseSalary) { toast('Vui lòng nhập lương thực nhận', 'error'); return; }
     setSaving(true);
     try {
-      await hrSalaryApi.setBatch({ userIds, baseSalary: Number(baseSalary) });
+      await hrSalaryApi.setBatch({
+        userIds,
+        baseSalary: Number(baseSalary),
+        insuranceSalary: Number(insuranceSalary) || 0,
+        allowance: Number(allowance) || 0,
+        bonus: Number(bonus) || 0,
+        dependents: Number(dependents) || 0,
+      });
       toast(`Đã gửi phiếu lương cho ${userIds.length} nhân viên`, 'success');
       onSaved();
       onClose();
@@ -78,17 +311,45 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
     } finally { setSaving(false); }
   };
 
+  const totalReceived = (Number(baseSalary) || 0) + (Number(allowance) || 0) + (Number(bonus) || 0);
+
   return (
     <Modal open onClose={onClose} title={`Set lương hàng loạt (${userIds.length} nhân viên)`}>
       <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-3">
-        Lương trước thuế dưới sẽ được áp dụng cho tất cả nhân viên đã chọn.
+        Lương thực nhận, lương đóng thuế/BH, phụ cấp, thưởng, số người phụ thuộc dưới đây sẽ được áp dụng cho tất cả nhân viên đã chọn.
       </p>
       <div className="space-y-3 py-1">
         <Field label="Lương trước thuế (VNĐ/tháng)" required
-          hint="Lương GROSS cơ bản — chưa gồm phụ cấp, thưởng.">
+          hint="Lương NET thực nhận — chưa gồm phụ cấp, thưởng. Hệ thống sẽ tự tính ngược ra lương GROSS, bảo hiểm và thuế TNCN.">
           <input className={inputCls} type="number" value={baseSalary}
             onChange={e => setBaseSalary(e.target.value)} placeholder="VD: 12000000" autoFocus />
         </Field>
+        <Field label="Lương đóng thuế/bảo hiểm (VNĐ/tháng)"
+          hint="Căn cứ đóng BHXH/BHYT/BHTN — bảo hiểm (NLĐ & DN) tính trên mức này. Để trống = bằng lương thực nhận.">
+          <input className={inputCls} type="number" value={insuranceSalary}
+            onChange={e => setInsuranceSalary(e.target.value)} placeholder="VD: 6000000" />
+        </Field>
+        <Field label="Phụ cấp (VNĐ/tháng)"
+          hint="Cộng thẳng vào lương thực nhận, không qua bảo hiểm/thuế.">
+          <input className={inputCls} type="number" value={allowance}
+            onChange={e => setAllowance(e.target.value)} placeholder="VD: 200000" />
+        </Field>
+        <Field label="Thưởng (VNĐ/tháng)"
+          hint="Cộng thẳng vào lương thực nhận, không qua bảo hiểm/thuế.">
+          <input className={inputCls} type="number" value={bonus}
+            onChange={e => setBonus(e.target.value)} placeholder="VD: 0" />
+        </Field>
+        <Field label="Số người phụ thuộc"
+          hint="Mỗi người phụ thuộc giảm trừ thêm 6.200.000đ/tháng khi tính thuế TNCN.">
+          <input className={inputCls} type="number" min="0" step="1" value={dependents}
+            onChange={e => setDependents(e.target.value)} placeholder="0" />
+        </Field>
+        {totalReceived > 0 && (
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700 flex items-center justify-between">
+            <span>Lương thực nhận cuối cùng (mỗi người):</span>
+            <strong className="text-sm">{totalReceived.toLocaleString('vi-VN')}đ</strong>
+          </div>
+        )}
       </div>
       <div className="flex gap-2 pt-3">
         <SecondaryButton onClick={onClose} className="flex-1">Huỷ</SecondaryButton>
@@ -128,11 +389,11 @@ function InfoModal({ user, onClose, onSaved }) {
             onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
             placeholder="VD: Kinh doanh, Kế toán, Xưởng sản xuất…" />
         </Field>
-        <Field label="Phòng ban">
+        {/* <Field label="Phòng ban">
           <input className={inputCls} value={form.division}
             onChange={e => setForm(f => ({ ...f, division: e.target.value }))}
             placeholder="VD: Phòng Kinh doanh 1, Phòng Kế toán tổng hợp…" />
-        </Field>
+        </Field> */}
         <Field label="Chức vụ">
           <input className={inputCls} value={form.position}
             onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
@@ -420,6 +681,17 @@ function EmployeesTab() {
   const [infoModal, setInfoModal] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [currentSalaryByUser, setCurrentSalaryByUser] = useState({});
+
+  const loadCurrentSalaries = useCallback(() => {
+    hrSalaryApi.listCurrent()
+      .then(list => {
+        const map = {};
+        (list || []).forEach(s => { map[s.userId] = s; });
+        setCurrentSalaryByUser(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -430,6 +702,8 @@ function EmployeesTab() {
     } catch { toast('Không tải được danh sách', 'error'); }
     finally { setLoading(false); }
   }, [q, page]);
+
+  useEffect(() => { loadCurrentSalaries(); }, [loadCurrentSalaries]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -492,14 +766,17 @@ function EmployeesTab() {
                   onChange={toggleAll} className="w-4 h-4 accent-amber-500" /></Th>
                 <Th>Họ tên</Th>
                 <Th>Bộ phận</Th>
-                <Th>Phòng ban</Th>
+                {/* <Th>Phòng ban</Th> */}
                 <Th>Chức vụ</Th>
-                <Th>Role</Th>
+                {/* <Th>Role</Th> */}
+                <Th right>Lương hiện tại</Th>
                 <Th right>Thao tác</Th>
               </Tr>
             </Thead>
             <tbody>
-              {users.map(u => (
+              {users.map(u => {
+                const cs = currentSalaryByUser[u.id];
+                return (
                 <Tr key={u.id}>
                   <Td><input type="checkbox" checked={selected.includes(u.id)}
                     onChange={() => toggleOne(u.id)} className="w-4 h-4 accent-amber-500" /></Td>
@@ -508,13 +785,23 @@ function EmployeesTab() {
                     <div className="text-xs text-[#8E8878]">{u.username}</div>
                   </Td>
                   <Td><span className="text-sm">{u.department || '—'}</span></Td>
-                  <Td><span className="text-sm">{u.division || '—'}</span></Td>
+                  {/* <Td><span className="text-sm">{u.division || '—'}</span></Td> */}
                   <Td><span className="text-sm">{u.position || '—'}</span></Td>
-                  <Td><Badge variant="default">{u.role}</Badge></Td>
+                  {/* <Td><Badge variant="default">{u.role}</Badge></Td> */}
+                  <Td right>
+                    {cs ? (
+                      <div>
+                        <p className="text-sm font-semibold text-[#1C1C1E]">{Number(cs.baseSalary || 0).toLocaleString('vi-VN')}đ</p>
+                        <Badge variant={cs.status === 'APPROVED' ? 'success' : cs.status === 'REJECTED' ? 'danger' : 'warning'}>
+                          {cs.status === 'APPROVED' ? 'Đã duyệt' : cs.status === 'REJECTED' ? 'Bị từ chối' : 'Chờ duyệt'}
+                        </Badge>
+                      </div>
+                    ) : <span className="text-xs text-[#8E8878]">Chưa nhập</span>}
+                  </Td>
                   <Td right>
                     <div className="flex gap-1 justify-end">
                       <SecondaryButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setInfoModal(u)}>
-                        <UserCog size={12} /> Phòng ban
+                        <UserCog size={12} /> Bộ phận / Chức vụ
                       </SecondaryButton>
                       <PrimaryButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setSalaryModal(u)}>
                         <DollarSign size={12} /> Lương
@@ -522,7 +809,8 @@ function EmployeesTab() {
                     </div>
                   </Td>
                 </Tr>
-              ))}
+                );
+              })}
             </tbody>
           </Table>
         )}
@@ -533,8 +821,8 @@ function EmployeesTab() {
         )}
       </SectionCard>
 
-      {salaryModal && <SalaryModal user={salaryModal} onClose={() => setSalaryModal(null)} onSaved={load} />}
-      {batchModal && <BatchSalaryModal userIds={selected} onClose={() => setBatchModal(false)} onSaved={() => { setBatchModal(false); setSelected([]); }} />}
+      {salaryModal && <SalaryModal user={salaryModal} onClose={() => setSalaryModal(null)} onSaved={() => { load(); loadCurrentSalaries(); }} />}
+      {batchModal && <BatchSalaryModal userIds={selected} onClose={() => setBatchModal(false)} onSaved={() => { setBatchModal(false); setSelected([]); loadCurrentSalaries(); }} />}
       {infoModal && <InfoModal user={infoModal} onClose={() => setInfoModal(null)} onSaved={load} />}
       {importOpen && <ImportEmployeesModal onClose={() => setImportOpen(false)} onDone={load} />}
     </div>

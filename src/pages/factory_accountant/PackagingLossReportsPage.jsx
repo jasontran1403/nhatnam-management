@@ -3,7 +3,8 @@
 // nhận phiếu chuyển kho mà có chênh lệch (kg chuyển > kg thực cân). Trang này
 // chỉ xem (read-only) — dùng chung cho FACTORY_ACCOUNTANT và OWNER.
 import { useState, useEffect } from 'react';
-import { FileWarning, Search, Printer } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileWarning, Search, Printer, ChevronLeft } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import { semiFinishedGoodsApi } from '../../api/productionModuleApi';
@@ -25,6 +26,7 @@ function fmtDateTime(ms) {
 export default function PackagingLossReportsPage() {
   const { role } = useAuth();
   const isOwner = role === 'OWNER';
+  const navigate = useNavigate();
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -61,6 +63,13 @@ export default function PackagingLossReportsPage() {
 
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
+      {isOwner && (
+        <button onClick={() => navigate('/owner/production')}
+          className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
+          <ChevronLeft size={16} /> Quay lại Tổng quan sản xuất
+        </button>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-[#1C1C1E]">Biên bản hao hụt đóng gói</h1>
       </div>

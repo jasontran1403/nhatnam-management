@@ -9,26 +9,32 @@ import { PrimaryButton, SecondaryButton, Field, inputCls } from '../../component
 import { ownerProdApi, factoryProdApi, fmtDate, fmtCurrency } from '../../api/productionModuleApi';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
+import { useLang } from '../../context/LangContext';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const imgUrl = p => p?.startsWith('http') ? p : BASE_URL + '/api/auth' + p;
 
-const MAINT_STATUS_CFG = {
-  PLANNED:     { label: 'Đã lên lịch',     cls: 'bg-blue-100 text-blue-700' },
-  IN_PROGRESS: { label: 'Đang thực hiện',  cls: 'bg-orange-100 text-orange-700' },
-  COMPLETED:   { label: 'Hoàn thành',      cls: 'bg-emerald-100 text-emerald-700' },
-  ADJUSTED:    { label: 'Điều chỉnh',      cls: 'bg-purple-100 text-purple-700' },
-  MISSED:      { label: 'Bỏ lỡ',           cls: 'bg-gray-100 text-gray-600' },
-};
-const MACHINE_STATUS_CFG = {
-  ACTIVE:            { label: 'Hoạt động',          cls: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400 animate-pulse' },
-  INACTIVE:          { label: 'Không hoạt động',    cls: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-300' },
-  UNDER_MAINTENANCE: { label: '🔧 Đang bảo trì',    cls: 'bg-red-100 text-red-700',         dot: 'bg-red-400 animate-pulse' },
-};
-const VENDOR_TYPE_LABELS = { MATERIAL: 'Nguyên liệu', MACHINE: 'Máy móc', REPAIR: 'Sửa chữa' };
+const getMaintStatusCfg = (t) => ({
+  PLANNED:     { label: t('production', 'maint_status_planned'),     cls: 'bg-blue-100 text-blue-700' },
+  IN_PROGRESS: { label: t('production', 'maint_status_in_progress'), cls: 'bg-orange-100 text-orange-700' },
+  COMPLETED:   { label: t('production', 'maint_status_completed'),   cls: 'bg-emerald-100 text-emerald-700' },
+  ADJUSTED:    { label: t('production', 'maint_status_adjusted'),    cls: 'bg-purple-100 text-purple-700' },
+  MISSED:      { label: t('production', 'maint_status_missed'),      cls: 'bg-gray-100 text-gray-600' },
+});
+const getMachineStatusCfg = (t) => ({
+  ACTIVE:            { label: t('production', 'machine_status_active'),       cls: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400 animate-pulse' },
+  INACTIVE:          { label: t('production', 'machine_status_inactive'),     cls: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-300' },
+  UNDER_MAINTENANCE: { label: `🔧 ${t('production', 'machine_status_maintenance')}`, cls: 'bg-red-100 text-red-700', dot: 'bg-red-400 animate-pulse' },
+});
+const getVendorTypeLabels = (t) => ({
+  MATERIAL: t('production', 'vendor_type_material'),
+  MACHINE: t('production', 'vendor_type_machine'),
+  REPAIR: t('production', 'vendor_type_repair'),
+});
 
 // ── Image uploader ─────────────────────────────────────────────────────────────
 function ImageUploader({ label, onUpload, uploaded = [] }) {
+  const { t } = useLang();
   const ref = useRef();
   const [previews, setPreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -52,7 +58,7 @@ function ImageUploader({ label, onUpload, uploaded = [] }) {
         ))}
         <button type="button" onClick={() => ref.current?.click()}
           className="w-16 h-16 rounded-xl border-2 border-dashed border-[#C9A84C]/40 flex flex-col items-center justify-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5">
-          <Camera size={18} className="text-[#C9A84C]"/><span className="text-[10px] text-[#C9A84C] mt-0.5">Thêm</span>
+          <Camera size={18} className="text-[#C9A84C]"/><span className="text-[10px] text-[#C9A84C] mt-0.5">{t('common', 'add')}</span>
         </button>
         <input ref={ref} type="file" multiple accept="image/*" className="hidden" onChange={e => handleFiles(e.target.files)}/>
       </div>
@@ -62,6 +68,8 @@ function ImageUploader({ label, onUpload, uploaded = [] }) {
 
 // ── Vendor Search Input ────────────────────────────────────────────────────────
 function VendorSearchInput({ value, onChange, types = 'MACHINE,REPAIR', onCreateNew }) {
+  const { t } = useLang();
+  const VENDOR_TYPE_LABELS = getVendorTypeLabels(t);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
@@ -94,7 +102,7 @@ function VendorSearchInput({ value, onChange, types = 'MACHINE,REPAIR', onCreate
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none"/>
         <input className={`${inputCls} pl-8 pr-8`}
-          placeholder="Tìm nhà cung cấp..."
+          placeholder={t('production', 'vendor_search_placeholder')}
           value={query} onFocus={handleOpen}
           onChange={e => { setQuery(e.target.value); setOpen(true); }}
         />
@@ -102,9 +110,9 @@ function VendorSearchInput({ value, onChange, types = 'MACHINE,REPAIR', onCreate
       </div>
       {open && (
         <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-black/10 rounded-xl shadow-lg overflow-hidden">
-          {loading && <div className="px-3 py-2 text-xs text-[#8E8878]">Đang tìm...</div>}
+          {loading && <div className="px-3 py-2 text-xs text-[#8E8878]">{t('production', 'vendor_searching')}</div>}
           {!loading && results.length === 0 && (
-            <div className="px-3 py-2 text-xs text-[#8E8878]">Không tìm thấy</div>
+            <div className="px-3 py-2 text-xs text-[#8E8878]">{t('production', 'vendor_not_found')}</div>
           )}
           {results.map(v => (
             <button key={v.id} onClick={() => select(v)}
@@ -115,7 +123,7 @@ function VendorSearchInput({ value, onChange, types = 'MACHINE,REPAIR', onCreate
           ))}
           <button onClick={onCreateNew}
             className="w-full text-left px-3 py-2.5 text-xs text-[#C9A84C] font-semibold hover:bg-[#FAF7F2] flex items-center gap-1.5 border-t border-black/5">
-            <Plus size={12}/> Thêm nhà cung cấp mới
+            <Plus size={12}/> {t('production', 'vendor_add_new')}
           </button>
         </div>
       )}
@@ -125,32 +133,33 @@ function VendorSearchInput({ value, onChange, types = 'MACHINE,REPAIR', onCreate
 
 // ── Quick Create Vendor Modal ──────────────────────────────────────────────────
 function CreateVendorModal({ onClose, onCreated }) {
+  const { t } = useLang();
   const [form, setForm] = useState({ name: '', contactPerson: '', contactPhone: '', vendorType: 'REPAIR' });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const submit = async () => {
-    if (!form.name.trim()) { setErr('Vui lòng nhập tên nhà cung cấp'); return; }
+    if (!form.name.trim()) { setErr(t('production', 'vendor_modal_err_need_name')); return; }
     setSaving(true);
     try { const v = await factoryProdApi.createVendor(form); onCreated(v); }
-    catch (e) { setErr(e?.response?.data?.message || 'Có lỗi xảy ra'); }
+    catch (e) { setErr(e?.response?.data?.message || t('production', 'vendor_modal_err_generic')); }
     finally { setSaving(false); }
   };
   return (
-    <Modal open title="Thêm nhà cung cấp" onClose={onClose} size="sm"
-      footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>Thêm</PrimaryButton></div>}>
+    <Modal open title={t('production', 'vendor_modal_title')} onClose={onClose} size="sm"
+      footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'vendor_modal_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{t('production', 'vendor_modal_add')}</PrimaryButton></div>}>
       <div className="space-y-3">
         {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-        <Field label="Tên nhà cung cấp" required><input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="VD: Công ty TNHH ABC"/></Field>
-        <Field label="Loại nhà cung cấp">
+        <Field label={t('production', 'vendor_modal_name_label')} required><input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder={t('production', 'vendor_modal_name_placeholder')}/></Field>
+        <Field label={t('production', 'vendor_modal_type_label')}>
           <select className={inputCls} value={form.vendorType} onChange={e => set('vendorType', e.target.value)}>
-            <option value="MACHINE">Nhà cung cấp máy móc</option>
-            <option value="REPAIR">Nhà cung cấp sửa chữa</option>
-            <option value="MATERIAL">Nhà cung cấp nguyên liệu</option>
+            <option value="MACHINE">{t('production', 'vendor_modal_type_machine')}</option>
+            <option value="REPAIR">{t('production', 'vendor_modal_type_repair')}</option>
+            <option value="MATERIAL">{t('production', 'vendor_modal_type_material')}</option>
           </select>
         </Field>
-        <Field label="Người liên hệ"><input className={inputCls} value={form.contactPerson} onChange={e => set('contactPerson', e.target.value)} placeholder="Tên người liên hệ"/></Field>
-        <Field label="Số điện thoại"><input className={inputCls} value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} placeholder="0900123456"/></Field>
+        <Field label={t('production', 'vendor_modal_contact_person')}><input className={inputCls} value={form.contactPerson} onChange={e => set('contactPerson', e.target.value)} placeholder={t('production', 'vendor_modal_contact_person_placeholder')}/></Field>
+        <Field label={t('production', 'vendor_modal_contact_phone')}><input className={inputCls} value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} placeholder="0900123456"/></Field>
       </div>
     </Modal>
   );
@@ -172,12 +181,13 @@ function DateTimeInput({ label, value, onChange, required, timeOnly = false }) {
 
 // Chọn ngày trong tháng (1-28)
 function MonthDayInput({ label, value, onChange }) {
+  const { t } = useLang();
   return (
     <Field label={label}>
       <select className={inputCls} value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">-- Chọn ngày --</option>
+        <option value="">{t('production', 'pick_day_placeholder')}</option>
         {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-          <option key={d} value={d}>Ngày {d}</option>
+          <option key={d} value={d}>{t('production', 'day_label')} {d}</option>
         ))}
       </select>
     </Field>
@@ -186,6 +196,7 @@ function MonthDayInput({ label, value, onChange }) {
 
 // Chọn tháng/ngày cho recurrence hàng quý/năm  
 function MonthDayPickerInput({ label, value, onChange, showMonth = false }) {
+  const { t } = useLang();
   const [day, setDay] = useState(value?.day || '');
   const [month, setMonth] = useState(value?.month || '');
 
@@ -199,16 +210,16 @@ function MonthDayPickerInput({ label, value, onChange, showMonth = false }) {
       <div className={`grid gap-2 ${showMonth ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {showMonth && (
           <select className={inputCls} value={month} onChange={e => { setMonth(e.target.value); update(day, e.target.value); }}>
-            <option value="">-- Tháng --</option>
+            <option value="">{t('production', 'pick_month_placeholder')}</option>
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-              <option key={m} value={m}>Tháng {m}</option>
+              <option key={m} value={m}>{t('production', 'month_label')} {m}</option>
             ))}
           </select>
         )}
         <select className={inputCls} value={day} onChange={e => { setDay(e.target.value); update(e.target.value, month); }}>
-          <option value="">-- Ngày --</option>
+          <option value="">{t('production', 'pick_day_placeholder')}</option>
           {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-            <option key={d} value={d}>Ngày {d}</option>
+            <option key={d} value={d}>{t('production', 'day_label')} {d}</option>
           ))}
         </select>
       </div>
@@ -219,6 +230,7 @@ function MonthDayPickerInput({ label, value, onChange, showMonth = false }) {
 // ── Create Maintenance Modal ───────────────────────────────────────────────────
 function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
   const toast = useToast();
+  const { t } = useLang();
   const isCorrective = type === 'CORRECTIVE';
 
   const [form, setForm] = useState({
@@ -252,9 +264,9 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
   };
 
   const submit = async () => {
-    if (!form.title) { setErr('Vui lòng nhập tiêu đề'); return; }
-    if (!isRecurring && (!form.plannedStart || !form.plannedEnd)) { setErr('Vui lòng chọn thời gian'); return; }
-    if (isRecurring && !form.recurrenceDay) { setErr('Vui lòng chọn ngày lặp lại'); return; }
+    if (!form.title) { setErr(t('production', 'maint_err_need_title')); return; }
+    if (!isRecurring && (!form.plannedStart || !form.plannedEnd)) { setErr(t('production', 'maint_err_need_time')); return; }
+    if (isRecurring && !form.recurrenceDay) { setErr(t('production', 'maint_err_need_recur_day')); return; }
 
     let plannedStart, plannedEnd;
     if (isRecurring) {
@@ -300,24 +312,24 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
         recurrenceMonthInQuarter: form.recurrenceMonth ? Number(form.recurrenceMonth) : null,
         beforeImages,
       });
-      toast(isCorrective ? '🚨 Đã tạo phiếu sự cố — đã thông báo owner' : '🔧 Đã tạo lịch bảo trì định kỳ', 'success', 5000);
+      toast(isCorrective ? `🚨 ${t('production', 'maint_success_corrective')}` : `🔧 ${t('production', 'maint_success_preventive')}`, 'success', 5000);
       onSaved();
-    } catch (e) { setErr(e?.response?.data?.message || 'Có lỗi xảy ra'); }
+    } catch (e) { setErr(e?.response?.data?.message || t('production', 'maint_err_generic')); }
     finally { setSaving(false); }
   };
 
   return (
     <>
       <Modal open
-        title={isCorrective ? '🚨 Tạo phiếu sự cố' : '🔧 Tạo lịch bảo trì định kỳ'}
+        title={isCorrective ? `🚨 ${t('production', 'maint_create_corrective_title')}` : `🔧 ${t('production', 'maint_create_preventive_title')}`}
         onClose={onClose} size="md"
-        footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{isCorrective ? 'Tạo phiếu sự cố' : 'Tạo lịch bảo trì'}</PrimaryButton></div>}>
+        footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'maint_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{isCorrective ? t('production', 'maint_submit_corrective') : t('production', 'maint_submit_preventive')}</PrimaryButton></div>}>
         <div className="space-y-4">
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
           {isCorrective && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex gap-2 items-start">
               <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5"/>
-              <p className="text-xs text-red-700">Máy sẽ chuyển sang <b>Đang bảo trì</b> ngay khi tạo phiếu.</p>
+              <p className="text-xs text-red-700">{t('production', 'maint_corrective_warning')}</p>
             </div>
           )}
 
@@ -328,23 +340,23 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
             {machine.factoryName && <span className="text-[#8E8878]">— {machine.factoryName}</span>}
           </div>
 
-          <Field label="Tiêu đề / nội dung" required>
+          <Field label={t('production', 'maint_title_label')} required>
             <input className={inputCls} value={form.title}
-              placeholder={isCorrective ? 'VD: Hỏng motor dây chuyền A' : 'VD: Bảo dưỡng định kỳ tháng 6'}
+              placeholder={isCorrective ? t('production', 'maint_title_corrective_placeholder') : t('production', 'maint_title_preventive_placeholder')}
               onChange={e => set('title', e.target.value)}/>
           </Field>
-          <Field label="Mô tả chi tiết">
+          <Field label={t('production', 'maint_description_label')}>
             <textarea className={inputCls} rows={2} value={form.description} onChange={e => set('description', e.target.value)}/>
           </Field>
 
           {/* Recurrence — only for PREVENTIVE */}
           {!isCorrective && (
-            <Field label="Tần suất lặp lại">
+            <Field label={t('production', 'maint_recurrence_label')}>
               <select className={inputCls} value={form.recurrenceType} onChange={e => set('recurrenceType', e.target.value)}>
-                <option value="ONCE">1 lần</option>
-                <option value="MONTHLY">Hàng tháng</option>
-                <option value="QUARTERLY">Hàng quý</option>
-                <option value="YEARLY">Hàng năm</option>
+                <option value="ONCE">{t('production', 'maint_recurrence_once')}</option>
+                <option value="MONTHLY">{t('production', 'maint_recurrence_monthly')}</option>
+                <option value="QUARTERLY">{t('production', 'maint_recurrence_quarterly')}</option>
+                <option value="YEARLY">{t('production', 'maint_recurrence_yearly')}</option>
               </select>
             </Field>
           )}
@@ -353,7 +365,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
           {!isRecurring ? (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <DateTimeInput label="Thời gian bắt đầu" required value={form.plannedStart}
+                <DateTimeInput label={t('production', 'maint_start_time_label')} required value={form.plannedStart}
                   onChange={v => {
                     set('plannedStart', v);
                     // Auto-calc downtime
@@ -362,7 +374,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
                       if (diff > 0) set('plannedDowntimeHours', diff.toFixed(1));
                     }
                   }}/>
-                <DateTimeInput label="Dự kiến kết thúc" required value={form.plannedEnd}
+                <DateTimeInput label={t('production', 'maint_end_time_label')} required value={form.plannedEnd}
                   onChange={v => {
                     set('plannedEnd', v);
                     if (form.plannedStart && v) {
@@ -374,34 +386,34 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
               {form.plannedDowntimeHours > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
                   <span>⏱</span>
-                  <span>Thời gian downtime: <b>{form.plannedDowntimeHours}h</b>
-                    {form.plannedDowntimeHours > 10 && ' — Máy sẽ không hoạt động nhiều ngày'}
+                  <span>{t('production', 'maint_downtime_label')}: <b>{form.plannedDowntimeHours}h</b>
+                    {form.plannedDowntimeHours > 10 && ` — ${t('production', 'maint_downtime_warning_days')}`}
                   </span>
                 </div>
               )}
             </div>
           ) : (
             <div className="space-y-3 bg-[#FAF7F2] rounded-xl p-3">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Lịch lặp lại</p>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'maint_recurring_schedule_title')}</p>
               {form.recurrenceType === 'MONTHLY' && (
-                <MonthDayInput label="Ngày trong tháng" value={form.recurrenceDay} onChange={v => set('recurrenceDay', v)}/>
+                <MonthDayInput label={t('production', 'maint_day_in_month_label')} value={form.recurrenceDay} onChange={v => set('recurrenceDay', v)}/>
               )}
               {(form.recurrenceType === 'QUARTERLY' || form.recurrenceType === 'YEARLY') && (
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Tháng">
+                  <Field label={t('production', 'maint_month_label')}>
                     <select className={inputCls} value={form.recurrenceMonth} onChange={e => set('recurrenceMonth', e.target.value)}>
-                      <option value="">-- Chọn tháng --</option>
+                      <option value="">{t('production', 'pick_month_placeholder')}</option>
                       {(form.recurrenceType === 'QUARTERLY'
-                        ? [1, 2, 3].map(m => ({ v: m, l: `Tháng ${m} trong quý` }))
-                        : Array.from({ length: 12 }, (_, i) => ({ v: i + 1, l: `Tháng ${i + 1}` }))
+                        ? [1, 2, 3].map(m => ({ v: m, l: `${t('production', 'maint_month_in_quarter')} ${m} ${t('production', 'maint_month_in_quarter_suffix')}` }))
+                        : Array.from({ length: 12 }, (_, i) => ({ v: i + 1, l: `${t('production', 'month_label')} ${i + 1}` }))
                       ).map(({ v, l }) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </Field>
-                  <MonthDayInput label="Ngày" value={form.recurrenceDay} onChange={v => set('recurrenceDay', v)}/>
+                  <MonthDayInput label={t('production', 'maint_day_label')} value={form.recurrenceDay} onChange={v => set('recurrenceDay', v)}/>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Giờ bắt đầu (ca làm 8g–18g)">
+                <Field label={t('production', 'maint_start_hour_label')}>
                   <input type="time" className={inputCls} value={form.plannedStartTime}
                     onChange={e => {
                       set('plannedStartTime', e.target.value);
@@ -413,7 +425,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
                       }
                     }}/>
                 </Field>
-                <Field label="Giờ kết thúc dự kiến">
+                <Field label={t('production', 'maint_end_hour_label')}>
                   <input type="time" className={inputCls} value={form.plannedEndTime}
                     onChange={e => {
                       set('plannedEndTime', e.target.value);
@@ -429,8 +441,8 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
               {form.plannedDowntimeHours > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
                   <span>⏱</span>
-                  <span>Thời gian downtime: <b>{form.plannedDowntimeHours}h</b>
-                    {form.plannedDowntimeHours > 10 && ' — Sẽ kéo sang ngày hôm sau'}
+                  <span>{t('production', 'maint_downtime_label')}: <b>{form.plannedDowntimeHours}h</b>
+                    {form.plannedDowntimeHours > 10 && ` — ${t('production', 'maint_downtime_warning_next_day')}`}
                   </span>
                 </div>
               )}
@@ -440,7 +452,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
           {/* Vendor selection */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Đơn vị thi công</label>
+              <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'maint_vendor_label')}</label>
             </div>
             <VendorSearchInput
               value={vendor} onChange={setVendor}
@@ -450,22 +462,22 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
             {vendor && (
               <div className="mt-2 bg-[#FAF7F2] rounded-xl px-3 py-2 text-xs space-y-0.5">
                 <p className="font-semibold text-[#1C1C1E]">{vendor.name}</p>
-                {vendor.contactPerson && <p className="text-[#8E8878]">Liên hệ: {vendor.contactPerson}</p>}
-                {vendor.contactPhone && <p className="text-[#8E8878]">SĐT: {vendor.contactPhone}</p>}
+                {vendor.contactPerson && <p className="text-[#8E8878]">{t('production', 'maint_vendor_contact')}: {vendor.contactPerson}</p>}
+                {vendor.contactPhone && <p className="text-[#8E8878]">{t('production', 'maint_vendor_phone')}: {vendor.contactPhone}</p>}
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Chi phí ước tính (₫)">
+            <Field label={t('production', 'maint_estimated_cost_label')}>
               <input type="number" className={inputCls} placeholder="0" value={form.estimatedCost} onChange={e => set('estimatedCost', e.target.value)}/>
             </Field>
-            <Field label="Giờ downtime dự kiến">
+            <Field label={t('production', 'maint_estimated_downtime_label')}>
               <input type="number" className={inputCls} placeholder="VD: 4" value={form.plannedDowntimeHours} onChange={e => set('plannedDowntimeHours', e.target.value)}/>
             </Field>
           </div>
 
-          <ImageUploader label="Ảnh trước bảo trì" uploaded={beforeImages}
+          <ImageUploader label={t('production', 'maint_before_images_label')} uploaded={beforeImages}
             onUpload={async files => {
               const { productionUploadApi } = await import('../../api/productionModuleApi');
               const urls = await productionUploadApi.uploadMaintenanceBefore(0, files);
@@ -487,6 +499,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
 // ── Complete Maintenance Modal ─────────────────────────────────────────────────
 function CompleteMaintenanceModal({ item, onClose, onSaved }) {
   const toast = useToast();
+  const { t } = useLang();
   const [form, setForm] = useState({ actualCost: '', notes: '', actualEnd: new Date().toISOString().slice(0, 16) });
   const [afterImages, setAfterImages] = useState([]);
   const [receiptImages, setReceiptImages] = useState([]);
@@ -502,37 +515,37 @@ function CompleteMaintenanceModal({ item, onClose, onSaved }) {
         actualCost: form.actualCost ? Number(form.actualCost) : null,
         notes: form.notes, afterImages, receiptImages,
       });
-      toast(`✓ Hoàn thành: ${item.title} — đã thông báo owner`, 'success', 5000);
+      toast(`✓ ${t('production', 'maint_complete_success_prefix')}: ${item.title} — ${t('production', 'maint_complete_success_suffix')}`, 'success', 5000);
       onSaved();
-    } catch (e) { setErr(e?.response?.data?.message || 'Có lỗi xảy ra'); }
+    } catch (e) { setErr(e?.response?.data?.message || t('production', 'maint_err_generic')); }
     finally { setSaving(false); }
   };
 
   return (
-    <Modal open title="Cập nhật hoàn thành bảo trì" onClose={onClose} size="md"
-      footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>Xác nhận hoàn thành</PrimaryButton></div>}>
+    <Modal open title={t('production', 'maint_complete_title')} onClose={onClose} size="md"
+      footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'maint_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{t('production', 'maint_complete_confirm')}</PrimaryButton></div>}>
       <div className="space-y-4">
         {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
         <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-sm">
           <p className="font-semibold text-[#1C1C1E]">{item.title}</p>
           <p className="text-xs text-[#8E8878]">{item.machineName}</p>
         </div>
-        <Field label="Thời gian hoàn thành thực tế">
+        <Field label={t('production', 'maint_actual_end_label')}>
           <input type="datetime-local" className={inputCls} value={form.actualEnd} onChange={e => set('actualEnd', e.target.value)}/>
         </Field>
-        <Field label="Chi phí thực tế (₫)">
+        <Field label={t('production', 'maint_actual_cost_label')}>
           <input type="number" className={inputCls} placeholder="0" value={form.actualCost} onChange={e => set('actualCost', e.target.value)}/>
         </Field>
-        <Field label="Ghi chú bảo trì">
-          <textarea className={inputCls} rows={2} placeholder="Kết quả, vật tư đã dùng..." value={form.notes} onChange={e => set('notes', e.target.value)}/>
+        <Field label={t('production', 'maint_notes_label')}>
+          <textarea className={inputCls} rows={2} placeholder={t('production', 'maint_notes_placeholder')} value={form.notes} onChange={e => set('notes', e.target.value)}/>
         </Field>
-        <ImageUploader label="Ảnh sau bảo trì" uploaded={afterImages}
+        <ImageUploader label={t('production', 'maint_after_images_label')} uploaded={afterImages}
           onUpload={async files => {
             const { productionUploadApi } = await import('../../api/productionModuleApi');
             const urls = await productionUploadApi.uploadMaintenanceAfter(item.id, files);
             setAfterImages(p => [...p, ...urls]); return urls;
           }}/>
-        <ImageUploader label="Chứng từ / hóa đơn" uploaded={receiptImages}
+        <ImageUploader label={t('production', 'maint_receipt_images_label')} uploaded={receiptImages}
           onUpload={async files => {
             const { productionUploadApi } = await import('../../api/productionModuleApi');
             const urls = await productionUploadApi.uploadMaintenanceReceipt(item.id, files);
@@ -545,6 +558,9 @@ function CompleteMaintenanceModal({ item, onClose, onSaved }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function FactoryMachinePage() {
+  const { t } = useLang();
+  const MAINT_STATUS_CFG = getMaintStatusCfg(t);
+  const MACHINE_STATUS_CFG = getMachineStatusCfg(t);
   const { role } = useAuth();
   // FACTORY_WORKER chỉ được báo sự cố (CORRECTIVE); SUPER_FACTORY_WORKER (và Owner truy cập
   // qua route khác) được tạo cả bảo trì định kỳ (PREVENTIVE) lẫn báo sự cố.
@@ -577,14 +593,14 @@ export default function FactoryMachinePage() {
   return (
     <div className="p-4 sm:p-6 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="bg-[#1A2B1A] rounded-2xl p-5 text-white">
-        <p className="text-[#7CB87C] text-xs uppercase tracking-widest font-medium">Xưởng sản xuất</p>
-        <h1 className="text-xl font-bold mt-0.5">Máy móc & bảo trì</h1>
-        <p className="text-white/60 text-xs mt-1">{machines.filter(m => m.status === 'UNDER_MAINTENANCE').length} máy đang bảo trì</p>
+        <p className="text-[#7CB87C] text-xs uppercase tracking-widest font-medium">{t('production', 'machine_page_factory_label')}</p>
+        <h1 className="text-xl font-bold mt-0.5">{t('production', 'machine_page_title')}</h1>
+        <p className="text-white/60 text-xs mt-1">{machines.filter(m => m.status === 'UNDER_MAINTENANCE').length} {t('production', 'machine_page_under_maintenance_suffix')}</p>
       </div>
 
       <div className="space-y-3">
         {machines.length === 0 && (
-          <div className="bg-white rounded-2xl border border-black/5 p-8 text-center text-[#8E8878] text-sm">Chưa có máy nào</div>
+          <div className="bg-white rounded-2xl border border-black/5 p-8 text-center text-[#8E8878] text-sm">{t('production', 'machine_page_empty')}</div>
         )}
         {machines.map(machine => {
           const cfg = MACHINE_STATUS_CFG[machine.status] || MACHINE_STATUS_CFG.INACTIVE;
@@ -608,17 +624,17 @@ export default function FactoryMachinePage() {
                     {canCreatePreventive && (
                       <button onClick={() => setCreateFor({ machine, type: 'PREVENTIVE' })}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 font-medium">
-                        <Plus size={12}/> Bảo trì định kỳ
+                        <Plus size={12}/> {t('production', 'machine_create_preventive_btn')}
                       </button>
                     )}
                     <button onClick={() => setCreateFor({ machine, type: 'CORRECTIVE' })}
                       className="flex items-center gap-1 text-xs px-3 py-1.5 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-medium">
-                      <AlertTriangle size={12}/> Báo sự cố
+                      <AlertTriangle size={12}/> {t('production', 'machine_report_issue_btn')}
                     </button>
                     {maints.length > 0 && (
                       <button onClick={() => toggle(machine.id)}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 bg-[#FAF7F2] text-[#8E8878] rounded-xl hover:bg-[#F0EAE0] font-medium">
-                        {maints.length} lịch {isExpanded ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
+                        {maints.length} {t('production', 'machine_schedule_count_suffix')} {isExpanded ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
                       </button>
                     )}
                   </div>
@@ -636,19 +652,19 @@ export default function FactoryMachinePage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${m.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                {m.maintenanceType === 'CORRECTIVE' ? '🚨 Sự cố' : '🔧 Định kỳ'}
+                                {m.maintenanceType === 'CORRECTIVE' ? `🚨 ${t('production', 'machine_maint_type_corrective')}` : `🔧 ${t('production', 'machine_maint_type_preventive')}`}
                               </span>
                               <p className="text-sm font-medium text-[#1C1C1E]">{m.title}</p>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${sc.cls}`}>{sc.label}</span>
                             </div>
                             <p className="text-xs text-[#8E8878] mt-0.5">{fmtDate(m.plannedStart)} → {fmtDate(m.plannedEnd)}</p>
-                            {m.vendorName && <p className="text-xs text-[#8E8878]">Đơn vị: {m.vendorName} {m.vendorPhone && `· ${m.vendorPhone}`}</p>}
-                            {m.actualCost && <p className="text-xs text-emerald-600 font-semibold">Chi phí: {fmtCurrency(m.actualCost)}</p>}
+                            {m.vendorName && <p className="text-xs text-[#8E8878]">{t('production', 'machine_maint_vendor_label')}: {m.vendorName} {m.vendorPhone && `· ${m.vendorPhone}`}</p>}
+                            {m.actualCost && <p className="text-xs text-emerald-600 font-semibold">{t('production', 'machine_maint_cost_label')}: {fmtCurrency(m.actualCost)}</p>}
                           </div>
                           {isActive && (
                             <button onClick={() => setCompleteFor(m)}
                               className="flex-shrink-0 text-xs px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 font-medium flex items-center gap-1">
-                              <CheckCircle2 size={12}/> Hoàn thành
+                              <CheckCircle2 size={12}/> {t('production', 'machine_maint_complete_btn')}
                             </button>
                           )}
                         </div>

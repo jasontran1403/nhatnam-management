@@ -420,7 +420,9 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
         companyAddress: form.companyAddress.trim() || null,
         pricingType: form.pricingType || 'RETAIL_PRICE',
         discountRate: 0,
-        assignPrivate: !isCompany && isPrivate,
+        // Khách doanh nghiệp do seller tạo → luôn ngầm định là khách riêng (không có toggle).
+        // Khách cá nhân → theo lựa chọn của seller (Khách chung / Khách riêng).
+        assignPrivate: isCompany ? true : isPrivate,
         receiverInfos: validReceivers.map((r, i) => ({
           receiverName: r.receiverName.trim(),
           receiverPhone: r.receiverPhone.trim(),

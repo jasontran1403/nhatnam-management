@@ -149,6 +149,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
   const searchDebounce = useRef(null);
   const orderDropRef = useRef();
   const [receiptNumber, setReceiptNumber] = useState('');
+  const [suggestedReceiptNumber, setSuggestedReceiptNumber] = useState('');
 
   // Đơn hàng
   const [orderSearch, setOrderSearch] = useState('');
@@ -220,6 +221,16 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
     };
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  // Gợi ý số phiếu thu kế tiếp (placeholder) — chỉ dùng làm gợi ý, user vẫn có thể tự nhập số khác
+  useEffect(() => {
+    incomeApi.nextReceiptNumber()
+      .then(res => {
+        const suggestion = res.data?.data ?? res.data ?? '';
+        if (suggestion) setSuggestedReceiptNumber(String(suggestion));
+      })
+      .catch(() => {});
   }, []);
 
   // Reset collected khi thay đổi danh sách đơn
@@ -399,7 +410,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
         lastOrderHandling: lastOrderHandling || undefined,
         items: submitItems,
         imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
-        receiptNumber: receiptNumber.trim(),
+        receiptNumber: (receiptNumber.trim() || suggestedReceiptNumber),
       });
 
       const data = res.data;
@@ -430,7 +441,8 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
   };
 
   const handleSubmit = async () => {
-    if (!receiptNumber.trim()) { toast('Số phiếu thu là bắt buộc', 'error'); return; }
+    const effectiveReceiptNumber = receiptNumber.trim() || suggestedReceiptNumber;
+    if (!effectiveReceiptNumber) { toast('Số phiếu thu là bắt buộc', 'error'); return; }
 
     if (!reason.trim()) { toast('Lý do thu là bắt buộc', 'error'); return; }
     if (paymentType === 'BANK_TRANSFER') {
@@ -715,12 +727,28 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
               <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
                 Số phiếu thu <span className="text-red-500">*</span>
               </label>
-              <input
-                value={receiptNumber}
-                onChange={e => setReceiptNumber(e.target.value)}
-                placeholder="Nhập số phiếu thu..."
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
-              />
+              <div className="relative">
+                <input
+                  value={receiptNumber}
+                  onChange={e => setReceiptNumber(e.target.value)}
+                  placeholder={suggestedReceiptNumber ? `Gợi ý: ${suggestedReceiptNumber}` : 'Nhập số phiếu thu...'}
+                  className="w-full px-4 py-2.5 pr-20 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+                />
+                {suggestedReceiptNumber && !receiptNumber && (
+                  <button
+                    type="button"
+                    onClick={() => setReceiptNumber(suggestedReceiptNumber)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition"
+                  >
+                    Dùng số này
+                  </button>
+                )}
+              </div>
+              {suggestedReceiptNumber && (
+                <p className="text-xs text-[#8E8878] mt-1">
+                  Số kế tiếp gợi ý: <span className="font-mono font-semibold text-[#C9A84C]">{suggestedReceiptNumber}</span> — bạn có thể tự nhập số khác.
+                </p>
+              )}
             </div>
 
             {/* ── Loại thanh toán ── */}

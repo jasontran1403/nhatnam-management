@@ -10,7 +10,7 @@ import {
   startOfYear, endOfYear,
   format,
 } from 'date-fns';
-import { CalendarDays, ChevronDown } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ── Preset helpers ────────────────────────────────────────────────────────────
 export function presetToRange(key) {
@@ -32,14 +32,106 @@ export function presetToRange(key) {
   }
 }
 
+// ── Month helpers (nút "Tháng" — chọn 1 tháng quá khứ cố định) ────────────────
+/** Range của 1 tháng cụ thể: [1/M .. cuối M]. month: 1-12. */
+export function monthRange(year, month) {
+  const d = new Date(year, month - 1, 1);
+  return { from: startOfMonth(d).getTime(), to: endOfMonth(d).getTime() };
+}
+
+/** Range của THÁNG TRƯỚC (mặc định cho nút "Tháng" và cho dashboard khi load). */
+export function previousMonthRange() {
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return {
+    range: monthRange(prev.getFullYear(), prev.getMonth() + 1),
+    year: prev.getFullYear(),
+    month: prev.getMonth() + 1,
+  };
+}
+
 function getPresets(t) {
   return [
     { key: 'today', label: t('common', 'today') },
     { key: 'week', label: t('common', 'this_week') },
     { key: 'month', label: t('common', 'this_month') },
     { key: 'year', label: t('common', 'this_year') },
+    { key: 'fixedmonth', label: t('common', 'pick_month') || 'Tháng' },
     { key: 'custom', label: t('common', 'date_range') },
   ];
+}
+
+// ── Month/Year picker dropdown (nút "Tháng") ─────────────────────────────────
+function MonthYearDropdown({ value, onSelect, onCancel, t, align = 'left' }) {
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth() + 1; // 1-12
+  const [displayYear, setDisplayYear] = useState(value?.year || curYear);
+
+  // Chỉ cho chọn tháng QUÁ KHỨ (trước tháng hiện tại). Tháng hiện tại & tương lai bị khoá.
+  // const isPast = (y, m) => (y < curYear) || (y === curYear && m < curMonth);
+  const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+  return (
+    <div
+      className={`absolute top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl
+        border border-[#E8DDD0] overflow-hidden w-[300px]
+        ${align === 'right' ? 'right-0' : 'left-0'}`}
+      style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.12))' }}
+    >
+      {/* Year navigator */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE3]">
+        <button
+          onClick={() => setDisplayYear(y => y - 1)}
+          className="w-8 h-8 rounded-lg border border-[#E8DDD0] flex items-center justify-center
+            text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-sm font-bold text-[#1C1C1E]">Năm {displayYear}</span>
+        <button
+          onClick={() => setDisplayYear(y => Math.min(curYear, y + 1))}
+          disabled={displayYear >= curYear}
+          className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-colors
+            ${displayYear >= curYear
+              ? 'border-[#F0EBE3] text-[#D8CFC2] cursor-not-allowed'
+              : 'border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      {/* Month grid */}
+      <div className="grid grid-cols-3 gap-2 p-3">
+        {MONTHS.map(m => {
+          // const enabled = isPast(displayYear, m);
+          const enabled = true;
+          const selected = value?.year === displayYear && value?.month === m;
+          return (
+            <button
+              key={m}
+              disabled={!enabled}
+              onClick={() => enabled && onSelect(displayYear, m)}
+              className={`py-2 rounded-xl text-xs font-semibold transition-all border
+                ${selected
+                  ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'
+                  : enabled
+                    ? 'bg-white text-[#5C5C5C] border-[#E8DDD0] hover:border-[#C9A84C] hover:text-[#C9A84C]'
+                    : 'bg-[#FAF7F2] text-[#D8CFC2] border-transparent cursor-not-allowed'}`}>
+              Tháng {m}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-end px-4 py-2.5 border-t border-[#F0EBE3] bg-[#FAF7F2]">
+        <button
+          onClick={onCancel}
+          className="px-3 py-1.5 text-xs text-[#8E8878] rounded-xl border border-[#E8DDD0]
+            hover:bg-[#F0EBE3] transition-colors">
+          {t('common', 'cancel')}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ── Calendar dropdown ─────────────────────────────────────────────────────────
@@ -96,6 +188,11 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
   const PRESETS = getPresets(t);
 
   const [open, setOpen] = useState(false);
+  const [monthOpen, setMonthOpen] = useState(false);
+  const [monthSel, setMonthSel] = useState(() => {
+    const p = previousMonthRange();
+    return { year: p.year, month: p.month };
+  });
   const [selection, setSelection] = useState({
     startDate: new Date(),
     endDate: new Date(),
@@ -105,20 +202,34 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
 
   useEffect(() => {
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setMonthOpen(false); }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const handlePreset = (key) => {
-    onPreset(key);
-    if (key !== 'custom') {
-      setOpen(false);
-      onRangeChange(presetToRange(key));
-    } else {
+    if (key === 'custom') {
+      onPreset(key);
+      setMonthOpen(false);
       setOpen(prev => !prev);
+    } else if (key === 'fixedmonth') {
+      onPreset(key);
+      setOpen(false);
+      setMonthOpen(prev => !prev);
+    } else {
+      onPreset(key);
+      setOpen(false);
+      setMonthOpen(false);
+      onRangeChange(presetToRange(key));
     }
+  };
+
+  const handleMonthSelect = (year, month) => {
+    setMonthSel({ year, month });
+    onPreset('fixedmonth');
+    onRangeChange(monthRange(year, month));
+    setMonthOpen(false);
   };
 
   const handleApply = () => {
@@ -132,6 +243,10 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
     ? `${format(selection.startDate, 'dd/MM/yy')} → ${format(selection.endDate, 'dd/MM/yy')}`
     : t('common', 'optional');
 
+  const monthLabel = preset === 'fixedmonth'
+    ? `Tháng ${monthSel.month}/${monthSel.year}`
+    : (t('common', 'pick_month') || 'Tháng');
+
   return (
     <div className="flex items-center gap-1.5 flex-wrap relative" ref={ref}>
       {PRESETS.map(p => (
@@ -144,10 +259,11 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
               ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'
               : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}
         >
-          {p.key === 'custom' && <CalendarDays size={12} />}
-          {p.key === 'custom' ? customLabel : p.label}
-          {p.key === 'custom' && (
-            <ChevronDown size={11} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          {(p.key === 'custom' || p.key === 'fixedmonth') && <CalendarDays size={12} />}
+          {p.key === 'custom' ? customLabel : p.key === 'fixedmonth' ? monthLabel : p.label}
+          {(p.key === 'custom' || p.key === 'fixedmonth') && (
+            <ChevronDown size={11} className={`transition-transform
+              ${(p.key === 'custom' && open) || (p.key === 'fixedmonth' && monthOpen) ? 'rotate-180' : ''}`} />
           )}
         </button>
       ))}
@@ -158,6 +274,15 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
           onSelect={({ selection: sel }) => setSelection(sel)}
           onApply={handleApply}
           onCancel={() => setOpen(false)}
+          t={t}
+        />
+      )}
+
+      {monthOpen && (
+        <MonthYearDropdown
+          value={monthSel}
+          onSelect={handleMonthSelect}
+          onCancel={() => setMonthOpen(false)}
           t={t}
         />
       )}

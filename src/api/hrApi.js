@@ -13,7 +13,14 @@ export const hrEmployeeApi = {
 export const hrSalaryApi = {
   set:        (data)        => api.post('/api/hr/salaries', data).then(r),
   setBatch:   (data)        => api.post('/api/hr/salaries/batch', data).then(r),
+  preview:    (data)        => api.post('/api/hr/salaries/preview', data).then(r),
   list:       (params)      => api.get('/api/hr/salaries', { params }).then(r),
+  getCurrent: (userId)      => api.get(`/api/hr/salaries/current/${userId}`).then(res => {
+    const body = res.data?.data ?? res.data;
+    return (body && typeof body === 'object') ? body : null;
+  }),
+  listCurrent:()             => api.get('/api/hr/salaries/current').then(r),
+  getBreakdown:()            => api.get('/api/hr/salaries/breakdown').then(r),
   approve:    (id)          => api.put(`/api/hr/salaries/${id}/approve`).then(r),
   bulkApprove:(salaryIds)   => api.put('/api/hr/salaries/bulk-approve', { salaryIds }).then(r),
   reject:     (id, data)    => api.put(`/api/hr/salaries/${id}/reject`, data).then(r),
@@ -22,6 +29,12 @@ export const hrSalaryApi = {
     const fd = new FormData(); fd.append('file', file);
     return api.post('/api/hr/salaries/import', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+};
+
+// ── Allowance labels (danh mục nhãn phụ cấp) ───────────────────────────────────
+export const allowanceLabelApi = {
+  list:   ()      => api.get('/api/hr/allowance-labels').then(r),
+  create: (name)  => api.post('/api/hr/allowance-labels', { name }).then(r),
 };
 
 // ── Employees (list for HR manage page) ────────────────────────────────────────

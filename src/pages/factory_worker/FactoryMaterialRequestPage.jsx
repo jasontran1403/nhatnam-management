@@ -13,18 +13,21 @@ import {
 } from '../../api/materialRequestApi.js';
 import { useToast } from '../../components/common/Toast.jsx';
 import { useAuth } from '../../context/AuthContext';
+import { useLang } from '../../context/LangContext';
 
 // ── Countdown badge ────────────────────────────────────────────────────────────
-function CountdownBadge({ targetMs, label = 'Nhận hàng dự kiến' }) {
+function CountdownBadge({ targetMs, label }) {
+  const { t } = useLang();
+  const effectiveLabel = label || t('production', 'mr_countdown_default_label');
   const [info, setInfo] = useState(() => countdownInfo(targetMs));
   useEffect(() => {
     if (!targetMs) return;
-    const t = setInterval(() => setInfo(countdownInfo(targetMs)), 30000);
-    return () => clearInterval(t);
+    const t2 = setInterval(() => setInfo(countdownInfo(targetMs)), 30000);
+    return () => clearInterval(t2);
   }, [targetMs]);
   if (!info) return null;
   const cls = { red: 'bg-red-100 text-red-700', yellow: 'bg-amber-100 text-amber-700', normal: 'bg-emerald-50 text-emerald-700' }[info.color];
-  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cls}`}>{label}: {info.label}</span>;
+  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cls}`}>{effectiveLabel}: {info.label}</span>;
 }
 
 function cardBg(req) {
@@ -39,6 +42,7 @@ function cardBg(req) {
 
 // ── Material search dropdown — dùng Portal để không bị clip bởi Modal ─────────
 function MaterialSearchInput({ value, onChange, availableMaterials }) {
+  const { t } = useLang();
   const [q, setQ] = useState(value?.name || '');
   const [open, setOpen] = useState(false);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
@@ -71,16 +75,27 @@ function MaterialSearchInput({ value, onChange, availableMaterials }) {
 
   const handleInput = (text) => {
     setQ(text);
-    onChange({ name: text, unit: null });
+    // KHÔNG còn cho nhập tự do tạo nguyên liệu mới — gõ chỉ để lọc danh sách,
+    // giá trị thật (onChange) chỉ được set khi người dùng bấm CHỌN 1 nguyên
+    // liệu có sẵn trong danh mục (xem hàm select() bên dưới).
+    onChange(null);
     calcPos();
     setOpen(true);
   };
 
   const handleFocus = () => { calcPos(); setOpen(true); };
 
+  const handleBlur = () => {
+    // Nếu rời khỏi ô mà chưa chọn nguyên liệu hợp lệ nào → xoá text gõ dở,
+    // tránh hiểu nhầm là đã chọn trong khi thực chất chưa có giá trị.
+    setTimeout(() => {
+      if (!value?.name) setQ('');
+    }, 150);
+  };
+
   const select = (m) => {
     setQ(m.name);
-    onChange({ name: m.name, unit: m.unit });
+    onChange({ name: m.name, unit: m.unit, materialId: m.id });
     setOpen(false);
   };
 
@@ -97,9 +112,9 @@ function MaterialSearchInput({ value, onChange, availableMaterials }) {
       className="bg-white border border-[#E8DDD0] rounded-xl shadow-xl max-h-52 overflow-y-auto"
     >
       {availableMaterials.length === 0 && !q ? (
-        <div className="px-3 py-2 text-xs text-[#8E8878] italic">Đã chọn tất cả nguyên liệu</div>
+        <div className="px-3 py-2 text-xs text-[#8E8878] italic">{t('production', 'mr_all_materials_selected')}</div>
       ) : filtered.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-[#8E8878] italic">Không tìm thấy — nhập tự do: <b>{q}</b></div>
+        <div className="px-3 py-2 text-xs text-[#8E8878] italic">{t('production', 'mr_material_not_in_catalog')}</div>
       ) : (
         filtered.map((m) => (
           <button
@@ -121,10 +136,11 @@ function MaterialSearchInput({ value, onChange, availableMaterials }) {
     <div className="w-full" ref={inputRef}>
       <input
         className={inputCls}
-        placeholder="Chọn nguyên liệu..."
+        placeholder={t('production', 'mr_select_material_placeholder')}
         value={q}
         onChange={e => handleInput(e.target.value)}
         onFocus={handleFocus}
+        onBlur={handleBlur}
       />
       {dropdown}
     </div>
@@ -133,6 +149,7 @@ function MaterialSearchInput({ value, onChange, availableMaterials }) {
 
 // ── Request Card ───────────────────────────────────────────────────────────────
 function RequestCard({ req, onReceive }) {
+  const { t } = useLang();
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.NEW;
   const bg = cardBg(req);
@@ -146,9 +163,9 @@ function RequestCard({ req, onReceive }) {
               <span className="font-mono text-sm font-bold text-[#1C1C1E]">{req.requestCode}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.cls}`}>{cfg.label}</span>
             </div>
-            <p className="text-xs text-[#8E8878] mt-1">{req.itemCount} nguyên liệu · Tạo {fmtTs(req.createdAt)}</p>
+            <p className="text-xs text-[#8E8878] mt-1">{req.itemCount} {t('production', 'mr_item_count_suffix')} · {t('production', 'mr_created_at_prefix')} {fmtTs(req.createdAt)}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
-              {req.requiredBy && <span className="text-xs text-[#8E8878]">Cần xử lý: {fmtDateTime(req.requiredBy)}</span>}
+              {req.requiredBy && <span className="text-xs text-[#8E8878]">{t('production', 'mr_required_by_label')}: {fmtDateTime(req.requiredBy)}</span>}
               {req.status === 'ORDERED' && req.estimatedDelivery && <CountdownBadge targetMs={req.estimatedDelivery} />}
             </div>
           </div>
@@ -166,12 +183,12 @@ function RequestCard({ req, onReceive }) {
                   <div>
                     <span className="text-[#1C1C1E] font-medium">{item.qtyRequested} {item.unit}</span>
                     {item.qtyReceived != null && (
-                      <span className="ml-2 text-emerald-600 text-xs">(thực nhận: {item.qtyReceived} {item.unit})</span>
+                      <span className="ml-2 text-emerald-600 text-xs">({t('production', 'mr_actual_received_label')}: {item.qtyReceived} {item.unit})</span>
                     )}
                   </div>
                   {item.weighingLogs?.length > 0 && (
                     <p className="text-[11px] text-[#8E8878] mt-0.5">
-                      {item.weighingLogs.length} lần cân: {item.weighingLogs.join(' + ')} = {item.qtyReceived} {item.unit}
+                      {item.weighingLogs.length} {t('production', 'mr_weighing_count_suffix')}: {item.weighingLogs.join(' + ')} = {item.qtyReceived} {item.unit}
                     </p>
                   )}
                 </div>
@@ -180,7 +197,7 @@ function RequestCard({ req, onReceive }) {
           </div>
           {req.vendors?.length > 0 && (
             <div className="mt-3 pt-3 border-t border-black/5">
-              <p className="text-xs font-medium text-[#8E8878] mb-1">Nhà cung cấp</p>
+              <p className="text-xs font-medium text-[#8E8878] mb-1">{t('production', 'mr_vendor_section_label')}</p>
               {req.vendors.map((v, i) => (
                 <div key={v.id || i} className="text-xs text-[#1C1C1E]">
                   {v.vendorName}{v.contactPhone ? ` · ${v.contactPhone}` : ''}
@@ -191,13 +208,13 @@ function RequestCard({ req, onReceive }) {
           {req.status === 'ORDERED' && (
             <div className="mt-4">
               <PrimaryButton className="w-full" onClick={() => onReceive(req)}>
-                <CheckCircle2 size={14} className="mr-2" /> Xác nhận nhận hàng
+                <CheckCircle2 size={14} className="mr-2" /> {t('production', 'mr_confirm_receive_btn')}
               </PrimaryButton>
             </div>
           )}
           {req.status === 'RECEIVED' && (
             <p className="mt-3 text-xs text-emerald-600 font-medium">
-              ✓ Đã nhận {fmtDateTime(req.receivedAt)}{req.receiveNotes ? ` · ${req.receiveNotes}` : ''}
+              ✓ {t('production', 'mr_received_at_prefix')} {fmtDateTime(req.receivedAt)}{req.receiveNotes ? ` · ${req.receiveNotes}` : ''}
             </p>
           )}
         </div>
@@ -209,6 +226,7 @@ function RequestCard({ req, onReceive }) {
 // ── Receive Modal ──────────────────────────────────────────────────────────────
 // ── Nhập nhiều lần cân cho 1 nguyên liệu, tự cộng dồn ra tổng thực nhận ───────
 function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
+  const { t } = useLang();
   // weighings: array string (mỗi lần cân, để giữ nguyên input người dùng đang gõ)
   const setWeighing = (idx, val) => {
     const next = weighings.map((w, i) => i === idx ? val : w);
@@ -230,10 +248,10 @@ function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Các lần cân ({unit})</p>
+        <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'mr_weighing_count_label')} ({unit})</p>
         <button type="button" onClick={setMax}
           className="text-xs font-semibold text-[#C9A84C] hover:underline px-2 py-0.5">
-          Tối đa ({qtyRequested})
+          {t('production', 'mr_max_btn')} ({qtyRequested})
         </button>
       </div>
       <div className="space-y-1.5">
@@ -243,7 +261,7 @@ function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
             <input
               type="number" min="0" step="0.001" value={w}
               onChange={e => setWeighing(idx, e.target.value)}
-              className={inputCls + ' flex-1'} placeholder={`Lần cân ${idx + 1}`} />
+              className={inputCls + ' flex-1'} placeholder={`${t('production', 'mr_weighing_row_placeholder')} ${idx + 1}`} />
             <button type="button" onClick={() => removeRow(idx)}
               className="text-[#8E8878] hover:text-red-500 flex-shrink-0 p-1">
               <X size={14} />
@@ -253,11 +271,11 @@ function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
       </div>
       <button type="button" onClick={addRow}
         className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-[#1A2B1A] bg-[#E8F0E8] px-2.5 py-1.5 rounded-lg hover:bg-[#D8E8D8] transition-colors">
-        <Plus size={12} /> Thêm lần cân
+        <Plus size={12} /> {t('production', 'mr_add_weighing_row')}
       </button>
       <div className="mt-2 flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-[#E8DDD0]">
         <span className="text-xs text-[#8E8878]">
-          Tổng {validCount > 0 ? `(${validCount} lần cân)` : ''}
+          {t('production', 'mr_total_label')} {validCount > 0 ? `(${validCount} ${t('production', 'mr_weighing_count_suffix')})` : ''}
         </span>
         <span className="text-sm font-bold text-[#1C1C1E]">{total.toFixed(3).replace(/\.?0+$/, '')} {unit}</span>
       </div>
@@ -267,6 +285,7 @@ function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
 
 function ReceiveModal({ req, onClose, onDone }) {
   const toast = useToast();
+  const { t } = useLang();
   const [notes, setNotes] = useState('');
   // Mỗi item: weighings = mảng string các lần cân. Mặc định 1 dòng trống.
   const [items, setItems] = useState((req.items || []).map(i => ({
@@ -301,19 +320,18 @@ function ReceiveModal({ req, onClose, onDone }) {
           };
         }),
       });
-      toast('Xác nhận nhận hàng thành công', 'success');
+      toast(t('production', 'mr_receive_success'), 'success');
       onDone();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
+      toast(e?.response?.data?.message || t('production', 'mr_err_generic'), 'error');
     } finally { setSaving(false); }
   };
 
   return (
-    <Modal open onClose={onClose} title={`Xác nhận nhận hàng — ${req.requestCode}`} size="lg">
+    <Modal open onClose={onClose} title={`${t('production', 'mr_receive_title_prefix')} — ${req.requestCode}`} size="lg">
       <div className="space-y-4" style={{ minHeight: 520 }}>
         <p className="text-sm text-[#8E8878]">
-          Nhập từng lần cân (mỗi rổ/lần cân 1 dòng) — hệ thống sẽ tự cộng dồn ra tổng thực nhận.
-          Dùng nút "Tối đa" nếu nhận đủ đúng số lượng đã đặt.
+          {t('production', 'mr_receive_hint')}
         </p>
         <div className="space-y-3">
           {items.map((item, idx) => {
@@ -323,7 +341,7 @@ function ReceiveModal({ req, onClose, onDone }) {
               <div key={item.id || idx} className="bg-[#FAF7F2] rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-[#1C1C1E]">{item.materialName}</span>
-                  <span className="text-xs text-[#8E8878]">Đặt: {item.qtyRequested} {item.unit}</span>
+                  <span className="text-xs text-[#8E8878]">{t('production', 'mr_ordered_label')}: {item.qtyRequested} {item.unit}</span>
                 </div>
 
                 <WeighingInput
@@ -336,26 +354,26 @@ function ReceiveModal({ req, onClose, onDone }) {
                 {total > 0 && Math.abs(diff) > 0.001 && (
                   <p className={`mt-1.5 text-xs font-medium ${diff > 0 ? 'text-amber-600' : 'text-orange-600'}`}>
                     {diff > 0
-                      ? `Vượt ${diff.toFixed(3).replace(/\.?0+$/, '')} ${item.unit} so với đặt hàng`
-                      : `Thiếu ${Math.abs(diff).toFixed(3).replace(/\.?0+$/, '')} ${item.unit} so với đặt hàng`}
+                      ? `${t('production', 'mr_over_ordered')} ${diff.toFixed(3).replace(/\.?0+$/, '')} ${item.unit} ${t('production', 'mr_over_ordered_suffix')}`
+                      : `${t('production', 'mr_under_ordered')} ${Math.abs(diff).toFixed(3).replace(/\.?0+$/, '')} ${item.unit} ${t('production', 'mr_under_ordered_suffix')}`}
                   </p>
                 )}
 
                 <div className="mt-2">
-                  <Field label="Hạn sử dụng (không bắt buộc)">
-                    <DatePicker value={item.expiryDate} onChange={val => setItem(idx, 'expiryDate', val)} placeholder="Chọn ngày hết hạn" minDate={new Date()} />
+                  <Field label={t('production', 'mr_expiry_label')}>
+                    <DatePicker value={item.expiryDate} onChange={val => setItem(idx, 'expiryDate', val)} placeholder={t('production', 'mr_expiry_placeholder')} minDate={new Date()} />
                   </Field>
                 </div>
               </div>
             );
           })}
         </div>
-        <Field label="Ghi chú">
-          <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} placeholder="Ghi chú thêm (nếu có)" />
+        <Field label={t('production', 'mr_notes_label')}>
+          <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} placeholder={t('production', 'mr_notes_placeholder')} />
         </Field>
         <div className="flex gap-2 pt-2">
-          <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
-          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving}>{saving ? 'Đang xử lý...' : 'Xác nhận'}</PrimaryButton>
+          <SecondaryButton className="flex-1" onClick={onClose}>{t('production', 'mr_cancel')}</SecondaryButton>
+          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving}>{saving ? t('production', 'mr_confirm_processing') : t('production', 'mr_confirm')}</PrimaryButton>
         </div>
       </div>
     </Modal>
@@ -365,6 +383,7 @@ function ReceiveModal({ req, onClose, onDone }) {
 // ── Create Modal ───────────────────────────────────────────────────────────────
 function CreateModal({ onClose, onDone, allMaterials }) {
   const toast = useToast();
+  const { t } = useLang();
   const [requiredBy, setRequiredBy] = useState(null);
   // items: [{ material: {name, unit} | null, unit: string, qtyRequested: string }]
   const [items, setItems] = useState([{ material: null, qtyRequested: '' }]);
@@ -392,7 +411,7 @@ function CreateModal({ onClose, onDone, allMaterials }) {
 
   const handleSubmit = async () => {
     const invalid = items.some(it => !it.material?.name?.trim() || !it.qtyRequested);
-    if (invalid) { toast('Vui lòng nhập đầy đủ tên và số lượng nguyên liệu', 'error'); return; }
+    if (invalid) { toast(t('production', 'mr_err_need_all_fields'), 'error'); return; }
     setSaving(true);
     try {
       await factoryMaterialRequestApi.create({
@@ -404,26 +423,26 @@ function CreateModal({ onClose, onDone, allMaterials }) {
           sortOrder: i,
         })),
       });
-      toast('Tạo phiếu đặt hàng thành công', 'success');
+      toast(t('production', 'mr_create_success'), 'success');
       onDone();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
+      toast(e?.response?.data?.message || t('production', 'mr_err_generic'), 'error');
     } finally { setSaving(false); }
   };
 
   return (
-    <Modal open onClose={onClose} title="Tạo phiếu đặt hàng nguyên liệu" size="lg">
+    <Modal open onClose={onClose} title={t('production', 'mr_create_title')} size="lg">
       <div className="space-y-4" style={{ minHeight: 420 }}>
-        <Field label="Thời gian cần xử lý (không bắt buộc)">
-          <DatePicker value={requiredBy} onChange={setRequiredBy} placeholder="Chọn deadline" minDate={new Date()} />
+        <Field label={t('production', 'mr_required_by_optional')}>
+          <DatePicker value={requiredBy} onChange={setRequiredBy} placeholder={t('production', 'mr_required_by_placeholder')} minDate={new Date()} />
         </Field>
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-[#1C1C1E]">Danh sách nguyên liệu</p>
+            <p className="text-sm font-medium text-[#1C1C1E]">{t('production', 'mr_material_list_label')}</p>
             <button onClick={addItem}
               className="flex items-center gap-1 text-xs text-[#1A2B1A] font-semibold bg-[#E8F0E8] px-2.5 py-1.5 rounded-lg hover:bg-[#D8E8D8] transition-colors">
-              <Plus size={12} /> Thêm dòng
+              <Plus size={12} /> {t('production', 'mr_add_row')}
             </button>
           </div>
 
@@ -444,7 +463,7 @@ function CreateModal({ onClose, onDone, allMaterials }) {
                     type="number" min="0" step="0.001"
                     className={`${inputCls} text-center flex-shrink-0`}
                     style={{ width: 72 }}
-                    placeholder="SL"
+                    placeholder={t('production', 'mr_qty_placeholder')}
                     value={item.qtyRequested}
                     onChange={e => setItemField(i, 'qtyRequested', e.target.value)}
                   />
@@ -465,9 +484,9 @@ function CreateModal({ onClose, onDone, allMaterials }) {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
+          <SecondaryButton className="flex-1" onClick={onClose}>{t('production', 'mr_cancel')}</SecondaryButton>
           <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Đang tạo...' : 'Tạo phiếu'}
+            {saving ? t('production', 'mr_creating') : t('production', 'mr_create_btn')}
           </PrimaryButton>
         </div>
       </div>
@@ -477,6 +496,7 @@ function CreateModal({ onClose, onDone, allMaterials }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FactoryMaterialRequestPage() {
+  const { t } = useLang();
   const { role } = useAuth();
   // FACTORY_WORKER chỉ được xác nhận nhận hàng, không được tạo phiếu đặt hàng mới.
   const canCreate = role !== 'FACTORY_WORKER';
@@ -518,11 +538,11 @@ export default function FactoryMaterialRequestPage() {
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Phiếu đặt hàng nguyên liệu</h1>
+        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production', 'mr_page_title')}</h1>
         {canCreate && (
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 bg-[#1A2B1A] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#243524] transition-colors">
-            <Plus size={16} /> Tạo phiếu
+            <Plus size={16} /> {t('production', 'mr_create_btn')}
           </button>
         )}
       </div>
@@ -532,16 +552,16 @@ export default function FactoryMaterialRequestPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
           <input
             className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
-            placeholder="Tìm theo mã phiếu..."
+            placeholder={t('production', 'mr_search_placeholder')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {[
-            { val: '', label: 'Tất cả' }, { val: 'NEW', label: 'Mới tạo' },
-            { val: 'ORDERED', label: 'Đã đặt' }, { val: 'RECEIVED', label: 'Đã nhận' },
-            { val: 'COMPLETED', label: 'Hoàn thành' },
+            { val: '', label: t('production', 'mr_filter_all') }, { val: 'NEW', label: t('production', 'mr_filter_new') },
+            { val: 'ORDERED', label: t('production', 'mr_filter_ordered') }, { val: 'RECEIVED', label: t('production', 'mr_filter_received') },
+            { val: 'COMPLETED', label: t('production', 'mr_filter_completed') },
           ].map(s => (
             <button key={s.val} onClick={() => { setStatusFilter(s.val); setPage(0); }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
@@ -550,7 +570,7 @@ export default function FactoryMaterialRequestPage() {
             </button>
           ))}
           <DateRangePicker from={dateRange.from} to={dateRange.to}
-            onChange={r => { setDateRange(r); setPage(0); }} placeholder="Lọc theo ngày" />
+            onChange={r => { setDateRange(r); setPage(0); }} placeholder={t('production', 'mr_filter_by_date')} />
         </div>
       </div>
 
@@ -559,7 +579,7 @@ export default function FactoryMaterialRequestPage() {
         : requests.length === 0
           ? <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
               <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">Chưa có phiếu đặt hàng nào</p>
+              <p className="text-[#8E8878] text-sm">{t('production', 'mr_empty')}</p>
             </div>
           : <div className="space-y-3">
               {requests.map(req => <RequestCard key={req.id} req={req} onReceive={setReceiveTarget} />)}
@@ -569,10 +589,10 @@ export default function FactoryMaterialRequestPage() {
       {data?.totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">Trước</button>
+            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production', 'mr_prev_page')}</button>
           <span className="px-4 py-2 text-sm text-[#8E8878]">{page + 1} / {data.totalPages}</span>
           <button disabled={page >= data.totalPages - 1} onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">Tiếp</button>
+            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production', 'mr_next_page')}</button>
         </div>
       )}
 

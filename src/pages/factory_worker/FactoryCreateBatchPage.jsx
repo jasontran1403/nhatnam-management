@@ -50,7 +50,7 @@ function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, select
       <div className="p-5 space-y-4 flex-1">
         <Field label={t('batch','finished_goods_label')} required>
           <select className={inputCls} value={selectedProduct} onChange={e => onProductChange(e.target.value)}>
-            <option value="">-- Chọn thành phẩm --</option>
+            <option value="">{t('batch', 'select_finished_product_placeholder')}</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.unit})</option>)}
           </select>
         </Field>
@@ -81,15 +81,16 @@ function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, select
 
 // ── Bước 2: Nhập NVL ─────────────────────────────────────────────────────────
 function StepMaterials({ items, setItem }) {
+  const { t } = useLang();
   return (
     <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col min-h-[420px]">
       <div className="px-5 py-4 border-b border-black/5 bg-[#FAF7F2] flex items-center gap-2">
         <div className="w-6 h-6 rounded-full bg-[#C9A84C] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</div>
-        <h2 className="font-semibold text-[#1C1C1E] text-sm">Nguyên vật liệu đã dùng</h2>
+        <h2 className="font-semibold text-[#1C1C1E] text-sm">{t('batch', 'materials_used_title')}</h2>
       </div>
       <div className="p-5 flex-1">
         {items.length === 0 && (
-          <p className="text-sm text-[#8E8878] italic text-center py-8">Chọn công thức ở bước 1 để hiển thị NVL</p>
+          <p className="text-sm text-[#8E8878] italic text-center py-8">{t('batch', 'select_formula_step1_hint')}</p>
         )}
         <div className="grid grid-cols-2 gap-2">
           {items.map((item, idx) => {
@@ -123,20 +124,21 @@ function StepMaterials({ items, setItem }) {
 
 // ── Bước 3: Thành phẩm thu được ───────────────────────────────────────────────
 function StepOutput({ selectedRecipe, actualOutput, setActualOutput, notes, setNotes, producedAt, onSubmit, saving }) {
+  const { t } = useLang();
   const decimal = selectedRecipe ? isDecimalAllowed(selectedRecipe.outputUnit) : true;
 
   return (
     <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col min-h-[420px]">
       <div className="px-5 py-4 border-b border-black/5 bg-[#FAF7F2] flex items-center gap-2">
         <div className="w-6 h-6 rounded-full bg-[#C9A84C] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</div>
-        <h2 className="font-semibold text-[#1C1C1E] text-sm">Thành phẩm thu được</h2>
+        <h2 className="font-semibold text-[#1C1C1E] text-sm">{t('batch', 'output_obtained_title')}</h2>
       </div>
       <div className="p-5 space-y-4 flex-1">
         {!selectedRecipe
-          ? <p className="text-sm text-[#8E8878] italic text-center py-8">Chọn công thức ở bước 1</p>
+          ? <p className="text-sm text-[#8E8878] italic text-center py-8">{t('batch', 'select_formula_step1_hint_short')}</p>
           : (
             <>
-              <Field label={`Sản lượng thực tế (${selectedRecipe.outputUnit})`} required>
+              <Field label={`${t('batch', 'actual_output_label')} (${selectedRecipe.outputUnit})`} required>
                 <input
                   type="number"
                   inputMode={decimal ? 'decimal' : 'numeric'}
@@ -152,15 +154,15 @@ function StepOutput({ selectedRecipe, actualOutput, setActualOutput, notes, setN
               </Field>
 
               <div className="bg-[#FAF7F2] border border-black/5 rounded-xl px-4 py-3 flex items-center justify-between text-sm">
-                <span className="text-[#8E8878]">Ngày sản xuất</span>
+                <span className="text-[#8E8878]">{t('batch', 'produced_date_label')}</span>
                 <span className="font-semibold text-[#1C1C1E]">
                   {new Date(producedAt + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </span>
               </div>
 
-              <Field label="Ghi chú">
+              <Field label={t('batch', 'notes_label')}>
                 <textarea className={inputCls} rows={3}
-                  placeholder="Ghi chú thêm về mẻ sản xuất..."
+                  placeholder={t('batch', 'notes_placeholder')}
                   value={notes}
                   onChange={e => setNotes(e.target.value)} />
               </Field>
@@ -175,7 +177,7 @@ function StepOutput({ selectedRecipe, actualOutput, setActualOutput, notes, setN
             loading={saving}
             disabled={!actualOutput}
             className="w-full justify-center">
-            Lưu mẻ sản xuất
+            {t('batch', 'save_batch_btn')}
           </PrimaryButton>
         </div>
       )}
@@ -269,8 +271,8 @@ export default function FactoryCreateBatchPage() {
         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
           <CheckCircle size={36} className="text-emerald-600" />
         </div>
-        <h2 className="text-xl font-bold text-[#1C1C1E]">Đã ghi nhận mẻ sản xuất!</h2>
-        <p className="text-sm text-[#8E8878]">Đang chuyển về lịch sử...</p>
+        <h2 className="text-xl font-bold text-[#1C1C1E]">{t('batch', 'batch_recorded_success')}</h2>
+        <p className="text-sm text-[#8E8878]">{t('batch', 'redirecting_to_history')}</p>
       </div>
     );
   }
@@ -279,9 +281,9 @@ export default function FactoryCreateBatchPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
-          Nhập mẻ sản xuất
+          {t('batch', 'create_batch_title')}
         </h1>
-        <p className="text-sm text-[#8E8878] mt-1">Ghi nhận nguyên liệu đã dùng và thành phẩm thu được</p>
+        <p className="text-sm text-[#8E8878] mt-1">{t('batch', 'create_batch_subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">

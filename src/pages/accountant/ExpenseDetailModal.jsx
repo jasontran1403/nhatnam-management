@@ -1,5 +1,5 @@
 // src/pages/accountant/ExpenseDetailModal.jsx
-import { X, Receipt, Building2, User, Clock, CheckCircle, XCircle, Package } from 'lucide-react';
+import { X, Receipt, Building2, User, Clock, CheckCircle, XCircle, Package, Wallet } from 'lucide-react';
 
 function formatVND(n) {
   if (!n && n !== 0) return '0 đ';
@@ -37,9 +37,16 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
             <Receipt size={20} className="text-[#C9A84C]" />
             <div>
               <p className="font-mono text-sm font-bold text-[#C9A84C]">{v.voucherCode}</p>
-              <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>
-                <StatusIcon size={10} /> {s.label}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>
+                  <StatusIcon size={10} /> {s.label}
+                </span>
+                {v.voucherType === 'VENDOR_DEBT_PAYMENT' && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700">
+                    <Wallet size={10} /> Trả công nợ NCC
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
@@ -69,24 +76,32 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
           )}
 
           {/* Items */}
-          <div>
-            <p className="text-sm font-semibold text-[#1C1C1E] mb-2">Các khoản chi</p>
-            <div className="space-y-2">
-              {v.items?.map((item, i) => (
-                <div key={item.id || i} className="flex items-start justify-between bg-[#FAF7F2] rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-[#1C1C1E]">{item.itemName}</p>
-                    {item.note && <p className="text-xs text-[#8E8878] mt-0.5">{item.note}</p>}
+          {v.items?.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-[#1C1C1E] mb-2">Các khoản chi</p>
+              <div className="space-y-2">
+                {v.items.map((item, i) => (
+                  <div key={item.id || i} className="flex items-start justify-between bg-[#FAF7F2] rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#1C1C1E]">{item.itemName}</p>
+                      {item.note && <p className="text-xs text-[#8E8878] mt-0.5">{item.note}</p>}
+                    </div>
+                    <p className="text-sm font-bold text-[#1C1C1E] flex-shrink-0 ml-3">{formatVND(item.amount)}</p>
                   </div>
-                  <p className="text-sm font-bold text-[#1C1C1E] flex-shrink-0 ml-3">{formatVND(item.amount)}</p>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/5">
+                <span className="text-sm font-semibold text-[#8E8878]">Tổng cộng</span>
+                <span className="text-base font-bold text-[#C9A84C]">{formatVND(v.totalAmount)}</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/5">
+          )}
+          {(!v.items || v.items.length === 0) && (
+            <div className="flex justify-between items-center bg-[#FAF7F2] rounded-xl px-4 py-3">
               <span className="text-sm font-semibold text-[#8E8878]">Tổng cộng</span>
               <span className="text-base font-bold text-[#C9A84C]">{formatVND(v.totalAmount)}</span>
             </div>
-          </div>
+          )}
 
           {/* Images */}
           {v.imageUrls?.length > 0 && (
