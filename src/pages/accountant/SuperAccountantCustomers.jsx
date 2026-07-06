@@ -7,9 +7,9 @@ import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
   ArrowUp, ArrowDown, ChevronsUpDown,
-  Edit2, MapPin, Star, Plus, Trash2,
+  Edit2, MapPin, Star, Plus, Trash2, FileText,
 } from 'lucide-react';
-import { adminCustomerApi } from '../../api/adminApi';
+import { adminCustomerApi, reportApi } from '../../api/adminApi';
 import { formatPrice } from '../../utils/formatPrice';
 import useDebounce from '../../utils/useDebounce.js';
 import { Badge } from '../../components/ui/Badge';
@@ -600,6 +600,7 @@ export default function SuperAccountantCustomers() {
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
   const [exporting, setExporting] = useState(false);
+  const [exportingDebt, setExportingDebt] = useState(false);
   // Sort công nợ chưa thanh toán: null → 'desc' (cao→thấp) → 'asc' (thấp→cao)
   const [debtSort, setDebtSort] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -691,6 +692,30 @@ export default function SuperAccountantCustomers() {
     }
   }, [debouncedQ, filters.type, filters.isActive, filters.sellerId, toast]);
 
+  // Export báo cáo công nợ (Aged Receivables) — PDF, tính đến hôm nay
+  const handleExportAgedReceivables = useCallback(async () => {
+    setExportingDebt(true);
+    try {
+      const res = await reportApi.exportAgedReceivables();        // asOf = hôm nay
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = res.headers?.['content-disposition'] || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : 'bao-cao-cong-no.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      toast(e?.response?.data?.message || 'Lỗi khi xuất báo cáo công nợ', 'error');
+    } finally {
+      setExportingDebt(false);
+    }
+  }, [toast]);
+
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setSelectedIds(new Set()); }, [page, filters]);
 
@@ -756,6 +781,13 @@ export default function SuperAccountantCustomers() {
       <div className="flex items-center justify-between">
         <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
         <div className="flex items-center gap-2">
+          <button onClick={handleExportAgedReceivables} disabled={exportingDebt}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            {exportingDebt
+              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              : <FileText size={13} />}
+            {exportingDebt ? 'Đang xuất...' : 'Báo cáo công nợ'}
+          </button>
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
@@ -855,7 +887,7 @@ export default function SuperAccountantCustomers() {
                         Công nợ (chưa TT)
                         {debtSort === 'desc' ? <ArrowDown size={13} className="text-[#C9A84C]" />
                           : debtSort === 'asc' ? <ArrowUp size={13} className="text-[#C9A84C]" />
-                          : <ChevronsUpDown size={13} className="opacity-50" />}
+                            : <ChevronsUpDown size={13} className="opacity-50" />}
                       </button>
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">Trạng thái</th>

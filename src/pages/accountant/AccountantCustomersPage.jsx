@@ -3,12 +3,12 @@ import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
-import { accountantApi } from '../../api/services';
+import { accountantApi, reportApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
-  Building2, User as UserIcon, Clock3, Download, Upload,
+  Building2, User as UserIcon, Clock3, Download, Upload, FileText,
 } from 'lucide-react';
 
 // ── Debt urgency ──────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ function getDebtUrgency(customer) {
   if (!ms) return null;
   const days = Math.ceil((ms - Date.now()) / 86400000);
   if (days < 0 || days <= 3) return 'critical';
-  if (days <= 6)              return 'warning';
+  if (days <= 6) return 'warning';
   return null;
 }
 
@@ -26,17 +26,50 @@ export default function AccountantCustomersPage() {
   const { t } = useLang();
   const toast = useToast();
 
-  const [customers,  setCustomers]  = useState([]);
-  const [total,      setTotal]      = useState(0);
-  const [page,       setPage]       = useState(0);
+  const [customers, setCustomers] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useMinLoading();
-  const [search,     setSearch]     = useState('');
-  const [searchInput,setSearchInput]= useState('');
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [exportingDebt, setExportingDebt] = useState(false);
 
-  // Navigate to history
+  // Format số tiền
+  const formatPrice = (n) => {
+    if (!n && n !== 0) return '0 đ';
+    const num = Number(n);
+    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace('.0', '') + ' tỷ';
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace('.0', '') + ' tr';
+    return new Intl.NumberFormat('vi-VN').format(Math.round(num)) + ' đ';
+  };
+
+  // Export báo cáo công nợ
+  const handleExportAgedReceivables = useCallback(async () => {
+    setExportingDebt(true);
+    try {
+      const res = await reportApi.exportAgedReceivables();
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = res.headers?.['content-disposition'] || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : 'bao-cao-cong-no.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      toast(e?.response?.data?.message || 'Lỗi khi xuất báo cáo công nợ', 'error');
+    } finally {
+      setExportingDebt(false);
+    }
+  }, [toast]);
+
   const [historyCustomerId, setHistoryCustomerId] = useState(null);
 
-  const PAGE_SIZE  = 20;
+  const PAGE_SIZE = 20;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const fetchCustomers = useCallback(async (p = 0) => {
@@ -61,7 +94,6 @@ export default function AccountantCustomersPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Nếu đang xem history
   if (historyCustomerId) {
     return (
       <CustomerOrderHistory
@@ -74,14 +106,20 @@ export default function AccountantCustomersPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#FAF7F2]">
-      {/* Header */}
+      {/* Header - giữ nguyên */}
       <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1">
             <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">{t('customer', 'customer')}</h1>
             <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} {t('customer', 'customer').toLowerCase()}</p>
           </div>
-          {/* FIX #3: Import / Export */}
+          <button onClick={handleExportAgedReceivables} disabled={exportingDebt}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            {exportingDebt
+              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              : <FileText size={13} />}
+            {exportingDebt ? 'Đang xuất...' : 'Báo cáo công nợ'}
+          </button>
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
@@ -99,7 +137,7 @@ export default function AccountantCustomersPage() {
         </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
-          <input type="text" {...{placeholder: t("customer", "customer_name")}}
+          <input type="text" {...{ placeholder: t("customer", "customer_name") }}
             value={searchInput} onChange={e => setSearchInput(e.target.value)}
             className="w-full border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white
               focus:outline-none focus:border-[#C9A84C]" />
@@ -124,16 +162,31 @@ export default function AccountantCustomersPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                   <tr>
-                    {[t('customer','customer'), t('customer','contact_name'), t('common','type'), t('payment','debt'), t('common','note')].map(h => (
-                      <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
-                        {h}
-                      </th>
-                    ))}
+                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                      {t('customer', 'customer')}
+                    </th>
+                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                      TT Liên hệ {/* Đã đổi từ "Tên người liên hệ" */}
+                    </th>
+                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                      {t('common', 'type')}
+                    </th>
+                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                      {t('payment', 'debt')}
+                    </th>
+                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                      {t('common', 'note')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {customers.map(c => {
-                    const urgency = getDebtUrgency(c);
+                    // Tính urgency dựa trên oldestDebtDays
+                    const urgency = c.oldestDebtDays !== null && c.oldestDebtDays !== undefined
+                      ? c.oldestDebtDays >= 0 && c.oldestDebtDays <= 3 ? 'critical'
+                        : c.oldestDebtDays <= 6 ? 'warning' : null
+                      : null;
+                    
                     return (
                       <tr key={c.id}
                         onClick={() => setHistoryCustomerId(c.id)}
@@ -157,29 +210,35 @@ export default function AccountantCustomersPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-[#1C1C1E]">{c.phone}</td>
+                        <td className="px-4 py-3 text-xs text-[#1C1C1E]">
+                          {c.phone || '—'} {/* TT Liên hệ hiển thị số điện thoại */}
+                        </td>
                         <td className="px-4 py-3">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
                             ${c.customerType === 'COMPANY'
                               ? 'bg-blue-50 text-blue-700 border-blue-200'
                               : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                            {c.customerType === 'COMPANY' ? t('customer','company') : t('customer','retail')}
+                            {c.customerType === 'COMPANY' ? t('customer', 'company') : t('customer', 'retail')}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {c.debtDays > 0
-                            ? <span className="text-xs text-orange-600 font-semibold">{c.debtDays} {t('common','date').toLowerCase()}</span>
-                            : <span className="text-xs text-[#C4B9A8]">—</span>
+                          {/* Công nợ hiển thị số tiền */}
+                          {c.unpaidDebt > 0
+                            ? <span className="text-xs font-bold text-orange-600">{formatPrice(c.unpaidDebt)}</span>
+                            : <span className="text-xs text-[#C4B9A8]">0 đ</span>
                           }
                         </td>
                         <td className="px-4 py-3">
-                          {urgency && (
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border
-                              ${urgency === 'critical' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-                              <Clock3 size={9} />
-                              {urgency === 'critical' ? t('customer','expiring_soon') : t('customer','near_expiry')}
-                            </span>
-                          )}
+                          {/* Note: số ngày công nợ của đơn cũ nhất */}
+                          {c.oldestDebtDays !== null && c.oldestDebtDays !== undefined && c.oldestDebtDays > 0
+                            ? <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
+                              ${c.oldestDebtDays <= 3 ? 'bg-red-50 text-red-600 border-red-200'
+                                : c.oldestDebtDays <= 6 ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                                {c.oldestDebtDays} ngày
+                              </span>
+                            : <span className="text-[10px] text-[#C4B9A8]">—</span>
+                          }
                         </td>
                       </tr>
                     );
@@ -188,10 +247,14 @@ export default function AccountantCustomersPage() {
               </table>
             </div>
 
-            {/* Mobile cards */}
+            {/* Mobile cards - giữ nguyên nhưng cập nhật data */}
             <div className="md:hidden space-y-3">
               {customers.map(c => {
-                const urgency = getDebtUrgency(c);
+                const urgency = c.oldestDebtDays !== null && c.oldestDebtDays !== undefined
+                  ? c.oldestDebtDays >= 0 && c.oldestDebtDays <= 3 ? 'critical'
+                    : c.oldestDebtDays <= 6 ? 'warning' : null
+                  : null;
+                
                 return (
                   <div key={c.id}
                     onClick={() => setHistoryCustomerId(c.id)}
@@ -211,19 +274,18 @@ export default function AccountantCustomersPage() {
                           {c.customerType === 'COMPANY' ? (c.companyName || c.name) : (c.name || '—')}
                         </p>
                         <p className="text-xs text-[#8E8878]">{c.phone}</p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border
                             ${c.customerType === 'COMPANY' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                            {c.customerType === 'COMPANY' ? t('customer','company').substring(0,2) : t('customer','retail')}
+                            {c.customerType === 'COMPANY' ? t('customer', 'company').substring(0, 2) : t('customer', 'retail')}
                           </span>
-                          {c.debtDays > 0 && (
-                            <span className="text-[10px] text-orange-500">📋 {c.debtDays} {t('common','date').toLowerCase()}</span>
+                          {c.unpaidDebt > 0 && (
+                            <span className="text-[10px] text-orange-500 font-semibold">💰 {formatPrice(c.unpaidDebt)}</span>
                           )}
-                          {urgency && (
+                          {c.oldestDebtDays !== null && c.oldestDebtDays !== undefined && c.oldestDebtDays > 0 && (
                             <span className={`text-[10px] font-semibold
-                              ${urgency === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>
-                              <Clock3 size={9} className="inline mr-0.5" />
-                              {urgency === 'critical' ? t('customer','expiring_soon') : t('customer','near_expiry')}
+                              ${c.oldestDebtDays <= 3 ? 'text-red-600' : c.oldestDebtDays <= 6 ? 'text-amber-600' : 'text-blue-600'}`}>
+                              📋 {c.oldestDebtDays} ngày
                             </span>
                           )}
                         </div>
@@ -237,7 +299,7 @@ export default function AccountantCustomersPage() {
           </>
         )}
 
-        {/* Pagination */}
+        {/* Pagination - giữ nguyên */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-4">
             <button onClick={() => fetchCustomers(page - 1)} disabled={page === 0 || loading}

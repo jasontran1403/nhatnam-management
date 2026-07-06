@@ -1,0 +1,653 @@
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import {
+    Calculator, Plus, Trash2, Search, Package, Percent, Tag, Wand2,
+} from 'lucide-react';
+import { pricingApi } from '../../api/accountantApi';
+import { useToast } from '../../components/common/Toast';
+import useDebounce from '../../utils/useDebounce.js';
+import { formatVN, formatVNInput, parseVN, roundHalfUp } from '../../utils/vnNumber';
+import {
+    PageHeader, SectionCard, SectionHeader, PrimaryButton, SecondaryButton,
+    Field, inputCls, selectCls, EmptyState,
+} from '../../components/ui';
+
+const BASIS_OPTIONS = [
+    { value: 'value', label: 'Theo giá trị' },
+    { value: 'quantity', label: 'Theo số lượng' },
+    { value: 'equal', label: 'Chia đều' },
+];
+
+/* Input số theo chuẩn VN (ngăn cách nghìn ".", thập phân ",") */
+function VNInput({ value, onChange, decimals = 0, className, ...props }) {
+    return (
+        <input
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => onChange(formatVNInput(e.target.value, decimals))}
+            className={className || inputCls}
+            {...props}
+        />
+    );
+}
+
+/* ── Dropdown tìm nguyên liệu ─────────────────────────────────────────────── */
+function IngredientSelect({ value, onChange }) {
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState('');
+    const debouncedQ = useDebounce(q, 350);
+    const [options, setOptions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const boxRef = useRef(null);
+    const btnRef = useRef(null);
+    const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+    const updatePos = () => {
+        if (!btnRef.current) return;
+        const r = btnRef.current.getBoundingClientRect();
+        setPos({
+            top: r.bottom + 6,
+            left: r.left,
+            width: r.width,
+        });
+    };
+
+    useEffect(() => {
+        if (!open) return;
+        updatePos();
+        window.addEventListener('scroll', updatePos, true);
+        window.addEventListener('resize', updatePos);
+        return () => {
+            window.removeEventListener('scroll', updatePos, true);
+            window.removeEventListener('resize', updatePos);
+        };
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        let alive = true;
+        setLoading(true);
+        pricingApi.searchIngredients(debouncedQ)
+            .then((res) => { if (alive) setOptions(res || []); })
+            .catch(() => { if (alive) setOptions([]); })
+            .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
+    }, [debouncedQ, open]);
+
+    useEffect(() => {
+        const onDoc = (e) => {
+            if (boxRef.current && boxRef.current.contains(e.target)) return;
+            setOpen(false);
+        };
+        document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+    }, []);
+
+    return (
+        <div className="relative" ref={boxRef}>
+            <button
+                ref={btnRef}
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                className={`${inputCls} flex items-center justify-between text-left`}
+            >
+                <span className={value ? 'text-[#1C1C1E] truncate' : 'text-[#8E8878]'}>
+                    {value ? `${value.name}${value.unit ? ` (${value.unit})` : ''}` : 'Chọn nguyên liệu...'}
+                </span>
+                <Search size={15} className="text-[#8E8878] shrink-0" />
+            </button>
+
+            {open && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: pos.top,
+                        left: pos.left,
+                        width: pos.width,
+                        zIndex: 9999,
+                    }}
+                    className="bg-white rounded-xl shadow-lg border border-[#E8DDD0] overflow-hidden"
+                >
+                    <div className="p-2 border-b border-[#F0E9DF]">
+                        <input
+                            autoFocus
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            placeholder="Gõ tên hoặc mã nguyên liệu..."
+                            className={inputCls}
+                        />
+                    </div>
+
+                    <div className="max-h-60 overflow-auto">
+                        {loading && <p className="px-3 py-3 text-sm text-[#8E8878]">Đang tìm...</p>}
+
+                        {!loading && options.length === 0 && (
+                            <p className="px-3 py-3 text-sm text-[#8E8878]">Không có kết quả</p>
+                        )}
+
+                        {!loading && options.map((o) => (
+                            <button
+                                key={o.id}
+                                type="button"
+                                onClick={() => {
+                                    onChange(o);
+                                    setOpen(false);
+                                    setQ('');
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-[#FBF7F0] flex items-center gap-2"
+                            >
+                                <Package size={14} className="text-[#C9A84C] shrink-0" />
+                                <span className="text-sm text-[#1C1C1E] flex-1 truncate">{o.name}</span>
+                                {o.unit && <span className="text-xs text-[#8E8878]">{o.unit}</span>}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ── Combobox tên chi phí: chọn nhãn đã lưu hoặc tạo mới ───────────────────── */
+function CostLabelInput({ value, onChange, labels, onCreate }) {
+    const [open, setOpen] = useState(false);
+    const boxRef = useRef(null);
+    const inputRef = useRef(null);
+    const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+    const updatePos = () => {
+        if (!inputRef.current) return;
+        const r = inputRef.current.getBoundingClientRect();
+        setPos({
+            top: r.bottom + 6,
+            left: r.left,
+            width: r.width,
+        });
+    };
+
+    useEffect(() => {
+        if (!open) return;
+        updatePos();
+
+        window.addEventListener('scroll', updatePos, true);
+        window.addEventListener('resize', updatePos);
+
+        return () => {
+            window.removeEventListener('scroll', updatePos, true);
+            window.removeEventListener('resize', updatePos);
+        };
+    }, [open]);
+
+    useEffect(() => {
+        const onDoc = (e) => {
+            if (boxRef.current && boxRef.current.contains(e.target)) return;
+            setOpen(false);
+        };
+
+        document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+    }, []);
+
+    const kw = (value || '').trim().toLowerCase();
+    const filtered = labels.filter((l) => !kw || l.name.toLowerCase().includes(kw));
+    const exactExists = labels.some((l) => l.name.toLowerCase() === kw);
+
+    return (
+        <div className="relative flex-1 min-w-0" ref={boxRef}>
+            <div className="flex items-center gap-1">
+                <Tag size={14} className="text-[#C9A84C] shrink-0" />
+
+                <input
+                    ref={inputRef}
+                    value={value}
+                    onFocus={() => setOpen(true)}
+                    onChange={(e) => {
+                        onChange(e.target.value);
+                        setOpen(true);
+                    }}
+                    className={inputCls}
+                    placeholder="Tên chi phí (chọn hoặc tạo mới)"
+                />
+            </div>
+
+            {open && (filtered.length > 0 || (kw && !exactExists)) && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: pos.top,
+                        left: pos.left,
+                        width: pos.width,
+                        zIndex: 9999,
+                    }}
+                    className="bg-white rounded-xl shadow-lg border border-[#E8DDD0] overflow-hidden"
+                >
+                    <div className="max-h-48 overflow-auto">
+                        {filtered.map((l) => (
+                            <button
+                                key={l.id}
+                                type="button"
+                                onClick={() => {
+                                    onChange(l.name);
+                                    setOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-[#FBF7F0] text-sm text-[#1C1C1E]"
+                            >
+                                {l.name}
+                            </button>
+                        ))}
+
+                        {kw && !exactExists && (
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const c = await onCreate(value.trim());
+                                    if (c) onChange(c.name);
+                                    setOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-[#FBF7F0] text-sm text-[#C9A84C] flex items-center gap-1 border-t border-[#F0E9DF]"
+                            >
+                                <Plus size={14} /> Tạo nhãn "{value.trim()}"
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+let _rid = 0;
+const newIngredientRow = () => ({
+    key: `ing_${++_rid}`, ingredient: null, quantity: '',
+    priceMode: 'total', priceValue: '', taxableAmount: '', taxRate: '',
+});
+const newCostRow = () => ({ key: `cost_${++_rid}`, label: '', amount: '', basis: 'value' });
+
+const formatVNTrimDecimal = (value, maxDecimals = 3) => {
+    const num = Number(value || 0);
+
+    if (!Number.isFinite(num)) return '0';
+
+    const fixed = num.toFixed(maxDecimals);
+
+    const trimmed = fixed
+        .replace(/\.?0+$/, '');
+
+    const [intPart, decimalPart] = trimmed.split('.');
+
+    const formattedInt = Number(intPart).toLocaleString('vi-VN');
+
+    return decimalPart
+        ? `${formattedInt},${decimalPart}`
+        : formattedInt;
+};
+
+export default function PricingCalculatorPage() {
+    const toast = useToast();
+    const [rows, setRows] = useState([newIngredientRow()]);
+    const [costs, setCosts] = useState([]);
+    const [margin, setMargin] = useState('');
+    const [labels, setLabels] = useState([]);
+    const [result, setResult] = useState(null);
+
+    useEffect(() => { pricingApi.getCostLabels().then((r) => setLabels(r || [])).catch(() => { }); }, []);
+
+    const patchRow = (key, patch) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+    const removeRow = (key) => setRows((rs) => rs.filter((r) => r.key !== key));
+
+    /* Thành tiền mua của 1 dòng (full precision) */
+    const buyingCostOf = useCallback((r) => {
+        const qty = parseVN(r.quantity);
+        if (r.priceMode === 'total') return parseVN(r.priceValue);
+        return parseVN(r.priceValue) * qty; // đơn giá (tối đa 3 số lẻ) * số lượng
+    }, []);
+
+    const fillTaxable = (r) =>
+        patchRow(r.key, { taxableAmount: formatVN(roundHalfUp(buyingCostOf(r))) });
+
+    const patchCost = (key, patch) => setCosts((cs) => cs.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+    const removeCost = (key) => setCosts((cs) => cs.filter((c) => c.key !== key));
+
+    const createLabel = async (name) => {
+        const t = (name || '').trim();
+        if (!t) return null;
+        const existing = labels.find((l) => l.name.toLowerCase() === t.toLowerCase());
+        if (existing) return existing;
+        try {
+            const created = await pricingApi.createCostLabel(t);
+            if (created) setLabels((ls) => [...ls, created].sort((a, b) => a.name.localeCompare(b.name)));
+            return created;
+        } catch {
+            toast('Không tạo được nhãn chi phí', 'error');
+            return null;
+        }
+    };
+
+    const compute = () => {
+        const valid = rows.filter((r) => r.ingredient && parseVN(r.quantity) > 0);
+        if (valid.length === 0) { toast('Cần ít nhất 1 nguyên liệu có số lượng > 0', 'error'); return; }
+
+        const items = valid.map((r) => {
+            const qty = parseVN(r.quantity);
+            const buying = buyingCostOf(r);
+            // Đơn giá mua: giữ full precision, hiển thị 3 số lẻ (KHÔNG làm tròn).
+            const unitBuy = r.priceMode === 'total' ? (qty > 0 ? buying / qty : 0) : parseVN(r.priceValue);
+            const tax = roundHalfUp(parseVN(r.taxableAmount) * parseVN(r.taxRate) / 100);
+            return {
+                key: r.key, name: r.ingredient.name, unit: r.ingredient.unit,
+                qty, buying, unitBuy, tax, allocated: 0
+            };
+        });
+
+        const totalQty = items.reduce((s, it) => s + it.qty, 0);
+        const totalValue = items.reduce((s, it) => s + it.buying, 0);
+        const n = items.length;
+
+        costs.forEach((c) => {
+            const amount = parseVN(c.amount);
+            if (amount <= 0) return;
+            items.forEach((it) => {
+                let share = 0;
+                if (c.basis === 'quantity') share = totalQty > 0 ? amount * it.qty / totalQty : 0;
+                else if (c.basis === 'equal') share = amount / n;
+                else share = totalValue > 0 ? amount * it.buying / totalValue : 0;
+                it.allocated += roundHalfUp(share);
+            });
+        });
+
+        const m = parseVN(margin);
+        const detail = items.map((it) => {
+            const totalCost = roundHalfUp(it.buying) + it.tax + it.allocated;
+            const unitCost = it.qty > 0 ? roundHalfUp(totalCost / it.qty) : 0;
+            const sellUnit = roundHalfUp(unitCost * (1 + m / 100));
+            return { ...it, totalCost, unitCost, sellUnit };
+        });
+
+        setResult({
+            detail, margin: m, totalQty, totalValue,
+            totalTax: detail.reduce((s, it) => s + it.tax, 0),
+            totalAllocated: detail.reduce((s, it) => s + it.allocated, 0),
+        });
+    };
+
+    return (
+        <div className="p-4 md:p-6 space-y-5">
+            <PageHeader icon={Calculator} title="Tính giá"
+                subtitle="Tính giá bán nguyên liệu từ giá mua, thuế và chi phí chung phân bổ." />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                {/* ── CỘT TRÁI: nhập liệu ── */}
+                <div className="space-y-5">
+                    <SectionCard>
+                        <SectionHeader title="Nguyên liệu"
+                            action={<SecondaryButton onClick={() => setRows((rs) => [...rs, newIngredientRow()])}>
+                                <Plus size={15} /> Thêm</SecondaryButton>} />
+                        <div className="space-y-4 mt-3">
+                            {rows.map((r, idx) => (
+                                <div key={r.key} className="rounded-xl border border-[#EFE7DA] p-3 bg-[#FDFBF7]">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs font-semibold text-[#8E8878]">Nguyên liệu #{idx + 1}</span>
+                                        {rows.length > 1 && (
+                                            <button onClick={() => removeRow(r.key)} className="text-red-400 hover:text-red-600">
+                                                <Trash2 size={15} /></button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <Field label="Nguyên liệu">
+                                            <IngredientSelect value={r.ingredient} onChange={(ing) => patchRow(r.key, { ingredient: ing })} />
+                                        </Field>
+                                        <Field label={`Số lượng${r.ingredient?.unit ? ` (${r.ingredient.unit})` : ''}`}>
+                                            <VNInput value={r.quantity} decimals={3}
+                                                onChange={(v) => patchRow(r.key, { quantity: v })} placeholder="VD: 1.000" />
+                                        </Field>
+                                        <Field label="Giá mua">
+                                            <div className="flex gap-2">
+                                                <div className="basis-[30%] shrink-0">
+                                                    <select
+                                                        value={r.priceMode}
+                                                        onChange={(e) =>
+                                                            patchRow(r.key, {
+                                                                priceMode: e.target.value,
+                                                                priceValue: '',
+                                                            })
+                                                        }
+                                                        className={selectCls + ' w-full'}
+                                                    >
+                                                        <option value="total">Tổng tiền</option>
+                                                        <option value="unit">Đơn giá</option>
+                                                    </select>
+                                                </div>
+
+                                                <div className="basis-[70%] grow">
+                                                    <VNInput
+                                                        value={r.priceValue}
+                                                        decimals={r.priceMode === 'unit' ? 3 : 0}
+                                                        onChange={(v) =>
+                                                            patchRow(r.key, {
+                                                                priceValue: v,
+                                                            })
+                                                        }
+                                                        className={inputCls + ' w-full'}
+                                                        placeholder={
+                                                            r.priceMode === 'total'
+                                                                ? 'Tổng tiền lô'
+                                                                : 'Đơn giá (tối đa 3 số lẻ)'
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {r.priceMode === 'total' &&
+                                                parseVN(r.quantity) > 0 &&
+                                                parseVN(r.priceValue) > 0 && (
+                                                    <p className="text-[11px] text-[#8E8878] mt-1">
+                                                        Đơn giá ≈{' '}
+                                                        {formatVN(
+                                                            parseVN(r.priceValue) / parseVN(r.quantity),
+                                                            3,
+                                                            3
+                                                        )}{' '}
+                                                        / {r.ingredient?.unit || 'đv'}
+                                                    </p>
+                                                )}
+                                        </Field>
+
+                                        <Field label="Thuế riêng của nguyên liệu">
+                                            <div className="flex gap-2 items-start">
+
+                                                {/* Giá tính thuế */}
+                                                <div className="flex-1">
+                                                    <div className="flex gap-2">
+
+                                                        <VNInput
+                                                            value={r.taxableAmount}
+                                                            decimals={0}
+                                                            onChange={(v) =>
+                                                                patchRow(r.key, {
+                                                                    taxableAmount: v,
+                                                                })
+                                                            }
+                                                            className={inputCls + ' flex-1'}
+                                                            placeholder="Giá tính thuế"
+                                                        />
+
+                                                        <button
+                                                            type="button"
+                                                            title="Copy từ giá mua"
+                                                            onClick={() => fillTaxable(r)}
+                                                            className="
+                        h-11
+                        w-11
+                        rounded-xl
+                        border
+                        border-[#E8DDD0]
+                        bg-white
+                        hover:bg-[#FBF7F0]
+                        flex
+                        items-center
+                        justify-center
+                        text-[#C9A84C]
+                        shrink-0
+                    "
+                                                        >
+                                                            <Wand2 size={16} />
+                                                        </button>
+
+                                                    </div>
+                                                </div>
+
+                                                {/* % thuế */}
+                                                <div className="w-24 shrink-0">
+                                                    <div className="relative">
+                                                        <VNInput
+                                                            value={r.taxRate}
+                                                            decimals={2}
+                                                            onChange={(v) =>
+                                                                patchRow(r.key, {
+                                                                    taxRate: v,
+                                                                })
+                                                            }
+                                                            className={inputCls + ' pr-7'}
+                                                            placeholder="%"
+                                                        />
+
+                                                        <Percent
+                                                            size={14}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9C9C9C]"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-[11px] text-[#8E8878] mt-1">
+                                                Nhấn <Wand2 size={12} className="inline mx-1" />
+                                                để tự động lấy giá mua làm giá tính thuế.
+                                            </p>
+                                        </Field>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard>
+                        <SectionHeader title="Chi phí chung (phân bổ)"
+                            action={<SecondaryButton onClick={() => setCosts((cs) => [...cs, newCostRow()])}>
+                                <Plus size={15} /> Thêm</SecondaryButton>} />
+                        <div className="px-5 pt-4 pb-5">
+                            <p className="text-xs text-[#8E8878] mt-1">
+                                VD: phí kho bãi, lưu kho, vận chuyển, hải quan... Mỗi dòng chọn cơ sở phân bổ riêng (mặc định theo giá trị).
+                            </p>
+                            <div className="space-y-2 mt-3">
+                                {costs.length === 0 && <p className="text-sm text-[#9C9C9C] italic">Chưa có chi phí chung nào.</p>}
+                                {costs.map((c) => (
+                                    <div key={c.key} className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                                        <CostLabelInput value={c.label} labels={labels}
+                                            onChange={(v) => patchCost(c.key, { label: v })} onCreate={createLabel} />
+                                        <VNInput value={c.amount} decimals={0}
+                                            onChange={(v) => patchCost(c.key, { amount: v })}
+                                            className={inputCls + ' sm:w-40 min-w-0'} placeholder="Số tiền" />
+                                        <select value={c.basis} onChange={(e) => patchCost(c.key, { basis: e.target.value })}
+                                            className={selectCls + ' sm:w-44 shrink-0'}>
+                                            {BASIS_OPTIONS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+                                        </select>
+                                        <button onClick={() => removeCost(c.key)} className="text-red-400 hover:text-red-600 self-center px-1">
+                                            <Trash2 size={15} /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard>
+                        <SectionHeader title="% Lợi nhuận mong muốn" />
+
+                        <div className="px-5 pt-4 pb-5">
+                            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                                <div className="sm:w-64">
+                                    <div className="relative">
+                                        <VNInput
+                                            value={margin}
+                                            decimals={2}
+                                            onChange={setMargin}
+                                            className={inputCls + ' pr-8 py-2.5'}
+                                            placeholder="VD: 20"
+                                        />
+                                        <Percent
+                                            size={14}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9C9C9C]"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex-1" />
+
+                                <PrimaryButton onClick={compute} className="px-6 py-2.5">
+                                    <Calculator size={16} /> Tính toán
+                                </PrimaryButton>
+                            </div>
+                        </div>
+                    </SectionCard>
+                </div>
+
+                {/* ── CỘT PHẢI: preview ── */}
+                <div className="lg:sticky lg:top-4">
+                    <SectionCard className="border-[#C9A84C]/40">
+                        <SectionHeader title="Kết quả tính giá" />
+                        {!result ? (
+                            <div className="py-10">
+                                <EmptyState icon={Calculator} title="Chưa có kết quả"
+                                    description="Nhập nguyên liệu rồi bấm 'Tính toán' để xem giá bán từng đơn vị." />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mt-3 space-y-3">
+                                    {result.detail.map((it) => (
+                                        <div key={it.key} className="rounded-xl border border-[#EFE7DA] p-4 bg-[#FDFBF7]">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-semibold text-[#1C1C1E]">{it.name}</span>
+                                                <span className="text-xs text-[#8E8878]">{formatVN(it.qty, 3)} {it.unit || 'đv'}</span>
+                                            </div>
+                                            <div className="space-y-1 text-sm">
+                                                <Line label="Tổng tiền" value={formatVN(roundHalfUp(it.buying))} />
+                                                <Line label="Đơn giá" value={formatVNTrimDecimal(it.unitBuy, 3)} suffix={`/ ${it.unit || 'đv'}`} />
+                                                <Line label="Thuế" value={formatVN(it.tax)} />
+                                                <Line label="Chi phí chung phân bổ" value={formatVN(it.allocated)} />
+                                                <div className="border-t border-[#EFE7DA] my-1" />
+                                                <Line label="Tổng giá vốn" value={formatVN(it.totalCost)} strong />
+                                                <Line label="Giá vốn / đơn vị" value={formatVN(it.unitCost)} suffix={`/ ${it.unit || 'đv'}`} strong />
+                                                <div className="mt-2 rounded-lg bg-[#C9A84C]/10 px-3 py-2 flex items-center justify-between">
+                                                    <span className="text-[#8A6D1F] font-semibold text-sm">Giá bán / đơn vị tính</span>
+                                                    <span className="text-[#8A6D1F] font-bold">{formatVN(it.sellUnit)} đ</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </SectionCard>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function Line({ label, value, suffix, strong }) {
+    return (
+        <div className="flex items-center justify-between">
+            <span className={strong ? 'text-[#1C1C1E] font-medium' : 'text-[#8E8878]'}>{label}</span>
+            <span className={strong ? 'text-[#1C1C1E] font-semibold' : 'text-[#5C5C5C]'}>
+                {value}{suffix ? <span className="text-[#9C9C9C] text-xs ml-1">{suffix}</span> : null}
+            </span>
+        </div>
+    );
+}
+
+function Summary({ label, value }) {
+    return (
+        <div className="rounded-xl border border-[#EFE7DA] p-3 bg-white">
+            <p className="text-[11px] text-[#8E8878]">{label}</p>
+            <p className="text-[#1C1C1E] font-semibold mt-0.5">{value}</p>
+        </div>
+    );
+}

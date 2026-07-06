@@ -6,9 +6,9 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
-  Edit2, MapPin, Star, Plus, Trash2, ArrowUp, ArrowDown, ChevronsUpDown,
+  Edit2, MapPin, Star, Plus, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, FileText,
 } from 'lucide-react';
-import { adminCustomerApi } from '../../api/adminApi';
+import { adminCustomerApi, reportApi } from '../../api/adminApi';
 import { formatPrice } from '../../utils/formatPrice';
 import useDebounce from '../../utils/useDebounce.js';
 import { Badge } from '../../components/ui/Badge';
@@ -693,6 +693,7 @@ function ImportCustomersModal({ open, onClose, onDone }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AdminCustomers() {
   const { t } = useLang();
+  const toast = useToast();
   const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
   const debouncedQ = useDebounce(filters.q, 600);
   const [page, setPage] = useState(0);
@@ -706,6 +707,7 @@ export default function AdminCustomers() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [exportingDebt, setExportingDebt] = useState(false);
 
 
   const [discountOpen, setDiscountOpen] = useState(false);
@@ -755,6 +757,30 @@ export default function AdminCustomers() {
       setExporting(false);
     }
   }, [debouncedQ, filters]);
+
+  // Export báo cáo công nợ (Aged Receivables) — PDF, tính đến hôm nay
+  const handleExportAgedReceivables = useCallback(async () => {
+    setExportingDebt(true);
+    try {
+      const res = await reportApi.exportAgedReceivables();        // asOf = hôm nay
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = res.headers?.['content-disposition'] || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : 'bao-cao-cong-no.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      toast(e?.response?.data?.message || 'Lỗi khi xuất báo cáo công nợ', 'error');
+    } finally {
+      setExportingDebt(false);
+    }
+  }, [toast]);
 
   const handleDelete = async () => {
     if (!deletePassword.trim()) { setDeleteError('Vui lòng nhập mật khẩu'); return; }
@@ -859,6 +885,13 @@ export default function AdminCustomers() {
             className="flex items-center gap-1.5 text-xs px-3 py-2">
             <UserPlus size={13} /> Tạo khách hàng
           </PrimaryButton>
+          <button onClick={handleExportAgedReceivables} disabled={exportingDebt}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            {exportingDebt
+              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              : <FileText size={13} />}
+            {exportingDebt ? 'Đang xuất...' : 'Báo cáo công nợ'}
+          </button>
           <button onClick={() => setImportOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
             <Upload size={13} /> Import
@@ -957,7 +990,7 @@ export default function AdminCustomers() {
                         Công nợ (chưa TT)
                         {debtSort === 'desc' ? <ArrowDown size={13} className="text-[#C9A84C]" />
                           : debtSort === 'asc' ? <ArrowUp size={13} className="text-[#C9A84C]" />
-                          : <ChevronsUpDown size={13} className="opacity-50" />}
+                            : <ChevronsUpDown size={13} className="opacity-50" />}
                       </button>
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">Trạng thái</th>

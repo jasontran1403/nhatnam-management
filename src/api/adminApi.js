@@ -81,6 +81,16 @@ export const adminUserApi = {
   resetPassword: (id, newPassword) => api.put(`/api/admin/users/${id}/reset-password`, { newPassword }).then(unwrap),
 };
 
+// ─── Reports (báo cáo công nợ / aged receivables) ─────────────────────────────
+export const reportApi = {
+  // asOf: chuỗi 'yyyy-MM-dd' (tuỳ chọn). Bỏ trống = hôm nay (backend tự lấy).
+  exportAgedReceivables: (asOf) =>
+    api.get('/api/accountant/reports/aged-receivables', {
+      params: asOf ? { asOf } : {},
+      responseType: 'blob',
+    }),
+};
+
 // ─── Warehouses ──────────────────────────────────────────────────────────────
 export const adminWarehouseApi = {
   list: () => api.get('/api/admin/warehouses').then(unwrap),

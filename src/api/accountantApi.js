@@ -100,3 +100,16 @@ export const accountantWarehouseApi = {
   confirmCost: (id, data) =>
     api.post(`/api/accountant/warehouse-receipts/${id}/confirm-cost`, data),
 };
+
+// ── Trang "Tính giá" (SUPER_ACCOUNTANT) ───────────────────────────────────────
+export const pricingApi = {
+  /** Tìm nguyên liệu cho dropdown (theo tên/mã) */
+  searchIngredients: (q) =>
+    api.get('/api/accountant/pricing/ingredients', { params: { q } }).then(unwrap),
+  /** Danh sách nhãn chi phí chung đã lưu */
+  getCostLabels: () =>
+    api.get('/api/accountant/pricing/cost-labels').then(unwrap),
+  /** Tạo nhãn chi phí mới (để chọn lại) */
+  createCostLabel: (name) =>
+    api.post('/api/accountant/pricing/cost-labels', { name }).then(unwrap),
+};

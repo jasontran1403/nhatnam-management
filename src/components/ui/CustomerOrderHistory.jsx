@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft, ShoppingBag, CheckCircle2, Clock, DollarSign,
   AlertTriangle, CreditCard, Package, TrendingUp,
-  Clock3, XCircle, Truck, CreditCard as CardIcon,
+  Clock3, XCircle, Truck, CreditCard as CardIcon, FileText,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { adminOrderApi } from '../../api/adminApi';
@@ -128,6 +128,26 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
       <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.bg}`}>
         <Icon size={9} /> {cfg.label}
       </span>
+    );
+  }
+
+  // Thêm component ReceiptBadge
+  function ReceiptBadge({ receiptNumbers, paymentStatus }) {
+    if (!receiptNumbers || receiptNumbers.length === 0) return null;
+
+    // PAID → xanh lá, PARTIAL → xanh dương
+    const isPaid = paymentStatus === 'PAID';
+    const bgColor = isPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200';
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {receiptNumbers.map((rn, idx) => (
+          <span key={idx}
+            className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${bgColor}`}>
+            <FileText size={9} /> {rn}
+          </span>
+        ))}
+      </div>
     );
   }
 
@@ -375,7 +395,7 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
               <table className="w-full text-sm">
                 <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
                   <tr>
-                    {[t('order', 'order_code'), 'Thời gian', 'Người đặt', t('order', 'total_amount'), t('payment', 'payment'), t('common', 'status'), 'Hạn TT'].map(h => (
+                    {[t('order', 'order_code'), 'Thời gian', 'Người đặt', t('order', 'total_amount'), t('payment', 'payment'), t('common', 'status'), 'Hạn TT', 'Phiếu thu'].map(h => (
                       <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
                         {h}
                       </th>
@@ -408,6 +428,12 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
                           deadlineMillis={o.paymentDeadlineMillis}
                           deadlineStr={o.paymentDeadline}
                           onExtend={() => openExtendModal(o.id)}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <ReceiptBadge
+                          receiptNumbers={o.receiptNumbers}
+                          paymentStatus={o.receiptPaymentStatus}
                         />
                       </td>
                     </tr>
@@ -443,6 +469,11 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
                       onExtend={() => openExtendModal(o.id)}
                     />
                   )}
+                  {/* Thêm phiếu thu */}
+                  <ReceiptBadge
+                    receiptNumbers={o.receiptNumbers}
+                    paymentStatus={o.receiptPaymentStatus}
+                  />
                 </div>
               ))}
             </div>

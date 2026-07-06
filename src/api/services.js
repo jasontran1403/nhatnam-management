@@ -25,6 +25,15 @@ export const uploadApi = {
   ingredientImage: (file) => api.post('/api/upload/ingredient-image', toFormData('image', file), multipart),
 };
 
+// ─── Reports (báo cáo công nợ / aged receivables) ─────────────────────────────
+export const reportApi = {
+  exportAgedReceivables: (asOf) =>
+    api.get('/api/accountant/reports/aged-receivables', {
+      params: asOf ? { asOf } : {},
+      responseType: 'blob',
+    }),
+};
+
 // ─── Warehouses (seller) ──────────────────────────────────────────────────────
 export const warehouseApi = {
   getAll: () => api.get('/api/seller/warehouses'),

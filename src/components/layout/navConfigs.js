@@ -7,7 +7,7 @@ import {
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
-  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet,
+  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet, Calculator,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -52,6 +52,7 @@ export const sellerNavRaw = [
   { to: '/seller/drafts', labelKey: 'drafts', icon: FileClock },
   { to: '/seller/customers', labelKey: 'customers', icon: Users },
   { to: '/seller/quotation', labelKey: 'quotation', icon: Receipt },
+  { to: '/seller/material-requests', labelKey: 'material_requests', icon: ShoppingBag, roles: ['SUPER_SELLER'] },
 ];
 
 export const warehouseNavRaw = [
@@ -91,6 +92,7 @@ export const superAccountantNavRaw = [
   { to: '/super-accountant/warehouse-receipts', labelKey: 'warehouse_receipts', icon: FileText },
   // ── Phiếu đặt hàng nguyên liệu xưởng ────────────────────────────────────
   { to: '/super-accountant/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
+  { to: '/super-accountant/pricing', labelKey: 'pricing', icon: Calculator },
   // ── Quản lý nhân sự (SUPER_ACCOUNTANT được xem HR) ───────────────────────
   { to: '/super-accountant/manage', labelKey: 'hr_manage', icon: UserCog },
   { to: '/super-accountant/salaries', labelKey: 'salaries', icon: Receipt },
@@ -142,12 +144,14 @@ export const factoryAccountantNavRaw = [
 ];
 
 /** Helper: build translated nav items from raw config + t function */
-export function buildNav(rawNav, t) {
-  return rawNav.map(({ to, labelKey, icon }) => ({
-    to,
-    label: t('nav', labelKey),
-    icon,
-  }));
+export function buildNav(rawNav, t, userRole) {
+  return rawNav
+    .filter(({ roles }) => !roles || (userRole && roles.includes(userRole)))
+    .map(({ to, labelKey, icon }) => ({
+      to,
+      label: t('nav', labelKey),
+      icon,
+    }));
 }
 
 // Legacy exports — kept for backward compat

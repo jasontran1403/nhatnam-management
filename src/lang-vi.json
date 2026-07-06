@@ -175,7 +175,8 @@
     "work_order_history": "Lịch sử lệnh sản xuất",
     "semi_finished_goods": "Kho bán thành phẩm",
     "semi_finished_transfers": "Phiếu chuyển kho bán TP",
-    "packaging_loss_reports": "Biên bản hao hụt đóng gói"
+    "packaging_loss_reports": "Biên bản hao hụt đóng gói",
+    "pricing": "Tính giá"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

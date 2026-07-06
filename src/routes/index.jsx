@@ -80,6 +80,8 @@ import ExpenseListPage from '../pages/accountant/ExpenseListPage';
 import AccountantVendorDebtPage from '../pages/accountant/AccountantVendorDebtPage';
 import IncomeListPage from '../pages/accountant/IncomeListPage';
 import SuperAccountantMaterialRequestPage from '../pages/super_accountant/SuperAccountantMaterialRequestPage';
+import PricingCalculatorPage from '../pages/super_accountant/PricingCalculatorPage';
+import SellerMaterialRequestPage from '../pages/seller/SellerMaterialRequestPage';
 
 // Operator
 import OperatorCategoriesPage from '../pages/operator/OperatorCategoriesPage';
@@ -117,7 +119,9 @@ function RootRedirect() {
 // ── AppLayout wrapper that auto-translates nav ────────────────────────────────
 function TranslatedLayout({ rawNav, allowedRoles, children, ...rest }) {
   const { t } = useLang();
-  const navItems = buildNav(rawNav, t);
+  let userRole = '';
+  try { const u = JSON.parse(localStorage.getItem('user')); userRole = u?.role ?? u?.roles?.[0] ?? ''; } catch {}
+  const navItems = buildNav(rawNav, t, userRole);
   return (
     <PrivateRoute allowedRoles={allowedRoles}>
       <AppLayout navItems={navItems} {...rest} />
@@ -151,6 +155,7 @@ export default function AppRoutes() {
         <Route path="customers" element={<SellerCustomersPage />} />
         <Route path="orders-manage" element={<AccountantOrdersPage />} />
         <Route path="quotation" element={<QuotationPage />} />
+        <Route path="material-requests" element={<SellerMaterialRequestPage />} />
       </Route>
 
       {/* ── OWNER */}
@@ -269,6 +274,7 @@ export default function AppRoutes() {
         <Route path="vendor-debts" element={<AccountantVendorDebtPage />} />
         <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />
         <Route path="material-requests" element={<SuperAccountantMaterialRequestPage />} />
+        <Route path="pricing" element={<PricingCalculatorPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
         <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
