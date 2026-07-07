@@ -19,8 +19,8 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 function formatPrice(n) {
   if (!n && n !== 0) return '0 đ';
   const num = Number(n);
-  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace('.0', '') + ' tỷ';
-  if (num >= 1_000_000)     return (num / 1_000_000).toFixed(1).replace('.0', '') + ' tr';
+  // if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace('.0', '') + ' tỷ';
+  // if (num >= 1_000_000)     return (num / 1_000_000).toFixed(1).replace('.0', '') + ' tr';
   return new Intl.NumberFormat('vi-VN').format(Math.round(num)) + ' đ';
 }
 function formatPriceFull(n) {
