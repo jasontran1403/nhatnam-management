@@ -222,6 +222,7 @@ export const expenseApi = {
   search: (q, from, to, params) =>
     api.get('/api/expense-vouchers/search', { params: { q, from, to, ...params } }),
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
+  nextPaymentNumber: () => api.get('/api/expense-vouchers/next-payment-number'),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
   uploadImage: (file) => {

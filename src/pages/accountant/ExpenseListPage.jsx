@@ -119,7 +119,7 @@ export default function ExpenseListPage() {
           <input
             value={searchText}
             onChange={e => handleSearchChange(e.target.value)}
-            placeholder="Tìm mã phiếu, lý do, nhà cung cấp..."
+            placeholder="Tìm số phiếu chi, lý do, nhà cung cấp..."
             className="w-full pl-9 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]"
           />
           {searchText && (
@@ -157,7 +157,7 @@ export default function ExpenseListPage() {
                 {/* Row 1: mã + badge + tiền */}
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-[#C9A84C]">{v.voucherCode}</span>
+                    <span className="font-mono text-xs font-bold text-[#C9A84C]">Số phiếu chi {v.paymentNumber || v.voucherCode}</span>
                     <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${s.cls}`}>
                       <StatusIcon size={9} /> {s.label}
                     </span>

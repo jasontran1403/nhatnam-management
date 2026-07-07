@@ -5,7 +5,7 @@ import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { adminExpenseApi } from '../../api/adminApi';
 import { useToast } from '../../components/common/Toast';
-import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet } from 'lucide-react';
+import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet, Search } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   formatCurrency, formatDateTime,
@@ -136,7 +136,7 @@ function VoucherRow({ v, onOpenLightbox, statusMap }) {
     <>
       <tr className="border-b border-[#F0EBE3] hover:bg-[#FAF7F2] cursor-pointer"
         onClick={() => setOpen(o => !o)}>
-        <td className="px-3 py-3 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{v.voucherCode}</td>
+        <td className="px-3 py-3 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{v.paymentNumber || v.voucherCode}</td>
         <td className="px-3 py-3 max-w-[180px]">
           <p className="font-medium text-[#1C1C1E] text-sm truncate">{v.reason}</p>
           {v.vendorName && <p className="text-xs text-[#8E8878] truncate">{v.vendorName}</p>}
@@ -223,6 +223,7 @@ export default function ExpenseVoucherPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
 
   const STATUS_MAP = {
     PENDING: { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
@@ -256,12 +257,22 @@ export default function ExpenseVoucherPage() {
         items = items.filter(v => v.createdAt <= t);
       }
 
+      const kw = search.trim().toLowerCase();
+      if (kw) {
+        items = items.filter(v =>
+          (v.paymentNumber && String(v.paymentNumber).toLowerCase().includes(kw)) ||
+          (v.voucherCode && v.voucherCode.toLowerCase().includes(kw)) ||
+          (v.reason && v.reason.toLowerCase().includes(kw)) ||
+          (v.vendorName && v.vendorName.toLowerCase().includes(kw))
+        );
+      }
+
       setVouchers(items);
       setTotalPages(res.totalPages || 0);
       setPage(p);
     } catch { toast('Không thể tải phiếu chi', 'error'); }
     finally { setLoading(false); }
-  }, [dateRange, statusFilter]);
+  }, [dateRange, statusFilter, search]);
 
   useEffect(() => { load(0); }, [load]);
 
@@ -278,6 +289,20 @@ export default function ExpenseVoucherPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(0); }}
+            placeholder="Tìm số phiếu chi, lý do, nhà cung cấp..."
+            className="w-full pl-9 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-xs bg-white focus:outline-none focus:border-[#C9A84C]"
+          />
+          {search && (
+            <button onClick={() => { setSearch(''); setPage(0); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+              <X size={13} />
+            </button>
+          )}
+        </div>
         <DateRangePicker
           from={dateRange.from} to={dateRange.to}
           onChange={r => { setDateRange(r); setPage(0); }}
@@ -314,7 +339,7 @@ export default function ExpenseVoucherPage() {
             <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
-                  {['Mã phiếu', 'Lý do / Đơn vị', 'Người lập', 'Người yêu cầu', t('order', 'total_amount'), t('common', 'status'), 'Ngày tạo', ''].map(h => (
+                  {['Số phiếu', 'Lý do / Đơn vị', 'Người lập', 'Người yêu cầu', t('order', 'total_amount'), t('common', 'status'), 'Ngày tạo', ''].map(h => (
                     <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
                   ))}
                 </tr>

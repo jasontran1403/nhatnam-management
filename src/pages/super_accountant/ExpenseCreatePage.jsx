@@ -7,7 +7,7 @@ import { expenseApi } from '../../api/services';
 import { accountantSupplierApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
 import ExpenseDatePeriodPicker, { defaultExpenseWhen } from '../../components/ui/ExpenseDatePeriodPicker';
-import { Plus, Trash2, Upload, X, Receipt, Send, Building2, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Upload, X, Receipt, Send, Building2, ChevronDown, Hash } from 'lucide-react';
 
 function formatVND(n) {
   return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ';
@@ -42,6 +42,9 @@ export default function ExpenseCreatePage() {
   const [supplierSearch, setSupplierSearch]   = useState('');
 
   const [reason, setReason]                   = useState('');
+  // Số phiếu chi — người dùng nhập, có gợi ý số kế tiếp
+  const [paymentNumber, setPaymentNumber]     = useState('');
+  const [suggestedPaymentNumber, setSuggestedPaymentNumber] = useState('');
   // Thời điểm phiếu chi — mặc định chế độ "Ngày" = hôm nay
   const [when, setWhen]                       = useState(defaultExpenseWhen());
   const [requestedByName, setRequestedByName] = useState('');
@@ -72,6 +75,17 @@ export default function ExpenseCreatePage() {
     s.name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
     (s.phone && s.phone.includes(supplierSearch))
   );
+
+  // Gợi ý số phiếu chi kế tiếp — user vẫn có thể tự nhập số khác
+  const fetchSuggestedPaymentNumber = () => {
+    expenseApi.nextPaymentNumber()
+      .then(res => {
+        const suggestion = res.data?.data ?? res.data ?? '';
+        setSuggestedPaymentNumber(suggestion ? String(suggestion) : '');
+      })
+      .catch(() => {});
+  };
+  useEffect(() => { fetchSuggestedPaymentNumber(); }, []);
 
   const addItem    = () => setItems(prev => [...prev, { id: Date.now(), itemName: '', amount: '', note: '' }]);
   const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
@@ -111,6 +125,7 @@ export default function ExpenseCreatePage() {
       await expenseApi.create({
         vendorName: vendorName.trim() || null,
         reason: reason.trim(),
+        paymentNumber: (paymentNumber.trim() || suggestedPaymentNumber) || null,
         // Chế độ "Ngày" → gửi expenseDate; chế độ "Kỳ" → gửi expensePeriod
         expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
         expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
@@ -120,6 +135,7 @@ export default function ExpenseCreatePage() {
       });
       toast('Phiếu chi đã gửi, chờ ADMIN/OWNER duyệt', 'success');
       setVendorName(''); setReason(''); setRequestedByName(''); setWhen(defaultExpenseWhen());
+      setPaymentNumber(''); fetchSuggestedPaymentNumber();
       setItems([{ id: 1, itemName: '', amount: '', note: '' }]);
       setImages([]); setSupplierSearch('');
       if (listLoaded) loadMyVouchers();
@@ -240,6 +256,31 @@ export default function ExpenseCreatePage() {
               className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
           </div>
 
+          {/* Số phiếu chi */}
+          <div>
+            <label className="text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+              <Hash size={14} className="text-[#C9A84C]" /> Số phiếu chi
+            </label>
+            <div className="relative">
+              <input
+                value={paymentNumber}
+                onChange={e => setPaymentNumber(e.target.value)}
+                placeholder={suggestedPaymentNumber ? `Gợi ý: ${suggestedPaymentNumber}` : 'Nhập số phiếu chi...'}
+                className="w-full px-4 py-2.5 pr-24 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono" />
+              {suggestedPaymentNumber && !paymentNumber && (
+                <button type="button" onClick={() => setPaymentNumber(suggestedPaymentNumber)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition">
+                  Dùng số này
+                </button>
+              )}
+            </div>
+            {suggestedPaymentNumber && (
+              <p className="text-xs text-[#8E8878] mt-1">
+                Số kế tiếp gợi ý: <span className="font-mono font-semibold text-[#C9A84C]">{suggestedPaymentNumber}</span> — để trống sẽ tự dùng số này. Số chạy tới 15000 sẽ quay vòng về 1.
+              </p>
+            )}
+          </div>
+
           {/* Thời điểm chi — chọn NGÀY (mặc định hôm nay) hoặc KỲ (tháng) */}
           <div>
             <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Thời điểm chi</label>
@@ -350,7 +391,7 @@ export default function ExpenseCreatePage() {
               {vouchers.map(v => (
                 <div key={v.id} className="flex items-center justify-between p-3 bg-[#FAF7F2] rounded-xl text-sm">
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono font-bold text-[#C9A84C] text-xs">{v.voucherCode}</p>
+                    <p className="font-mono font-bold text-[#C9A84C] text-xs">Số phiếu chi {v.paymentNumber || v.voucherCode}</p>
                     <p className="text-[#1C1C1E] font-medium truncate">{v.reason}</p>
                     {v.vendorName && <p className="text-xs text-[#8E8878] truncate">{v.vendorName}</p>}
                     {formatWhenLabel(v) && <p className="text-xs text-[#8E8878]">{formatWhenLabel(v)}</p>}

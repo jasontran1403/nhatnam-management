@@ -36,7 +36,7 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
           <div className="flex items-center gap-3">
             <Receipt size={20} className="text-[#C9A84C]" />
             <div>
-              <p className="font-mono text-sm font-bold text-[#C9A84C]">{v.voucherCode}</p>
+              <p className="font-mono text-sm font-bold text-[#C9A84C]">Số phiếu chi {v.paymentNumber || v.voucherCode}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>
                   <StatusIcon size={10} /> {s.label}
@@ -64,8 +64,8 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
             <InfoRow label="Người lập" value={v.createdByName} icon={<User size={12} />} />
             {v.requestedByName && <InfoRow label="Người yêu cầu" value={v.requestedByName} icon={<User size={12} />} />}
             <InfoRow label="Ngày tạo" value={formatDate(v.createdAt)} />
-            {v.approvedByName && <InfoRow label="Người duyệt" value={v.approvedByName} />}
-            {v.approvedAt && <InfoRow label="Ngày duyệt" value={formatDate(v.approvedAt)} />}
+            {/* {v.approvedByName && <InfoRow label="Người duyệt" value={v.approvedByName} />} */}
+            {/* {v.approvedAt && <InfoRow label="Ngày duyệt" value={formatDate(v.approvedAt)} />} */}
           </div>
 
           {v.rejectReason && (

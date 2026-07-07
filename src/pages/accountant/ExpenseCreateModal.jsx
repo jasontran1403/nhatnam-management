@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import {
   X, Building2, ChevronDown, Plus, Trash2,
-  Upload, Send, Receipt, Search, User, Phone, Wallet, ReceiptText,
+  Upload, Send, Receipt, Search, User, Phone, Wallet, ReceiptText, Hash, MapPin,
 } from 'lucide-react';
 import { accountantVendorExpenseApi, superAccountantVendorExpenseApi, fmtVND } from '../../api/materialRequestApi.js';
 import ExpenseDatePeriodPicker, { defaultExpenseWhen } from '../../components/ui/ExpenseDatePeriodPicker';
@@ -15,15 +15,18 @@ function formatVND(n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + '
 function parseVND(s)  { return Number(String(s).replace(/[^0-9]/g, '')) || 0; }
 
 export const VENDOR_TYPE_LABELS = {
-  MATERIAL:    'Nguyên liệu',
-  MACHINE:     'Máy móc',
-  REPAIR:      'Sửa chữa',
-  ELECTRICITY: 'Điện',
-  WATER:       'Nước',
-  GAS:         'Gas',
-  LOGISTICS:   'Vận chuyển',
-  SERVICE:     'Dịch vụ',
-  OTHER:       'Khác',
+  MATERIAL:         'Nguyên liệu',
+  MACHINE:          'Máy móc',
+  REPAIR:           'Sửa chữa',
+  ELECTRICITY:      'Điện',
+  WATER:            'Nước',
+  GAS:              'Gas',
+  LOGISTICS:        'Vận chuyển',
+  SERVICE:          'Dịch vụ',
+  OFFICE_SUPPLIER:  'Văn phòng phẩm',
+  TRUCKING_SERVICE: 'Dịch vụ xe tải',
+  DELIVERY_SERVICE: 'Dịch vụ giao nhận',
+  OTHER:            'Khác',
 };
 
 // ── Modal tạo nhanh nhà cung cấp ──────────────────────────────────────────────
@@ -33,6 +36,8 @@ export function QuickCreateVendorModal({ initialName = '', onClose, onCreated })
   const [vendorType, setVendorType]   = useState('OTHER');
   const [contactPerson, setContactPerson] = useState('');
   const [contactPhone, setContactPhone]   = useState('');
+  const [address, setAddress]             = useState('');
+  const [taxCode, setTaxCode]             = useState('');
   const [saving, setSaving]           = useState(false);
 
   const handleSave = async () => {
@@ -44,6 +49,8 @@ export function QuickCreateVendorModal({ initialName = '', onClose, onCreated })
         vendorType,
         contactPerson: contactPerson.trim(),
         contactPhone: contactPhone.trim(),
+        address: address.trim(),
+        taxCode: taxCode.trim(),
       });
       const created = res.data?.data || res.data;
       toast('Đã tạo nhà cung cấp', 'success');
@@ -114,6 +121,30 @@ export function QuickCreateVendorModal({ initialName = '', onClose, onCreated })
               onChange={e => setContactPhone(e.target.value)}
               placeholder="SĐT liên hệ..."
               className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1 flex items-center gap-1">
+              <MapPin size={11} className="text-[#C9A84C]" /> Địa chỉ
+            </label>
+            <input
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="Địa chỉ nhà cung cấp..."
+              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1 flex items-center gap-1">
+              <Hash size={11} className="text-[#C9A84C]" /> Mã số thuế
+            </label>
+            <input
+              value={taxCode}
+              onChange={e => setTaxCode(e.target.value)}
+              placeholder="Mã số thuế..."
+              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
             />
           </div>
         </div>
@@ -397,6 +428,9 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
 
   // Form state
   const [reason, setReason]             = useState('');
+  // Số phiếu chi — người dùng nhập, có gợi ý số kế tiếp
+  const [paymentNumber, setPaymentNumber] = useState('');
+  const [suggestedPaymentNumber, setSuggestedPaymentNumber] = useState('');
   // Thời điểm phiếu chi — mặc định chế độ "Ngày" = hôm nay
   const [when, setWhen]                 = useState(defaultExpenseWhen());
   const [requestedByName, setRequestedByName] = useState('');
@@ -424,6 +458,16 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
     const fn = (e) => { if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false); };
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  // Gợi ý số phiếu chi kế tiếp (placeholder) — user vẫn có thể tự nhập số khác
+  useEffect(() => {
+    expenseApi.nextPaymentNumber()
+      .then(res => {
+        const suggestion = res.data?.data ?? res.data ?? '';
+        if (suggestion) setSuggestedPaymentNumber(String(suggestion));
+      })
+      .catch(() => {});
   }, []);
 
   const filteredVendors = vendors.filter(v =>
@@ -479,6 +523,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
       await expenseApi.create({
         vendorName: selectedVendor.name,
         reason: reason.trim(),
+        paymentNumber: (paymentNumber.trim() || suggestedPaymentNumber) || null,
         expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
         expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
         requestedByName: requestedByName.trim() || null,
@@ -638,6 +683,35 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                 placeholder="Mô tả lý do chi tiết..."
                 className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
               />
+            </div>
+
+            {/* ── Số phiếu chi ── */}
+            <div>
+              <label className="text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
+                <Hash size={14} className="text-[#C9A84C]" /> Số phiếu chi
+              </label>
+              <div className="relative">
+                <input
+                  value={paymentNumber}
+                  onChange={e => setPaymentNumber(e.target.value)}
+                  placeholder={suggestedPaymentNumber ? `Gợi ý: ${suggestedPaymentNumber}` : 'Nhập số phiếu chi...'}
+                  className="w-full px-4 py-2.5 pr-24 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+                />
+                {suggestedPaymentNumber && !paymentNumber && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentNumber(suggestedPaymentNumber)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition"
+                  >
+                    Dùng số này
+                  </button>
+                )}
+              </div>
+              {suggestedPaymentNumber && (
+                <p className="text-xs text-[#8E8878] mt-1">
+                  Số kế tiếp gợi ý: <span className="font-mono font-semibold text-[#C9A84C]">{suggestedPaymentNumber}</span> — để trống sẽ tự dùng số này. Số chạy tới 15000 sẽ quay vòng về 1.
+                </p>
+              )}
             </div>
 
             {/* ── Thời điểm chi — chọn NGÀY (mặc định hôm nay) hoặc KỲ (tháng) ── */}
