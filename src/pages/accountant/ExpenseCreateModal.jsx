@@ -26,6 +26,7 @@ export const VENDOR_TYPE_LABELS = {
   OFFICE_SUPPLIER:  'Văn phòng phẩm',
   TRUCKING_SERVICE: 'Dịch vụ xe tải',
   DELIVERY_SERVICE: 'Dịch vụ giao nhận',
+  OFFICE_RENTAL:    'Thuê văn phòng',
   OTHER:            'Khác',
 };
 

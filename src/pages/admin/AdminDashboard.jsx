@@ -388,7 +388,7 @@ export default function AdminDashboard() {
           {loading
             ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
             : <p className="text-xl sm:text-3xl font-bold text-orange-500 tabular-nums break-words leading-tight">
-              <AnimNumber value={debtStats?.nearingDeadline ?? 0} />
+              <AnimCurrency value={debtStats?.nearingDeadlineAmount ?? 0} />
             </p>
           }
           <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
@@ -410,7 +410,7 @@ export default function AdminDashboard() {
           {loading
             ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
             : <p className="text-xl sm:text-3xl font-bold text-red-500 tabular-nums break-words leading-tight">
-              <AnimNumber value={debtStats?.overdueCount ?? 0} />
+              <AnimCurrency value={debtStats?.overdueAmount ?? 0} />
             </p>
           }
           <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
