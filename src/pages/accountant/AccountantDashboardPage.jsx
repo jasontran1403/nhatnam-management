@@ -152,9 +152,17 @@ function OrderSummaryCard({ summary, loading }) {
 
 // ── Card 2: Tổng doanh thu ────────────────────────────────────────────────────
 function RevenueSummaryCard({ summary, loading }) {
-  const animTotal     = useCountUp(Number(summary?.totalRevenue      ?? 0));
-  const animCollected = useCountUp(Number(summary?.collectedRevenue  ?? 0));
-  const animUncoll    = useCountUp(Number(summary?.uncollectedRevenue ?? 0));
+  const animTotal      = useCountUp(Number(summary?.totalRevenue      ?? 0));
+  const animProcessing = useCountUp(Number(summary?.processingAmount  ?? 0));
+  const animCollected  = useCountUp(Number(summary?.collectedRevenue  ?? 0));
+  const animUncoll     = useCountUp(Number(summary?.uncollectedRevenue ?? 0));
+  const animCancelled  = useCountUp(Number(summary?.cancelledAmount   ?? 0));
+  const rows = [
+    { label: 'Đang xử lý', icon: Truck,       val: animProcessing, bg: 'bg-blue-50',    text: 'text-blue-600'    },
+    { label: 'Đã thu',     icon: Wallet,      val: animCollected,  bg: 'bg-emerald-50', text: 'text-emerald-600' },
+    { label: 'Chưa thu',   icon: Clock,       val: animUncoll,     bg: 'bg-amber-50',   text: 'text-amber-600'   },
+    { label: 'Đã hủy',     icon: AlertCircle, val: animCancelled,  bg: 'bg-gray-100',   text: 'text-gray-500'    },
+  ];
   return (
     <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#F0EBE3] shadow-sm">
       <div className="flex items-center justify-between mb-3">
@@ -170,24 +178,17 @@ function RevenueSummaryCard({ summary, loading }) {
           </p>
       }
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2">
-          <div className="flex items-center gap-1.5">
-            <Wallet size={11} className="text-emerald-500" />
-            <span className="text-xs text-emerald-600 font-medium">Đã thu</span>
+        {rows.map((r, i) => (
+          <div key={i} className={`flex items-center justify-between rounded-xl ${r.bg} px-3 py-2`}>
+            <div className="flex items-center gap-1.5">
+              <r.icon size={11} className={r.text} />
+              <span className={`text-xs font-medium ${r.text}`}>{r.label}</span>
+            </div>
+            <span className={`text-xs font-bold tabular-nums ${r.text}`}>
+              {loading ? '…' : formatPrice(r.val)}
+            </span>
           </div>
-          <span className="text-xs font-bold text-emerald-600 tabular-nums">
-            {loading ? '…' : formatPrice(animCollected)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2">
-          <div className="flex items-center gap-1.5">
-            <Clock size={11} className="text-amber-500" />
-            <span className="text-xs text-amber-600 font-medium">Chưa thu</span>
-          </div>
-          <span className="text-xs font-bold text-amber-600 tabular-nums">
-            {loading ? '…' : formatPrice(animUncoll)}
-          </span>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -218,6 +219,32 @@ function DebtCard({ label, icon: Icon, value, accent, loading, onClick }) {
           </p>
       }
       {!loading && <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>}
+    </div>
+  );
+}
+
+// ── Hàng card mới: phân tuổi công nợ chưa thanh toán (theo ngày tạo đơn) ──────
+function AgingCard({ label, value, accent, loading }) {
+  const map = {
+    green:  { bg: 'bg-emerald-50', ico: 'text-emerald-600', border: 'border-emerald-200' },
+    amber:  { bg: 'bg-amber-50',   ico: 'text-amber-600',   border: 'border-amber-200' },
+    orange: { bg: 'bg-orange-50',  ico: 'text-orange-600',  border: 'border-orange-200' },
+    red:    { bg: 'bg-red-50',     ico: 'text-red-600',     border: 'border-red-200' },
+  };
+  const cls = map[accent] ?? map.green;
+  const animVal = useCountUp(Number(value ?? 0));
+  return (
+    <div className={`bg-white rounded-2xl p-4 sm:p-5 border shadow-sm ${cls.border}`}>
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium leading-tight">{label}</p>
+        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 ${cls.bg}`}>
+          <Clock size={13} className={cls.ico} />
+        </div>
+      </div>
+      {loading
+        ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse" />
+        : <p className={`text-base sm:text-xl font-bold tabular-nums ${cls.ico}`}>{formatPrice(animVal)}</p>
+      }
     </div>
   );
 }
@@ -316,6 +343,14 @@ export default function AccountantDashboardPage() {
           value={summary?.overdueAmount} accent="red" loading={loading}
           onClick={() => navigate(`${basePath}/debt-orders`, { state: { type: 'OVERDUE' } })}
         />
+      </div>
+
+      {/* Row 2b: Phân tuổi công nợ chưa thanh toán — 4 cột (theo ngày tạo đơn) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <AgingCard label="Công nợ 0 - 30 ngày"  value={summary?.aging0to30}  accent="green"  loading={loading} />
+        <AgingCard label="Công nợ 31 - 60 ngày" value={summary?.aging31to60} accent="amber"  loading={loading} />
+        <AgingCard label="Công nợ 61 - 90 ngày" value={summary?.aging61to90} accent="orange" loading={loading} />
+        <AgingCard label="Công nợ trên 90 ngày" value={summary?.aging90plus} accent="red"    loading={loading} />
       </div>
 
       {/* Chart */}

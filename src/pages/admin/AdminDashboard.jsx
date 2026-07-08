@@ -263,9 +263,12 @@ export default function AdminDashboard() {
             pct: stats?.revenueChangePercent, isCurrency: true,
           },
           {
-            label: 'Tổng số tiền đã thu', icon: Wallet, accent: 'green',
-            value: loading ? null : stats?.totalPaidAmount ?? stats?.totalPaid,
-            isCurrency: true,
+            label: 'Phân loại doanh thu', icon: Wallet, accent: 'green',
+            dual: true,
+            processing: loading ? null : stats?.processingAmount,
+            collected: loading ? null : (stats?.totalPaidAmount ?? stats?.totalPaid),
+            uncollected: loading ? null : stats?.totalUnpaidAmount,
+            cancelled: loading ? null : stats?.cancelledAmount,
           },
           {
             label: 'Tổng chi', icon: TrendingDown, accent: 'red',
@@ -291,6 +294,52 @@ export default function AdminDashboard() {
             </div>
             {loading ? (
               <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
+            ) : c.dual ? (
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {[
+                  {
+                    label: 'Đang xử lý',
+                    value: c.processing,
+                    text: 'text-blue-600',
+                    bg: 'bg-blue-50',
+                  },
+                  {
+                    label: 'Đã thu',
+                    value: c.collected,
+                    text: 'text-emerald-600',
+                    bg: 'bg-emerald-50',
+                  },
+                  {
+                    label: 'Chưa thu',
+                    value: c.uncollected,
+                    text: 'text-orange-600',
+                    bg: 'bg-orange-50',
+                  },
+                  {
+                    label: 'Đã hủy',
+                    value: c.cancelled,
+                    text: 'text-orange-700',
+                    bg: 'bg-orange-100',
+                  },
+                ].map((r, i) => (
+                  <div
+                    key={i}
+                    className={`${r.bg} rounded-xl px-3 py-2 flex flex-col`}
+                  >
+                    <span
+                      className={`text-[10px] sm:text-[11px] font-semibold ${r.text}`}
+                    >
+                      {r.label}
+                    </span>
+
+                    <span
+                      className={`mt-1 text-[13px] sm:text-[15px] font-bold leading-none tabular-nums ${r.text}`}
+                    >
+                      <AnimCurrency value={r.value ?? 0} />
+                    </span>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
                 {c.isCurrency ? <AnimCurrency value={c.value ?? 0} /> : <AnimNumber value={c.value ?? 0} />}
@@ -415,6 +464,33 @@ export default function AdminDashboard() {
           }
           <p className="text-[10px] text-[#C9A84C] mt-1.5 font-medium">Nhấn để xem chi tiết →</p>
         </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+           ROW 3b — 4 card phân tuổi công nợ chưa thanh toán (theo ngày tạo đơn)
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {[
+          { label: 'Công nợ 0 - 30 ngày', value: debtStats?.aging0to30, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+          { label: 'Công nợ 31 - 60 ngày', value: debtStats?.aging31to60, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+          { label: 'Công nợ 61 - 90 ngày', value: debtStats?.aging61to90, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
+          { label: 'Công nợ trên 90 ngày', value: debtStats?.aging90plus, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+        ].map((c, i) => (
+          <div key={i} className={`bg-white rounded-2xl border ${c.border} shadow-sm p-4 sm:p-5`}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium leading-tight">{c.label}</p>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl ${c.bg} flex items-center justify-center shrink-0`}>
+                <Clock size={14} className={c.color} />
+              </div>
+            </div>
+            {loading
+              ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
+              : <p className={`text-lg sm:text-2xl font-bold tabular-nums break-words leading-tight ${c.color}`}>
+                <AnimCurrency value={c.value ?? 0} />
+              </p>
+            }
+          </div>
+        ))}
       </div>
 
       {/* ── Chart + Pie ── */}
