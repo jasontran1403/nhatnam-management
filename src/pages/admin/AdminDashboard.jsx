@@ -72,6 +72,19 @@ function AnimCompactQty({ value }) {
   const v = useCountUp(value);
   return <>{formatCompactQty(v)}</>;
 }
+// Rút gọn tiền tệ để không tràn card/chip khi số quá dài (VD: 4.316.438.393 → "4,32 tỷ").
+// Dưới 1 triệu vẫn hiển thị đầy đủ kèm "đ".
+function formatCompactCurrency(v) {
+  const n = Number(v) || 0;
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(n / 1_000_000_000) + ' tỷ';
+  if (abs >= 1_000_000) return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(n / 1_000_000) + ' tr';
+  return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + ' đ';
+}
+function AnimCompactCurrency({ value }) {
+  const v = useCountUp(value);
+  return <>{formatCompactCurrency(v)}</>;
+}
 
 
 
@@ -253,130 +266,118 @@ export default function AdminDashboard() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-           ROW 1 — 4 card: Doanh thu | Tổng thu | Tổng chi | Đơn hàng
+           ROW 1 — Doanh thu (full width, gộp Đơn hàng + Khách hàng)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {[
-          {
-            label: 'Doanh thu kỳ này', icon: DollarSign, accent: 'gold',
-            value: loading ? null : stats?.revenueToday,
-            pct: stats?.revenueChangePercent, isCurrency: true,
-          },
-          {
-            label: 'Phân loại doanh thu', icon: Wallet, accent: 'green',
-            dual: true,
-            processing: loading ? null : stats?.processingAmount,
-            collected: loading ? null : (stats?.totalPaidAmount ?? stats?.totalPaid),
-            uncollected: loading ? null : stats?.totalUnpaidAmount,
-            cancelled: loading ? null : stats?.cancelledAmount,
-          },
-          {
-            label: 'Tổng chi', icon: TrendingDown, accent: 'red',
-            value: loading ? null : stats?.totalExpenses,
-            isCurrency: true,
-          },
-          {
-            label: 'Đơn hàng kỳ này', icon: ShoppingCart, accent: 'blue',
-            value: loading ? null : stats?.ordersToday,
-            pct: stats?.ordersChangePercent,
-          },
-        ].map((c, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
+      <div className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
+        <div className="lg:flex lg:items-stretch lg:gap-6">
+
+          {/* Left: doanh thu + 3 chip phân loại */}
+          <div className="lg:flex-1 min-w-0">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">{c.label}</p>
-              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center
-                ${c.accent === 'gold' ? 'bg-[#C9A84C]/10' : c.accent === 'blue' ? 'bg-blue-50'
-                  : c.accent === 'green' ? 'bg-emerald-50' : c.accent === 'red' ? 'bg-red-50' : 'bg-purple-50'}`}>
-                <c.icon size={14} className={
-                  c.accent === 'gold' ? 'text-[#C9A84C]' : c.accent === 'blue' ? 'text-blue-500'
-                    : c.accent === 'green' ? 'text-emerald-500' : c.accent === 'red' ? 'text-red-500' : 'text-purple-500'} />
+              <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">Doanh thu kỳ này</p>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center shrink-0">
+                <DollarSign size={14} className="text-[#C9A84C]" />
               </div>
             </div>
+
+            {/* Big number + change badge */}
             {loading ? (
               <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
-            ) : c.dual ? (
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                {[
-                  {
-                    label: 'Đang xử lý',
-                    value: c.processing,
-                    text: 'text-blue-600',
-                    bg: 'bg-blue-50',
-                  },
-                  {
-                    label: 'Đã thu',
-                    value: c.collected,
-                    text: 'text-emerald-600',
-                    bg: 'bg-emerald-50',
-                  },
-                  {
-                    label: 'Chưa thu',
-                    value: c.uncollected,
-                    text: 'text-orange-600',
-                    bg: 'bg-orange-50',
-                  },
-                  {
-                    label: 'Đã hủy',
-                    value: c.cancelled,
-                    text: 'text-orange-700',
-                    bg: 'bg-orange-100',
-                  },
-                ].map((r, i) => (
-                  <div
-                    key={i}
-                    className={`${r.bg} rounded-xl px-3 py-2 flex flex-col`}
-                  >
-                    <span
-                      className={`text-[10px] sm:text-[11px] font-semibold ${r.text}`}
-                    >
-                      {r.label}
-                    </span>
+            ) : (
+              <p className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
+                <AnimCurrency value={stats?.revenueToday ?? 0} />
+              </p>
+            )}
+            {stats?.revenueChangePercent != null && !loading && (
+              <div className="mt-1.5"><ChangeBadge pct={stats.revenueChangePercent} /></div>
+            )}
 
-                    <span
-                      className={`mt-1 text-[13px] sm:text-[15px] font-bold leading-none tabular-nums ${r.text}`}
-                    >
-                      <AnimCurrency value={r.value ?? 0} />
+            {/* 3 chip: Đang xử lý | Đã thu | Chưa thu — cùng 1 dòng */}
+            {loading ? (
+              <div className="h-14 rounded-lg bg-[#F0EBE3] animate-pulse mt-3" />
+            ) : (
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {[
+                  { label: 'Đang xử lý', value: stats?.processingAmount, text: 'text-blue-600', bg: 'bg-blue-50' },
+                  { label: 'Đã thu', value: stats?.totalPaidAmount ?? stats?.totalPaid, text: 'text-emerald-600', bg: 'bg-emerald-50' },
+                  { label: 'Chưa thu', value: stats?.totalUnpaidAmount, text: 'text-orange-600', bg: 'bg-orange-50' },
+                ].map((r, i) => (
+                  <div key={i} className={`${r.bg} rounded-xl px-2.5 py-2 flex flex-col`}>
+                    <span className={`text-[10px] sm:text-[11px] font-semibold ${r.text}`}>{r.label}</span>
+                    <span className={`mt-1 text-[13px] sm:text-[15px] font-bold leading-none tabular-nums ${r.text}`}>
+                      <AnimCompactCurrency value={r.value ?? 0} />
                     </span>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
-                {c.isCurrency ? <AnimCurrency value={c.value ?? 0} /> : <AnimNumber value={c.value ?? 0} />}
-              </p>
-            )}
-            {c.pct != null && !loading && (
-              <div className="mt-1.5"><ChangeBadge pct={c.pct} /></div>
             )}
           </div>
-        ))}
+
+          {/* Right: Đơn hàng + Khách hàng — mobile 2 cột, desktop vách ngăn bên phải */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mt-4 lg:mt-0 lg:w-[40rem] lg:shrink-0
+            lg:border-l lg:border-[#F0EBE3] lg:pl-6">
+
+            {/* Đơn hàng kỳ này */}
+            <div className="rounded-xl bg-blue-50/70 p-3 flex flex-col justify-center">
+              <div className="flex items-center gap-1.5 mb-1">
+                <ShoppingCart size={12} className="text-blue-500 shrink-0" />
+                <span className="text-[10px] sm:text-[11px] text-[#8E8878] font-medium leading-tight">Đơn hàng kỳ này</span>
+              </div>
+              {loading ? (
+                <div className="h-7 rounded bg-[#F0EBE3] animate-pulse" />
+              ) : (
+                <p className="text-xl sm:text-2xl font-bold text-[#1C1C1E] tabular-nums leading-tight">
+                  <AnimNumber value={stats?.ordersToday ?? 0} />
+                </p>
+              )}
+              {stats?.ordersChangePercent != null && !loading && (
+                <div className="mt-1.5"><ChangeBadge pct={stats.ordersChangePercent} /></div>
+              )}
+            </div>
+
+            {/* Khách hàng */}
+            <div className="rounded-xl bg-emerald-50/70 p-3 flex flex-col justify-center">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Users size={12} className="text-emerald-500 shrink-0" />
+                <span className="text-[10px] sm:text-[11px] text-[#8E8878] font-medium leading-tight">Khách hàng</span>
+              </div>
+              {loading ? (
+                <div className="h-7 rounded bg-[#F0EBE3] animate-pulse" />
+              ) : (
+                <p className="text-xl sm:text-2xl font-bold text-[#1C1C1E] tabular-nums leading-tight">
+                  <AnimNumber value={stats?.totalCustomers ?? 0} />
+                </p>
+              )}
+              {!loading && (
+                <p className="text-[10px] text-emerald-600 mt-1.5 font-medium truncate">
+                  +<AnimNumber value={stats?.newCustomersToday ?? 0} /> mới kỳ này
+                </p>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-           ROW 2 — 4 card: KH (mới + tổng) | Tồn kho Kem | Tồn kho Gia vị | Tồn kho Xúc xích
+           ROW 2 — 4 card: Tổng chi | Tồn kho Kem | Tồn kho Gia vị | Tồn kho Xúc xích
       ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
-        {/* Card gộp: Khách hàng mới + Tổng */}
+        {/* Card Tổng chi — dời từ ROW 1 xuống, thay chỗ card Khách hàng cũ */}
         <div className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">Khách hàng</p>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <Users size={14} className="text-emerald-500" />
+            <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">Tổng chi</p>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+              <TrendingDown size={14} className="text-red-500" />
             </div>
           </div>
-          {loading ? (
-            <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
-          ) : (
-            <p className="text-xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
-              <AnimNumber value={stats?.totalCustomers ?? 0} />
+          {loading
+            ? <div className="h-8 rounded-lg bg-[#F0EBE3] animate-pulse mt-1" />
+            : <p className="text-xl sm:text-3xl font-bold text-[#1C1C1E] tabular-nums break-words leading-tight">
+              <AnimCurrency value={stats?.totalExpenses ?? 0} />
             </p>
-          )}
-          {!loading && (
-            <p className="text-[10px] text-emerald-600 mt-1 font-medium truncate">
-              +<AnimNumber value={stats?.newCustomersToday ?? 0} /> mới kỳ này
-            </p>
-          )}
+          }
         </div>
 
         {[
@@ -396,7 +397,7 @@ export default function AdminDashboard() {
           <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">{c.label}</p>
-              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0
                 ${c.accent === 'purple' ? 'bg-purple-50' : c.accent === 'green' ? 'bg-emerald-50' : 'bg-red-50'}`}>
                 <c.icon size={14} className={
                   c.accent === 'purple' ? 'text-purple-500' : c.accent === 'green' ? 'text-emerald-500' : 'text-red-500'} />
@@ -410,7 +411,7 @@ export default function AdminDashboard() {
             }
             {!loading && (
               <p className="text-[10px] sm:text-xs text-[#8E8878] mt-1 truncate">
-                Giá trị: <span className="font-semibold text-[#1C1C1E]"><AnimCurrency value={c.subValue ?? 0} /></span>
+                Giá trị: <span className="font-semibold text-[#1C1C1E]"><AnimCompactCurrency value={c.subValue ?? 0} /></span>
               </p>
             )}
           </div>

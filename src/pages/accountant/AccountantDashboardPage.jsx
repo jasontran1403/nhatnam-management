@@ -156,12 +156,11 @@ function RevenueSummaryCard({ summary, loading }) {
   const animProcessing = useCountUp(Number(summary?.processingAmount  ?? 0));
   const animCollected  = useCountUp(Number(summary?.collectedRevenue  ?? 0));
   const animUncoll     = useCountUp(Number(summary?.uncollectedRevenue ?? 0));
-  const animCancelled  = useCountUp(Number(summary?.cancelledAmount   ?? 0));
+
   const rows = [
     { label: 'Đang xử lý', icon: Truck,       val: animProcessing, bg: 'bg-blue-50',    text: 'text-blue-600'    },
     { label: 'Đã thu',     icon: Wallet,      val: animCollected,  bg: 'bg-emerald-50', text: 'text-emerald-600' },
     { label: 'Chưa thu',   icon: Clock,       val: animUncoll,     bg: 'bg-amber-50',   text: 'text-amber-600'   },
-    { label: 'Đã hủy',     icon: AlertCircle, val: animCancelled,  bg: 'bg-gray-100',   text: 'text-gray-500'    },
   ];
   return (
     <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#F0EBE3] shadow-sm">
