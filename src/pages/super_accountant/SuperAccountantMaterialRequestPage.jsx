@@ -1,7 +1,7 @@
 // src/pages/super_accountant/SuperAccountantMaterialRequestPage.jsx
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Package, ChevronDown, ChevronUp, Plus, X, Check, Camera, Loader2, Trash2, Info } from 'lucide-react';
+import { Search, Package, ChevronDown, ChevronUp, Plus, X, Check, Camera, Loader2, Trash2, Info, CalendarClock, Eye } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
@@ -13,13 +13,21 @@ import {
 } from '../../api/materialRequestApi.js';
 import { factoryProdApi } from '../../api/productionModuleApi.js';
 import { useToast } from '../../components/common/Toast.jsx';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 import api from '../../api/axios.js';
+import {
+  allocateCost, unitPriceFromTotal, parseMoneyInput, clampDecimalInput,
+  normalizeMoney, fmtMoney, fmtDong, MONEY_DECIMALS,
+} from '../../utils/costCalc';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const imgUrl = (p) => { if (!p) return ''; if (p.startsWith('http')) return p; return BASE_URL + "/api/auth" + p; };
 
 // ── Countdown badge — đếm ngược giây ─────────────────────────────────────────
 function CountdownBadge({ targetMs, label }) {
+  const { t } = useLang();
+  const { fmtCurrency, fmtDate, fmtDateTime } = useFmt();
   const [info, setInfo] = useState(() => countdownInfo(targetMs));
   useEffect(() => {
     if (!targetMs) return;
@@ -40,7 +48,7 @@ function CountdownBadge({ targetMs, label }) {
 function liveCountdown(targetMs) {
   if (!targetMs) return null;
   const diff = targetMs - Date.now();
-  if (diff <= 0) return { label: 'Đã quá hạn', color: 'red' };
+  if (diff <= 0) return { label: 'Overdue', color: 'red' };
   const totalSec = Math.floor(diff / 1000);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
@@ -48,10 +56,12 @@ function liveCountdown(targetMs) {
   if (h < 1) return { label: `${m}p ${s}s`, color: totalSec < 600 ? 'red' : 'yellow' };
   if (h < 24) return { label: `${h}g ${m}p`, color: h < 6 ? 'red' : 'yellow' };
   const d = Math.floor(h / 24);
-  return { label: `${d} ngày ${h % 24}g`, color: 'normal' };
+  return { label: `${d}d ${h % 24}h`, color: 'normal' };
 }
 
 function LiveCountdownBadge({ targetMs, label }) {
+  const { t } = useLang();
+  const { fmtCurrency, fmtDate, fmtDateTime } = useFmt();
   const [info, setInfo] = useState(() => liveCountdown(targetMs));
   useEffect(() => {
     if (!targetMs) return;
@@ -80,7 +90,12 @@ function cardBg(req) {
 }
 
 // ── Upload hóa đơn / chứng từ thanh toán ──────────────────────────────────────
-function InvoiceUploader({ requestId, value = [], onChange, label = 'Hóa đơn / Chứng từ', required = true }) {
+function InvoiceUploader({ requestId, value = [], onChange, label, required = true }) {
+  // FIX: trước đây gọi t(...) TRƯỚC khi khai báo const { t } = useLang() → ReferenceError
+  // (temporal dead zone) mỗi khi component render mà không truyền prop `label`.
+  const { t } = useLang();
+  if (!label) label = t('production','mr_invoice_label');
+  const { fmtCurrency, fmtDate, fmtDateTime } = useFmt();
   const fileRef = useRef();
   const videoRef = useRef();
   const canvasRef = useRef();
@@ -101,7 +116,7 @@ function InvoiceUploader({ requestId, value = [], onChange, label = 'Hóa đơn 
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       onChange([...value, ...(res.data?.data || [])]);
-    } catch (e) { toast(e?.response?.data?.message || 'Upload thất bại', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('production','mr_upload_failed'), 'error'); }
     finally { setUploading(false); }
   };
 
@@ -118,7 +133,7 @@ function InvoiceUploader({ requestId, value = [], onChange, label = 'Hóa đơn 
       const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
       setStream(s); setCameraOpen(true);
       setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = s; }, 50);
-    } catch { toast('Không thể mở camera', 'error'); }
+    } catch { toast(t('production','mr_camera_error'), 'error'); }
   };
 
   const closeCamera = () => { stream?.getTracks().forEach(t => t.stop()); setStream(null); setCameraOpen(false); };
@@ -159,12 +174,12 @@ function InvoiceUploader({ requestId, value = [], onChange, label = 'Hóa đơn 
         <button type="button" onClick={openCamera}
           className="w-20 h-20 rounded-xl border-2 border-dashed border-[#C9A84C]/40 flex flex-col items-center justify-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 gap-1">
           <Camera size={20} className="text-[#C9A84C]"/>
-          <span className="text-[10px] text-[#C9A84C] font-medium">Chụp</span>
+          <span className="text-[10px] text-[#C9A84C] font-medium">{t('production','mr_capture')}</span>
         </button>
         <button type="button" onClick={() => fileRef.current?.click()}
           className="w-20 h-20 rounded-xl border-2 border-dashed border-[#E8DDD0] flex flex-col items-center justify-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 gap-1">
           <Plus size={20} className="text-[#8E8878]"/>
-          <span className="text-[10px] text-[#8E8878]">Chọn</span>
+          <span className="text-[10px] text-[#8E8878]">{t('production','mr_choose_file')}</span>
         </button>
         <input ref={fileRef} type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={e => handleFiles(e.target.files)}/>
       </div>
@@ -187,6 +202,8 @@ function InvoiceUploader({ requestId, value = [], onChange, label = 'Hóa đơn 
 // Dùng portal để render danh sách ra <body> — tránh bị modal (overflow-y-auto)
 // cắt mất phần dropdown khi ô chọn nằm gần đáy modal.
 function VendorSelectDropdown({ value, onChange, vendors: vendorsProp, loading: loadingProp }) {
+  const { t } = useLang();
+  const { fmtCurrency, fmtDate, fmtDateTime } = useFmt();
   const [vendors, setVendors] = useState(vendorsProp || []);
   const [loading, setLoading] = useState(!vendorsProp && loadingProp !== false);
   const [open, setOpen] = useState(false);
@@ -275,7 +292,7 @@ function VendorSelectDropdown({ value, onChange, vendors: vendorsProp, loading: 
       <div className="p-2 border-b border-black/5 relative">
         <Search size={12} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#8E8878]"/>
         <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Tìm nhà cung cấp..."
+          placeholder={t('production','mr_search_vendor')}
           className="w-full pl-7 pr-2 py-1.5 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"/>
       </div>
       <div className="max-h-44 overflow-auto">
@@ -324,6 +341,8 @@ function VendorSelectDropdown({ value, onChange, vendors: vendorsProp, loading: 
 
 // ── Confirm Order Modal — datetime picker (ngày + giờ phút) ──────────────────
 function ConfirmOrderModal({ req, onClose, onDone }) {
+  const { t } = useLang();
+  const { fmtCurrency, fmtDate, fmtDateTime } = useFmt();
   const toast = useToast();
   // Date + time riêng để dễ nhập
   const [deliveryDate, setDeliveryDate] = useState(null);    // timestamp ms (chỉ ngày)
@@ -390,9 +409,9 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
 
   const handleSubmit = async () => {
     const estDelivery = getEstDeliveryMs();
-    if (!estDelivery) { toast('Vui lòng chọn thời gian giao hàng dự kiến', 'error'); return; }
-    if (validVendors.length === 0) { toast('Vui lòng chọn ít nhất 1 nhà cung cấp từ danh mục', 'error'); return; }
-    if (!allItemsAssigned) { toast('Vui lòng gán nhà cung cấp cho tất cả nguyên liệu', 'error'); return; }
+    if (!estDelivery) { toast(t('production','mr_err_delivery_time'), 'error'); return; }
+    if (validVendors.length === 0) { toast(t('production','mr_err_select_vendor'), 'error'); return; }
+    if (!allItemsAssigned) { toast(t('production','mr_err_assign_vendor'), 'error'); return; }
     setSaving(true);
     try {
       const vendorIndexById = new Map(validVendors.map((v, i) => [v.vendorId, i]));
@@ -401,10 +420,10 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
         vendors: validVendors.map((v, i) => ({ ...v, sortOrder: i })),
         items: items.map(it => ({ itemId: it.id, vendorIndex: vendorIndexById.get(itemVendorId[it.id]) })),
       });
-      toast('Đã xác nhận đặt hàng', 'success');
+      toast(t('production','mr_toast_confirmed'), 'success');
       onDone();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
+      toast(e?.response?.data?.message || t('error','generic'), 'error');
     } finally { setSaving(false); }
   };
 
@@ -421,7 +440,7 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
               <DatePicker
                 value={deliveryDate}
                 onChange={setDeliveryDate}
-                placeholder="Chọn ngày giao"
+                placeholder={t('production','mr_ph_delivery_date')}
                 minDate={new Date()}
               />
             </div>
@@ -432,7 +451,7 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
                 value={deliveryTime}
                 onChange={e => setDeliveryTime(e.target.value)}
               />
-              <span className="text-xs text-[#8E8878]">giờ giao</span>
+              <span className="text-xs text-[#8E8878]">{t('production','mr_delivery_hour')}</span>
             </div>
           </div>
           {deliveryDate && (
@@ -445,7 +464,7 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
         {/* Nhà cung cấp */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-[#1C1C1E]">Nhà cung cấp</p>
+            <p className="text-sm font-medium text-[#1C1C1E]">{t('production','metrics_vendor')}</p>
             <button onClick={addVendor} className="text-xs text-[#C9A84C] font-semibold flex items-center gap-1">
               <Plus size={11}/> Thêm NCC
             </button>
@@ -496,7 +515,7 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
                           value={assignedVendorId ?? ''}
                           onChange={e => setItemVendor(it.id, e.target.value === '' ? null : Number(e.target.value))}
                         >
-                          <option value="">— Chọn NCC —</option>
+                          <option value="">{t('production','mr_select_vendor_option')}</option>
                           {validVendors.map(v => (
                             <option key={v.vendorId} value={v.vendorId}>{v.vendorName}</option>
                           ))}
@@ -504,7 +523,7 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
                       )}
                     </div>
                     {unassigned && (
-                      <p className="text-xs text-red-500 mt-1.5">Chưa gán nhà cung cấp cho nguyên liệu này.</p>
+                      <p className="text-xs text-red-500 mt-1.5">{t('production','mr_vendor_not_assigned')}</p>
                     )}
                   </div>
                 );
@@ -526,8 +545,10 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
 
 // ── Complete Modal — nhập đơn giá từng NL, chọn NCC, Thanh toán/Công nợ theo NCC ──
 function CompleteModal({ req, onClose, onDone }) {
+  const { t } = useLang();
   const toast = useToast();
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const vendors = req.vendors || [];
   const singleVendor = vendors.length === 1 ? vendors[0] : null;
@@ -543,64 +564,100 @@ function CompleteModal({ req, onClose, onDone }) {
     return init;
   });
 
-  // itemId -> giá nguyên liệu (string nhập tay)
-  const [materialAmounts, setMaterialAmounts] = useState(() => {
+  // ── LOẠI GIÁ NHẬP ─────────────────────────────────────────────────────────
+  // 'UNIT'  : nhập ĐƠN GIÁ của 1 đơn vị tính  (MẶC ĐỊNH)
+  // 'TOTAL' : nhập TỔNG TIỀN của 1 nguyên liệu → tự chia SL ra đơn giá (3 số lẻ)
+  const [priceMode, setPriceMode] = useState('UNIT');
+
+  // itemId -> chuỗi người dùng gõ (ý nghĩa tuỳ priceMode). Tối đa 3 số thập phân.
+  const [priceInputs, setPriceInputs] = useState(() => {
     const init = {};
-    receivedItems.forEach(it => {
-      // Nếu phiếu đã có lineAmount/unitPrice cũ (hoàn thành rồi), gợi ý lại giá NL từ costBreakdown nếu có
-      const materialEntry = it.costBreakdown?.find(b => b.label === 'Giá nguyên liệu');
-      init[it.id] = materialEntry ? String(materialEntry.amount) : '';
-    });
+    receivedItems.forEach(it => { init[it.id] = ''; });
     return init;
   });
 
-  // Danh sách phí/thuế tuỳ chỉnh: [{ id, label, amount, itemIds: [] }]
+  const setPriceInput = (itemId, raw) => {
+    setPriceInputs(p => ({ ...p, [itemId]: clampDecimalInput(raw) }));
+    setShowPreview(false);
+  };
+
+  const switchMode = (mode) => {
+    if (mode === priceMode) return;
+    setPriceInputs(prev => {
+      const next = {};
+      receivedItems.forEach(it => {
+        const v = parseMoneyInput(prev[it.id]);
+        const qty = Number(it.qtyReceived) || 0;
+        if (v === null || !qty) { next[it.id] = ''; return; }
+        next[it.id] = mode === 'TOTAL'
+          ? String(v * qty)                      // đơn giá → tổng tiền
+          : String(unitPriceFromTotal(v, qty));  // tổng tiền → đơn giá (3 số lẻ)
+      });
+      return next;
+    });
+    setPriceMode(mode);
+    setShowPreview(false);
+  };
+
+  // Đơn giá thực tế đã quy đổi theo chế độ nhập
+  const unitPrices = useMemo(() => {
+    const m = {};
+    receivedItems.forEach(it => {
+      const v = parseMoneyInput(priceInputs[it.id]);
+      const qty = Number(it.qtyReceived) || 0;
+      m[it.id] = v === null ? 0 : (priceMode === 'TOTAL' ? unitPriceFromTotal(v, qty) : v);
+    });
+    return m;
+  }, [priceInputs, priceMode, req.id]);
+
+  // ── Thuế/phí tuỳ chỉnh: [{ id, label, amount, itemIds }] ───────────────────
   const [customEntries, setCustomEntries] = useState([]);
 
   const setItemVendor = (itemId, vendorId) => setItemVendors(p => ({ ...p, [itemId]: vendorId }));
-  const setMaterialAmount = (itemId, val) => setMaterialAmounts(p => ({ ...p, [itemId]: val }));
 
-  const addCustomEntry = () => setCustomEntries(p => [
+  const addCustomEntry = () => { setShowPreview(false); setCustomEntries(p => [
     ...p,
     { id: Date.now() + Math.random(), label: '', amount: '', itemIds: receivedItems.map(it => it.id) },
-  ]);
-  const removeCustomEntry = (id) => setCustomEntries(p => p.filter(e => e.id !== id));
-  const updateCustomEntry = (id, patch) => setCustomEntries(p => p.map(e => e.id === id ? { ...e, ...patch } : e));
-  const toggleCustomEntryItem = (entryId, itemId) => setCustomEntries(p => p.map(e => {
+  ]); };
+  const removeCustomEntry = (id) => { setShowPreview(false); setCustomEntries(p => p.filter(e => e.id !== id)); };
+  const updateCustomEntry = (id, patch) => { setShowPreview(false); setCustomEntries(p => p.map(e => e.id === id ? { ...e, ...patch } : e)); };
+  const toggleCustomEntryItem = (entryId, itemId) => { setShowPreview(false); setCustomEntries(p => p.map(e => {
     if (e.id !== entryId) return e;
     const has = e.itemIds.includes(itemId);
     return { ...e, itemIds: has ? e.itemIds.filter(x => x !== itemId) : [...e.itemIds, itemId] };
-  }));
+  })); };
 
-  // ── Tính tổng tiền từng dòng nguyên liệu (giá NL + phần phân bổ phí/thuế) ──
-  const itemTotals = {};
+  // ── PHÂN BỔ THUẾ/PHÍ → GIÁ VỐN (cùng công thức với backend) ────────────────
+  const alloc = useMemo(() => allocateCost(
+    receivedItems.map(it => ({
+      id: it.id,
+      quantity: Number(it.qtyReceived) || 0,
+      unitPrice: unitPrices[it.id] || 0,
+    })),
+    customEntries
+      .filter(ce => ce.label.trim() && parseMoneyInput(ce.amount) > 0)
+      .map(ce => ({ label: ce.label.trim(), amount: parseMoneyInput(ce.amount), itemIds: ce.itemIds })),
+  ), [unitPrices, customEntries, req.id]);
+
+  // Tiền THẬT phải trả NCC của mỗi dòng = giá trị hàng + thuế/phí phân bổ (chưa làm tròn về đồng)
+  const itemPayables = {};
   receivedItems.forEach(it => {
-    itemTotals[it.id] = Number(materialAmounts[it.id]) || 0;
+    const r = alloc.get(it.id);
+    itemPayables[it.id] = r ? r.lineValue + r.feeShare : 0;
   });
-  for (const ce of customEntries) {
-    const amount = Number(ce.amount) || 0;
-    if (!amount || ce.itemIds.length === 0) continue;
-    const scopeMaterialTotal = ce.itemIds.reduce((s, id) => s + (Number(materialAmounts[id]) || 0), 0);
-    ce.itemIds.forEach(id => {
-      const share = scopeMaterialTotal > 0
-        ? amount * ((Number(materialAmounts[id]) || 0) / scopeMaterialTotal)
-        : amount / ce.itemIds.length;
-      itemTotals[id] = (itemTotals[id] || 0) + share;
-    });
-  }
 
-  // Tính tổng theo NCC
   const totalsByVendor = {};
   for (const it of receivedItems) {
     const vendorId = itemVendors[it.id];
     if (!vendorId) continue;
-    const amount = itemTotals[it.id] || 0;
+    const amount = itemPayables[it.id] || 0;
     if (!amount) continue;
     totalsByVendor[vendorId] = (totalsByVendor[vendorId] || 0) + amount;
   }
   const vendorsWithAmount = vendors.filter(v => totalsByVendor[v.id] > 0);
   const grandTotal = Object.values(totalsByVendor).reduce((s, v) => s + v, 0);
-  const grandMaterialTotal = receivedItems.reduce((s, it) => s + (Number(materialAmounts[it.id]) || 0), 0);
+  const grandMaterialTotal = receivedItems.reduce((s, it) => s + (alloc.get(it.id)?.lineValue || 0), 0);
+  const grandFeeTotal = customEntries.reduce((s, ce) => s + (parseMoneyInput(ce.amount) || 0), 0);
 
   // requestVendorId -> { action, paymentMethod, paymentInfo, proofImages }
   const [vendorDecisions, setVendorDecisions] = useState(() => {
@@ -614,8 +671,8 @@ function CompleteModal({ req, onClose, onDone }) {
     setVendorDecisions(p => ({ ...p, [vendorId]: { ...p[vendorId], ...patch } }));
 
   const allVendorsAssigned = receivedItems.every(it => !!itemVendors[it.id]);
-  const allMaterialEntered = receivedItems.every(it => Number(materialAmounts[it.id]) > 0);
-  const allCustomValid = customEntries.every(ce => ce.label.trim() && Number(ce.amount) > 0 && ce.itemIds.length > 0);
+  const allMaterialEntered = receivedItems.every(it => (unitPrices[it.id] || 0) > 0);
+  const allCustomValid = customEntries.every(ce => ce.label.trim() && parseMoneyInput(ce.amount) > 0 && ce.itemIds.length > 0);
 
   const allDecisionsValid = vendorsWithAmount.every(v => {
     const d = vendorDecisions[v.id];
@@ -626,8 +683,17 @@ function CompleteModal({ req, onClose, onDone }) {
   const vendorsWithoutCatalogLink = vendorsWithAmount.filter(v =>
     vendorDecisions[v.id]?.action === 'DEBT' && !v.vendorId);
 
-  const canSubmit = receivedItems.length > 0 && allVendorsAssigned && allMaterialEntered && allCustomValid
+  const pricesReady = receivedItems.length > 0 && allMaterialEntered && allCustomValid;
+  const canSubmit = pricesReady && allVendorsAssigned
     && vendorsWithAmount.length > 0 && allDecisionsValid && vendorsWithoutCatalogLink.length === 0;
+
+  const handlePreview = () => {
+    if (!pricesReady) {
+      toast('Vui lòng nhập đủ giá cho tất cả nguyên liệu và hoàn thiện các dòng thuế/phí', 'error');
+      return;
+    }
+    setShowPreview(true);
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit) { toast('Vui lòng nhập đầy đủ giá nguyên liệu, phí/thuế và xử lý thanh toán cho tất cả NCC', 'error'); return; }
@@ -638,16 +704,18 @@ function CompleteModal({ req, onClose, onDone }) {
         requestVendorId: itemVendors[it.id],
       }));
       const costEntriesPayload = [
+        // MATERIAL: luôn gửi ĐƠN GIÁ — server tự nhân với qtyReceived để ra tổng tiền.
         ...receivedItems.map(it => ({
           type: 'MATERIAL',
           label: 'Giá nguyên liệu',
-          amount: Number(materialAmounts[it.id]),
+          unitPrice: unitPrices[it.id],
+          amount: normalizeMoney((unitPrices[it.id] || 0) * Number(it.qtyReceived || 0)),
           itemIds: [it.id],
         })),
         ...customEntries.map(ce => ({
           type: 'CUSTOM',
           label: ce.label.trim(),
-          amount: Number(ce.amount),
+          amount: parseMoneyInput(ce.amount),
           itemIds: ce.itemIds,
         })),
       ];
@@ -666,9 +734,9 @@ function CompleteModal({ req, onClose, onDone }) {
         costEntries: costEntriesPayload,
         vendorPayments,
       });
-      toast('Hoàn thành phiếu thành công', 'success');
+      toast(t('production','mr_toast_completed'), 'success');
       onDone();
-    } catch (e) { toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error'); }
+    } catch (e) { toast(e?.response?.data?.message || t('error','generic'), 'error'); }
     finally { setSaving(false); }
   };
 
@@ -676,13 +744,35 @@ function CompleteModal({ req, onClose, onDone }) {
     <Modal open onClose={onClose} title={`Hoàn thành phiếu — ${req.requestCode}`} size="lg">
       <div className="space-y-5">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-          <p className="text-sm font-medium text-emerald-700">✓ Đã nhận hàng</p>
+          <p className="text-sm font-medium text-emerald-700">{t('production','mr_received')}</p>
           <p className="text-xs text-emerald-600 mt-0.5">
-            Nhập giá nguyên liệu cho từng dòng, thêm các loại phí/thuế (nếu có — có thể áp dụng chung cho nhiều nguyên liệu), hệ thống sẽ tự tính ra đơn giá/đơn vị.
+            Nhập giá cho từng nguyên liệu, thêm các loại thuế/phí (nếu có). Thuế/phí được phân bổ
+            theo tỷ trọng giá trị từng nguyên liệu; giá vốn chỉ làm tròn tới hàng đồng ở bước cuối.
           </p>
         </div>
 
-        {/* ── Giá nguyên liệu từng dòng ── */}
+        {/* ── Chọn loại giá nhập ── */}
+        <div>
+          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Loại giá nhập</p>
+          <div className="flex gap-2">
+            <button onClick={() => switchMode('UNIT')}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${priceMode === 'UNIT'
+                ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}>
+              Đơn giá / 1 đơn vị tính
+            </button>
+            <button onClick={() => switchMode('TOTAL')}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${priceMode === 'TOTAL'
+                ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}>
+              Tổng tiền của 1 nguyên liệu
+            </button>
+          </div>
+          <p className="text-[11px] text-[#8E8878] mt-1.5">
+            Nhập tối đa {MONEY_DECIMALS} số sau dấu thập phân.
+            {priceMode === 'TOTAL' && ' Hệ thống tự chia cho số lượng thực nhận để ra đơn giá.'}
+          </p>
+        </div>
+
+        {/* ── Giá từng dòng nguyên liệu ── */}
         <div>
           <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
             Giá nguyên liệu (theo số lượng thực nhận)
@@ -694,8 +784,8 @@ function CompleteModal({ req, onClose, onDone }) {
           )}
           <div className="space-y-2">
             {receivedItems.map(it => {
-              const totalAmount = itemTotals[it.id] || 0;
-              const unitPrice = totalAmount && Number(it.qtyReceived) ? totalAmount / Number(it.qtyReceived) : 0;
+              const r = alloc.get(it.id);
+              const up = unitPrices[it.id] || 0;
               return (
                 <div key={it.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
                   <div className="flex items-center justify-between">
@@ -706,7 +796,7 @@ function CompleteModal({ req, onClose, onDone }) {
                     {vendors.length > 1 ? (
                       <select className={inputCls} value={itemVendors[it.id] || ''}
                         onChange={e => setItemVendor(it.id, Number(e.target.value) || null)}>
-                        <option value="">— Chọn NCC —</option>
+                        <option value="">{t('production','mr_select_vendor_option')}</option>
                         {vendors.map(v => <option key={v.id} value={v.id}>{v.vendorName}</option>)}
                       </select>
                     ) : (
@@ -715,65 +805,69 @@ function CompleteModal({ req, onClose, onDone }) {
                       </div>
                     )}
                     <input
-                      type="number" min="0" step="0.01"
+                      type="text" inputMode="decimal"
                       className={inputCls}
-                      placeholder="Tổng tiền nguyên liệu (đ)"
-                      value={materialAmounts[it.id]}
-                      onChange={e => setMaterialAmount(it.id, e.target.value)}
+                      placeholder={priceMode === 'UNIT'
+                        ? `Đơn giá / ${it.unit || 'đv'} (đ)`
+                        : 'Tổng tiền nguyên liệu (đ)'}
+                      value={priceInputs[it.id] ?? ''}
+                      onChange={e => setPriceInput(it.id, e.target.value)}
                     />
                   </div>
-                  {totalAmount > 0 && (
-                    <p className="text-right text-xs text-[#1C1C1E] font-semibold">
-                      Thành tiền: <span className="text-[#C9A84C]">{fmtVND(totalAmount)}</span>
-                      <span className="text-[#8E8878] font-normal"> ({fmtVND(unitPrice)}/{it.unit})</span>
+                  {up > 0 && (
+                    <p className="text-right text-xs text-[#1C1C1E]">
+                      {priceMode === 'TOTAL'
+                        ? <>Đơn giá: <span className="font-semibold text-[#C9A84C]">{fmtMoney(up)} đ/{it.unit}</span></>
+                        : <>Thành tiền: <span className="font-semibold text-[#C9A84C]">{fmtMoney(r?.lineValue)} đ</span></>}
                     </p>
                   )}
                 </div>
               );
             })}
             {receivedItems.length === 0 && (
-              <p className="text-sm text-red-500">Không có nguyên liệu nào có số lượng thực nhận.</p>
+              <p className="text-sm text-red-500">{t('production','mr_no_received_qty')}</p>
             )}
           </div>
           {grandMaterialTotal > 0 && (
             <p className="text-right text-xs text-[#8E8878] mt-1.5">
-              Tổng tiền nguyên liệu: <span className="font-semibold text-[#1C1C1E]">{fmtVND(grandMaterialTotal)}</span>
+              Tổng tiền nguyên liệu: <span className="font-semibold text-[#1C1C1E]">{fmtMoney(grandMaterialTotal)} đ</span>
             </p>
           )}
         </div>
 
-        {/* ── Phí/thuế tuỳ chỉnh (chia sẻ giữa nhiều nguyên liệu) ── */}
+        {/* ── Thuế/phí tuỳ chỉnh ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
-              Giá/phí khác (thuế, phí lưu kho, vận chuyển...)
+              Thuế / phí khác (mỗi dòng 1 loại)
             </p>
             <button onClick={addCustomEntry}
               className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:underline">
-              <Plus size={13} /> Thêm giá/phí
+              <Plus size={13} /> Thêm thuế/phí
             </button>
           </div>
 
           {customEntries.length === 0 ? (
             <p className="text-xs text-[#8E8878] flex items-center gap-1.5">
-              <Info size={12} /> Mặc định chỉ tính giá nguyên liệu. Bấm "Thêm giá/phí" nếu có thuế, phí áp dụng chung cho nhiều nguyên liệu (VD: thuế hải quan, phí lưu kho của cả lô hàng).
+              <Info size={12} /> Không có thuế/phí → giá vốn = đơn giá nhập.
             </p>
           ) : (
             <div className="space-y-3">
               {customEntries.map(ce => (
                 <div key={ce.id} className="bg-white border border-[#E8DDD0] rounded-xl p-3 space-y-2">
                   <div className="flex gap-2">
-                    <input className={inputCls} placeholder="Tên loại giá/phí (VD: Thuế hải quan)"
+                    <input className={inputCls} placeholder={t('production','mr_ph_cost_name')}
                       value={ce.label} onChange={e => updateCustomEntry(ce.id, { label: e.target.value })} />
-                    <input type="number" min="0" step="0.01" className={`${inputCls} w-40`} placeholder="Số tiền (đ)"
-                      value={ce.amount} onChange={e => updateCustomEntry(ce.id, { amount: e.target.value })} />
+                    <input type="text" inputMode="decimal" className={`${inputCls} w-40`} placeholder="Số tiền (đ)"
+                      value={ce.amount}
+                      onChange={e => updateCustomEntry(ce.id, { amount: clampDecimalInput(e.target.value) })} />
                     <button onClick={() => removeCustomEntry(ce.id)}
                       className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
                       <Trash2 size={14} />
                     </button>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#8E8878] mb-1">Áp dụng cho nguyên liệu nào:</p>
+                    <p className="text-[10px] text-[#8E8878] mb-1">{t('production','mr_apply_to')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {receivedItems.map(it => {
                         const checked = ce.itemIds.includes(it.id);
@@ -788,11 +882,62 @@ function CompleteModal({ req, onClose, onDone }) {
                       })}
                     </div>
                     {ce.itemIds.length === 0 && (
-                      <p className="text-xs text-red-500 mt-1">Chưa chọn nguyên liệu áp dụng</p>
+                      <p className="text-xs text-red-500 mt-1">{t('production','mr_no_material_selected')}</p>
                     )}
                   </div>
                 </div>
               ))}
+              <p className="text-right text-xs text-[#8E8878]">
+                Tổng thuế/phí: <span className="font-semibold text-[#1C1C1E]">{fmtMoney(grandFeeTotal)} đ</span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ── PREVIEW giá vốn tạm tính ── */}
+        <div>
+          <button onClick={handlePreview} disabled={!pricesReady}
+            className="w-full py-2.5 rounded-xl border border-[#C9A84C] text-[#C9A84C] font-semibold hover:bg-[#C9A84C]/10 transition disabled:opacity-40 flex items-center justify-center gap-2">
+            <Eye size={16} /> Xem trước giá vốn tạm tính
+          </button>
+
+          {showPreview && (
+            <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-[#6b7280] border-b border-emerald-200">
+                      <th className="text-left py-1.5 font-semibold">Nguyên liệu</th>
+                      <th className="text-right py-1.5 font-semibold">SL</th>
+                      <th className="text-right py-1.5 font-semibold">Đơn giá</th>
+                      <th className="text-right py-1.5 font-semibold">Thuế/phí gánh</th>
+                      <th className="text-right py-1.5 font-semibold">Giá vốn / đv</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receivedItems.map(it => {
+                      const r = alloc.get(it.id);
+                      if (!r) return null;
+                      return (
+                        <tr key={it.id} className="border-b border-emerald-100 last:border-0">
+                          <td className="py-1.5 text-[#1C1C1E]">{it.materialName}</td>
+                          <td className="py-1.5 text-right tabular-nums">{it.qtyReceived} {it.unit}</td>
+                          <td className="py-1.5 text-right tabular-nums">{fmtMoney(r.unitPrice)}</td>
+                          <td className="py-1.5 text-right tabular-nums text-amber-700">
+                            {r.feeShare > 0 ? fmtMoney(r.feeShare) : '—'}
+                          </td>
+                          <td className="py-1.5 text-right tabular-nums font-bold text-emerald-800">
+                            {fmtDong(r.unitCost)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-emerald-700">
+                Giá vốn làm tròn tới hàng đơn vị đồng ở bước cuối; các bước trung gian giữ nguyên phần thập phân.
+              </p>
             </div>
           )}
         </div>
@@ -812,7 +957,7 @@ function CompleteModal({ req, onClose, onDone }) {
                   <div key={v.id} className="bg-white border border-[#E8DDD0] rounded-xl p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-[#1C1C1E]">{v.vendorName}</p>
-                      <p className="text-sm font-bold text-[#C9A84C]">{fmtVND(total)}</p>
+                      <p className="text-sm font-bold text-[#C9A84C]">{fmtMoney(total)} đ</p>
                     </div>
 
                     <div className="flex gap-2">
@@ -847,7 +992,7 @@ function CompleteModal({ req, onClose, onDone }) {
                           label="Chứng từ thanh toán"
                         />
                         {d.proofImages.length === 0 && (
-                          <p className="text-xs text-red-500">Bắt buộc ít nhất 1 ảnh chứng từ.</p>
+                          <p className="text-xs text-red-500">{t('production','mr_need_receipt')}</p>
                         )}
                       </div>
                     )}
@@ -860,7 +1005,7 @@ function CompleteModal({ req, onClose, onDone }) {
                     )}
                     {d.action === 'DEBT' && !missingCatalogLink && (
                       <p className="text-xs text-amber-700">
-                        Sẽ cộng {fmtVND(total)} vào công nợ của {v.vendorName}.
+                        Sẽ cộng {fmtMoney(total)} đ vào công nợ của {v.vendorName}.
                       </p>
                     )}
                   </div>
@@ -872,14 +1017,16 @@ function CompleteModal({ req, onClose, onDone }) {
 
         {grandTotal > 0 && (
           <div className="pt-2 border-t border-black/5 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#1C1C1E]">Tổng tiền phiếu</span>
-            <span className="text-lg font-bold text-[#C9A84C]">{fmtVND(grandTotal)}</span>
+            <span className="text-sm font-semibold text-[#1C1C1E]">{t('production','mr_total_amount')}</span>
+            <span className="text-lg font-bold text-[#C9A84C]">{fmtMoney(grandTotal)} đ</span>
           </div>
         )}
 
         <div className="flex gap-2 pt-2">
           <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
-          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving || !canSubmit}>
+          <PrimaryButton className="flex-1" onClick={handleSubmit}
+            disabled={saving || !canSubmit || !showPreview}
+            title={!showPreview ? 'Bấm "Xem trước giá vốn" để kiểm tra trước khi lưu' : ''}>
             {saving ? 'Đang xử lý...' : 'Hoàn thành phiếu'}
           </PrimaryButton>
         </div>
@@ -889,7 +1036,63 @@ function CompleteModal({ req, onClose, onDone }) {
 }
 
 // ── Request Card ──────────────────────────────────────────────────────────────
-function RequestCard({ req, onConfirmOrder, onComplete }) {
+// ── Modal gia hạn ngày giao hàng ───────────────────────────────────────────────
+function ExtendDeliveryModal({ req, onClose, onDone }) {
+  const { t } = useLang();
+  const toast = useToast();
+  const [newDate, setNewDate] = useState(null);
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!newDate) { toast(t('production','mr_err_new_date'), 'error'); return; }
+    setSaving(true);
+    try {
+      await accountantMaterialRequestApi.extendDelivery(req.id, {
+        newDeliveryDate: newDate,
+        reason: reason.trim() || null,
+      });
+      toast(t('production','mr_toast_extended'), 'success');
+      onDone();
+    } catch (e) {
+      toast(e?.response?.data?.message || t('error','generic'), 'error');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Gia hạn giao hàng — ${req.requestCode}`} size="sm">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs text-[#8E8878] mb-1">
+            Ngày giao hiện tại: <span className="font-semibold text-[#1C1C1E]">{req.estimatedDelivery ? fmtDateTime(req.estimatedDelivery) : '—'}</span>
+          </p>
+          {req.deliveryExtendedTo && (
+            <p className="text-xs text-amber-700 mb-1">
+              Đã gia hạn trước đó: {fmtDateTime(req.deliveryExtendedTo)}
+              {req.deliveryExtendReason ? ` — ${req.deliveryExtendReason}` : ''}
+            </p>
+          )}
+        </div>
+        <Field label="Ngày giao hàng mới" required>
+          <DatePicker value={newDate} onChange={setNewDate} placeholder={t('production','mr_ph_new_date')} minDate={new Date()} />
+        </Field>
+        <Field label="Lý do gia hạn">
+          <textarea className={inputCls} rows={2} value={reason} onChange={e => setReason(e.target.value)}
+            placeholder={t('production','mr_ph_extend_reason')} />
+        </Field>
+        <div className="flex gap-2">
+          <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
+          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving}>
+            {saving ? 'Đang lưu...' : 'Gia hạn'}
+          </PrimaryButton>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
+  const { t } = useLang();
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.NEW;
   const bg = cardBg(req);
@@ -903,7 +1106,7 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
               <span className="font-mono text-sm font-bold text-[#1C1C1E]">{req.requestCode}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.cls}`}>{cfg.label}</span>
               {req.status === 'RECEIVED' && (
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Chờ thanh toán</span>
+                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">{t('production','mr_status_pending')}</span>
               )}
             </div>
             <p className="text-xs text-[#8E8878] mt-1">
@@ -929,7 +1132,7 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
         <div className="px-5 pb-4 border-t border-black/5">
           {/* Danh sách nguyên liệu */}
           <div className="mt-3">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Nguyên liệu</p>
+            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production','pcalc_ingredients')}</p>
             <div className="space-y-2">
               {(req.items || []).map((it, i) => (
                 <div key={i} className="flex items-center justify-between bg-[#FAF7F2] rounded-xl px-3 py-2">
@@ -962,7 +1165,7 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
           {/* Nhà cung cấp (nếu đã có) */}
           {req.vendors?.length > 0 && (
             <div className="mt-3 pt-3 border-t border-black/5">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">Nhà cung cấp</p>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production','metrics_vendor')}</p>
               {req.vendors.map((v, i) => (
                 <div key={i} className="flex items-center justify-between text-xs text-[#1C1C1E] py-0.5">
                   <span>
@@ -984,9 +1187,17 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
 
           {/* Thời gian giao nếu đã đặt */}
           {req.estimatedDelivery && req.status !== 'NEW' && (
-            <p className="mt-2 text-xs text-[#8E8878]">
-              🚚 Dự kiến giao: <span className="font-medium text-[#1C1C1E]">{fmtDateTime(req.estimatedDelivery)}</span>
-            </p>
+            <div className="mt-2 space-y-0.5">
+              <p className="text-xs text-[#8E8878]">
+                🚚 Dự kiến giao: <span className="font-medium text-[#1C1C1E]">{fmtDateTime(req.estimatedDelivery)}</span>
+              </p>
+              {req.deliveryExtendedTo && (
+                <p className="text-xs text-amber-700">
+                  📅 Gia hạn đến: <span className="font-semibold">{fmtDateTime(req.deliveryExtendedTo)}</span>
+                  {req.deliveryExtendReason ? <span className="text-[#8E8878]"> — {req.deliveryExtendReason}</span> : ''}
+                </p>
+              )}
+            </div>
           )}
 
           {/* Actions */}
@@ -995,6 +1206,14 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
               <PrimaryButton className="w-full" onClick={() => onConfirmOrder(req)}>
                 Xác nhận đặt hàng
               </PrimaryButton>
+            </div>
+          )}
+
+          {req.status === 'ORDERED' && (
+            <div className="mt-4 flex gap-2">
+              <SecondaryButton className="flex-1 flex items-center justify-center gap-1.5" onClick={() => onExtendDelivery(req)}>
+                <CalendarClock size={14} /> Gia hạn giao hàng
+              </SecondaryButton>
             </div>
           )}
 
@@ -1021,10 +1240,13 @@ function RequestCard({ req, onConfirmOrder, onComplete }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function SuperAccountantMaterialRequestPage() {
+  const { t } = useLang();
+  const { fmtCurrency, fmtDate, fmtDateTime } = useFmt();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useMinLoading();
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [completeTarget, setCompleteTarget] = useState(null);
+  const [extendTarget, setExtendTarget] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateRange, setDateRange] = useState({ from: null, to: null });
@@ -1051,7 +1273,7 @@ export default function SuperAccountantMaterialRequestPage() {
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Phiếu đặt hàng nguyên liệu</h1>
+        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','mr_title')}</h1>
       </div>
 
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 space-y-3">
@@ -1059,7 +1281,7 @@ export default function SuperAccountantMaterialRequestPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]"/>
           <input
             className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
-            placeholder="Tìm mã phiếu, tên người đặt..."
+            placeholder={t('production','mr_search_ph')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
           />
@@ -1075,7 +1297,7 @@ export default function SuperAccountantMaterialRequestPage() {
               {s.label}
             </button>
           ))}
-          <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={r => { setDateRange(r); setPage(0); }} placeholder="Lọc theo ngày"/>
+          <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={r => { setDateRange(r); setPage(0); }} placeholder={t('production','mr_filter_date')}/>
         </div>
       </div>
 
@@ -1084,11 +1306,11 @@ export default function SuperAccountantMaterialRequestPage() {
         : requests.length === 0
           ? <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
               <Package size={32} className="mx-auto text-[#8E8878] mb-2"/>
-              <p className="text-[#8E8878] text-sm">Không có phiếu nào</p>
+              <p className="text-[#8E8878] text-sm">{t('production','mr_empty')}</p>
             </div>
           : <div className="space-y-3">
               {requests.map(req => (
-                <RequestCard key={req.id} req={req} onConfirmOrder={setConfirmTarget} onComplete={setCompleteTarget}/>
+                <RequestCard key={req.id} req={req} onConfirmOrder={setConfirmTarget} onComplete={setCompleteTarget} onExtendDelivery={setExtendTarget}/>
               ))}
             </div>
       }
@@ -1096,10 +1318,10 @@ export default function SuperAccountantMaterialRequestPage() {
       {data?.totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">Trước</button>
+            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production','mr_prev')}</button>
           <span className="px-4 py-2 text-sm text-[#8E8878]">{page + 1} / {data.totalPages}</span>
           <button disabled={page >= data.totalPages - 1} onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">Tiếp</button>
+            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production','mr_next')}</button>
         </div>
       )}
 
@@ -1108,6 +1330,9 @@ export default function SuperAccountantMaterialRequestPage() {
       )}
       {completeTarget && (
         <CompleteModal req={completeTarget} onClose={() => setCompleteTarget(null)} onDone={() => { setCompleteTarget(null); load(); }}/>
+      )}
+      {extendTarget && (
+        <ExtendDeliveryModal req={extendTarget} onClose={() => setExtendTarget(null)} onDone={() => { setExtendTarget(null); load(); }}/>
       )}
     </div>
   );

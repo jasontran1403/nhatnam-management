@@ -96,7 +96,11 @@ export const accountantWarehouseApi = {
   /** Chi tiết phiếu (kèm items) */
   getDetail: (id) => api.get(`/api/accountant/warehouse-receipts/${id}`),
 
-  /** Xác nhận giá vốn + cộng tồn kho */
+  /** Xem trước giá vốn tạm tính (đã phân bổ thuế/phí) — KHÔNG ghi DB */
+  previewCost: (id, data) =>
+    api.post(`/api/accountant/warehouse-receipts/${id}/preview-cost`, data),
+
+  /** Xác nhận giá vốn (tồn kho đã cộng từ lúc nhập kho) */
   confirmCost: (id, data) =>
     api.post(`/api/accountant/warehouse-receipts/${id}/confirm-cost`, data),
 };

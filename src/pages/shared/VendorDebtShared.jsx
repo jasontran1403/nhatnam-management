@@ -129,7 +129,7 @@ function VendorDebtListPage({ basePath, canCreateExpense, canManageVendors, dash
       {dashboardPath && (
         <button onClick={() => navigate(dashboardPath)}
           className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
-          <ChevronLeft size={16} /> Quay lại Tổng quan sản xuất
+          <ChevronLeft size={16} /> {t('production','loss_back_to_production')}
         </button>
       )}
 

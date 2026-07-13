@@ -22,6 +22,14 @@ export default function AppLayout({ navItems = [], groups = null }) {
 
   const menuGroups = groups || [{ label: 'Menu', items: navItems }];
 
+  // Tất cả path trong menu — dùng để phát hiện path cha (prefix) của path con.
+  // Ví dụ: '/owner/production' là prefix của '/owner/production/suppliers',
+  // nên NavLink '/owner/production' phải match chính xác (end) để không active
+  // khi đang ở trang con.
+  const allPaths = menuGroups.flatMap(g => g.items.map(i => i.to));
+  const isPrefixOfAnother = (to) =>
+    allPaths.some(p => p !== to && p.startsWith(to.endsWith('/') ? to : to + '/'));
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAF7F2]">
       {/* Overlay mobile */}
@@ -56,7 +64,7 @@ export default function AppLayout({ navItems = [], groups = null }) {
             <div key={group.label}>
               <p className="text-[#8E8878]/60 text-[10px] uppercase tracking-widest px-3 mb-1">{group.label}</p>
               {group.items.map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} onClick={close}
+                <NavLink key={to} to={to} onClick={close} end={isPrefixOfAnother(to)}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all duration-150
                     ${isActive

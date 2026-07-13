@@ -7,7 +7,7 @@ import {
   TrendingDown, BarChart2, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
-  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet, Calculator,
+  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet, Calculator, Building2,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -18,6 +18,9 @@ export const adminNavRaw = [
   { to: '/admin/warehouses', labelKey: 'warehouses', icon: Warehouse },
   { to: '/admin/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/admin/incomes', labelKey: 'incomes', icon: TrendingUp },
+  { to: '/admin/cashflow', labelKey: 'cashflow', icon: Activity },
+  { to: '/admin/inventory', labelKey: 'materials', icon: Package },
+  { to: '/admin/suppliers', labelKey: 'supplier_management', icon: Building2 },
   { to: '/admin/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
   { to: '/admin/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/admin/production', labelKey: 'production', icon: Factory },
@@ -34,6 +37,9 @@ export const ownerNavRaw = [
   { to: '/owner/warehouses', labelKey: 'warehouses', icon: Warehouse },
   { to: '/owner/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/owner/incomes', labelKey: 'incomes', icon: TrendingUp },
+  { to: '/owner/cashflow', labelKey: 'cashflow', icon: Activity },
+  { to: '/owner/inventory', labelKey: 'materials', icon: Package },
+  { to: '/owner/production/suppliers', labelKey: 'supplier_management', icon: Building2 },
   { to: '/owner/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
   { to: '/owner/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
@@ -59,7 +65,6 @@ export const warehouseNavRaw = [
   { to: '/warehouse/management', labelKey: 'warehouse_management', icon: Warehouse },
   { to: '/warehouse/operations', labelKey: 'import_export', icon: Package },
   { to: '/warehouse/history', labelKey: 'history', icon: ClipboardList },
-  { to: '/warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
   { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
 ];
@@ -130,6 +135,7 @@ export const superFactoryWorkerNavRaw = [
   { to: '/super-factory/recipes', labelKey: 'production_variants', icon: FlaskConical },
   { to: '/super-factory/machines', labelKey: 'machine_manage', icon: Wrench },
   { to: '/super-factory/history', labelKey: 'work_order_history', icon: ClipboardList },
+  { to: '/super-factory/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
   // { to: '/super-factory/finished-goods', labelKey: 'finished_goods', icon: Package },
 ];

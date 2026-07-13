@@ -1,5 +1,5 @@
 // src/pages/owner/OwnerProductionDashboard.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Factory, Plus, Clock, CheckCircle2, AlertTriangle,
@@ -16,18 +16,25 @@ import {
 } from '../../components/ui';
 import { StatCardSkeleton } from '../../components/ui/Skeleton';
 import {
-  ownerProdApi, STATUS_LABELS, progressColor, fmtDate, fmtNum, fmtCurrency, productionResetApi,
+  ownerProdApi, getStatusLabels, progressColor, productionResetApi,
 } from '../../api/productionModuleApi';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 import { factoryProductApi } from '../../api/productionApi';
+import FactoryManagementModal from '../../components/production/FactoryManagement';
+import { Building2 } from 'lucide-react';
 
 const BRAND = '#C9A84C';
 
 export function StatusBadge({ status }) {
-  const cfg = STATUS_LABELS[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const { t } = useLang();
+  const cfg = getStatusLabels(t)[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
 export function KpiCard({ icon: Icon, label, value, sub, color = 'text-[#C9A84C]', iconBg = 'bg-[#C9A84C]/10' }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   return (
     <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
       <div className="flex items-start justify-between">
@@ -46,6 +53,8 @@ export function KpiCard({ icon: Icon, label, value, sub, color = 'text-[#C9A84C]
 
 // ── Search Dropdown — dùng chung ──────────────────────────────────────────────
 function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'Tìm...', disabled = false }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -158,6 +167,8 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
 // Dùng onBlur trên wrapper (kết hợp tabIndex để wrapper nhận được focus/blur
 // event của các con) là cách chuẩn và an toàn hơn nhiều cho combobox kiểu này.
 function MultiProductSelect({ allProducts, selected, onChange }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -383,6 +394,8 @@ const WO_STATUS_COLOR = {
 };
 
 export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const WEEKS_BACK = 8, WEEKS_TOTAL = 32;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const mon = new Date(today); mon.setDate(today.getDate() - ((today.getDay() + 6) % 7)); mon.setHours(0, 0, 0, 0);
@@ -399,7 +412,7 @@ export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
   const rows = [];
   (plans || []).forEach(p => { rows.push({ type: 'plan', data: p }); (ordersByPlan[p.id] || []).forEach(o => rows.push({ type: 'order', data: o })); });
   (ordersByPlan['__none__'] || []).forEach(o => rows.push({ type: 'order', data: o }));
-  if (!rows.length) return <EmptyState icon={CalendarRange} title="Chưa có kế hoạch hoặc lệnh sản xuất nào" />;
+  if (!rows.length) return <EmptyState icon={CalendarRange} title={t('production','dash_empty_production')} />;
 
   const LABEL_W = 200, ROW_H = 36, PLAN_ROW_H = 44;
   return (
@@ -444,7 +457,7 @@ export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
                     className={`flex-shrink-0 flex items-center justify-center border-l text-[10px] font-medium
                       ${isNow ? 'text-[#C9A84C] font-bold' : 'text-[#8E8878]'}
                       ${isMonth ? 'border-l-2 border-[#C9A84C]/30 bg-[#FAF7F2]' : 'border-black/5'}`}>
-                    {isMonth ? <span className="font-bold">{w.toLocaleDateString('vi', { month: 'short' })}</span> : `${w.getDate()}/${w.getMonth() + 1}`}
+                    {isMonth ? <span className="font-bold">{w.toLocaleDateString(loc, { month: 'short' })}</span> : `${w.getDate()}/${w.getMonth() + 1}`}
                   </div>
                 );
               })}
@@ -488,14 +501,16 @@ export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
 
 // ── MAINTENANCE GANTT (giữ nguyên từ bản cũ) ─────────────────────────────────
 function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const dayDate = new Date(dayMs);
   const dow = dayDate.getDay();
   const monOffset = (dow === 0 ? -6 : 1 - dow);
   const monDate = new Date(dayDate); monDate.setDate(dayDate.getDate() + monOffset); monDate.setHours(0, 0, 0, 0);
   const satDate = new Date(monDate); satDate.setDate(monDate.getDate() + 5); satDate.setHours(23, 59, 59, 999);
   const weekStart = monDate.getTime(); const weekEnd = satDate.getTime();
-  const fmt = d => new Date(d).toLocaleDateString('vi', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-  const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' }) : '—';
+  const fmt = d => new Date(d).toLocaleDateString(loc, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }) : '—';
   const dayStart = new Date(dayMs); dayStart.setHours(8, 0, 0, 0);
   const dayEnd = new Date(dayMs); dayEnd.setHours(18, 0, 0, 0);
   const dayMaints = maintenanceList.filter(mt => {
@@ -509,7 +524,7 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
   }, 0);
   const workHours = Math.max(0, 10 - totalDowntimeHours);
   return (
-    <Modal open title={`${machine.name} — ${dayDate.toLocaleDateString('vi', { weekday: 'long', day: '2-digit', month: '2-digit' })}`} onClose={onClose} size="md"
+    <Modal open title={`${machine.name} — ${dayDate.toLocaleDateString(loc, { weekday: 'long', day: '2-digit', month: '2-digit' })}`} onClose={onClose} size="md"
       footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
       <div className="space-y-4">
         <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1.5">
@@ -546,6 +561,8 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
 }
 
 export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onItemClick, onMachineClick }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const DAYS_BACK = 30, DAYS_TOTAL = 90, COL_W = 120, LABEL_W = 200, ROW_H = 40, WORK_START_H = 8, WORK_END_H = 18;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const dStart = new Date(today); dStart.setDate(today.getDate() - DAYS_BACK);
@@ -578,7 +595,7 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
     });
     Object.values(occGroups).forEach(group => rows.push({ type: 'occ', data: group, machine }));
   });
-  if (!machines || !machines.length) return <EmptyState icon={Settings2} title="Chưa có máy nào" />;
+  if (!machines || !machines.length) return <EmptyState icon={Settings2} title={t('production','dash_empty_machine')} />;
   const maintColor = item => {
     if (item.status === 'COMPLETED') return '#22c55e';
     if (item.status === 'MISSED') return '#6b7280';
@@ -678,7 +695,7 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                       ${isToday ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-bold border-[#C9A84C]/30' : isSun || isSat ? 'bg-gray-50 text-gray-400 border-black/5' : 'text-[#8E8878] border-black/5'}
                       ${isFirstOfMonth ? 'border-l-2 border-[#C9A84C]/40' : ''}`}>
                     <div className="text-center leading-tight">
-                      {isFirstOfMonth ? <><span className="font-bold block">{d.toLocaleDateString('vi', { month: 'short' })}</span><span className="text-[9px]">{d.getDate()}</span></>
+                      {isFirstOfMonth ? <><span className="font-bold block">{d.toLocaleDateString(loc, { month: 'short' })}</span><span className="text-[9px]">{d.getDate()}</span></>
                         : <><span className="block">{['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()]}</span><span className="font-semibold">{d.getDate()}</span></>}
                     </div>
                   </div>
@@ -705,10 +722,10 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                         const barLeft = msToWorkLeft(s); const barW = msToWorkWidth(s, e);
                         return (
                           <button key={ii} onClick={() => setClickedOccupancy(o)}
-                            title={`${o.workOrderCode || ''} — Mẻ ${o.batchCode || ''}\nBước: ${o.stepName || ''}\nBắt đầu: ${o.startedAt ? new Date(Number(o.startedAt)).toLocaleString('vi-VN') : ''}\n${o.completedAt ? 'Hoàn thành' : 'Dự kiến hoàn thành'}: ${o.completedAt ? new Date(Number(o.completedAt)).toLocaleString('vi-VN') : (o.estimatedEndAt != null ? new Date(Number(o.estimatedEndAt)).toLocaleString('vi-VN') : '—')}`}
+                            title={`${o.workOrderCode || ''} — Mẻ ${o.batchCode || ''}\nBước: ${o.stepName || ''}\nBắt đầu: ${o.startedAt ? new Date(Number(o.startedAt)).toLocaleString(loc) : ''}\n${o.completedAt ? 'Hoàn thành' : 'Dự kiến hoàn thành'}: ${o.completedAt ? new Date(Number(o.completedAt)).toLocaleString(loc) : (o.estimatedEndAt != null ? new Date(Number(o.estimatedEndAt)).toLocaleString(loc) : '—')}`}
                             style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: color + 'cc', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
                             <span className="text-white text-[9px] font-bold whitespace-nowrap truncate drop-shadow-sm">
-                              {o.workOrderCode}{' '}{o.startedAt ? new Date(Number(o.startedAt)).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              {o.workOrderCode}{' '}{o.startedAt ? new Date(Number(o.startedAt)).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
                           </button>
                         );
@@ -761,7 +778,7 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                           <button key={ii} onClick={() => onItemClick(item)}
                             style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: color + 'cc', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
                             <span className="text-white text-[9px] font-bold whitespace-nowrap truncate drop-shadow-sm">
-                              {item.title?.length > 10 ? item.title.slice(0, 8) + '…' : item.title}{' '}{item.plannedStart ? new Date(item.plannedStart).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              {item.title?.length > 10 ? item.title.slice(0, 8) + '…' : item.title}{' '}{item.plannedStart ? new Date(item.plannedStart).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
                           </button>
                         );
@@ -787,11 +804,13 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
 
 // ── Machine Occupancy Detail (click vào sọc chéo xanh dương) ─────────────────
 export function MachineOccupancyModal({ occupancy, onClose }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const o = occupancy;
   const isRunning = !o.completedAt;
   const endLabel = o.completedAt
-    ? new Date(Number(o.completedAt)).toLocaleString('vi-VN')
-    : (o.estimatedEndAt != null ? new Date(Number(o.estimatedEndAt)).toLocaleString('vi-VN') : null);
+    ? new Date(Number(o.completedAt)).toLocaleString(loc)
+    : (o.estimatedEndAt != null ? new Date(Number(o.estimatedEndAt)).toLocaleString(loc) : null);
   return (
     <Modal open title="Máy đang được sử dụng" onClose={onClose} size="sm"
       footer={<div className="flex justify-end"><SecondaryButton onClick={onClose}>Đóng</SecondaryButton></div>}>
@@ -800,7 +819,7 @@ export function MachineOccupancyModal({ occupancy, onClose }) {
           <p className="text-sm font-semibold text-blue-700">{o.workOrderCode}</p>
           <p className="text-sm text-blue-600">Mẻ {o.batchCode} — Bước: {o.stepName}</p>
           <p className="text-xs text-blue-500">
-            Bắt đầu: {new Date(Number(o.startedAt)).toLocaleString('vi-VN')}
+            Bắt đầu: {new Date(Number(o.startedAt)).toLocaleString(loc)}
           </p>
           {isRunning ? (
             <>
@@ -820,6 +839,8 @@ export function MachineOccupancyModal({ occupancy, onClose }) {
 
 // ── MAINTENANCE DETAIL MODAL ──────────────────────────────────────────────────
 export function MaintenanceDetailModal({ item, onClose }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
   const img = p => p?.startsWith('http') ? p : BASE + '/api/auth' + p;
   return (
@@ -848,20 +869,76 @@ export function MaintenanceDetailModal({ item, onClose }) {
 }
 
 // ── CREATE PLAN MODAL — multi-product + search dropdown ───────────────────────
-export function CreatePlanModal({ products, onClose, onSaved }) {
-  const [form, setForm] = useState({ title: '', targetQty: '', notes: '' });
+// ── Modal tạo sản phẩm sản xuất ─────────────────────────────────────────────
+export function CreateProductModal({ onClose, onSaved }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
+  const [form, setForm] = useState({ name: '', unit: 'Kg', description: '' });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const submit = async () => {
+    if (!form.name.trim()) { setErr(t('production','wo_err_product_name')); return; }
+    if (!form.unit.trim()) { setErr(t('production','mstock_err_unit')); return; }
+    setSaving(true);
+    try {
+      await factoryProductApi.create({ name: form.name.trim(), unit: form.unit.trim(), description: form.description.trim() || null });
+      onSaved();
+    } catch (e) {
+      setErr(e?.response?.data?.message || t('error','generic'));
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open title={t('production','dash_create_product_title')} onClose={onClose} size="sm"
+      footer={
+        <div className="flex justify-end gap-2">
+          <SecondaryButton onClick={onClose}>{t('common','cancel')}</SecondaryButton>
+          <PrimaryButton onClick={submit} loading={saving}>{t('production','wo_create_product')}</PrimaryButton>
+        </div>
+      }>
+      <div className="space-y-3">
+        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        <Field label={t('production','wo_field_product_name')} required>
+          <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder={t('production','wo_ph_product_name')} autoFocus />
+        </Field>
+        <Field label={t('production','oinv_unit')} required>
+          <input className={inputCls} value={form.unit} onChange={e => set('unit', e.target.value)} placeholder={t('production','omach_field_capacity_ph')} />
+        </Field>
+        <Field label={t('production','omach_field_desc')}>
+          <textarea className={inputCls} rows={2} value={form.description} onChange={e => set('description', e.target.value)} />
+        </Field>
+      </div>
+    </Modal>
+  );
+}
+
+export function CreatePlanModal({ products, factories = [], onClose, onSaved }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
+  const [form, setForm] = useState({ title: '', targetQty: '', notes: '', productionFactoryId: '' });
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
+  const activeFactories = factories.filter(f => f.status === 'ACTIVE');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Nếu chỉ có 1 xưởng → tự chọn
+  useEffect(() => {
+    if (!form.productionFactoryId && activeFactories.length === 1) {
+      set('productionFactoryId', String(activeFactories[0].id));
+    }
+  }, [activeFactories.length]); // eslint-disable-line
 
   const submit = async () => {
     if (!form.title || selectedProductIds.length === 0 || !form.targetQty) {
       setErr('Vui lòng điền đầy đủ tiêu đề, chọn ít nhất 1 sản phẩm và sản lượng');
       return;
     }
+    if (!form.productionFactoryId) { setErr('Vui lòng chọn xưởng xử lý kế hoạch'); return; }
     if (!dateRange.from || !dateRange.to) { setErr('Chọn thời gian kế hoạch'); return; }
     setSaving(true);
     try {
@@ -870,6 +947,7 @@ export function CreatePlanModal({ products, onClose, onSaved }) {
         // Gửi array sản phẩm (backend cần hỗ trợ factoryProductIds)
         factoryProductId: selectedProductIds[0], // backward compat — sản phẩm chính
         factoryProductIds: selectedProductIds,
+        productionFactoryId: Number(form.productionFactoryId),
         targetQty: Number(form.targetQty),
         startDate: dateRange.from,
         endDate: dateRange.to,
@@ -882,7 +960,7 @@ export function CreatePlanModal({ products, onClose, onSaved }) {
   };
 
   return (
-    <Modal open title="Tạo kế hoạch sản xuất" onClose={onClose} size="md"
+    <Modal open title={t('production','dash_create_plan')} onClose={onClose} size="md"
       footer={
         <div className="flex justify-end gap-2">
           <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
@@ -892,11 +970,19 @@ export function CreatePlanModal({ products, onClose, onSaved }) {
       <div className="space-y-4">
         {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
 
-        <Field label="Tiêu đề" required>
+        <Field label={t('production','dash_plan_title')} required>
           <input className={inputCls} value={form.title} onChange={e => set('title', e.target.value)} placeholder="VD: Kế hoạch Q3 2026" />
         </Field>
 
-        <Field label="Sản phẩm" required>
+        <Field label={t('production','dash_plan_factory')} required>
+          <select className={inputCls} value={form.productionFactoryId}
+            onChange={e => set('productionFactoryId', e.target.value)}>
+            <option value="">-- Chọn xưởng --</option>
+            {activeFactories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </Field>
+
+        <Field label={t('production','dash_plan_products')} required>
           <MultiProductSelect
             allProducts={products}
             selected={selectedProductIds}
@@ -904,18 +990,18 @@ export function CreatePlanModal({ products, onClose, onSaved }) {
           />
         </Field>
 
-        <Field label="Sản lượng mục tiêu" required>
+        <Field label={t('production','dash_plan_target_qty')} required>
           <input type="number" className={inputCls} value={form.targetQty}
             onChange={e => set('targetQty', e.target.value)} placeholder="VD: 5000" />
         </Field>
 
-        <Field label="Thời gian kế hoạch" required>
+        <Field label={t('production','dash_plan_date_range')} required>
           <div className="pt-1">
             <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange} />
           </div>
         </Field>
 
-        <Field label="Ghi chú">
+        <Field label={t('production','dash_plan_notes')}>
           <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
         </Field>
       </div>
@@ -925,6 +1011,8 @@ export function CreatePlanModal({ products, onClose, onSaved }) {
 
 // ── CREATE WORK ORDER MODAL — block sản phẩm khi chưa chọn kế hoạch ──────────
 export function CreateWorkOrderModal({ plans, products, factories, prefilledPlanId, onClose, onSaved }) {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const [form, setForm] = useState({
     productionPlanId: prefilledPlanId ? String(prefilledPlanId) : '',
     factoryProductId: '',
@@ -1001,20 +1089,20 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
 
   return (
     <>
-      <Modal open title="Tạo lệnh sản xuất" onClose={onClose} size="md"
+      <Modal open title={t('production','dash_create_work_order')} onClose={onClose} size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
+            <SecondaryButton onClick={onClose}>{t('common','cancel')}</SecondaryButton>
             <PrimaryButton
               onClick={async () => {
                 if (!form.productionPlanId || !form.factoryProductId || !form.plannedQty || !dateRange.from) {
-                  setErr('Điền đầy đủ thông tin'); return;
+                  setErr(t('production','dash_err_required_fields')); return;
                 }
                 setErr('');
                 await doSubmit(false);
               }}
               loading={saving}>
-              Tạo lệnh
+              {t('production','dash_create_work_order')}
             </PrimaryButton>
           </div>
         }>
@@ -1022,12 +1110,12 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
 
           {/* Kế hoạch — search dropdown */}
-          <Field label="Kế hoạch" required>
+          <Field label={t('production','dash_plan')} required>
             <SearchDropdown
               items={planItems}
               value={form.productionPlanId ? Number(form.productionPlanId) : ''}
               onChange={id => handlePlanChange(id ? String(id) : '')}
-              placeholder="Chọn kế hoạch..."
+              placeholder={t('production','dash_select_plan')}
             />
           </Field>
 
@@ -1035,19 +1123,19 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
           {selectedPlan && (
             <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1">
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">Sản phẩm</span>
+                <span className="text-[#8E8878]">{t('production','dash_plan_products')}</span>
                 <span className="font-medium">{planProducts.map(p => p.name).join(', ') || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">Mục tiêu</span>
+                <span className="text-[#8E8878]">{t('production','dash_plan_target_qty')}</span>
                 <span className="font-medium">{fmtNum(planTgt)} {selectedPlan.outputUnit}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">Đã lên lệnh</span>
+                <span className="text-[#8E8878]">{t('production','dash_plan_in_progress')}</span>
                 <span className={`font-medium ${planAcc >= planTgt ? 'text-red-500' : 'text-emerald-600'}`}>{fmtNum(planAcc)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">Còn lại</span>
+                <span className="text-[#8E8878]">{t('production','dash_plan_remaining')}</span>
                 <span className={`font-bold ${planTgt - planAcc <= 0 ? 'text-red-500' : 'text-[#C9A84C]'}`}>
                   {planTgt - planAcc <= 0 ? 'Đã đủ' : fmtNum(planTgt - planAcc)}
                 </span>
@@ -1056,46 +1144,46 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
           )}
 
           {/* Sản phẩm — chỉ hiện khi đã chọn kế hoạch, chỉ cho chọn sản phẩm trong kế hoạch */}
-          <Field label="Sản phẩm" required>
+          <Field label={t('production','dash_plan_products')} required>
             {noPlanSelected ? (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#E8DDD0] bg-gray-50">
                 <Search size={13} className="text-[#8E8878]" />
-                <span className="text-sm text-[#8E8878]">Chọn kế hoạch trước</span>
+                <span className="text-sm text-[#8E8878]">{t('production','dash_select_plan')}</span>
               </div>
             ) : planProducts.length === 0 ? (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50">
                 <AlertTriangle size={13} className="text-amber-600" />
-                <span className="text-sm text-amber-700">Kế hoạch chưa có sản phẩm</span>
+                <span className="text-sm text-amber-700">{t('production','dash_plan_no_products')}</span>
               </div>
             ) : (
               <SearchDropdown
                 items={planProducts}
                 value={form.factoryProductId ? Number(form.factoryProductId) : ''}
                 onChange={id => set('factoryProductId', id ? String(id) : '')}
-                placeholder="Chọn sản phẩm..."
+                placeholder={t('production','dash_select_product')}
                 disabled={noPlanSelected}
               />
             )}
           </Field>
 
-          <Field label="Tổng sản lượng" required>
+          <Field label={t('production','dash_total_production_qty')} required>
             <input type="number" className={inputCls} value={form.plannedQty}
               onChange={e => set('plannedQty', e.target.value)} placeholder="VD: 500" />
           </Field>
 
-          <Field label="Thời gian sản xuất" required>
+          <Field label={t('production','dash_production_date')} required>
             <div className="pt-1">
               <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange}
-                placeholder={selectedPlan ? `Từ ${fmtDate(selectedPlan.startDate)} trở đi` : 'Chọn ngày'} />
+                placeholder={selectedPlan ? `Từ ${fmtDate(selectedPlan.startDate)} trở đi` : t('production','dash_select_date')} />
             </div>
           </Field>
 
-          <Field label="Ghi chú">
+          <Field label={t('production','dash_notes')}>
             <textarea className={inputCls} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
           </Field>
 
           {factories?.length > 0 && (
-            <Field label="Xưởng sản xuất">
+            <Field label={t('production','dash_production_factory')}>
               <select className={inputCls} value={form.productionFactoryId}
                 onChange={e => set('productionFactoryId', e.target.value)}>
                 <option value="">-- Không gán xưởng --</option>
@@ -1106,8 +1194,8 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
 
           <div className="flex items-center justify-between bg-[#FAF7F2] rounded-xl px-4 py-3">
             <div>
-              <p className="text-sm font-medium">Hẹn giờ chặt</p>
-              <p className="text-xs text-[#8E8878]">Nhân viên chỉ được nhập NVL trước 3 ngày</p>
+              <p className="text-sm font-medium">{t('production','dash_scheduled_cutting')}</p>
+              <p className="text-xs text-[#8E8878]">{t('production','dash_scheduled_cutting_desc')}</p>
             </div>
             <button onClick={() => set('scheduledMode', !form.scheduledMode)}
               className={`w-12 h-6 rounded-full transition-colors relative ${form.scheduledMode ? 'bg-[#C9A84C]' : 'bg-black/15'}`}>
@@ -1118,7 +1206,7 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
       </Modal>
 
       {overPlanConfirm && (
-        <Modal open title="Xác nhận vượt kế hoạch" onClose={() => setOverPlanConfirm(null)} size="sm"
+        <Modal open title={t('production','dash_over_plan_confirm')} onClose={() => setOverPlanConfirm(null)} size="sm"
           footer={
             <div className="flex justify-end gap-2">
               <SecondaryButton onClick={() => setOverPlanConfirm(null)}>Huỷ</SecondaryButton>
@@ -1140,12 +1228,14 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
 
 // ── ADD MACHINE MODAL ─────────────────────────────────────────────────────────
 export function AddMachineModal({ factories, onClose, onSaved }) {
-  const [form, setForm] = useState({ name: '', capacityHoursPerMonth: '', description: '', manufacturer: '', serialNumber: '', purchaseCost: '', factoryId: '' });
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
+  const [form, setForm] = useState({ name: '', capacityHoursPerMonth: 0, description: '', manufacturer: '', serialNumber: '', purchaseCost: '', factoryId: '' });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const submit = async () => {
-    if (!form.name || !form.capacityHoursPerMonth) { setErr('Vui lòng nhập tên máy và công suất'); return; }
+    // if (!form.name || !form.capacityHoursPerMonth) { setErr('Vui lòng nhập tên máy và công suất'); return; }
     setSaving(true);
     try {
       await ownerProdApi.createMachine({ name: form.name, capacityHoursPerMonth: Number(form.capacityHoursPerMonth), description: form.description, manufacturer: form.manufacturer, serialNumber: form.serialNumber, purchaseCost: form.purchaseCost ? Number(form.purchaseCost) : null, factoryId: form.factoryId ? Number(form.factoryId) : null });
@@ -1153,25 +1243,19 @@ export function AddMachineModal({ factories, onClose, onSaved }) {
     } catch (e) { setErr(e?.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSaving(false); }
   };
   return (
-    <Modal open title="Thêm máy / dây chuyền" onClose={onClose} size="md"
+    <Modal open title={t('production', 'add_machine')} onClose={onClose} size="md"
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>Thêm máy</PrimaryButton></div>}>
       <div className="space-y-4">
         {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-        <Field label="Tên máy / dây chuyền" required><input className={inputCls} placeholder="VD: Máy xay thịt A" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
-        <Field label="Công suất (giờ/tháng)" required><input type="number" className={inputCls} value={form.capacityHoursPerMonth} onChange={e => set('capacityHoursPerMonth', e.target.value)} /></Field>
+        <Field label={t('production', 'machine_name')} required><input className={inputCls} placeholder="VD: Máy xay thịt A" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
         {factories?.length > 0 && (
-          <Field label="Thuộc xưởng">
+          <Field label={t('production', 'factory')}>
             <select className={inputCls} value={form.factoryId} onChange={e => set('factoryId', e.target.value)}>
               <option value="">-- Chưa gán xưởng --</option>
               {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </Field>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Nhà sản xuất"><input className={inputCls} value={form.manufacturer} onChange={e => set('manufacturer', e.target.value)} /></Field>
-          <Field label="Số serial"><input className={inputCls} value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} /></Field>
-        </div>
-        <Field label="Giá trị máy (₫)"><input type="number" className={inputCls} value={form.purchaseCost} onChange={e => set('purchaseCost', e.target.value)} /></Field>
         <Field label="Mô tả"><textarea className={inputCls} rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></Field>
       </div>
     </Modal>
@@ -1180,6 +1264,8 @@ export function AddMachineModal({ factories, onClose, onSaved }) {
 
 // ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
 export default function OwnerProductionDashboard() {
+  const { t } = useLang();
+  const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [dashboard, setDashboard] = useState(null);
@@ -1192,6 +1278,8 @@ export default function OwnerProductionDashboard() {
   const [showCreatePlan, setShowCreatePlan] = useState(false);
   const [showCreateWorkOrder, setShowCreateWorkOrder] = useState(false);
   const [showAddMachine, setShowAddMachine] = useState(false);
+  const [showFactories, setShowFactories] = useState(false);
+  const [showCreateProduct, setShowCreateProduct] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [selectedMaint, setSelectedMaint] = useState(null);
   // Cho phép quay lại đúng tab đã xem trước đó (VD: từ trang Metric máy back về ?tab=machines)
@@ -1272,51 +1360,51 @@ export default function OwnerProductionDashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <PageHeader icon={Factory} title="Quản lý sản xuất" subtitle="Kế hoạch · Lệnh sản xuất · Máy móc" />
+        <PageHeader icon={Factory} title={t('production','dash_title')} subtitle={t('production','dash_subtitle')} />
         <div className="flex gap-2">
           {/* ⚠️ CHỈ DÙNG MÔI TRƯỜNG TEST — xoá nút này (và productionResetApi) trước khi
               deploy lên môi trường có dữ liệu thật. Xem ProductionResetController backend. */}
           <button onClick={handleResetTestData} disabled={resetting}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl
               bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50">
-            <RotateCcw size={13} /> {resetting ? 'Đang xoá...' : 'Reset dữ liệu (test)'}
+            <RotateCcw size={13} /> {resetting ? 'Resetting...' : 'Reset data (test)'}
           </button>
           <SecondaryButton onClick={() => navigate('/owner/production/loss-reports')}>
-            <FileWarning size={15} /> Hao hụt đóng gói
+            <FileWarning size={15} /> {t('production','dash_loss_reports')}
           </SecondaryButton>
           <SecondaryButton onClick={() => navigate('/owner/production/material-stock')}>
-            <Package size={15} /> Tồn kho nguyên liệu
+            <Package size={15} /> {t('production','mstock_title')}
           </SecondaryButton>
-          <SecondaryButton onClick={() => navigate('/owner/production/vendor-debts')}>
-            <Wallet size={15} /> Công nợ NCC
+          <SecondaryButton onClick={() => setShowFactories(true)}>
+            <Building2 size={15} /> {t('production','factory_title')}
           </SecondaryButton>
-          {/* <SecondaryButton onClick={() => setShowCreateWorkOrder(true)}>
-            <ClipboardList size={15} /> Tạo lệnh sản xuất
-          </SecondaryButton> */}
-          <PrimaryButton onClick={() => setShowCreatePlan(true)}><Plus size={15} /> Kế hoạch mới</PrimaryButton>
+          <SecondaryButton onClick={() => setShowCreateProduct(true)}>
+            <Package size={15} /> {t('production','dash_create_product')}
+          </SecondaryButton>
+          <PrimaryButton onClick={() => setShowCreatePlan(true)}><Plus size={15} />{t('production','dash_new_plan')}</PrimaryButton>
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { icon: CalendarRange, label: 'Kế hoạch đang chạy', value: d.totalActivePlans || 0, color: 'text-blue-600', iconBg: 'bg-blue-50' },
-          { icon: ClipboardList, label: 'Tổng lệnh SX', value: d.totalWorkOrders || 0, color: 'text-[#1C1C1E]', iconBg: 'bg-[#FAF7F2]' },
-          { icon: Factory, label: 'Đang sản xuất', value: d.inProgressOrders || 0, color: 'text-orange-600', iconBg: 'bg-orange-50' },
-          { icon: Clock, label: 'Chờ phương án', value: d.pendingPlanOrders || 0, color: d.pendingPlanOrders > 0 ? 'text-amber-600' : 'text-[#8E8878]', iconBg: 'bg-amber-50' },
-          { icon: CheckCircle2, label: 'Hoàn thành', value: d.completedOrders || 0, color: 'text-emerald-600', iconBg: 'bg-emerald-50' },
-          { icon: Settings2, label: 'Máy hoạt động', value: `${d.activeMachines || 0}/${d.totalMachines || 0}`, color: 'text-[#C9A84C]', iconBg: 'bg-[#C9A84C]/10' },
+          { icon: CalendarRange, label: t('production','dash_kpi_active_plans'), value: d.totalActivePlans || 0, color: 'text-blue-600', iconBg: 'bg-blue-50' },
+          { icon: ClipboardList, label: t('production','dash_kpi_total_wo'), value: d.totalWorkOrders || 0, color: 'text-[#1C1C1E]', iconBg: 'bg-[#FAF7F2]' },
+          { icon: Factory, label: t('production','dash_kpi_in_progress'), value: d.inProgressOrders || 0, color: 'text-orange-600', iconBg: 'bg-orange-50' },
+          { icon: Clock, label: t('production','dash_kpi_pending_plan'), value: d.pendingPlanOrders || 0, color: d.pendingPlanOrders > 0 ? 'text-amber-600' : 'text-[#8E8878]', iconBg: 'bg-amber-50' },
+          { icon: CheckCircle2, label: t('production','dash_kpi_completed'), value: d.completedOrders || 0, color: 'text-emerald-600', iconBg: 'bg-emerald-50' },
+          { icon: Settings2, label: t('production','dash_kpi_active_machines'), value: `${d.activeMachines || 0}/${d.totalMachines || 0}`, color: 'text-[#C9A84C]', iconBg: 'bg-[#C9A84C]/10' },
         ].map(kpi => <KpiCard key={kpi.label} {...kpi} />)}
       </div>
 
       {d.pendingPlanOrders > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
           <AlertTriangle size={18} className="text-amber-600 flex-shrink-0" />
-          <p className="text-sm text-amber-800 font-medium">{d.pendingPlanOrders} lệnh đang chờ nhân viên xưởng lập phương án sản xuất</p>
+          <p className="text-sm text-amber-800 font-medium">{d.pendingPlanOrders} {t('production', 'dash_pending_plans')}</p>
         </div>
       )}
 
       <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
-        {[{ id: 'orders', label: 'Timeline sản xuất', icon: ClipboardList }, { id: 'machines', label: 'Máy móc', icon: Settings2 }].map(s => (
+        {[{ id: 'orders', label: t('production','dash_tab_orders'), icon: ClipboardList }, { id: 'machines', label: t('production','dash_tab_machines'), icon: Settings2 }].map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
             <s.icon size={14} />{s.label}
@@ -1326,7 +1414,7 @@ export default function OwnerProductionDashboard() {
 
       {activeSection === 'orders' && (
         <SectionCard>
-          <SectionHeader title="Timeline 39 tuần — Kế hoạch & Lệnh sản xuất" />
+          <SectionHeader title={t('production','dash_gantt_title')} />
           <div className="p-4">
             <ProductionGantt
               plans={d.recentPlans || []} orders={d.calendarItems || []}
@@ -1338,8 +1426,8 @@ export default function OwnerProductionDashboard() {
 
       {activeSection === 'machines' && (
         <SectionCard>
-          <SectionHeader title="Máy móc & lịch bảo trì — 39 tuần"
-            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12} /> Thêm máy</button>} />
+          <SectionHeader title={t('production','dash_machines_gantt_title')}
+            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12} />{t('production','dash_add_machine')}</button>} />
           <div className="p-4">
             <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy}
               onItemClick={setSelectedMaint}
@@ -1348,10 +1436,12 @@ export default function OwnerProductionDashboard() {
         </SectionCard>
       )}
 
-      {showCreatePlan && <CreatePlanModal products={products} onClose={() => setShowCreatePlan(false)} onSaved={onSaved} />}
+      {showCreatePlan && <CreatePlanModal products={products} factories={factories} onClose={() => setShowCreatePlan(false)} onSaved={onSaved} />}
       {showCreateWorkOrder && <CreateWorkOrderModal plans={plans} products={products} factories={factories} onClose={() => setShowCreateWorkOrder(false)} onSaved={onSaved} />}
+      {showCreateProduct && <CreateProductModal onClose={() => setShowCreateProduct(false)} onSaved={() => { setShowCreateProduct(false); load(); }} />}
       {selectedMaint && <MaintenanceDetailModal item={selectedMaint} onClose={() => setSelectedMaint(null)} />}
       {showAddMachine && <AddMachineModal factories={factories} onClose={() => setShowAddMachine(false)} onSaved={onSaved} />}
+      <FactoryManagementModal open={showFactories} onClose={() => setShowFactories(false)} onChanged={load} />
     </div>
   );
 }

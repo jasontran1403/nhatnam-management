@@ -14,7 +14,9 @@ import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { Badge } from '../../components/ui/Badge';
-import { semiFinishedGoodsApi } from '../../api/productionModuleApi';
+import { semiFinishedGoodsApi, factoryProdApi } from '../../api/productionModuleApi';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 import { useToast } from '../../components/common/Toast.jsx';
 import { downloadBlob } from '../../utils/downloadBlob';
 
@@ -31,6 +33,9 @@ function fmtDateTime(ms) {
 
 // ── Modal: Xác nhận nhận (nhập số lượng đóng gói + cân thực tế từng dòng) ────
 function ReceiveTransferModal({ note, onClose, onSaved }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const toast = useToast();
   const [lines, setLines] = useState(
     note.lines.map(l => ({ lineId: l.id, packagedQty: l.estimatedPackagedQty != null ? String(l.estimatedPackagedQty) : '', actualReceivedWeight: '' }))
@@ -137,6 +142,9 @@ function ReceiveTransferModal({ note, onClose, onSaved }) {
 
 // ── Card phiếu chuyển kho (expand xem chi tiết dòng + batch nguồn) ────────────
 function TransferNoteCard({ note, onReceive }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const toast = useToast();
   const [expanded, setExpanded] = useState(false);
   const [printingOp, setPrintingOp] = useState(null); // 'in' | `loss-${lineId}` | null
@@ -172,9 +180,9 @@ function TransferNoteCard({ note, onReceive }) {
           <div className="flex items-center gap-2">
             <p className="font-mono font-semibold text-sm text-[#1C1C1E]">{note.noteCode}</p>
             {isPending ? (
-              <Badge className="bg-amber-50 text-amber-700 ring-amber-200"><Clock size={11} className="inline mr-1" />Chờ xác nhận</Badge>
+              <Badge className="bg-amber-50 text-amber-700 ring-amber-200"><Clock size={11} className="inline mr-1" />{t('production','sft_status_pending')}</Badge>
             ) : (
-              <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200"><CheckCircle2 size={11} className="inline mr-1" />Đã nhận</Badge>
+              <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200"><CheckCircle2 size={11} className="inline mr-1" />{t('production','sft_status_received')}</Badge>
             )}
           </div>
           <p className="text-xs text-[#8E8878] mt-1">{note.createdByName} · {fmtDateTime(note.createdAt)}</p>
@@ -237,33 +245,61 @@ function TransferNoteCard({ note, onReceive }) {
 }
 
 export default function FactoryAccountantTransfersPage() {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useMinLoading();
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [receiveTarget, setReceiveTarget] = useState(null);
+  const [factories, setFactories] = useState([]);
+  const [factoryId, setFactoryId] = useState(null);
+
+  useEffect(() => {
+    factoryProdApi.listMyFactories().then(list => {
+      const active = (list || []).filter(f => f.status === 'ACTIVE');
+      setFactories(active);
+      if (active.length >= 1) setFactoryId(active[0].id);
+    }).catch(() => {});
+  }, []);
 
   const load = () => {
     setLoading(true);
     semiFinishedGoodsApi.listTransfersForAccountant(statusFilter || undefined, 0, 50)
-      .then(d => setItems(d || []))
+      .then(d => {
+        // Filter by factory client-side
+        if (factoryId && d) d = d.filter(t => t.factoryId === factoryId);
+        setItems(d || []);
+      })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [statusFilter]); // eslint-disable-line
+  useEffect(() => { load(); }, [statusFilter, factoryId]); // eslint-disable-line
 
   const pendingCount = items.filter(t => t.status === 'PENDING').length;
 
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Phiếu chuyển kho bán thành phẩm</h1>
+        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','sft_title')}</h1>
       </div>
+
+      {factories.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+            value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">{t('common','all')}</option>
+            {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
         {[
-          { id: 'PENDING', label: `Chờ xác nhận${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
-          { id: 'RECEIVED', label: 'Đã nhận' },
-          { id: '', label: 'Tất cả' },
+          { id: 'PENDING', label: t('production','sft_pending') },
+          { id: 'RECEIVED', label: t('production','sft_received') },
+          { id: 'ALL', label: t('production','sft_all') },
         ].map(s => (
           <button key={s.id} onClick={() => setStatusFilter(s.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
@@ -278,7 +314,7 @@ export default function FactoryAccountantTransfersPage() {
           ? (
             <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
               <FileText size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">Không có phiếu chuyển kho nào</p>
+              <p className="text-[#8E8878] text-sm">{t('production','sft_empty')}</p>
             </div>
           )
           : (

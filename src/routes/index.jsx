@@ -26,6 +26,7 @@ import AdminIngredients from '../pages/admin/AdminIngredients';
 import AdminBatchApproval from '../pages/admin/AdminBatchApproval';
 import AdminWarehouseStock from '../pages/admin/AdminWarehouseStock';
 import ExpenseVoucherPage from '../pages/admin/ExpenseVoucherPage';
+import AdminSupplierManagementPage from '../pages/admin/AdminSupplierManagementPage';
 import IncomeVoucherPage from '../pages/admin/IncomeVoucherPage';
 import SaleKpiPage from '../pages/admin/SaleKpiPage';
 import OwnerAnalyticsPage from '../pages/owner/OwnerAnalyticsPage';
@@ -36,9 +37,12 @@ import DebtOrdersPage from '../pages/shared/DebtOrdersPage';
 // Production v2 — Owner
 import OwnerProductionDashboard from '../pages/owner/OwnerProductionDashboard';
 import OwnerVendorDebtPage from '../pages/owner/OwnerVendorDebtPage';
+import OwnerSupplierManagementPage from '../pages/owner/OwnerSupplierManagementPage';
 import OwnerMaterialStockPage from '../pages/owner/OwnerMaterialStockPage';
+import OwnerMaterialPriceAnalysisPage from '../pages/owner/OwnerMaterialPriceAnalysisPage';
 import OwnerPlanDetailPage from '../pages/owner/OwnerPlanDetailPage';
 import OwnerWorkOrderDetailPage from '../pages/owner/OwnerWorkOrderDetailPage';
+import OwnerExpenseCategoryPage from '../pages/owner/OwnerExpenseCategoryPage';
 
 // Production v2 — Super Factory Worker (dashboard riêng, tái sử dụng trang chi tiết của Owner)
 import SuperFactoryWorkerDashboard from '../pages/super_factory_worker/SuperFactoryWorkerDashboard';
@@ -77,6 +81,8 @@ import AccountantCustomersPage from '../pages/accountant/AccountantCustomersPage
 import SupplierManagementPage from '../pages/accountant/SupplierManagementPage';
 import AccountantWarehouseReceiptsPage from '../pages/accountant/AccountantWarehouseReceiptsPage';
 import ExpenseListPage from '../pages/accountant/ExpenseListPage';
+import OwnerCashflowPage from '../pages/owner/OwnerCashflowPage';
+import OwnerInventoryPage from '../pages/owner/OwnerInventoryPage';
 import AccountantVendorDebtPage from '../pages/accountant/AccountantVendorDebtPage';
 import IncomeListPage from '../pages/accountant/IncomeListPage';
 import SuperAccountantMaterialRequestPage from '../pages/super_accountant/SuperAccountantMaterialRequestPage';
@@ -174,6 +180,8 @@ export default function AppRoutes() {
         <Route path="ingredients" element={<AdminIngredients />} />
         <Route path="expenses" element={<ExpenseVoucherPage />} />
         <Route path="incomes" element={<IncomeVoucherPage />} />
+        <Route path="cashflow" element={<OwnerCashflowPage />} />
+        <Route path="inventory" element={<OwnerInventoryPage />} />
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
@@ -189,8 +197,16 @@ export default function AppRoutes() {
         {/* Công nợ nhà cung cấp — chỉ xem */}
         <Route path="production/vendor-debts" element={<OwnerVendorDebtPage />} />
         <Route path="production/vendor-debts/:vendorId" element={<OwnerVendorDebtPage />} />
+        {/* Quản lý nhà cung cấp — công nợ + lịch sử đặt hàng + phân tích giá (chỉ xem) */}
+        <Route path="production/suppliers" element={<OwnerSupplierManagementPage />} />
+        <Route path="production/suppliers/:vendorId" element={<OwnerSupplierManagementPage />} />
         {/* Tồn kho nguyên liệu sản xuất — chỉ xem */}
         <Route path="production/material-stock" element={<OwnerMaterialStockPage />} />
+        {/* Phân tích giá nguyên liệu — gộp đa nhà cung cấp (mở từ Tồn kho NL)
+            Cũng dùng cho danh mục khoản chi qua ?kind=EXPENSE */}
+        <Route path="production/material-price-analysis" element={<OwnerMaterialPriceAnalysisPage />} />
+        {/* Phân tích danh mục chi — nguyên liệu + khoản chi/dịch vụ (mở từ Quản lý NCC) */}
+        <Route path="production/expense-categories" element={<OwnerExpenseCategoryPage />} />
 
         {/* Production legacy — vẫn giữ để backward compat với nav cũ */}
         <Route path="production/old" element={<OwnerProductionPage />} />
@@ -213,8 +229,12 @@ export default function AppRoutes() {
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
         <Route path="ingredients" element={<AdminIngredients />} />
         <Route path="batches" element={<AdminBatchApproval />} />
+        <Route path="suppliers" element={<AdminSupplierManagementPage />} />
+        <Route path="suppliers/:vendorId" element={<AdminSupplierManagementPage />} />
         <Route path="expenses" element={<ExpenseVoucherPage />} />
         <Route path="incomes" element={<IncomeVoucherPage />} />
+        <Route path="cashflow" element={<OwnerCashflowPage />} />
+        <Route path="inventory" element={<OwnerInventoryPage />} />
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
@@ -230,7 +250,6 @@ export default function AppRoutes() {
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
-        <Route path="expenses" element={<ExpenseCreatePage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
         <Route path="driver-attendance" element={<DriverAttendancePage />} />
       </Route>
@@ -242,7 +261,7 @@ export default function AppRoutes() {
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
-        <Route path="expenses" element={<ExpenseCreatePage />} />
+        <Route path="expenses" element={<ExpenseListPage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
       </Route>
 
@@ -322,6 +341,8 @@ export default function AppRoutes() {
         <Route path="machines" element={<FactoryMachinePage />} />
         {/* Lịch sử lệnh sản xuất */}
         <Route path="history" element={<FactoryOrdersPage />} />
+        {/* Phiếu chi của phòng xưởng */}
+        <Route path="expenses" element={<ExpenseListPage />} />
         {/* Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm */}
         <Route path="semi-finished-goods" element={<FactorySemiFinishedGoodsPage />} />
         {/* Quản lý tồn kho thành phẩm của xưởng */}

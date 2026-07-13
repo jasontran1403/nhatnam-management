@@ -11,6 +11,7 @@ import {
 } from '../../components/ui';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import VoucherDetailModal from '../../components/common/VoucherDetailModal';
+import { VOUCHER_PAGE_SIZE } from '../../constants/pagination';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -159,24 +160,42 @@ export default function IncomeVoucherPage() {
   const [lightboxIndex, setLightboxIndex]   = useState(null);
   const [detailVoucher, setDetailVoucher]   = useState(null);
 
+  const [totalAmount, setTotalAmount]     = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+
   const load = useCallback(async (p = 0) => {
     setLoading(true);
     try {
-      const params = { page: p, size: 20, sort: 'createdAt,desc' };
-      const res = await adminIncomeApi.listAll(params);
-      let items = res.content || [];
+      // FIX 1: trước đây lọc ngày Ở PHÍA CLIENT trên đúng 20 phiếu của trang hiện tại
+      // → lọc sai (phiếu ở trang khác bị bỏ sót) và số trang không đổi theo bộ lọc.
+      //   Giờ đẩy bộ lọc ngày xuống SERVER qua endpoint /by-date.
+      // FIX 2: "Tổng số tiền phiếu thu" trước đây cộng các phiếu TRÊN TRANG HIỆN TẠI
+      // → lệch số. Giờ lấy từ API /summary — SUM trên TOÀN BỘ kết quả khớp bộ lọc.
+      const params = { page: p, size: VOUCHER_PAGE_SIZE, sort: 'createdAt,desc' };
 
-      if (dateRange.from) {
-        const f = new Date(dateRange.from).setHours(0, 0, 0, 0);
-        items = items.filter(v => v.createdAt >= f);
-      }
-      if (dateRange.to) {
-        const t = new Date(dateRange.to).setHours(23, 59, 59, 999);
-        items = items.filter(v => v.createdAt <= t);
-      }
+      // Chỉ chọn 1 đầu mốc → tự bù đầu còn lại (đầu kỷ nguyên / cuối hôm nay)
+      const anyDate = !!(dateRange.from || dateRange.to);
+      const from = anyDate
+        ? (dateRange.from ? new Date(dateRange.from).setHours(0, 0, 0, 0) : 0)
+        : null;
+      const to = anyDate
+        ? (dateRange.to
+            ? new Date(dateRange.to).setHours(23, 59, 59, 999)
+            : new Date().setHours(23, 59, 59, 999))
+        : null;
+      const hasRange = anyDate;
 
-      setVouchers(items);
+      const [res, sum] = await Promise.all([
+        hasRange
+          ? adminIncomeApi.listByDate(from, to, params)
+          : adminIncomeApi.listAll(params),
+        adminIncomeApi.summary(undefined, from ?? undefined, to ?? undefined),
+      ]);
+
+      setVouchers(res.content || []);
       setTotalPages(res.totalPages || 0);
+      setTotalElements(res.totalElements || 0);
+      setTotalAmount(Number(sum?.totalAmount) || 0);
       setPage(p);
     } catch {
       toast(t('common','error_retry'), 'error');
@@ -187,8 +206,8 @@ export default function IncomeVoucherPage() {
 
   useEffect(() => { load(0); }, [load]);
 
-  const totalAmount     = vouchers.reduce((s, v) => s + Number(v.totalAmount || 0), 0);
-  const confirmedCount  = vouchers.length;
+  // Tổng số phiếu = toàn bộ kết quả khớp bộ lọc (không phải số phiếu trên trang)
+  const confirmedCount = totalElements;
 
   return (
     <>
@@ -199,10 +218,9 @@ export default function IncomeVoucherPage() {
           subtitle={`${confirmedCount} ${t('voucher','income_voucher').toLowerCase()}`}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <SummaryCard icon={DollarSign} label="Tổng số tiền phiếu thu" value={formatCurrency(totalAmount)} accent="green" />
-          <SummaryCard icon={FileText}   label="Tổng số phiếu thu"      value={confirmedCount + ' phiếu'}   accent="blue" />
-          <SummaryCard icon={BadgeCheck} label="Trạng thái"              value="Tất cả đã xác nhận"          accent="gold" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SummaryCard icon={DollarSign} label="Tổng tiền phiếu thu" value={formatCurrency(totalAmount)} accent="green" />
+          <SummaryCard icon={FileText}   label="Số phiếu thu"      value={confirmedCount + ' phiếu'}   accent="blue" />
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">

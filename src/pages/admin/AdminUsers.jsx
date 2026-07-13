@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
-  UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check, AlertCircle,
+  UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check, AlertCircle, Trash2,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { useAuth } from '../../context/AuthContext';
@@ -156,6 +156,8 @@ export default function AdminUsers() {
   const [editing, setEditing]       = useState(null);
   const [saving, setSaving]         = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null);
+  // Xoá mềm nhân viên
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [pwdTarget, setPwdTarget]   = useState(null);
   const [newPwd, setNewPwd]         = useState('');
 
@@ -176,6 +178,18 @@ export default function AdminUsers() {
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit   = (u) => { setEditing(u);   setFormOpen(true); };
+
+  // XOÁ MỀM: BE set deleted=true, khoá tài khoản, thu hồi token và đổi username/email/SĐT
+  // thành SOFT_DELETED_{id}_... → có thể tạo lại nhân viên mới với đúng thông tin cũ.
+  const doSoftDelete = async () => {
+    setSaving(true);
+    try {
+      await adminUserApi.softDelete(deleteConfirm.id);
+      setDeleteConfirm(null); load();
+    } catch (e) {
+      alert(e?.response?.data?.message || e.message || 'Lỗi xoá nhân viên');
+    } finally { setSaving(false); }
+  };
 
   const toggleLock = async () => {
     if (!lockConfirm) return;
@@ -326,6 +340,11 @@ export default function AdminUsers() {
                                 title={u.isLockAccount ? 'Mở khóa' : t('status', 'locked')}>
                                 {u.isLockAccount ? <Unlock size={15} /> : <Lock size={15} />}
                               </button>
+                              <button onClick={() => setDeleteConfirm(u)}
+                                className="p-2 rounded-lg text-[#8E8878] hover:bg-red-50 hover:text-red-600 transition-colors"
+                                title="Xoá nhân viên">
+                                <Trash2 size={15} />
+                              </button>
                             </>
                           ) : (
                             <span className="text-xs text-[#C4B9A8] italic px-2">Không có quyền</span>
@@ -366,6 +385,10 @@ export default function AdminUsers() {
                           className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${u.isLockAccount ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                           {u.isLockAccount ? 'Mở khóa' : t('status', 'locked')}
                         </button>
+                        <button onClick={() => setDeleteConfirm(u)}
+                          className="px-3 py-2 rounded-lg text-xs font-medium bg-red-50 text-red-600">
+                          <Trash2 size={13} />
+                        </button>
                       </>
                     ) : (
                       <p className="text-xs text-[#C4B9A8] italic py-2">Không có quyền thao tác</p>
@@ -391,6 +414,28 @@ export default function AdminUsers() {
           onSaved={() => { setFormOpen(false); load(); }}
         />
       )}
+
+      {/* Soft delete confirm */}
+      <Modal open={!!deleteConfirm} onClose={() => !saving && setDeleteConfirm(null)}
+        title="Xoá nhân viên" size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <SecondaryButton onClick={() => setDeleteConfirm(null)} disabled={saving}>Hủy</SecondaryButton>
+            <DangerButton onClick={doSoftDelete} loading={saving}>Xoá nhân viên</DangerButton>
+          </div>
+        }>
+        <p className="text-sm text-[#1C1C1E]">
+          Xoá nhân viên <span className="font-semibold">{deleteConfirm?.fullName || deleteConfirm?.username}</span>{' '}
+          (<span className="font-mono text-xs">{deleteConfirm?.username}</span>)?
+        </p>
+        <div className="mt-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
+          Tài khoản sẽ bị <b>khoá và ẩn khỏi danh sách</b>, mọi phiên đăng nhập bị thu hồi.
+          Lịch sử đơn hàng / phiếu kho do nhân viên này tạo <b>vẫn được giữ nguyên</b>.
+          <br />
+          Username, email và SĐT sẽ được <b>giải phóng</b> — bạn có thể tạo lại nhân viên mới
+          với đúng thông tin cũ.
+        </div>
+      </Modal>
 
       {/* Lock confirm */}
       <Modal open={!!lockConfirm} onClose={() => !saving && setLockConfirm(null)}

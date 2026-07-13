@@ -61,6 +61,13 @@ export const adminCustomerApi = {
   setActive: (id, value) => api.put(`/api/admin/customers/${id}/active`, null, { params: { value } }).then(unwrap),
   bulkSetActive: (customerIds, isActive) => api.put('/api/admin/customers/bulk-active', { customerIds, isActive }).then(unwrap),
   updateDebtDays: (id, days) => api.put(`/api/admin/customers/${id}/debt-days`, null, { params: { days } }).then(unwrap),
+  /** Cập nhật nhanh TÊN TRÊN HỢP ĐỒNG. Gửi '' để xoá → quay về tên mặc định. */
+  updateContractName: (id, contractName) =>
+    api.put(`/api/admin/customers/${id}/contract-name`, { contractName }).then(unwrap),
+  /** OWNER/ADMIN: bật/tắt "yêu cầu thanh toán trước khi giao hàng" cho khách hàng.
+   *  Chỉ ảnh hưởng ĐƠN TẠO MỚI — đơn cũ giữ nguyên cấu hình đã snapshot lúc tạo. */
+  updateRequirePrepayment: (id, requirePrepayment) =>
+    api.put(`/api/admin/customers/${id}/require-prepayment`, { requirePrepayment }).then(unwrap),
   getOrderHistory: (customerId) => api.get(`/api/admin/customers/${customerId}/orders`).then(unwrap),
   assignSeller: (id, sellerId) => api.put(`/api/admin/customers/${id}/assign-seller`, null, { params: sellerId != null ? { sellerId } : {} }).then(unwrap),
   searchSellers: (q) => api.get('/api/admin/customers/sellers/search', { params: { q } }).then(unwrap),
@@ -79,6 +86,17 @@ export const adminUserApi = {
   update: (id, data) => api.put(`/api/admin/users/${id}`, data).then(unwrap),
   setLocked: (id, value) => api.put(`/api/admin/users/${id}/lock`, null, { params: { value } }).then(unwrap),
   resetPassword: (id, newPassword) => api.put(`/api/admin/users/${id}/reset-password`, { newPassword }).then(unwrap),
+
+  /** XOÁ MỀM nhân viên: deleted = true, khoá tài khoản, thu hồi token,
+   *  và gắn tiền tố SOFT_DELETED_{id}_ vào username/email/SĐT → giải phóng các
+   *  giá trị unique để có thể tạo lại nhân viên mới với đúng thông tin cũ. */
+  softDelete: (id) => api.delete(`/api/admin/users/${id}`).then(unwrap),
+
+  /** Khôi phục nhân viên đã xoá (nếu username/email/SĐT cũ chưa bị ai dùng mất) */
+  restore: (id) => api.put(`/api/admin/users/${id}/restore`).then(unwrap),
+
+  /** Danh sách nhân viên đã xoá */
+  listDeleted: (params) => api.get('/api/admin/users/deleted', { params }).then(unwrap),
 };
 
 // ─── Reports (báo cáo công nợ / aged receivables) ─────────────────────────────
@@ -116,6 +134,12 @@ export const adminExpenseApi = {
 
 export const adminIncomeApi = {
   listAll: (params) => api.get('/api/income-vouchers', { params }).then(unwrap),
+  /** Lọc theo khoảng ngày Ở PHÍA SERVER (from/to = epoch millis) */
+  listByDate: (from, to, params) =>
+    api.get('/api/income-vouchers/by-date', { params: { from, to, ...params } }).then(unwrap),
+  /** Tổng tiền + tổng số phiếu theo ĐÚNG bộ lọc — không phụ thuộc phân trang */
+  summary: (q, from, to) =>
+    api.get('/api/income-vouchers/summary', { params: { q, from, to } }).then(unwrap),
   getById: (id) => api.get(`/api/income-vouchers/${id}`).then(unwrap),
 };
 

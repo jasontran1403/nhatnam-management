@@ -11,6 +11,7 @@ import DatePicker from '../../components/ui/DatePicker.jsx';
 import {
   factoryMaterialRequestApi, STATUS_CONFIG, UNITS, fmtTs, fmtDateTime, countdownInfo,
 } from '../../api/materialRequestApi.js';
+import { factoryProdApi } from '../../api/productionModuleApi';
 import { useToast } from '../../components/common/Toast.jsx';
 import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
@@ -95,7 +96,7 @@ function MaterialSearchInput({ value, onChange, availableMaterials }) {
 
   const select = (m) => {
     setQ(m.name);
-    onChange({ name: m.name, unit: m.unit, materialId: m.id });
+    onChange({ name: m.name, unit: m.unit, materialId: m.id, orderUnit: m.orderUnit, conversionRatio: m.conversionRatio, factoryIds: m.factoryIds });
     setOpen(false);
   };
 
@@ -124,7 +125,9 @@ function MaterialSearchInput({ value, onChange, availableMaterials }) {
             onClick={() => select(m)}
           >
             <p className="text-sm text-[#1C1C1E] font-medium">{m.name}</p>
-            <p className="text-xs text-[#8E8878]">{m.unit}</p>
+            <p className="text-xs text-[#8E8878]">
+              {m.unit}{m.orderUnit && m.orderUnit !== m.unit ? ` · ĐVT đặt: ${m.orderUnit}` : ''}
+            </p>
           </button>
         ))
       )}
@@ -162,6 +165,11 @@ function RequestCard({ req, onReceive }) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-sm font-bold text-[#1C1C1E]">{req.requestCode}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.cls}`}>{cfg.label}</span>
+              {req.productionFactoryName && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">
+                  {req.productionFactoryName}
+                </span>
+              )}
             </div>
             <p className="text-xs text-[#8E8878] mt-1">{req.itemCount} {t('production', 'mr_item_count_suffix')} · {t('production', 'mr_created_at_prefix')} {fmtTs(req.createdAt)}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
@@ -283,16 +291,30 @@ function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
   );
 }
 
-function ReceiveModal({ req, onClose, onDone }) {
+function ReceiveModal({ req, allMaterials = [], onClose, onDone }) {
   const toast = useToast();
   const { t } = useLang();
   const [notes, setNotes] = useState('');
-  // Mỗi item: weighings = mảng string các lần cân. Mặc định 1 dòng trống.
-  const [items, setItems] = useState((req.items || []).map(i => ({
-    ...i,
-    weighings: [''],
-    expiryDate: null,
-  })));
+
+  // Build lookup: factoryMaterialId → { shelfLifeDays, orderUnit, conversionRatio, unit }
+  const matLookup = {};
+  (allMaterials || []).forEach(m => { if (m.id) matLookup[m.id] = m; });
+
+  const [items, setItems] = useState((req.items || []).map(i => {
+    const fm = matLookup[i.factoryMaterialId];
+    // HSD mặc định = hôm nay + shelfLifeDays
+    let defaultExpiry = null;
+    if (fm?.shelfLifeDays > 0) {
+      defaultExpiry = Date.now() + fm.shelfLifeDays * 86400000;
+    }
+    return {
+      ...i,
+      weighings: [''],
+      expiryDate: defaultExpiry,
+      receivedUnitType: 'STORAGE', // mặc định đvt lưu kho
+      _fm: fm, // cache for UI
+    };
+  }));
   const [saving, setSaving] = useState(false);
   const setItem = (idx, key, val) => setItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
   const setWeighings = (idx, arr) => setItem(idx, 'weighings', arr);
@@ -308,14 +330,13 @@ function ReceiveModal({ req, onClose, onDone }) {
       await factoryMaterialRequestApi.receive(req.id, {
         notes,
         items: items.map(it => {
-          // Chỉ giữ lại các lần cân hợp lệ (> 0) để lưu làm nhật ký đối chiếu
           const validLogs = it.weighings.map(w => parseFloat(w)).filter(n => Number.isFinite(n) && n > 0);
           const qtyReceived = validLogs.reduce((s, n) => s + n, 0);
           return {
             itemId: it.id,
             qtyReceived,
             expiryDate: it.expiryDate || null,
-            // Chỉ gửi nhật ký khi có từ 2 lần cân trở lên (1 lần thì không cần lưu breakdown)
+            receivedUnitType: it.receivedUnitType || 'STORAGE',
             weighingLogs: validLogs.length > 1 ? validLogs : null,
           };
         }),
@@ -337,6 +358,13 @@ function ReceiveModal({ req, onClose, onDone }) {
           {items.map((item, idx) => {
             const total = totalOf(item.weighings);
             const diff = total - Number(item.qtyRequested || 0);
+            const fm = item._fm;
+            const hasOrderUnit = fm?.orderUnit && fm.orderUnit !== fm.unit;
+            const displayUnit = item.receivedUnitType === 'ORDER' && hasOrderUnit ? fm.orderUnit : item.unit;
+            // Khi chọn đvt đặt hàng, hiển thị quy đổi
+            const ratio = fm?.conversionRatio;
+            const stockQty = item.receivedUnitType === 'ORDER' && ratio > 0 ? total * ratio : null;
+
             return (
               <div key={item.id || idx} className="bg-[#FAF7F2] rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
@@ -344,14 +372,32 @@ function ReceiveModal({ req, onClose, onDone }) {
                   <span className="text-xs text-[#8E8878]">{t('production', 'mr_ordered_label')}: {item.qtyRequested} {item.unit}</span>
                 </div>
 
+                {/* Chọn ĐVT nhận: lưu kho hoặc đặt hàng */}
+                {hasOrderUnit && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs text-[#8E8878]">{t('production','mr_received_unit')}:</span>
+                    <select className="text-xs px-2 py-1 rounded-lg border border-[#E8DDD0] bg-white text-[#1C1C1E]"
+                      value={item.receivedUnitType}
+                      onChange={e => setItem(idx, 'receivedUnitType', e.target.value)}>
+                      <option value="STORAGE">{fm.unit} (lưu kho)</option>
+                      <option value="ORDER">{fm.orderUnit} (đặt hàng)</option>
+                    </select>
+                    {stockQty != null && total > 0 && (
+                      <span className="text-xs text-[#C9A84C] font-medium">
+                        → {stockQty.toFixed(3).replace(/\.?0+$/, '')} {fm.unit} vào kho
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <WeighingInput
                   qtyRequested={item.qtyRequested}
-                  unit={item.unit}
+                  unit={displayUnit}
                   weighings={item.weighings}
                   onChange={arr => setWeighings(idx, arr)}
                 />
 
-                {total > 0 && Math.abs(diff) > 0.001 && (
+                {total > 0 && Math.abs(diff) > 0.001 && item.receivedUnitType === 'STORAGE' && (
                   <p className={`mt-1.5 text-xs font-medium ${diff > 0 ? 'text-amber-600' : 'text-orange-600'}`}>
                     {diff > 0
                       ? `${t('production', 'mr_over_ordered')} ${diff.toFixed(3).replace(/\.?0+$/, '')} ${item.unit} ${t('production', 'mr_over_ordered_suffix')}`
@@ -363,6 +409,9 @@ function ReceiveModal({ req, onClose, onDone }) {
                   <Field label={t('production', 'mr_expiry_label')}>
                     <DatePicker value={item.expiryDate} onChange={val => setItem(idx, 'expiryDate', val)} placeholder={t('production', 'mr_expiry_placeholder')} minDate={new Date()} />
                   </Field>
+                  {item.expiryDate && fm?.shelfLifeDays > 0 && (
+                    <p className="text-[10px] text-[#8E8878] mt-0.5">Mặc định HSD: {fm.shelfLifeDays} ngày từ hôm nay</p>
+                  )}
                 </div>
               </div>
             );
@@ -385,11 +434,26 @@ function CreateModal({ onClose, onDone, allMaterials }) {
   const toast = useToast();
   const { t } = useLang();
   const [requiredBy, setRequiredBy] = useState(null);
-  // items: [{ material: {name, unit} | null, unit: string, qtyRequested: string }]
-  const [items, setItems] = useState([{ material: null, qtyRequested: '' }]);
+  // items: [{ material: {...} | null, qtyRequested: string, orderUnitType: 'STORAGE'|'ORDER' }]
+  const [items, setItems] = useState([{ material: null, qtyRequested: '', orderUnitType: 'STORAGE' }]);
   const [saving, setSaving] = useState(false);
+  // Xưởng của phiếu — nv có thể kiêm nhiều xưởng, phải chọn đúng xưởng đặt hàng.
+  const [factories, setFactories] = useState([]);
+  const [factoryId, setFactoryId] = useState('');
 
-  const addItem = () => setItems(p => [...p, { material: null, qtyRequested: '' }]);
+  useEffect(() => {
+    let alive = true;
+    factoryProdApi.listMyFactories()
+      .then(list => {
+        if (!alive) return;
+        setFactories(list || []);
+        if ((list || []).length === 1) setFactoryId(list[0].id);
+      })
+      .catch(() => { if (alive) setFactories([]); });
+    return () => { alive = false; };
+  }, []);
+
+  const addItem = () => setItems(p => [...p, { material: null, qtyRequested: '', orderUnitType: 'STORAGE' }]);
   const removeItem = (i) => setItems(p => p.filter((_, idx) => idx !== i));
 
   const setItemField = (i, key, val) =>
@@ -401,26 +465,33 @@ function CreateModal({ onClose, onDone, allMaterials }) {
   };
 
   // Các nguyên liệu chưa được chọn trong các dòng trước (trừ dòng hiện tại)
+  // + lọc theo xưởng đang chọn
   const getAvailable = (currentIdx) => {
     const chosenNames = items
       .filter((_, idx) => idx !== currentIdx)
       .map(it => it.material?.name)
       .filter(Boolean);
-    return allMaterials.filter(m => !chosenNames.includes(m.name));
+    return allMaterials
+      .filter(m => !chosenNames.includes(m.name))
+      .filter(m => !factoryId || (m.factoryIds || []).includes(Number(factoryId)));
   };
 
   const handleSubmit = async () => {
     const invalid = items.some(it => !it.material?.name?.trim() || !it.qtyRequested);
     if (invalid) { toast(t('production', 'mr_err_need_all_fields'), 'error'); return; }
+    if (!factoryId) { toast(t('production','mr_err_select_factory'), 'error'); return; }
     setSaving(true);
     try {
       await factoryMaterialRequestApi.create({
         requiredBy: requiredBy || null,
+        productionFactoryId: Number(factoryId),
         items: items.map((it, i) => ({
           materialName: it.material.name.trim(),
-          unit: it.material.unit || 'Kg',
+          unit: it.orderUnitType === 'ORDER' && it.material.orderUnit ? it.material.orderUnit : (it.material.unit || 'Kg'),
           qtyRequested: parseFloat(it.qtyRequested),
           sortOrder: i,
+          factoryMaterialId: it.material.materialId || null,
+          orderUnitType: it.orderUnitType || 'STORAGE',
         })),
       });
       toast(t('production', 'mr_create_success'), 'success');
@@ -433,6 +504,20 @@ function CreateModal({ onClose, onDone, allMaterials }) {
   return (
     <Modal open onClose={onClose} title={t('production', 'mr_create_title')} size="lg">
       <div className="space-y-4" style={{ minHeight: 420 }}>
+        <Field label={t('production', 'dash_plan_factory')} required>
+          {factories.length <= 1 ? (
+            <div className={`${inputCls} bg-[#FAF7F2] text-[#8E8878]`} style={{ cursor: 'default' }}>
+              {factories[0]?.name || 'Bạn chưa được gán xưởng nào'}
+            </div>
+          ) : (
+            <select className={inputCls} value={factoryId}
+              onChange={e => setFactoryId(e.target.value)}>
+              <option value="">{t('production','omach_select_factory')}</option>
+              {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          )}
+        </Field>
+
         <Field label={t('production', 'mr_required_by_optional')}>
           <DatePicker value={requiredBy} onChange={setRequiredBy} placeholder={t('production', 'mr_required_by_placeholder')} minDate={new Date()} />
         </Field>
@@ -467,11 +552,21 @@ function CreateModal({ onClose, onDone, allMaterials }) {
                     value={item.qtyRequested}
                     onChange={e => setItemField(i, 'qtyRequested', e.target.value)}
                   />
-                  {item.material?.unit && (
+                  {/* Chọn ĐVT: lưu kho hoặc đặt hàng */}
+                  {item.material?.orderUnit && item.material.orderUnit !== item.material.unit ? (
+                    <select
+                      className="text-xs px-1.5 py-1 rounded-lg border border-[#E8DDD0] bg-white text-[#1C1C1E] flex-shrink-0"
+                      style={{ width: 64 }}
+                      value={item.orderUnitType}
+                      onChange={e => setItemField(i, 'orderUnitType', e.target.value)}>
+                      <option value="STORAGE">{item.material.unit}</option>
+                      <option value="ORDER">{item.material.orderUnit}</option>
+                    </select>
+                  ) : item.material?.unit ? (
                     <span className="text-xs text-[#8E8878] font-medium flex-shrink-0 w-7">
                       {item.material.unit}
                     </span>
-                  )}
+                  ) : null}
                   {items.length > 1 && (
                     <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 flex-shrink-0">
                       <X size={16} />
@@ -604,7 +699,7 @@ export default function FactoryMaterialRequestPage() {
         />
       )}
       {receiveTarget && (
-        <ReceiveModal req={receiveTarget} onClose={() => setReceiveTarget(null)} onDone={() => { setReceiveTarget(null); load(); }} />
+        <ReceiveModal req={receiveTarget} allMaterials={allMaterials} onClose={() => setReceiveTarget(null)} onDone={() => { setReceiveTarget(null); load(); }} />
       )}
     </div>
   );

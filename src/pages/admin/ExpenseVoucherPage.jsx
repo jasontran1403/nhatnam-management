@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { adminExpenseApi } from '../../api/adminApi';
+import { expenseApi } from '../../api/services';
+import { VENDOR_TYPE_LABELS } from '../accountant/ExpenseCreateModal';
 import { useToast } from '../../components/common/Toast';
-import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet, Search } from 'lucide-react';
+import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet, Search, Landmark, ShieldCheck, Settings2, Save } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   formatCurrency, formatDateTime,
@@ -127,10 +129,32 @@ function SummaryCard({ icon: Icon, label, value, accent }) {
   );
 }
 
-function VoucherRow({ v, onOpenLightbox, statusMap }) {
+function VoucherRow({ v, onOpenLightbox, statusMap, onChanged }) {
   const { t } = useLang();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const total = v.totalAmount ?? v.items?.reduce((s, i) => s + Number(i.amount), 0) ?? 0;
+  const isBank = v.paymentType === 'BANK_TRANSFER';
+  const isVendorDebt = v.voucherType === 'VENDOR_DEBT_PAYMENT';
+  const canApprove = v.status === 'PENDING' && !isVendorDebt;
+
+  const doApprove = async (e) => {
+    e.stopPropagation(); setBusy(true);
+    try { await adminExpenseApi.approve(v.id, null); toast('Đã duyệt phiếu chi', 'success'); onChanged && onChanged(); }
+    catch (err) { toast(err?.response?.data?.message || 'Lỗi khi duyệt', 'error'); }
+    finally { setBusy(false); }
+  };
+  const doReject = async (e) => {
+    e.stopPropagation();
+    if (!rejectReason.trim()) { toast('Vui lòng nhập lý do từ chối', 'error'); return; }
+    setBusy(true);
+    try { await adminExpenseApi.reject(v.id, rejectReason.trim()); toast('Đã từ chối phiếu chi', 'success'); onChanged && onChanged(); }
+    catch (err) { toast(err?.response?.data?.message || 'Lỗi khi từ chối', 'error'); }
+    finally { setBusy(false); }
+  };
 
   return (
     <>
@@ -154,6 +178,16 @@ function VoucherRow({ v, onOpenLightbox, statusMap }) {
               <Wallet size={9} /> Trả công nợ NCC
             </span>
           )}
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isBank ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>
+              {isBank ? <Landmark size={9} /> : <Wallet size={9} />} {isBank ? 'Chuyển khoản' : 'Tiền mặt'}
+            </span>
+            {v.approvedByName && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[#C9A84C]/10 text-[#B8923E]">
+                <ShieldCheck size={9} /> {v.approvedByName}
+              </span>
+            )}
+          </div>
         </td>
         <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.createdByName}</td>
         <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.requestedByName || v.createdByName}</td>
@@ -200,10 +234,50 @@ function VoucherRow({ v, onOpenLightbox, statusMap }) {
                 </div>
               )}
 
+              {isBank && (
+                <div className="md:col-span-2 bg-sky-50 border border-sky-100 rounded-lg p-3 flex flex-wrap gap-6">
+                  <div><p className="text-[10px] text-[#8E8878] uppercase">Ngân hàng</p><p className="text-sm font-medium text-[#1C1C1E]">{v.bankName || '—'}</p></div>
+                  <div><p className="text-[10px] text-[#8E8878] uppercase">Mã tham chiếu</p><p className="text-sm font-mono text-[#1C1C1E]">{v.bankRef || '—'}</p></div>
+                  {v.vendorType && <div><p className="text-[10px] text-[#8E8878] uppercase">Danh mục</p><p className="text-sm text-[#1C1C1E]">{VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType}</p></div>}
+                </div>
+              )}
+
               {v.status === 'REJECTED' && v.rejectReason && (
                 <div className="md:col-span-2">
                   <p className="text-xs font-semibold text-red-500 uppercase mb-1">Lý do từ chối</p>
                   <p className="text-sm text-[#5C4E3D]">{v.rejectReason}</p>
+                </div>
+              )}
+
+              {/* Duyệt / Từ chối (ADMIN & OWNER duyệt được mọi phiếu PENDING) */}
+              {canApprove && (
+                <div className="md:col-span-2 border-t border-[#E8DDD0] pt-3" onClick={e => e.stopPropagation()}>
+                  {!rejecting ? (
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => setRejecting(true)} disabled={busy}
+                        className="px-4 py-2 rounded-lg border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition disabled:opacity-50">
+                        Từ chối
+                      </button>
+                      <button onClick={doApprove} disabled={busy}
+                        className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition disabled:opacity-50">
+                        {busy ? 'Đang xử lý...' : 'Duyệt phiếu'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-red-600">Lý do từ chối *</label>
+                      <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={2}
+                        placeholder="Nhập lý do..." className="w-full px-3 py-2 rounded-lg border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 bg-white" />
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={() => { setRejecting(false); setRejectReason(''); }} disabled={busy}
+                          className="px-4 py-2 rounded-lg border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-white transition disabled:opacity-50">Huỷ</button>
+                        <button onClick={doReject} disabled={busy}
+                          className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition disabled:opacity-50">
+                          {busy ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -211,6 +285,98 @@ function VoucherRow({ v, onOpenLightbox, statusMap }) {
         </tr>
       )}
     </>
+  );
+}
+
+// ── Panel cấu hình duyệt (OWNER/ADMIN): ngưỡng tiền + danh mục SA được duyệt ──
+function ApprovalConfigPanel() {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [threshold, setThreshold] = useState('');
+  const [cats, setCats] = useState([]);
+  const [updatedByName, setUpdatedByName] = useState('');
+
+  const parseVND = (s) => Number(String(s).replace(/[^\d]/g, '')) || 0;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await expenseApi.getApprovalConfig();
+      const d = res.data?.data || res.data || {};
+      setThreshold(String(d.thresholdAmount ?? 3000000));
+      setCats(d.allowedCategories || []);
+      setUpdatedByName(d.updatedByName || '');
+    } catch { toast('Không tải được cấu hình duyệt', 'error'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { if (open) load(); }, [open]);
+
+  const toggleCat = (k) => setCats(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await expenseApi.updateApprovalConfig({ thresholdAmount: parseVND(threshold), allowedCategories: cats });
+      toast('Đã lưu cấu hình duyệt', 'success');
+      load();
+    } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi lưu', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-hidden">
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FAF7F2] transition">
+        <span className="flex items-center gap-2 text-sm font-semibold text-[#1C1C1E]">
+          <Settings2 size={16} className="text-[#C9A84C]" /> Cấu hình duyệt của Kế toán trưởng
+        </span>
+        {open ? <ChevronUp size={16} className="text-[#8E8878]" /> : <ChevronDown size={16} className="text-[#8E8878]" />}
+      </button>
+      {open && (
+        <div className="p-4 border-t border-[#E8DDD0] space-y-4">
+          {loading ? (
+            <p className="text-sm text-[#8E8878]">Đang tải...</p>
+          ) : (
+            <>
+              <p className="text-xs text-[#8E8878]">
+                Kế toán trưởng (SUPER_ACCOUNTANT) được tự duyệt / duyệt phiếu khi <b>tổng tiền &lt; ngưỡng</b> VÀ
+                <b> danh mục</b> nằm trong danh sách cho phép. Ngược lại phiếu sẽ chuyển Chủ/Quản trị duyệt.
+              </p>
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Ngưỡng số tiền (đ)</label>
+                <input
+                  value={threshold ? new Intl.NumberFormat('vi-VN').format(parseVND(threshold)) : ''}
+                  onChange={e => setThreshold(String(parseVND(e.target.value)))}
+                  className="w-full sm:w-64 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-right focus:outline-none focus:border-[#C9A84C]" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1C1E] mb-1.5">Danh mục cho phép</label>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(VENDOR_TYPE_LABELS).map(([k, label]) => {
+                    const on = cats.includes(k);
+                    return (
+                      <button key={k} type="button" onClick={() => toggleCat(k)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${on ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[#8E8878]">{updatedByName ? `Cập nhật gần nhất bởi ${updatedByName}` : ''}</span>
+                <button onClick={save} disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#B8923E] transition disabled:opacity-50">
+                  <Save size={15} /> {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -281,7 +447,9 @@ export default function ExpenseVoucherPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader icon={Receipt} title="Phiếu chi phí"
-        subtitle="Kế toán lập phiếu là chi luôn — chỉ xem, không cần duyệt" />
+        subtitle="Duyệt phiếu chi & cấu hình hạn mức, danh mục cho Kế toán trưởng" />
+
+      <ApprovalConfigPanel />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SummaryCard icon={DollarSign} label="Tổng số tiền phiếu chi" value={formatCurrency(totalAmount)} accent="gold" />
@@ -348,7 +516,8 @@ export default function ExpenseVoucherPage() {
                 {vouchers.map(v => (
                   <VoucherRow key={v.id} v={v}
                     onOpenLightbox={openLightbox}
-                    statusMap={STATUS_MAP} />
+                    statusMap={STATUS_MAP}
+                    onChanged={() => load(page)} />
                 ))}
               </tbody>
             </table>

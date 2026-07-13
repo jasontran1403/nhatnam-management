@@ -5,17 +5,14 @@ import {
 import { pricingApi } from '../../api/accountantApi';
 import { useToast } from '../../components/common/Toast';
 import useDebounce from '../../utils/useDebounce.js';
+import { useLang } from '../../context/LangContext';
 import { formatVN, formatVNInput, parseVN, roundHalfUp } from '../../utils/vnNumber';
 import {
     PageHeader, SectionCard, SectionHeader, PrimaryButton, SecondaryButton,
     Field, inputCls, selectCls, EmptyState,
 } from '../../components/ui';
 
-const BASIS_OPTIONS = [
-    { value: 'value', label: 'Theo giá trị' },
-    { value: 'quantity', label: 'Theo số lượng' },
-    { value: 'equal', label: 'Chia đều' },
-];
+// BASIS_OPTIONS moved inside component
 
 /* Input số theo chuẩn VN (ngăn cách nghìn ".", thập phân ",") */
 function VNInput({ value, onChange, decimals = 0, className, ...props }) {
@@ -32,6 +29,12 @@ function VNInput({ value, onChange, decimals = 0, className, ...props }) {
 
 /* ── Dropdown tìm nguyên liệu ─────────────────────────────────────────────── */
 function IngredientSelect({ value, onChange }) {
+    const { t } = useLang();
+    const BASIS_OPTIONS = useMemo(() => [
+        { value: 'value', label: t('production','pcalc_basis_value') },
+        { value: 'quantity', label: t('production','pcalc_basis_quantity') },
+        { value: 'equal', label: t('production','pcalc_basis_equal') },
+    ], [t]);
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
     const debouncedQ = useDebounce(q, 350);
@@ -91,7 +94,7 @@ function IngredientSelect({ value, onChange }) {
                 className={`${inputCls} flex items-center justify-between text-left`}
             >
                 <span className={value ? 'text-[#1C1C1E] truncate' : 'text-[#8E8878]'}>
-                    {value ? `${value.name}${value.unit ? ` (${value.unit})` : ''}` : 'Chọn nguyên liệu...'}
+                    {value ? `${value.name}${value.unit ? ` (${value.unit})` : ''}` : t('production','mps_select_product')}
                 </span>
                 <Search size={15} className="text-[#8E8878] shrink-0" />
             </button>
@@ -112,16 +115,16 @@ function IngredientSelect({ value, onChange }) {
                             autoFocus
                             value={q}
                             onChange={(e) => setQ(e.target.value)}
-                            placeholder="Gõ tên hoặc mã nguyên liệu..."
+                            placeholder={t('production','pcalc_search_ph')}
                             className={inputCls}
                         />
                     </div>
 
                     <div className="max-h-60 overflow-auto">
-                        {loading && <p className="px-3 py-3 text-sm text-[#8E8878]">Đang tìm...</p>}
+                        {loading && <p className="px-3 py-3 text-sm text-[#8E8878]">{t('production','pcalc_searching')}</p>}
 
                         {!loading && options.length === 0 && (
-                            <p className="px-3 py-3 text-sm text-[#8E8878]">Không có kết quả</p>
+                            <p className="px-3 py-3 text-sm text-[#8E8878]">{t('production','pcalc_no_results')}</p>
                         )}
 
                         {!loading && options.map((o) => (
@@ -149,6 +152,7 @@ function IngredientSelect({ value, onChange }) {
 
 /* ── Combobox tên chi phí: chọn nhãn đã lưu hoặc tạo mới ───────────────────── */
 function CostLabelInput({ value, onChange, labels, onCreate }) {
+    const { t } = useLang();
     const [open, setOpen] = useState(false);
     const boxRef = useRef(null);
     const inputRef = useRef(null);
@@ -205,7 +209,7 @@ function CostLabelInput({ value, onChange, labels, onCreate }) {
                         setOpen(true);
                     }}
                     className={inputCls}
-                    placeholder="Tên chi phí (chọn hoặc tạo mới)"
+                    placeholder={t('production','pcalc_overhead_name')}
                 />
             </div>
 
@@ -282,6 +286,7 @@ const formatVNTrimDecimal = (value, maxDecimals = 3) => {
 };
 
 export default function PricingCalculatorPage() {
+    const { t } = useLang();
     const toast = useToast();
     const [rows, setRows] = useState([newIngredientRow()]);
     const [costs, setCosts] = useState([]);
@@ -317,14 +322,14 @@ export default function PricingCalculatorPage() {
             if (created) setLabels((ls) => [...ls, created].sort((a, b) => a.name.localeCompare(b.name)));
             return created;
         } catch {
-            toast('Không tạo được nhãn chi phí', 'error');
+            toast(t('production','pcalc_err_label'), 'error');
             return null;
         }
     };
 
     const compute = () => {
         const valid = rows.filter((r) => r.ingredient && parseVN(r.quantity) > 0);
-        if (valid.length === 0) { toast('Cần ít nhất 1 nguyên liệu có số lượng > 0', 'error'); return; }
+        if (valid.length === 0) { toast(t('production','pcalc_err_need_ingredient'), 'error'); return; }
 
         const items = valid.map((r) => {
             const qty = parseVN(r.quantity);
@@ -371,16 +376,16 @@ export default function PricingCalculatorPage() {
 
     return (
         <div className="p-4 md:p-6 space-y-5">
-            <PageHeader icon={Calculator} title="Tính giá"
-                subtitle="Tính giá bán nguyên liệu từ giá mua, thuế và chi phí chung phân bổ." />
+            <PageHeader icon={Calculator} title={t('production','pcalc_title')}
+                subtitle={t('production','pcalc_subtitle')} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
                 {/* ── CỘT TRÁI: nhập liệu ── */}
                 <div className="space-y-5">
                     <SectionCard>
-                        <SectionHeader title="Nguyên liệu"
+                        <SectionHeader title={t('production','pcalc_ingredients')}
                             action={<SecondaryButton onClick={() => setRows((rs) => [...rs, newIngredientRow()])}>
-                                <Plus size={15} /> Thêm</SecondaryButton>} />
+                                <Plus size={15} />{t('common','add')}</SecondaryButton>} />
                         <div className="space-y-4 mt-3">
                             {rows.map((r, idx) => (
                                 <div key={r.key} className="rounded-xl border border-[#EFE7DA] p-3 bg-[#FDFBF7]">
@@ -392,14 +397,14 @@ export default function PricingCalculatorPage() {
                                         )}
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <Field label="Nguyên liệu">
+                                        <Field label={t('production','pcalc_ingredients')}>
                                             <IngredientSelect value={r.ingredient} onChange={(ing) => patchRow(r.key, { ingredient: ing })} />
                                         </Field>
-                                        <Field label={`Số lượng${r.ingredient?.unit ? ` (${r.ingredient.unit})` : ''}`}>
+                                        <Field label={`{t('production','pcalc_qty')}${r.ingredient?.unit ? ` (${r.ingredient.unit})` : ''}`}>
                                             <VNInput value={r.quantity} decimals={3}
                                                 onChange={(v) => patchRow(r.key, { quantity: v })} placeholder="VD: 1.000" />
                                         </Field>
-                                        <Field label="Giá mua">
+                                        <Field label={t('production','pcalc_buy_price')}>
                                             <div className="flex gap-2">
                                                 <div className="basis-[30%] shrink-0">
                                                     <select
@@ -412,8 +417,8 @@ export default function PricingCalculatorPage() {
                                                         }
                                                         className={selectCls + ' w-full'}
                                                     >
-                                                        <option value="total">Tổng tiền</option>
-                                                        <option value="unit">Đơn giá</option>
+                                                        <option value="total">{t('production','pcalc_total')}</option>
+                                                        <option value="unit">{t('production','pcalc_unit_price')}</option>
                                                     </select>
                                                 </div>
 
@@ -429,8 +434,8 @@ export default function PricingCalculatorPage() {
                                                         className={inputCls + ' w-full'}
                                                         placeholder={
                                                             r.priceMode === 'total'
-                                                                ? 'Tổng tiền lô'
-                                                                : 'Đơn giá (tối đa 3 số lẻ)'
+                                                                ? t('production','pcalc_lot_total')
+                                                                : t('production','pcalc_ph_unit_price')
                                                         }
                                                     />
                                                 </div>
@@ -440,18 +445,18 @@ export default function PricingCalculatorPage() {
                                                 parseVN(r.quantity) > 0 &&
                                                 parseVN(r.priceValue) > 0 && (
                                                     <p className="text-[11px] text-[#8E8878] mt-1">
-                                                        Đơn giá ≈{' '}
+                                                        {t('production','pcalc_unit_price')} ≈{' '}
                                                         {formatVN(
                                                             parseVN(r.priceValue) / parseVN(r.quantity),
                                                             3,
                                                             3
                                                         )}{' '}
-                                                        / {r.ingredient?.unit || 'đv'}
+                                                        / {r.ingredient?.unit || t('production','pcalc_unit_fallback')}
                                                     </p>
                                                 )}
                                         </Field>
 
-                                        <Field label="Thuế riêng của nguyên liệu">
+                                        <Field label={t('production','pcalc_ingredient_tax')}>
                                             <div className="flex gap-2 items-start">
 
                                                 {/* Giá tính thuế */}
@@ -467,12 +472,12 @@ export default function PricingCalculatorPage() {
                                                                 })
                                                             }
                                                             className={inputCls + ' flex-1'}
-                                                            placeholder="Giá tính thuế"
+                                                            placeholder={t('production','pcalc_price_with_tax')}
                                                         />
 
                                                         <button
                                                             type="button"
-                                                            title="Copy từ giá mua"
+                                                            title={t('production','pcalc_copy_buy_price')}
                                                             onClick={() => fillTaxable(r)}
                                                             className="
                         h-11
@@ -530,22 +535,22 @@ export default function PricingCalculatorPage() {
                     </SectionCard>
 
                     <SectionCard>
-                        <SectionHeader title="Chi phí chung (phân bổ)"
+                        <SectionHeader title={t('production','pcalc_overhead')}
                             action={<SecondaryButton onClick={() => setCosts((cs) => [...cs, newCostRow()])}>
-                                <Plus size={15} /> Thêm</SecondaryButton>} />
+                                <Plus size={15} />{t('common','add')}</SecondaryButton>} />
                         <div className="px-5 pt-4 pb-5">
                             <p className="text-xs text-[#8E8878] mt-1">
                                 VD: phí kho bãi, lưu kho, vận chuyển, hải quan... Mỗi dòng chọn cơ sở phân bổ riêng (mặc định theo giá trị).
                             </p>
                             <div className="space-y-2 mt-3">
-                                {costs.length === 0 && <p className="text-sm text-[#9C9C9C] italic">Chưa có chi phí chung nào.</p>}
+                                {costs.length === 0 && <p className="text-sm text-[#9C9C9C] italic">{t('production','pcalc_no_overhead')}</p>}
                                 {costs.map((c) => (
                                     <div key={c.key} className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                                         <CostLabelInput value={c.label} labels={labels}
                                             onChange={(v) => patchCost(c.key, { label: v })} onCreate={createLabel} />
                                         <VNInput value={c.amount} decimals={0}
                                             onChange={(v) => patchCost(c.key, { amount: v })}
-                                            className={inputCls + ' sm:w-40 min-w-0'} placeholder="Số tiền" />
+                                            className={inputCls + ' sm:w-40 min-w-0'} placeholder={t('production','pcalc_amount')} />
                                         <select value={c.basis} onChange={(e) => patchCost(c.key, { basis: e.target.value })}
                                             className={selectCls + ' sm:w-44 shrink-0'}>
                                             {BASIS_OPTIONS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
@@ -559,7 +564,7 @@ export default function PricingCalculatorPage() {
                     </SectionCard>
 
                     <SectionCard>
-                        <SectionHeader title="% Lợi nhuận mong muốn" />
+                        <SectionHeader title={t('production','pcalc_margin_pct')} />
 
                         <div className="px-5 pt-4 pb-5">
                             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
@@ -582,7 +587,7 @@ export default function PricingCalculatorPage() {
                                 <div className="flex-1" />
 
                                 <PrimaryButton onClick={compute} className="px-6 py-2.5">
-                                    <Calculator size={16} /> Tính toán
+                                    <Calculator size={16} />{t('production','pcalc_calculate')}
                                 </PrimaryButton>
                             </div>
                         </div>
@@ -592,11 +597,11 @@ export default function PricingCalculatorPage() {
                 {/* ── CỘT PHẢI: preview ── */}
                 <div className="lg:sticky lg:top-4">
                     <SectionCard className="border-[#C9A84C]/40">
-                        <SectionHeader title="Kết quả tính giá" />
+                        <SectionHeader title={t('production','pcalc_results')} />
                         {!result ? (
                             <div className="py-10">
-                                <EmptyState icon={Calculator} title="Chưa có kết quả"
-                                    description="Nhập nguyên liệu rồi bấm 'Tính toán' để xem giá bán từng đơn vị." />
+                                <EmptyState icon={Calculator} title={t('production','pcalc_no_result')}
+                                    description={t('production','pcalc_result_hint')} />
                             </div>
                         ) : (
                             <>
@@ -605,18 +610,18 @@ export default function PricingCalculatorPage() {
                                         <div key={it.key} className="rounded-xl border border-[#EFE7DA] p-4 bg-[#FDFBF7]">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="font-semibold text-[#1C1C1E]">{it.name}</span>
-                                                <span className="text-xs text-[#8E8878]">{formatVN(it.qty, 3)} {it.unit || 'đv'}</span>
+                                                <span className="text-xs text-[#8E8878]">{formatVN(it.qty, 3)} {it.unit || t('production','pcalc_unit_fallback')}</span>
                                             </div>
                                             <div className="space-y-1 text-sm">
-                                                <Line label="Tổng tiền" value={formatVN(roundHalfUp(it.buying))} />
-                                                <Line label="Đơn giá" value={formatVNTrimDecimal(it.unitBuy, 3)} suffix={`/ ${it.unit || 'đv'}`} />
-                                                <Line label="Thuế" value={formatVN(it.tax)} />
-                                                <Line label="Chi phí chung phân bổ" value={formatVN(it.allocated)} />
+                                                <Line label={t('production','pcalc_total')} value={formatVN(roundHalfUp(it.buying))} />
+                                                <Line label={t('production','pcalc_unit_price')} value={formatVNTrimDecimal(it.unitBuy, 3)} suffix={`/ ${it.unit || t('production','pcalc_unit_fallback')}`} />
+                                                <Line label={t('production','pcalc_tax')} value={formatVN(it.tax)} />
+                                                <Line label={t('production','pcalc_overhead_alloc')} value={formatVN(it.allocated)} />
                                                 <div className="border-t border-[#EFE7DA] my-1" />
-                                                <Line label="Tổng giá vốn" value={formatVN(it.totalCost)} strong />
-                                                <Line label="Giá vốn / đơn vị" value={formatVN(it.unitCost)} suffix={`/ ${it.unit || 'đv'}`} strong />
+                                                <Line label={t('production','pcalc_total_cost')} value={formatVN(it.totalCost)} strong />
+                                                <Line label={t('production','pcalc_cogs_per_unit')} value={formatVN(it.unitCost)} suffix={`/ ${it.unit || t('production','pcalc_unit_fallback')}`} strong />
                                                 <div className="mt-2 rounded-lg bg-[#C9A84C]/10 px-3 py-2 flex items-center justify-between">
-                                                    <span className="text-[#8A6D1F] font-semibold text-sm">Giá bán / đơn vị tính</span>
+                                                    <span className="text-[#8A6D1F] font-semibold text-sm">{t('production','pcalc_sell_price_per_unit')}</span>
                                                     <span className="text-[#8A6D1F] font-bold">{formatVN(it.sellUnit)} đ</span>
                                                 </div>
                                             </div>
@@ -633,6 +638,7 @@ export default function PricingCalculatorPage() {
 }
 
 function Line({ label, value, suffix, strong }) {
+    const { t } = useLang();
     return (
         <div className="flex items-center justify-between">
             <span className={strong ? 'text-[#1C1C1E] font-medium' : 'text-[#8E8878]'}>{label}</span>
@@ -644,6 +650,7 @@ function Line({ label, value, suffix, strong }) {
 }
 
 function Summary({ label, value }) {
+    const { t } = useLang();
     return (
         <div className="rounded-xl border border-[#EFE7DA] p-3 bg-white">
             <p className="text-[11px] text-[#8E8878]">{label}</p>

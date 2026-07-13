@@ -5,10 +5,10 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   ShoppingCart, Search, Eye, Ban,
   User, Users, X,
-  Download, FileText,
+  Download, FileText, FileBarChart,
 } from 'lucide-react';
 import { adminOrderApi, getImageUrl } from '../../api/adminApi';
-import { downloadBlob } from '../../api/services';
+import { downloadBlob, orderApi } from '../../api/services';
 import { OrderStatusBadge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal.jsx';
@@ -230,7 +230,38 @@ export default function AdminOrders() {
   const [detailLoading, setDetailLoading] = useState(null);
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportDateRange, setReportDateRange] = useState({ from: null, to: null });
+  const [reportCategories, setReportCategories] = useState([]);
+  const [reportCategoryId, setReportCategoryId] = useState('');
+  const [exportingReport, setExportingReport] = useState(false);
 
+
+  useEffect(() => {
+    if (showReportModal) {
+      orderApi.getReportCategories()
+        .then(res => setReportCategories(res.data?.data ?? res.data ?? []))
+        .catch(() => {});
+    }
+  }, [showReportModal]);
+
+  const handleReportExport = async () => {
+    if (!reportDateRange.from || !reportDateRange.to) { alert('Vui lòng chọn khoảng thời gian'); return; }
+    setExportingReport(true);
+    try {
+      const fromDate = new Date(reportDateRange.from); fromDate.setHours(0, 0, 0, 0);
+      const toDate = new Date(reportDateRange.to); toDate.setHours(23, 59, 59, 999);
+      const res = await orderApi.exportCustomerProductReport({
+        from: fromDate.toISOString().slice(0, 10),
+        to: toDate.toISOString().slice(0, 10),
+        ...(reportCategoryId ? { categoryId: reportCategoryId } : {}),
+      });
+      downloadBlob(res.data, `bao-cao-kh-sp-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`);
+      setShowReportModal(false); setReportDateRange({ from: null, to: null }); setReportCategoryId('');
+    } catch {
+      alert('Không thể xuất báo cáo');
+    } finally { setExportingReport(false); }
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -347,6 +378,12 @@ export default function AdminOrders() {
             ? <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
             : <Download size={15} />}
           Xuất Excel
+        </button>
+        <button onClick={() => setShowReportModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30
+    hover:bg-[#C9A84C]/20 transition-colors text-sm font-medium whitespace-nowrap"
+          title="Báo cáo KH × Sản phẩm">
+          <FileBarChart size={15} /> Báo cáo KH×SP
         </button>
       </div>
 
@@ -479,6 +516,44 @@ export default function AdminOrders() {
           onClose={() => setDetailOpen(false)}
           onRefresh={load}
         />
+      )}
+
+      {/* Report modal — KH × Sản phẩm */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xuất báo cáo</p>
+                <h2 className="font-bold text-[#1C1C1E]">Báo cáo KH × Sản phẩm</h2>
+              </div>
+              <button onClick={() => setShowReportModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-[#8E8878]">Tổng hợp sản lượng & doanh thu theo từng khách hàng, lọc theo danh mục sản phẩm.</p>
+            <div>
+              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Khoảng thời gian</label>
+              <DateRangePicker from={reportDateRange.from} to={reportDateRange.to} onChange={r => setReportDateRange(r)} placeholder="Chọn khoảng ngày" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Danh mục sản phẩm</label>
+              <select value={reportCategoryId} onChange={e => setReportCategoryId(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]">
+                <option value="">-- Danh mục mặc định --</option>
+                {reportCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <p className="text-[11px] text-[#8E8878] mt-1">Để trống sẽ dùng danh mục mặc định (kem).</p>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => { setShowReportModal(false); setReportDateRange({ from: null, to: null }); }}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
+              <button onClick={handleReportExport} disabled={exportingReport || !reportDateRange.from || !reportDateRange.to}
+                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] disabled:opacity-50 flex items-center justify-center gap-2">
+                {exportingReport ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><Download size={14} /> Xuất báo cáo</>}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Cancel modal */}

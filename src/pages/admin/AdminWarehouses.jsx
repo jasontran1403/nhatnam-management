@@ -145,6 +145,7 @@ export default function AdminWarehouses() {
 }
 
 function WarehouseFormModal({ open, editing, onClose, onSaved }) {
+  const { t } = useLang();
   const [form, setForm] = useState(() => ({
     name: editing?.name || '',
     address: editing?.address || '',

@@ -5,11 +5,13 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Factory, Plus, Edit2, Check, X, Package, FlaskConical,
   ClipboardList, TrendingUp, TrendingDown, CalendarDays,
-  Power, Eye, Clock, ShieldCheck, Wrench,
+  Power, Eye, Clock, ShieldCheck, Wrench, Building2, Users, MapPin,
 } from 'lucide-react';
 import {
   factoryMaterialApi, factoryProductApi, recipeApi, batchOwnerApi,
 } from '../../api/productionApi';
+import { ownerProdApi } from '../../api/productionModuleApi';
+import { adminUserApi } from '../../api/adminApi';
 import Modal from '../../components/ui/Modal';
 import {
   PageHeader, LoadingSpinner, EmptyState, PrimaryButton, SecondaryButton,
@@ -46,6 +48,7 @@ export default function OwnerProductionPage() {
   const [loading, setLoading] = useMinLoading();
 
   const TABS = [
+    { id: 'factories', label: 'Xưởng', icon: Building2 },
     { id: 'batches', label: t('batch', 'production_batches'), icon: ClipboardList },
     { id: 'recipes', label: 'Biến thể sản xuất', icon: FlaskConical },
     { id: 'products', label: t('batch', 'finished_goods'), icon: Package },
@@ -137,6 +140,8 @@ export default function OwnerProductionPage() {
       ) : (
         <>
           {/* ── Batches ──────────────────────────────────────────────────── */}
+          {tab === 'factories' && <FactoriesTab />}
+
           {tab === 'batches' && (
             <div className="space-y-4">
               {/* Date filter */}
@@ -631,5 +636,243 @@ function RecipeDetailModal({ recipe: r, onClose }) {
         </p>
       </div>
     </Modal>
+  );
+}
+// ══════════════════════════════════════════════════════════════════════════
+// Xưởng — Owner tạo xưởng (tên + địa chỉ) & gán nhân viên xưởng quản lý
+// ══════════════════════════════════════════════════════════════════════════
+const FACTORY_STATUS_CFG = {
+  ACTIVE:   { label: 'Đang hoạt động', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  INACTIVE: { label: 'Ngừng',          cls: 'bg-slate-100 text-slate-500 ring-slate-200' },
+};
+
+function FactoriesTab() {
+  const [factories, setFactories] = useState(null);
+  const [workers, setWorkers] = useState([]);     // SUPER_FACTORY_WORKER + FACTORY_WORKER
+  const [showCreate, setShowCreate] = useState(false);
+  const [manageFactory, setManageFactory] = useState(null); // factory đang gán nhân viên
+
+  const load = useCallback(async () => {
+    try {
+      const list = await ownerProdApi.listFactories();
+      setFactories(list || []);
+    } catch { setFactories([]); }
+  }, []);
+
+  // Nhân viên xưởng (trưởng xưởng + nv sản xuất) để gán quản lý xưởng
+  const loadWorkers = useCallback(async () => {
+    try {
+      const [sup, wrk] = await Promise.all([
+        adminUserApi.list({ role: 'SUPER_FACTORY_WORKER', size: 200 }),
+        adminUserApi.list({ role: 'FACTORY_WORKER', size: 200 }),
+      ]);
+      const merge = (d) => (d?.content ?? d ?? []);
+      const map = new Map();
+      [...merge(sup), ...merge(wrk)].forEach(u => map.set(u.id, u));
+      setWorkers([...map.values()]);
+    } catch { setWorkers([]); }
+  }, []);
+
+  useEffect(() => { load(); loadWorkers(); }, [load, loadWorkers]);
+
+  const toggle = async (f) => {
+    await ownerProdApi.toggleFactory(f.id, f.status !== 'ACTIVE');
+    load();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center gap-3 flex-wrap">
+        <p className="text-sm text-[#8E8878]">
+          Mỗi xưởng có kho riêng. Nhân viên xưởng được gán vào xưởng sẽ chỉ thấy & thao tác trên dữ liệu của xưởng mình quản lý.
+        </p>
+        <PrimaryButton onClick={() => setShowCreate(true)}>
+          <Plus size={15} /> Tạo xưởng
+        </PrimaryButton>
+      </div>
+
+      {factories == null ? (
+        <LoadingSpinner />
+      ) : factories.length === 0 ? (
+        <EmptyState icon={Building2} title="Chưa có xưởng nào"
+          description="Tạo xưởng đầu tiên để bắt đầu quản lý sản xuất theo xưởng." />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {factories.map(f => {
+            const cfg = FACTORY_STATUS_CFG[f.status] || FACTORY_STATUS_CFG.INACTIVE;
+            return (
+              <div key={f.id} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#C9A84C]/15 text-[#C9A84C] flex items-center justify-center flex-shrink-0">
+                      <Building2 size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#1C1C1E] truncate">{f.name}</p>
+                      {f.address && (
+                        <p className="text-xs text-[#8E8878] mt-0.5 flex items-center gap-1">
+                          <MapPin size={11} className="flex-shrink-0" /> <span className="truncate">{f.address}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Badge className={cfg.cls}>{cfg.label}</Badge>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-black/5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-[#8E8878] flex items-center gap-1.5">
+                      <Users size={13} /> {(f.managers || []).length} nhân viên quản lý
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setManageFactory(f)}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#1C1C1E] bg-[#FAF7F2] hover:bg-[#F0EBE3] transition-colors">
+                        Gán nhân viên
+                      </button>
+                      <button onClick={() => toggle(f)} title={f.status === 'ACTIVE' ? 'Ngừng xưởng' : 'Kích hoạt'}
+                        className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+                        <Power size={15} />
+                      </button>
+                    </div>
+                  </div>
+                  {(f.managers || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {f.managers.map(m => (
+                        <span key={m.id} className="text-[11px] bg-[#F5F0EB] text-[#8E8878] px-2 py-0.5 rounded-full">
+                          {m.fullName || m.username}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showCreate && (
+        <CreateFactoryModal workers={workers}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); load(); }} />
+      )}
+
+      {manageFactory && (
+        <AssignManagersModal factory={manageFactory} workers={workers}
+          onClose={() => setManageFactory(null)}
+          onSaved={() => { setManageFactory(null); load(); }} />
+      )}
+    </div>
+  );
+}
+
+function CreateFactoryModal({ workers, onClose, onCreated }) {
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [description, setDescription] = useState('');
+  const [managerIds, setManagerIds] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const save = async () => {
+    setErr('');
+    if (!name.trim()) return setErr('Vui lòng nhập tên xưởng.');
+    if (!address.trim()) return setErr('Vui lòng nhập địa chỉ xưởng.');
+    setBusy(true);
+    try {
+      await ownerProdApi.createFactory({ name: name.trim(), address: address.trim(), description: description.trim(), managerIds });
+      onCreated();
+    } catch (e) { setErr(e?.response?.data?.message || 'Không tạo được xưởng.'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Modal open title="Tạo xưởng" onClose={onClose} size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
+          <PrimaryButton onClick={save} disabled={busy}>{busy ? 'Đang lưu…' : 'Tạo xưởng'}</PrimaryButton>
+        </div>
+      }>
+      <div className="space-y-3">
+        {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
+        <div>
+          <label className="text-sm font-medium text-[#1C1C1E]">Tên xưởng <span className="text-red-500">*</span></label>
+          <input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="VD: Xưởng Quận 12" />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-[#1C1C1E]">Địa chỉ <span className="text-red-500">*</span></label>
+          <input className={inputCls} value={address} onChange={e => setAddress(e.target.value)} placeholder="Số nhà, đường, phường, quận…" />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-[#1C1C1E]">Mô tả</label>
+          <input className={inputCls} value={description} onChange={e => setDescription(e.target.value)} placeholder="(tuỳ chọn)" />
+        </div>
+        <ManagerPicker workers={workers} selected={managerIds} onChange={setManagerIds} />
+      </div>
+    </Modal>
+  );
+}
+
+function AssignManagersModal({ factory, workers, onClose, onSaved }) {
+  const [managerIds, setManagerIds] = useState((factory.managers || []).map(m => m.id));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const save = async () => {
+    setErr(''); setBusy(true);
+    try {
+      await ownerProdApi.updateFactoryManagers(factory.id, { managerIds });
+      onSaved();
+    } catch (e) { setErr(e?.response?.data?.message || 'Không lưu được.'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Modal open title={`Gán nhân viên — ${factory.name}`} onClose={onClose} size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
+          <PrimaryButton onClick={save} disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu'}</PrimaryButton>
+        </div>
+      }>
+      <div className="space-y-3">
+        {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
+        <p className="text-xs text-[#8E8878]">
+          Chọn trưởng xưởng sản xuất / nhân viên sản xuất quản lý xưởng này. 1 nhân viên có thể quản lý nhiều xưởng.
+        </p>
+        <ManagerPicker workers={workers} selected={managerIds} onChange={setManagerIds} />
+      </div>
+    </Modal>
+  );
+}
+
+// Multiselect nhân viên xưởng dạng chip
+function ManagerPicker({ workers, selected, onChange }) {
+  const toggle = (id) =>
+    onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+
+  return (
+    <div>
+      <label className="text-sm font-medium text-[#1C1C1E]">Nhân viên quản lý xưởng</label>
+      {workers.length === 0 ? (
+        <p className="text-xs text-[#8E8878] mt-1">Chưa có tài khoản trưởng xưởng / nhân viên sản xuất.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2 mt-2 max-h-56 overflow-y-auto">
+          {workers.map(u => {
+            const on = selected.includes(u.id);
+            return (
+              <button key={u.id} type="button" onClick={() => toggle(u.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${on
+                  ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40'
+                  : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]/40'}`}>
+                {on && <Check size={12} className="inline mr-1" />}
+                {u.fullName || u.username}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

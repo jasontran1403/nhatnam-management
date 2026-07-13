@@ -10,9 +10,42 @@ import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import {
   RefreshCw, Package, Truck, Clock, X,
-  ChevronRight, Box, Search, FileText, Ban, UserCircle, Plus, Check,
+  ChevronRight, Box, Search, FileText, Ban, UserCircle, Plus, Check, Lock,
 } from 'lucide-react';
 import api from '../../api/axios';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// YÊU CẦU THANH TOÁN TRƯỚC
+// Khách hàng được owner cấu hình "bắt buộc thanh toán trước khi giao hàng" →
+// kho KHÔNG được bấm "Bắt đầu giao hàng" cho tới khi đơn đã thu đủ tiền.
+// BE cũng chặn (OrderServiceImpl.markAsDelivering) — đây là lớp UX phía trước.
+// ─────────────────────────────────────────────────────────────────────────────
+const fmtVnd = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0));
+
+/** BE trả canDeliver; fallback tự tính cho trường hợp API cũ chưa có field. */
+function canDeliverOrder(order) {
+  if (order?.canDeliver !== undefined) return !!order.canDeliver;
+  if (!order?.requirePrepayment) return true;
+  return order.paymentStatus === 'PAID';
+}
+
+/** Badge cảnh báo "chưa thanh toán" hiển thị trên card + trong modal. */
+function PrepayBadge({ order, compact = false }) {
+  if (!order?.requirePrepayment) return null;
+  const ok = canDeliverOrder(order);
+  return (
+    <span className={`inline-flex items-center gap-1 font-semibold rounded-full border
+      ${compact ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1'}
+      ${ok
+        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        : 'bg-red-50 text-red-600 border-red-200'}`}>
+      {ok ? <Check size={compact ? 9 : 12} /> : <Lock size={compact ? 9 : 12} />}
+      {ok
+        ? 'Đã thu đủ'
+        : `Chờ thanh toán trước${order.remainingAmount != null ? ` · còn ${fmtVnd(order.remainingAmount)}đ` : ''}`}
+    </span>
+  );
+}
 
 const CANCELLABLE = new Set(['PENDING','CONFIRMED','PREPARING','READY','DELIVERING']);
 
@@ -176,6 +209,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
 function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
   if (!order) return null;
   const canCancel = CANCELLABLE.has(order.status);
+  const deliverAllowed = canDeliverOrder(order);
   const [drivers, setDrivers] = useState(order.drivers || []);
   const [saving,  setSaving]  = useState(false);
   const toast = useToast?.() || { success: () => {}, error: () => {} };
@@ -280,6 +314,20 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
           ))}
         </div>
 
+        {/* Cảnh báo yêu cầu thanh toán trước */}
+        {order.requirePrepayment && !deliverAllowed && (
+          <div className="mx-5 mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200
+            flex items-start gap-2 flex-shrink-0">
+            <Lock size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-red-600 leading-relaxed">
+              <b>Khách hàng yêu cầu thanh toán trước khi giao hàng.</b><br />
+              Đã thu {fmtVnd(order.paidAmount)}đ / {fmtVnd(order.finalAmount)}đ
+              {order.remainingAmount > 0 && <> — còn thiếu <b>{fmtVnd(order.remainingAmount)}đ</b></>}.
+              Chờ kế toán xác nhận đã thu đủ tiền rồi mới giao được.
+            </div>
+          </div>
+        )}
+
         {/* Footer actions */}
         <div className="px-5 py-4 border-t border-[#F0EBE3] flex-shrink-0 flex gap-2">
           {canCancel && (
@@ -290,15 +338,21 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
               <Ban size={15} /> Hủy đơn
             </button>
           )}
-          <button onClick={() => onDeliver(order.id)} disabled={delivering}
+          <button onClick={() => onDeliver(order.id)}
+            disabled={delivering || !deliverAllowed}
+            title={!deliverAllowed
+              ? 'Khách hàng yêu cầu thanh toán trước — đơn chưa thu đủ tiền'
+              : ''}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl
               bg-[#C9A84C] text-white font-semibold text-sm
               hover:bg-[#B8943C] active:scale-[0.98] transition-all
               disabled:opacity-60 disabled:cursor-not-allowed">
             {delivering
               ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              : <Truck size={16} />}
-            {delivering ? 'Đang xử lý...': 'Bắt đầu giao hàng'}
+              : deliverAllowed ? <Truck size={16} /> : <Lock size={16} />}
+            {delivering
+              ? 'Đang xử lý...'
+              : deliverAllowed ? 'Bắt đầu giao hàng' : 'Chờ khách thanh toán'}
           </button>
         </div>
       </div>
@@ -322,6 +376,7 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
               rounded-full bg-blue-50 text-blue-600 border border-blue-200">
               <Package size={9} /> Đang chuẩn bị
             </span>
+            <PrepayBadge order={order} compact />
           </div>
           <p className="text-sm font-semibold text-[#1C1C1E] truncate">
             {order.customerName || t('customer','retail')}

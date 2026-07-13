@@ -1,6 +1,6 @@
 // src/pages/accountant/IncomeCreateModal.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { incomeApi } from '../../api/services';
+import { incomeApi, bankApi } from '../../api/services';
 import { accountantOrderApi } from '../../api/accountantApi';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
@@ -171,6 +171,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
   const [reason, setReason] = useState('');
   const [paymentType, setPaymentType] = useState('CASH');
   const [bankName, setBankName] = useState('');
+  const [banks, setBanks] = useState([]);   // danh mục NH có sẵn
   const [bankRef, setBankRef] = useState('');
   const [items, setItems] = useState([{ id: 1, itemName: 'Khoản thu 1', amount: '', note: '' }]);
   const [images, setImages] = useState([]);
@@ -240,6 +241,13 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
     setPartialInfo(null);
     setPendingHandling(null);
   }, [selectedOrders.length]);
+
+  // Danh mục ngân hàng có sẵn (do OWNER/ADMIN tạo ở trang Quản lý dòng tiền)
+  useEffect(() => {
+    bankApi.list()
+      .then(res => setBanks(res.data?.data ?? res.data ?? []))
+      .catch(() => {});
+  }, []);
 
   // Tìm đơn PENDING_PAYMENT
   const searchOrders = useCallback(async (q) => {
@@ -545,7 +553,17 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
+                                {/* Đơn THU TRƯỚC KHI GIAO: phiếu thu chỉ ghi nhận đã thu tiền,
+                                    KHÔNG chuyển đơn sang "Hoàn thành" — kho vẫn phải giao hàng. */}
+                                {o.prepaymentOrder && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+                                    bg-amber-50 text-amber-700 border border-amber-200">
+                                    Thu trước khi giao
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-[#1C1C1E]">{o.customerName || 'Khách lẻ'}</p>
                             </div>
                             <span className="text-sm font-bold text-[#1C1C1E]">
@@ -563,6 +581,16 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                   </div>
                 )}
               </div>
+
+              {/* Ghi chú cho đơn thu trước khi giao */}
+              {hasOrders && selectedOrders.some(o => o.prepaymentOrder) && (
+                <div className="mt-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200
+                  text-xs text-amber-800 leading-relaxed">
+                  <b>Có đơn "Thu trước khi giao".</b> Phiếu thu sẽ chỉ ghi nhận <b>ĐÃ THU TIỀN</b> —
+                  đơn vẫn ở trạng thái "Đang chuẩn bị" để kho giao hàng.
+                  Khi thu đủ, kho mới được bấm "Bắt đầu giao hàng".
+                </div>
+              )}
 
               {/* Tóm tắt đơn đã chọn */}
               {hasOrders && (
@@ -794,11 +822,15 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Tên ngân hàng *</label>
-                  <input
+                  <select
                     value={bankName} onChange={e => setBankName(e.target.value)}
-                    placeholder="VD: Vietcombank, Techcombank, MBBank..."
-                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-                  />
+                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+                    <option value="">-- Chọn ngân hàng * --</option>
+                    {banks.map(b => <option key={b.id || b.name} value={b.name}>{b.name}</option>)}
+                  </select>
+                  {banks.length === 0 && (
+                    <p className="text-[11px] text-amber-600 mt-1">Chưa có ngân hàng — Chủ/Quản trị cần tạo ở trang Quản lý dòng tiền.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Mã tham chiếu giao dịch *</label>

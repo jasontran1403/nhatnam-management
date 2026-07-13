@@ -1,14 +1,12 @@
 // OwnerBatchReviewPage.jsx
 // Trang Owner xem xét và duyệt các mẻ sản xuất do Factory Worker nộp
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle, Eye, TrendingUp, TrendingDown, Package } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import { ownerProductionApi } from '../../api/productionApi';
-
-const fmtDate = (ms) => ms
-  ? new Date(ms).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' })
-  : '—';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 
 function VarianceBadge({ pct }) {
   const v = parseFloat(pct || 0);
@@ -26,6 +24,8 @@ function VarianceBadge({ pct }) {
 
 // ── Batch detail card ─────────────────────────────────────────────────────────
 function BatchCard({ batch, onReviewed }) {
+  const { t } = useLang();
+  const { fmtDate } = useFmt();
   const [expanded, setExpanded] = useState(false);
   const [marking, setMarking] = useState(false);
   const isReviewed = batch.status === 'REVIEWED';
@@ -58,7 +58,9 @@ function BatchCard({ batch, onReviewed }) {
               <span className={`text-xs px-2 py-0.5 rounded-full ${
                 isReviewed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
               }`}>
-                {isReviewed ? '✓ Đã xem' : '⏳ Chờ xem'}
+                {isReviewed
+                  ? `✓ ${t('production', 'batchrv_reviewed')}`
+                  : `⏳ ${t('production', 'batchrv_pending')}`}
               </span>
             </div>
             <p className="text-sm text-[#8E8878] mt-0.5 truncate">
@@ -68,9 +70,9 @@ function BatchCard({ batch, onReviewed }) {
               <span>📅 {fmtDate(batch.producedAt)}</span>
               <span>👤 {batch.createdByName}</span>
               <span>
-                Thực tế: <b className="text-[#1C1C1E]">{batch.actualOutputQty} {batch.outputUnit}</b>
+                {t('production', 'batchrv_actual')}: <b className="text-[#1C1C1E]">{batch.actualOutputQty} {batch.outputUnit}</b>
                 {' / '}
-                Chuẩn: <b className="text-[#8E8878]">{batch.standardOutputQty} {batch.outputUnit}</b>
+                {t('production', 'batchrv_standard')}: <b className="text-[#8E8878]">{batch.standardOutputQty} {batch.outputUnit}</b>
               </span>
             </div>
           </div>
@@ -81,7 +83,7 @@ function BatchCard({ batch, onReviewed }) {
                 onClick={markReviewed}
                 disabled={marking}
                 className="flex items-center gap-1 text-xs bg-[#1A2B1A] text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-[#243824] disabled:opacity-50 transition-colors">
-                {marking ? '...' : <><Eye size={12} />Đã xem</>}
+                {marking ? '...' : <><Eye size={12} />{t('production', 'batchrv_reviewed')}</>}
               </button>
             )}
           </div>
@@ -93,9 +95,9 @@ function BatchCard({ batch, onReviewed }) {
           {/* Output summary */}
           <div className="mt-4 grid grid-cols-3 gap-3 mb-4">
             {[
-              { label: 'Sản lượng chuẩn', value: `${batch.standardOutputQty} ${batch.outputUnit}`, color: 'text-[#8E8878]' },
-              { label: 'Sản lượng thực tế', value: `${batch.actualOutputQty} ${batch.outputUnit}`, color: 'text-[#1C1C1E]' },
-              { label: 'Hao hụt thành phẩm', value: <VarianceBadge pct={batch.outputVariancePct} />, color: '' },
+              { label: t('production', 'batchrv_standard_output'), value: `${batch.standardOutputQty} ${batch.outputUnit}`, color: 'text-[#8E8878]' },
+              { label: t('production', 'batchrv_actual_output'),   value: `${batch.actualOutputQty} ${batch.outputUnit}`,   color: 'text-[#1C1C1E]' },
+              { label: t('production', 'batchrv_output_loss'),     value: <VarianceBadge pct={batch.outputVariancePct} />,  color: '' },
             ].map(s => (
               <div key={s.label} className="bg-[#FAF7F2] rounded-xl p-3 text-center">
                 <p className="text-xs text-[#8E8878] mb-1">{s.label}</p>
@@ -108,16 +110,16 @@ function BatchCard({ batch, onReviewed }) {
           {batch.items && batch.items.length > 0 && (
             <>
               <p className="text-xs font-medium text-[#8E8878] uppercase tracking-wide mb-3">
-                Chi tiết nguyên vật liệu
+                {t('production', 'batchrv_materials_detail')}
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-[#8E8878] border-b border-black/5">
-                      <th className="text-left pb-2 font-medium">Nguyên liệu</th>
-                      <th className="text-right pb-2 font-medium">Chuẩn</th>
-                      <th className="text-right pb-2 font-medium">Thực tế</th>
-                      <th className="text-right pb-2 font-medium">Lệch</th>
+                      <th className="text-left pb-2 font-medium">{t('production', 'batchrv_col_material')}</th>
+                      <th className="text-right pb-2 font-medium">{t('production', 'batchrv_col_standard')}</th>
+                      <th className="text-right pb-2 font-medium">{t('production', 'batchrv_col_actual')}</th>
+                      <th className="text-right pb-2 font-medium">{t('production', 'batchrv_col_variance')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -152,6 +154,7 @@ function BatchCard({ batch, onReviewed }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function OwnerBatchReviewPage() {
+  const { t } = useLang();
   const [batches, setBatches] = useState([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -181,6 +184,19 @@ export default function OwnerBatchReviewPage() {
   // High variance batches (output variance > 15%)
   const highVariance = batches.filter(b => Math.abs(parseFloat(b.outputVariancePct || 0)) > 15);
 
+  const stats = useMemo(() => [
+    { icon: Package,     label: t('production', 'batchrv_stat_total'),         value: batches.length,      color: 'text-[#1A2B1A]' },
+    { icon: Eye,         label: t('production', 'batchrv_pending'),            value: pending.length,      color: pending.length > 0 ? 'text-amber-600' : 'text-emerald-600' },
+    { icon: CheckCircle, label: t('production', 'batchrv_reviewed'),           value: reviewed.length,     color: 'text-emerald-600' },
+    { icon: TrendingUp,  label: t('production', 'batchrv_stat_high_variance'), value: highVariance.length, color: highVariance.length > 0 ? 'text-red-600' : 'text-[#8E8878]' },
+  ], [t, batches.length, pending.length, reviewed.length, highVariance.length]);
+
+  const filters = useMemo(() => [
+    ['', t('common', 'all')],
+    ['SUBMITTED', t('production', 'batchrv_pending')],
+    ['REVIEWED', t('production', 'batchrv_reviewed')],
+  ], [t]);
+
   if (loading && batches.length === 0) return <div className="p-8"><CardSkeleton lines={5} /></div>;
 
   return (
@@ -189,21 +205,16 @@ export default function OwnerBatchReviewPage() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]"
             style={{ fontFamily: 'var(--font-display)' }}>
-          Kiểm tra mẻ sản xuất
+          {t('production', 'batchrv_title')}
         </h1>
         <p className="text-sm text-[#8E8878] mt-1">
-          Xem xét nguyên liệu đã dùng và hao hụt từng mẻ
+          {t('production', 'batchrv_subtitle')}
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { icon: Package, label: 'Tổng mẻ', value: batches.length, color: 'text-[#1A2B1A]' },
-          { icon: Eye, label: 'Chờ xem', value: pending.length, color: pending.length > 0 ? 'text-amber-600' : 'text-emerald-600' },
-          { icon: CheckCircle, label: 'Đã xem', value: reviewed.length, color: 'text-emerald-600' },
-          { icon: TrendingUp, label: 'Hao hụt cao (>15%)', value: highVariance.length, color: highVariance.length > 0 ? 'text-red-600' : 'text-[#8E8878]' },
-        ].map(stat => (
+        {stats.map(stat => (
           <div key={stat.label} className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
             <stat.icon size={18} className={stat.color + ' mb-2'} />
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
@@ -218,7 +229,7 @@ export default function OwnerBatchReviewPage() {
           <TrendingUp size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-red-700">
-              {highVariance.length} mẻ có hao hụt thành phẩm cao ({'>'}15%)
+              {t('production', 'batchrv_high_variance_alert', { n: highVariance.length })}
             </p>
             <p className="text-xs text-red-500 mt-0.5">
               {highVariance.map(b => b.batchCode).join(', ')}
@@ -229,7 +240,7 @@ export default function OwnerBatchReviewPage() {
 
       {/* Filter */}
       <div className="flex gap-2">
-        {[['', 'Tất cả'], ['SUBMITTED', 'Chờ xem'], ['REVIEWED', 'Đã xem']].map(([val, label]) => (
+        {filters.map(([val, label]) => (
           <button key={val} onClick={() => setFilterStatus(val)}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
               filterStatus === val ? 'bg-[#1A2B1A] text-white' : 'bg-white border border-black/10 text-[#8E8878] hover:text-[#1C1C1E]'
@@ -247,7 +258,7 @@ export default function OwnerBatchReviewPage() {
         {batches.length === 0 && (
           <div className="bg-white rounded-2xl border border-black/5 p-12 text-center">
             <Package size={32} className="mx-auto text-[#8E8878] mb-3" />
-            <p className="text-sm text-[#8E8878]">Chưa có mẻ nào</p>
+            <p className="text-sm text-[#8E8878]">{t('production', 'batchrv_empty')}</p>
           </div>
         )}
       </div>

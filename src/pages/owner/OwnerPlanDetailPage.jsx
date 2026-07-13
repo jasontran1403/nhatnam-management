@@ -1,5 +1,5 @@
 // src/pages/owner/OwnerPlanDetailPage.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Factory, CheckCircle2, Clock, AlertTriangle,
@@ -15,13 +15,16 @@ import {
   SectionCard, SectionHeader, PrimaryButton, SecondaryButton, DangerButton,
 } from '../../components/ui';
 import {
-  ownerProdApi, STATUS_LABELS, progressColor, fmtDate, fmtNum, fmtCurrency,
+  ownerProdApi, getStatusLabels, progressColor,
 } from '../../api/productionModuleApi';
 import { useAuth } from '../../context/AuthContext';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
-  const cfg = STATUS_LABELS[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const { t } = useLang();
+  const cfg = getStatusLabels(t)[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
@@ -49,17 +52,15 @@ const WO_STATUS_COLOR = {
   CANCELLED:    '#9ca3af',
 };
 
-const WO_STATUS_LABEL = {
-  SCHEDULED:    'Hẹn giờ',
-  PENDING_PLAN: 'Chờ phương án',
-  PLANNED:      'Đã lên phương án',
-  IN_PROGRESS:  'Đang sản xuất',
-  COMPLETED:    'Hoàn thành',
-  CANCELLED:    'Đã huỷ',
+// Nhãn trạng thái lệnh SX — dùng chung key status_* trong productionModuleApi
+const getWoStatusLabel = (t) => {
+  const S = getStatusLabels(t);
+  return Object.fromEntries(Object.keys(WO_STATUS_COLOR).map(k => [k, S[k]?.label || k]));
 };
 
 // Custom tooltip for charts
 function ChartTooltip({ active, payload, label, unit = '' }) {
+  const { fmtNum } = useFmt();
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-black/10 rounded-xl shadow-lg px-3 py-2 text-xs">
@@ -77,6 +78,8 @@ export default function OwnerPlanDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
+  const { t } = useLang();
+  const { fmtDate, fmtNum } = useFmt();
   const isSuperFactoryWorker = role === 'SUPER_FACTORY_WORKER';
   const basePath = isSuperFactoryWorker ? '/super-factory/production' : '/owner/production';
   const woBasePath = isSuperFactoryWorker ? '/super-factory/production/work-orders' : '/owner/production/work-orders';
@@ -84,6 +87,12 @@ export default function OwnerPlanDetailPage() {
   const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useMinLoading(true);
   const [acting, setActing]   = useState(false);
+
+  const WO_STATUS_LABEL = useMemo(() => getWoStatusLabel(t), [t]);
+
+  // Nhãn series biểu đồ (dùng làm dataKey → phải lấy từ t)
+  const LBL_PLANNED = t('production', 'plandt_series_planned');
+  const LBL_ACTUAL  = t('production', 'plandt_series_actual');
 
   const load = async () => {
     setLoading(true);
@@ -97,48 +106,35 @@ export default function OwnerPlanDetailPage() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [id]); // eslint-disable-line
 
   if (loading && !plan) return <div className="p-8"><CardSkeleton lines={8} /></div>;
-  if (!plan) return <div className="p-8 text-[#8E8878]">Không tìm thấy kế hoạch</div>;
+  if (!plan) return <div className="p-8 text-[#8E8878]">{t('production', 'plandt_not_found')}</div>;
 
   const pct       = Number(plan.progressPct || 0);
   const color     = progressColor(pct);
-  const cancelled = plan.status === 'CANCELLED';
 
   // ── Derived stats ────────────────────────────────────────────────────────
   const activeOrders    = orders.filter(o => o.status !== 'CANCELLED');
   const completedOrders = orders.filter(o => o.status === 'COMPLETED');
   const inProgressOrders= orders.filter(o => o.status === 'IN_PROGRESS');
   const pendingOrders   = orders.filter(o => ['PENDING_PLAN','PLANNED','SCHEDULED'].includes(o.status));
-  const cancelledOrders = orders.filter(o => o.status === 'CANCELLED');
 
   // Tổng sản lượng thực tế = tất cả lệnh (kể cả đang SX và đã hủy đã làm được)
   const totalActual  = orders.reduce((s, o) => s + Number(o.accumulatedQty || 0), 0);
-  // Tổng lên lệnh = active orders dùng plannedQty (completed dùng actual)
-  const totalPlanned = activeOrders.reduce((s, o) => {
-    if (o.status === 'COMPLETED') return s + Number(o.accumulatedQty || 0);
-    return s + Number(o.plannedQty || 0);
-  }, 0);
 
   // ── Chart data ───────────────────────────────────────────────────────────
-
-  // Pie: trạng thái lệnh
-  const statusCounts = Object.entries(
-    orders.reduce((acc, o) => { acc[o.status] = (acc[o.status] || 0) + 1; return acc; }, {})
-  ).map(([s, v]) => ({ name: WO_STATUS_LABEL[s] || s, value: v, color: WO_STATUS_COLOR[s] || '#9ca3af' }));
 
   // Bar: sản lượng kế hoạch vs thực tế mỗi lệnh
   // accumulatedQty = tổng sản lượng thực tế đã sản xuất (cập nhật real-time sau mỗi mẻ hoàn thành)
   const qtyBarData = orders.map(o => ({
     name: o.workOrderCode || `WO${o.id}`,
-    'Kế hoạch': Number(o.plannedQty || 0),
-    'Thực tế': Number(o.accumulatedQty || 0),
+    [LBL_PLANNED]: Number(o.plannedQty || 0),
+    [LBL_ACTUAL]:  Number(o.accumulatedQty || 0),
     status: o.status,
   }));
 
   // Area: timeline tiến độ (sort by scheduledStartDate)
-  // Timeline: sort theo ngày, tích luỹ actual từ TẤT CẢ lệnh
   const sorted = [...orders].sort((a,b) => (a.scheduledStartDate||0) - (b.scheduledStartDate||0));
   let cumActual = 0, cumPlanned = 0;
   const timelineData = sorted.map(o => {
@@ -147,15 +143,24 @@ export default function OwnerPlanDetailPage() {
     cumPlanned += o.status === 'COMPLETED' ? Number(o.accumulatedQty || 0) : Number(o.plannedQty || 0);
     return {
       name: o.workOrderCode,
-      'Thực tế': Math.round(cumActual * 10) / 10,
-      'Kế hoạch': Math.round(cumPlanned * 10) / 10,
+      [LBL_ACTUAL]:  Math.round(cumActual * 10) / 10,
+      [LBL_PLANNED]: Math.round(cumPlanned * 10) / 10,
     };
   });
   if (timelineData.length > 0) {
-    timelineData.unshift({ name: 'Bắt đầu', 'Thực tế': 0, 'Kế hoạch': 0 });
+    timelineData.unshift({ name: t('production', 'plandt_chart_start'), [LBL_ACTUAL]: 0, [LBL_PLANNED]: 0 });
   }
 
   const canCancel = plan.status === 'ACTIVE';
+
+  const planInfo = [
+    { label: t('production', 'plandt_info_code'),    value: plan.planCode },
+    { label: t('production', 'mps_field_product'),   value: `${plan.productName} (${plan.outputUnit})` },
+    { label: t('production', 'mps_target'),          value: `${fmtNum(plan.targetQty)} ${plan.outputUnit}` },
+    { label: t('production', 'plandt_info_start'),   value: fmtDate(plan.startDate) },
+    { label: t('production', 'plandt_info_end'),     value: fmtDate(plan.endDate) },
+    { label: t('production', 'plandt_info_creator'), value: plan.createdByName || '—' },
+  ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -176,11 +181,11 @@ export default function OwnerPlanDetailPage() {
         <div className="flex gap-2">
           {canCancel && !isSuperFactoryWorker && (
             <DangerButton loading={acting} onClick={async () => {
-              if (!confirm('Huỷ kế hoạch sẽ huỷ tất cả lệnh chưa hoàn thành. Xác nhận?')) return;
+              if (!confirm(t('production', 'plandt_confirm_cancel'))) return;
               setActing(true);
               try { await ownerProdApi.updatePlanStatus(plan.id, 'CANCELLED'); await load(); }
               finally { setActing(false); }
-            }}>Huỷ kế hoạch</DangerButton>
+            }}>{t('production', 'plandt_cancel_plan')}</DangerButton>
           )}
         </div>
       </div>
@@ -197,28 +202,34 @@ export default function OwnerPlanDetailPage() {
             </div>
           </div>
           <div>
-            <p className="text-xs text-[#8E8878]">Tiến độ</p>
+            <p className="text-xs text-[#8E8878]">{t('production', 'plandt_progress')}</p>
             <p className="text-lg font-bold text-[#1C1C1E]">{fmtNum(totalActual)}</p>
             <p className="text-xs text-[#8E8878]">/ {fmtNum(plan.targetQty)} {plan.outputUnit}</p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
-          <p className="text-xs text-[#8E8878]">Lệnh sản xuất</p>
+          <p className="text-xs text-[#8E8878]">{t('production', 'plandt_work_orders')}</p>
           <p className="text-3xl font-bold text-[#1C1C1E] mt-1">{activeOrders.length}</p>
           <div className="flex gap-3 mt-1 text-xs">
-            {completedOrders.length > 0 && <span className="text-emerald-600">✓ {completedOrders.length} xong</span>}
-            {inProgressOrders.length > 0 && <span className="text-orange-500">⚡ {inProgressOrders.length} đang chạy</span>}
-            {pendingOrders.length > 0 && <span className="text-[#8E8878]">{pendingOrders.length} chờ</span>}
+            {completedOrders.length > 0 && (
+              <span className="text-emerald-600">✓ {t('production', 'plandt_done_n', { n: completedOrders.length })}</span>
+            )}
+            {inProgressOrders.length > 0 && (
+              <span className="text-orange-500">⚡ {t('production', 'plandt_running_n', { n: inProgressOrders.length })}</span>
+            )}
+            {pendingOrders.length > 0 && (
+              <span className="text-[#8E8878]">{t('production', 'plandt_waiting_n', { n: pendingOrders.length })}</span>
+            )}
           </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
-          <p className="text-xs text-[#8E8878]">Thời gian</p>
+          <p className="text-xs text-[#8E8878]">{t('common', 'time')}</p>
           <p className="text-sm font-semibold text-[#1C1C1E] mt-1">{fmtDate(plan.startDate)}</p>
           <p className="text-xs text-[#8E8878]">→ {fmtDate(plan.endDate)}</p>
           {Date.now() > Number(plan.endDate) && plan.status !== 'COMPLETED' && (
-            <p className="text-[10px] text-red-500 mt-1 font-medium">⚠ Đã quá hạn</p>
+            <p className="text-[10px] text-red-500 mt-1 font-medium">⚠ {t('production', 'mps_overdue')}</p>
           )}
         </div>
       </div>
@@ -231,7 +242,7 @@ export default function OwnerPlanDetailPage() {
         {/* Area chart: tích luỹ theo thời gian */}
         <div className="lg:col-span-2">
           <SectionCard>
-            <SectionHeader title="Tiến độ sản lượng" />
+            <SectionHeader title={t('production', 'plandt_chart_progress')} />
             <div className="p-4">
               {timelineData.length > 1 ? (
                 <ResponsiveContainer width="100%" height={220}>
@@ -248,20 +259,20 @@ export default function OwnerPlanDetailPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0ebe3" />
                     <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#8E8878' }} tickLine={false}
-                  tickFormatter={v => v?.replace('WO-20260610-', '#')?.replace('WO-', '#') || v} />
+                      tickFormatter={v => v?.replace('WO-20260610-', '#')?.replace('WO-', '#') || v} />
                     <YAxis tick={{ fontSize: 10, fill: '#8E8878' }} tickLine={false} axisLine={false}
                       tickFormatter={v => fmtNum(v)} />
                     <Tooltip content={<ChartTooltip unit={` ${plan.outputUnit}`} />} />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Area type="monotone" dataKey="Kế hoạch" stroke="#C9A84C"
+                    <Area type="monotone" dataKey={LBL_PLANNED} stroke="#C9A84C"
                       strokeWidth={2} fill="url(#gradPlan)" strokeDasharray="4 2" dot={false} />
-                    <Area type="monotone" dataKey="Thực tế" stroke="#10b981"
+                    <Area type="monotone" dataKey={LBL_ACTUAL} stroke="#10b981"
                       strokeWidth={2.5} fill="url(#gradActual)" dot={{ r: 4, fill: '#10b981' }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[220px] text-[#8E8878] text-sm">
-                  Chưa có dữ liệu lệnh sản xuất
+                  {t('production', 'plandt_no_wo_data')}
                 </div>
               )}
             </div>
@@ -273,7 +284,7 @@ export default function OwnerPlanDetailPage() {
       {/* Bar chart: sản lượng từng lệnh — chỉ hiện cho Owner */}
       {!isSuperFactoryWorker && qtyBarData.length > 0 && (
         <SectionCard>
-          <SectionHeader title={`Sản lượng từng lệnh (${plan.outputUnit})`} />
+          <SectionHeader title={`${t('production', 'plandt_chart_per_wo')} (${plan.outputUnit})`} />
           <div className="p-4">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={qtyBarData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barGap={2}>
@@ -284,8 +295,8 @@ export default function OwnerPlanDetailPage() {
                   tickFormatter={v => fmtNum(v)} />
                 <Tooltip content={<ChartTooltip unit={` ${plan.outputUnit}`} />} />
                 <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                <Bar dataKey="Kế hoạch" fill="#C9A84C" opacity={0.5} radius={[3,3,0,0]} />
-                <Bar dataKey="Thực tế" fill="#10b981" radius={[3,3,0,0]}
+                <Bar dataKey={LBL_PLANNED} fill="#C9A84C" opacity={0.5} radius={[3,3,0,0]} />
+                <Bar dataKey={LBL_ACTUAL} fill="#10b981" radius={[3,3,0,0]}
                   label={{ position: 'top', fontSize: 9, fill: '#8E8878',
                     formatter: v => v > 0 ? fmtNum(v) : '' }} />
               </BarChart>
@@ -296,10 +307,10 @@ export default function OwnerPlanDetailPage() {
 
       {/* ── Work orders table ── */}
       <SectionCard>
-        <SectionHeader title={`Lệnh sản xuất (${orders.length})`} />
+        <SectionHeader title={`${t('production', 'plandt_work_orders')} (${orders.length})`} />
         <div className="divide-y divide-black/5">
           {orders.length === 0 ? (
-            <p className="text-sm text-[#8E8878] italic text-center py-10">Chưa có lệnh sản xuất nào</p>
+            <p className="text-sm text-[#8E8878] italic text-center py-10">{t('production', 'plandt_no_wo')}</p>
           ) : (
             orders.map(o => {
               const oPct  = Number(o.progressPct || 0);
@@ -317,7 +328,7 @@ export default function OwnerPlanDetailPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-mono font-semibold text-[#1C1C1E]">{o.workOrderCode}</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full`}
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: (WO_STATUS_COLOR[o.status] || '#9ca3af') + '20',
                                  color: WO_STATUS_COLOR[o.status] || '#9ca3af' }}>
                         {WO_STATUS_LABEL[o.status] || o.status}
@@ -333,16 +344,12 @@ export default function OwnerPlanDetailPage() {
                     </p>
                   </div>
 
-                  {/* Progress bar — nếu đã có packagingLoss (mọi mẻ xong + đối soát đủ kho TP)
-                      thì đổi sang hiển thị % giữ được (xanh) / % hao hụt (đỏ) kèm label hao hụt.
-                      Nếu chưa có (còn đang sản xuất / chưa đối soát) thì vẫn hiển thị tiến độ như cũ. */}
+                  {/* Progress bar */}
                   <div className="w-36 hidden sm:block">
                     {o.packagingLoss ? (
                       (() => {
                         const loss = o.packagingLoss;
                         const lossPct = Number(loss.lossPct || 0);
-                        // Làm tròn % hao hụt hiển thị lên ít nhất 1% nếu có hao hụt thật (dù tính ra <1%),
-                        // để phần đỏ luôn nhìn thấy được trên progress bar theo đúng yêu cầu hiển thị.
                         const displayLossPct = loss.lossQty > 0 ? Math.max(1, Math.round(lossPct)) : 0;
                         const keepPct = 100 - displayLossPct;
                         return (
@@ -357,7 +364,9 @@ export default function OwnerPlanDetailPage() {
                             </div>
                             {loss.lossQty > 0 && (
                               <p className="text-[10px] text-red-500 font-medium mt-1">
-                                Hao hụt {fmtNum(loss.lossQty)} {o.outputUnit} / {lossPct.toFixed(2)}%
+                                {t('production', 'plandt_loss', {
+                                  qty: fmtNum(loss.lossQty), unit: o.outputUnit, pct: lossPct.toFixed(2),
+                                })}
                               </p>
                             )}
                           </>
@@ -387,16 +396,9 @@ export default function OwnerPlanDetailPage() {
 
       {/* ── Plan info ── */}
       <SectionCard>
-        <SectionHeader title="Thông tin kế hoạch" />
+        <SectionHeader title={t('production', 'plandt_info_title')} />
         <div className="p-5 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-          {[
-            { label: 'Mã kế hoạch', value: plan.planCode },
-            { label: 'Sản phẩm', value: `${plan.productName} (${plan.outputUnit})` },
-            { label: 'Mục tiêu', value: `${fmtNum(plan.targetQty)} ${plan.outputUnit}` },
-            { label: 'Bắt đầu', value: fmtDate(plan.startDate) },
-            { label: 'Kết thúc', value: fmtDate(plan.endDate) },
-            { label: 'Lập bởi', value: plan.createdByName || '—' },
-          ].map(s => (
+          {planInfo.map(s => (
             <div key={s.label}>
               <p className="text-xs text-[#8E8878] mb-0.5">{s.label}</p>
               <p className="font-semibold text-[#1C1C1E]">{s.value}</p>
@@ -404,7 +406,7 @@ export default function OwnerPlanDetailPage() {
           ))}
           {plan.notes && (
             <div className="col-span-full">
-              <p className="text-xs text-[#8E8878] mb-0.5">Ghi chú</p>
+              <p className="text-xs text-[#8E8878] mb-0.5">{t('common', 'note')}</p>
               <p className="text-[#1C1C1E] italic">{plan.notes}</p>
             </div>
           )}

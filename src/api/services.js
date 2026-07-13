@@ -108,6 +108,7 @@ export const customerApi = {
 export const orderApi = {
   exportCustomerProductReport: (params) =>
     api.get('/api/seller/customer-product-report', { params, responseType: 'blob' }),
+  getReportCategories: () => api.get('/api/seller/report-categories'),
   create: (data) => api.post('/api/seller/orders', data),
   getById: (id) => api.get(`/api/seller/orders/${id}`),
   getMyOrders: (params) => api.get('/api/seller/orders', { params }),
@@ -223,8 +224,13 @@ export const expenseApi = {
     api.get('/api/expense-vouchers/search', { params: { q, from, to, ...params } }),
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
   nextPaymentNumber: () => api.get('/api/expense-vouchers/next-payment-number'),
+  // Danh mục khoản chi (đang bật) của 1 NCC — cho form lập phiếu chi
+  vendorCategories: (vendorId) => api.get(`/api/expense-vouchers/vendor-categories/${vendorId}`),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
+  updateReason: (id, reason) => api.patch(`/api/expense-vouchers/${id}/reason`, { reason }),
+  getApprovalConfig: () => api.get('/api/expense-vouchers/approval-config'),
+  updateApprovalConfig: (data) => api.put('/api/expense-vouchers/approval-config', data),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
     return api.post('/api/upload/expense-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -238,6 +244,8 @@ export const incomeApi = {
   listAll: (params) => api.get('/api/income-vouchers', { params }),
   listByDate: (from, to, params) => api.get('/api/income-vouchers/by-date', { params: { from, to, ...params } }),
   search: (q, from, to, params) => api.get('/api/income-vouchers/search', { params: { q, from, to, ...params } }),
+  /** Tổng tiền + tổng số phiếu theo ĐÚNG bộ lọc (không phụ thuộc phân trang) */
+  summary: (q, from, to) => api.get('/api/income-vouchers/summary', { params: { q, from, to } }),
   getById: (id) => api.get(`/api/income-vouchers/${id}`),
   nextReceiptNumber: () => api.get('/api/income-vouchers/next-receipt-number'),
   exportReport: (from, to) =>
@@ -246,6 +254,29 @@ export const incomeApi = {
     const fd = new FormData(); fd.append('image', file);
     return api.post('/api/upload/income-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+};
+
+// ─── Danh mục ngân hàng (dùng chung cho phiếu thu/chi + dòng tiền) ────────────
+export const bankApi = {
+  list: () => api.get('/api/bank-accounts'),
+  add: (data) => api.post('/api/bank-accounts', data),
+};
+
+// ─── Tồn kho nguyên liệu theo kỳ (Nguyên liệu — ADMIN/OWNER) ────────────────
+export const inventoryFlowApi = {
+  summary: (from, to, q) => api.get('/api/inventory/summary', { params: { from, to, ...(q ? { q } : {}) } }),
+  ingredients: (q) => api.get('/api/inventory/ingredients', { params: q ? { q } : {} }),
+  confirm: (data) => api.post('/api/inventory/confirm', data),
+};
+
+// ─── Cashflow (Quản lý dòng tiền — ADMIN/OWNER) ──────────────────────────────
+export const cashflowApi = {
+  banks: () => api.get('/api/cashflow/banks'),
+  addBank: (data) => api.post('/api/cashflow/banks', data),
+  summary: (from, to) => api.get('/api/cashflow/summary', { params: { from, to } }),
+  confirm: (data) => api.post('/api/cashflow/confirm', data),
+  report: (from, to) =>
+    api.get('/api/cashflow/report', { params: { from, to }, responseType: 'blob' }),
 };
 
 // ─── KPI ─────────────────────────────────────────────────────────────────────

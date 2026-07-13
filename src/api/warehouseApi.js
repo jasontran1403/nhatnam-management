@@ -41,6 +41,12 @@ export const warehouseApi = {
   import: (data) => api.post(`${BASE}/import`, data),
   export: (data) => api.post(`${BASE}/export`, data),
   transfer: (data) => api.post(`${BASE}/transfer`, data),
+  // Chuyển kho sang KHO SẢN XUẤT (xưởng) — Mục 4.2
+  getRegisteredIngredientIds: (warehouseId) =>
+    api.get(`${BASE}/${warehouseId}/registered-ingredient-ids`),
+  listProductionFactories: () => api.get(`${BASE}/production-factories`),
+  getFactoryMaterialNames: (factoryId) =>
+    api.get(`${BASE}/production-factories/${factoryId}/material-names`),
   adjust: (data) => api.post(`${BASE}/adjust`, data),
 
   // ── Lịch sử — gửi warehouseId qua query param ────────────────────────────

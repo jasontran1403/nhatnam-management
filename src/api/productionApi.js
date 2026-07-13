@@ -18,6 +18,16 @@ export const factoryMaterialApi = {
     api.patch(`/api/owner/factory/materials/${id}/toggle`, null, { params: { active } }),
 };
 
+// ── Danh mục nguyên liệu xưởng (chung / riêng) ────────────────────────────────
+export const factoryMaterialCategoryApi = {
+  list: () =>
+    api.get('/api/owner/factory/material-categories').then(r => r.data.data),
+  createCategory: (body) =>
+    api.post('/api/owner/factory/material-categories', body).then(r => r.data.data),
+  createSubCategory: (body) =>
+    api.post('/api/owner/factory/material-categories/sub', body).then(r => r.data.data),
+};
+
 // ── Factory Products ──────────────────────────────────────────────────────────
 export const factoryProductApi = {
   list: (activeOnly = true) =>

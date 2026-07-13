@@ -23,16 +23,36 @@ export const LangProvider = ({ children }) => {
     setLang(l);
   }, []);
 
-  // t(section, key) → string
-  // t('common.save') → string (dot notation shorthand)
-  const t = useCallback((section, key) => {
+  /**
+   * Cách gọi:
+   *   t(section, key)             → 'Lưu'
+   *   t(section, key, params)     → nội suy {n}, {name}...
+   *   t('section.key')            → dot notation
+   *   t('section.key', params)    → dot notation + nội suy
+   *
+   * TƯƠNG THÍCH NGƯỢC 100% với cách gọi cũ.
+   */
+  const t = useCallback((section, key, params) => {
     const dict = lang === 'vi' ? vi : en;
-    if (key === undefined) {
-      // dot notation: t('common.save')
-      const parts = section.split('.');
-      return parts.reduce((obj, k) => obj?.[k], dict) ?? section;
+
+    let raw;
+    if (key === undefined || typeof key === 'object') {
+      // dot notation: t('common.save') hoặc t('common.save', { n: 3 })
+      if (typeof key === 'object') params = key;
+      raw = section.split('.').reduce((obj, k) => obj?.[k], dict);
+      if (raw == null && import.meta.env.DEV) console.warn('[i18n] missing key:', section);
+      raw = raw ?? section;
+    } else {
+      raw = dict[section]?.[key];
+      if (raw == null && import.meta.env.DEV) console.warn(`[i18n] missing key: ${section}.${key}`);
+      raw = raw ?? key;
     }
-    return dict[section]?.[key] ?? key;
+
+    // Nội suy: "Đã xác nhận {n} nguyên liệu" + { n: 5 }
+    if (params && typeof raw === 'string') {
+      raw = raw.replace(/\{(\w+)\}/g, (_, k) => (params[k] ?? `{${k}}`));
+    }
+    return raw;
   }, [lang]);
 
   return (

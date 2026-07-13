@@ -10,11 +10,41 @@ import { formatPrice } from '../../utils/formatPrice';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import api from '../../api/axios';
 import {
+
+
     Search, RefreshCw, ChevronLeft, ChevronRight,
     Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
     Camera, FileText, X, CheckSquare, Paperclip, Check,
-    Plus, Download, Calendar,
+    Plus, Download, Calendar, Lock,
 } from 'lucide-react';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// YÊU CẦU THANH TOÁN TRƯỚC KHI GIAO HÀNG
+// Khách được owner cấu hình "bắt buộc thanh toán trước" → không cho bấm
+// "Bắt đầu giao hàng" khi đơn chưa thu đủ. BE cũng chặn ở markAsDelivering.
+// ─────────────────────────────────────────────────────────────────────────────
+const fmtVndShort = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0));
+
+function canDeliverOrder(o) {
+    if (o?.canDeliver !== undefined) return !!o.canDeliver;      // BE mới
+    if (!o?.requirePrepayment) return true;                       // fallback API cũ
+    return o.paymentStatus === 'PAID';
+}
+
+/** Nút "Bắt đầu giao hàng" — tự khoá khi khách yêu cầu thanh toán trước mà chưa thu đủ. */
+function DeliverButton({ order, onClick, className, children }) {
+    const allowed = canDeliverOrder(order);
+    return (
+        <button
+            onClick={onClick}
+            disabled={!allowed}
+            title={allowed ? '' :
+                `Khách yêu cầu thanh toán trước — còn thiếu ${fmtVndShort(order.remainingAmount)}đ`}
+            className={`${className} disabled:opacity-50 disabled:cursor-not-allowed`}>
+            {allowed ? children : <><Lock size={11} /> Chờ thanh toán</>}
+        </button>
+    );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(ts) {
@@ -542,11 +572,15 @@ function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm,
                         className="flex-1 py-3 rounded-2xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors font-medium">
                         Huỷ
                     </button>
-                    <button onClick={() => onConfirm(order.id, deliveryInfo)} disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#C9A84C] text-white font-semibold text-sm hover:bg-[#B8943C] active:scale-[0.98] transition-all disabled:opacity-60">
+                    <button onClick={() => onConfirm(order.id, deliveryInfo)}
+                        disabled={loading || !canDeliverOrder(order)}
+                        title={canDeliverOrder(order) ? '' : 'Khách yêu cầu thanh toán trước — đơn chưa thu đủ tiền'}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#C9A84C] text-white font-semibold text-sm hover:bg-[#B8943C] active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                         {loading
                             ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
-                            : <><Truck size={15} /> Bắt đầu giao hàng</>}
+                            : canDeliverOrder(order)
+                                ? <><Truck size={15} /> Bắt đầu giao hàng</>
+                                : <><Lock size={15} /> Chờ khách thanh toán</>}
                     </button>
                 </div>
             </div>
@@ -1020,10 +1054,11 @@ export default function WarehouseDeliveryPage() {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-1.5">
                                                             {o.status === 'PREPARING' && (
-                                                                <button onClick={e => { e.stopPropagation(); openPrepareModal(o); }}
+                                                                <DeliverButton order={o}
+                                                                    onClick={e => { e.stopPropagation(); openPrepareModal(o); }}
                                                                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors text-[10px] font-semibold whitespace-nowrap">
                                                                     <Truck size={11} /> Bắt đầu giao hàng
-                                                                </button>
+                                                                </DeliverButton>
                                                             )}
                                                             <button onClick={e => { e.stopPropagation(); handleInvoice(o.id, e); }}
                                                                 disabled={!!invoiceLoadingId}
@@ -1090,10 +1125,11 @@ export default function WarehouseDeliveryPage() {
                                                 </button>
                                             ) : null}
                                             {o.status === 'PREPARING' && (
-                                                <button onClick={() => openPrepareModal(o)}
+                                                <DeliverButton order={o}
+                                                    onClick={() => openPrepareModal(o)}
                                                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors">
                                                     <Truck size={12} /> Bắt đầu giao hàng
-                                                </button>
+                                                </DeliverButton>
                                             )}
                                             <button onClick={e => { e.stopPropagation(); handleInvoice(o.id, e); }}
                                                 disabled={!!invoiceLoadingId}

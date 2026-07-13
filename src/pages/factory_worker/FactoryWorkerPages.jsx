@@ -48,9 +48,9 @@ export function FactoryDashboardPage() {
     <div className="p-6 space-y-6 bg-[#F5F0EB] min-h-full">
       {/* Welcome */}
       <div className="bg-[#1A2B1A] rounded-2xl p-6 text-white">
-        <p className="text-[#7CB87C] text-xs uppercase tracking-widest font-medium">Xưởng sản xuất</p>
+        <p className="text-[#7CB87C] text-xs uppercase tracking-widest font-medium">{t('production','machine_page_factory_label')}</p>
         <h1 className="text-2xl font-bold mt-1">Xin chào, {user?.fullName?.split(' ').pop()}!</h1>
-        <p className="text-white/50 text-sm mt-1">5 mẻ gần nhất của bạn</p>
+        <p className="text-white/50 text-sm mt-1">{t('production','fw_recent_batches')}</p>
       </div>
 
       {/* Quick actions */}
@@ -62,7 +62,7 @@ export function FactoryDashboardPage() {
           </div>
           <div className="text-left">
             <p className="font-semibold text-gray-900">{t('factory','enter_new_batch')}</p>
-            <p className="text-xs text-gray-400">Ghi nhận nguyên liệu và thành phẩm</p>
+            <p className="text-xs text-gray-400">{t('production','fw_record_materials')}</p>
           </div>
         </div>
         <TrendingUp size={18} className="text-gray-300" />
@@ -70,10 +70,10 @@ export function FactoryDashboardPage() {
 
       {/* Recent batches */}
       <div className="space-y-2">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Mẻ gần đây</p>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('production','fw_recent')}</p>
         {loading && <div className="h-24 flex items-center justify-center"><div className="w-6 h-6 border-2 border-[#7CB87C] border-t-transparent rounded-full animate-spin" /></div>}
         {!loading && batches.length === 0 && (
-          <div className="text-center text-gray-400 py-10 text-sm">Chưa có mẻ nào được tạo</div>
+          <div className="text-center text-gray-400 py-10 text-sm">{t('production','fw_no_batches')}</div>
         )}
         {batches.map(b => (
           <div key={b.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -121,8 +121,8 @@ export function FactoryHistoryPage() {
   return (
     <div className="p-6 space-y-4 bg-[#F5F0EB] min-h-full">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2B1A]">Lịch sử mẻ sản xuất</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Tất cả các mẻ bạn đã tạo</p>
+        <h1 className="text-2xl font-bold text-[#1A2B1A]">{t('production','fw_batch_history')}</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{t('production','fw_all_your_batches')}</p>
       </div>
 
       
@@ -152,14 +152,14 @@ export function FactoryHistoryPage() {
 
           {expanded === b.id && b.items && (
             <div className="px-5 pb-5 border-t border-gray-50">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-4 mb-3">Chi tiết NVL</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-4 mb-3">{t('production','fw_material_detail')}</p>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-gray-400">
                     <th className="text-left pb-2">NVL</th>
-                    <th className="text-right pb-2">Chuẩn</th>
-                    <th className="text-right pb-2">Thực tế</th>
-                    <th className="text-right pb-2">Lệch</th>
+                    <th className="text-right pb-2">{t('production','batchrv_col_standard')}</th>
+                    <th className="text-right pb-2">{t('production','batchrv_col_actual')}</th>
+                    <th className="text-right pb-2">{t('production','batchrv_col_variance')}</th>
                   </tr>
                 </thead>
                 <tbody>

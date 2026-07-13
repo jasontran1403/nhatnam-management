@@ -1,6 +1,6 @@
 // src/pages/accountant/ExpenseCreateModal.jsx
 import { useState, useEffect, useRef } from 'react';
-import { expenseApi } from '../../api/services';
+import { expenseApi, bankApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
@@ -435,9 +435,17 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   // Thời điểm phiếu chi — mặc định chế độ "Ngày" = hôm nay
   const [when, setWhen]                 = useState(defaultExpenseWhen());
   const [requestedByName, setRequestedByName] = useState('');
-  const [items, setItems]               = useState([{ id: 1, itemName: 'Khoản chi 1', amount: '', note: '' }]);
+  // Hình thức thanh toán (Mục 4): CASH | BANK_TRANSFER
+  const [paymentType, setPaymentType]   = useState('CASH');
+  const [bankName, setBankName]         = useState('');
+  const [banks, setBanks]               = useState([]);   // danh mục NH có sẵn
+  const [bankRef, setBankRef]           = useState('');
+  const [items, setItems]               = useState([{ id: 1, categoryId: '', amount: '', note: '' }]);
   const [images, setImages]             = useState([]);
   const [submitting, setSubmitting]     = useState(false);
+  // Danh mục khoản chi của NCC đang chọn (Owner tạo) — kế toán chỉ được chọn từ đây
+  const [categories, setCategories]     = useState([]);
+  const [catLoading, setCatLoading]     = useState(false);
 
   // Load vendors từ MaterialVendor API
   useEffect(() => {
@@ -461,6 +469,19 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
+  // Tải danh mục khoản chi của NCC đang chọn; đổi NCC thì reset nhãn đã chọn ở các khoản
+  useEffect(() => {
+    if (!selectedVendor) { setCategories([]); return; }
+    let alive = true;
+    setCatLoading(true);
+    expenseApi.vendorCategories(selectedVendor.id)
+      .then(res => { if (alive) setCategories(res.data?.data || res.data || []); })
+      .catch(() => { if (alive) setCategories([]); })
+      .finally(() => { if (alive) setCatLoading(false); });
+    setItems(p => p.map(i => ({ ...i, categoryId: '' })));
+    return () => { alive = false; };
+  }, [selectedVendor]);
+
   // Gợi ý số phiếu chi kế tiếp (placeholder) — user vẫn có thể tự nhập số khác
   useEffect(() => {
     expenseApi.nextPaymentNumber()
@@ -468,6 +489,13 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
         const suggestion = res.data?.data ?? res.data ?? '';
         if (suggestion) setSuggestedPaymentNumber(String(suggestion));
       })
+      .catch(() => {});
+  }, []);
+
+  // Danh mục ngân hàng có sẵn (do OWNER/ADMIN tạo ở trang Quản lý dòng tiền)
+  useEffect(() => {
+    bankApi.list()
+      .then(res => setBanks(res.data?.data ?? res.data ?? []))
       .catch(() => {});
   }, []);
 
@@ -488,7 +516,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   };
 
   // Items
-  const addItem    = () => setItems(p => [...p, { id: Date.now(), itemName: `Khoản chi ${p.length + 1}`, amount: '', note: '' }]);
+  const addItem    = () => setItems(p => [...p, { id: Date.now(), categoryId: '', amount: '', note: '' }]);
   const removeItem = (id) => setItems(p => p.filter(i => i.id !== id));
   const updateItem = (id, k, v) => setItems(p => p.map(i => i.id === id ? {...i, [k]: v} : i));
   const totalAmount = items.reduce((s, i) => s + parseVND(i.amount), 0);
@@ -514,21 +542,31 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
 
   const handleSubmit = async () => {
     if (!selectedVendor) { toast('Vui lòng chọn nhà cung cấp', 'error'); return; }
+    if (categories.length === 0) { toast('NCC chưa có danh mục khoản chi — cần Owner thêm nhãn trước', 'error'); return; }
     if (!reason.trim())  { toast('Lý do chi là bắt buộc', 'error'); return; }
-    const validItems = items.filter(i => i.itemName.trim() && parseVND(i.amount) > 0);
-    if (validItems.length === 0) { toast('Phải có ít nhất 1 khoản chi hợp lệ', 'error'); return; }
+    const validItems = items.filter(i => i.categoryId && parseVND(i.amount) > 0);
+    if (validItems.length === 0) { toast('Mỗi khoản chi cần chọn nhãn và nhập số tiền > 0', 'error'); return; }
+    if (paymentType === 'BANK_TRANSFER') {
+      if (!bankName.trim()) { toast('Tên ngân hàng là bắt buộc khi chuyển khoản', 'error'); return; }
+      if (!bankRef.trim())  { toast('Mã tham chiếu giao dịch là bắt buộc khi chuyển khoản', 'error'); return; }
+    }
     if (images.some(img => img.uploading)) { toast('Đang tải ảnh, vui lòng chờ...', 'warning'); return; }
 
     setSubmitting(true);
     try {
       await expenseApi.create({
         vendorName: selectedVendor.name,
+        vendorId: selectedVendor.id,
+        vendorType: selectedVendor.vendorType || null,
         reason: reason.trim(),
         paymentNumber: (paymentNumber.trim() || suggestedPaymentNumber) || null,
+        paymentType,
+        bankName: paymentType === 'BANK_TRANSFER' ? bankName.trim() : null,
+        bankRef: paymentType === 'BANK_TRANSFER' ? bankRef.trim() : null,
         expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
         expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
         requestedByName: requestedByName.trim() || null,
-        items: validItems.map(i => ({ itemName: i.itemName.trim(), amount: parseVND(i.amount), note: i.note.trim() || null })),
+        items: validItems.map(i => ({ categoryId: Number(i.categoryId), amount: parseVND(i.amount), note: i.note.trim() || null })),
         imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
       });
       toast('Đã tạo phiếu chi', 'success');
@@ -550,7 +588,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
               <Receipt size={20} className="text-[#C9A84C]" />
               <div>
                 <h2 className="text-lg font-bold text-[#1C1C1E]">Tạo phiếu chi</h2>
-                <p className="text-xs text-[#8E8878]">Kế toán lập phiếu là chi luôn, không cần duyệt</p>
+                <p className="text-xs text-[#8E8878]">Phiếu chi sẽ được duyệt theo hạn mức &amp; danh mục cấu hình</p>
               </div>
             </div>
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
@@ -735,25 +773,76 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
               />
             </div>
 
+            {/* ── Hình thức thanh toán (Mục 4) ── */}
+            <div>
+              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+                Hình thức thanh toán <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setPaymentType('CASH')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${paymentType === 'CASH' ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-black/10'}`}>
+                  Tiền mặt
+                </button>
+                <button type="button" onClick={() => setPaymentType('BANK_TRANSFER')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${paymentType === 'BANK_TRANSFER' ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-black/10'}`}>
+                  Chuyển khoản
+                </button>
+              </div>
+              {paymentType === 'BANK_TRANSFER' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                  <div>
+                    <select
+                      value={bankName} onChange={e => setBankName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white">
+                      <option value="">-- Chọn ngân hàng * --</option>
+                      {banks.map(b => <option key={b.id || b.name} value={b.name}>{b.name}</option>)}
+                    </select>
+                    {banks.length === 0 && (
+                      <p className="text-[11px] text-amber-600 mt-1">Chưa có ngân hàng — Chủ/Quản trị cần tạo ở trang Quản lý dòng tiền.</p>
+                    )}
+                  </div>
+                  <input
+                    value={bankRef} onChange={e => setBankRef(e.target.value)}
+                    placeholder="Mã tham chiếu giao dịch *"
+                    className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* ── Khoản chi ── */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-semibold text-[#1C1C1E]">
                   Các khoản chi <span className="text-red-500">*</span>
                 </label>
-                <button onClick={addItem} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline font-semibold">
+                <button onClick={addItem} disabled={!selectedVendor || categories.length === 0}
+                  className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline font-semibold disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
                   <Plus size={13} /> Thêm khoản
                 </button>
               </div>
+
+              {!selectedVendor ? (
+                <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Chọn nhà cung cấp trước để chọn nhãn khoản chi.</p>
+              ) : catLoading ? (
+                <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Đang tải danh mục khoản chi...</p>
+              ) : categories.length === 0 ? (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  Nhà cung cấp này chưa có danh mục khoản chi. Cần chủ (Owner) thêm nhãn ở trang <b>Quản lý nhà cung cấp</b> trước khi lập phiếu.
+                </p>
+              ) : (
               <div className="space-y-2">
                 {items.map((item, idx) => (
                   <div key={item.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
                     <div className="flex gap-2">
-                      <input
-                        value={item.itemName} onChange={e => updateItem(item.id, 'itemName', e.target.value)}
-                        placeholder={`Khoản chi ${idx + 1}...`}
-                        className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white"
-                      />
+                      <select
+                        value={item.categoryId} onChange={e => updateItem(item.id, 'categoryId', e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white cursor-pointer">
+                        <option value="">— Chọn nhãn khoản chi {idx + 1} —</option>
+                        {categories.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
                       <input
                         value={item.amount ? new Intl.NumberFormat('vi-VN').format(parseVND(item.amount)) : ''}
                         onChange={e => updateItem(item.id, 'amount', String(parseVND(e.target.value)))}
@@ -774,6 +863,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                   </div>
                 ))}
               </div>
+              )}
               <div className="text-right mt-2 text-sm font-bold text-[#1C1C1E]">
                 Tổng: <span className="text-[#C9A84C]">{formatVND(totalAmount)}</span>
               </div>

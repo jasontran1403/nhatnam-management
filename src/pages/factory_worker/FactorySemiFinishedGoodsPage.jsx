@@ -13,7 +13,9 @@ import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { Badge } from '../../components/ui/Badge';
-import { semiFinishedGoodsApi } from '../../api/productionModuleApi';
+import { semiFinishedGoodsApi, factoryProdApi } from '../../api/productionModuleApi';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 import { useToast } from '../../components/common/Toast.jsx';
 import { downloadBlob } from '../../utils/downloadBlob';
 
@@ -30,6 +32,9 @@ function fmtDateTime(ms) {
 
 // ── Tab: Kho bán thành phẩm (tổng hợp theo sản phẩm, chi tiết theo batch) ─────
 function SemiFinishedTab({ items, loading, onCreateTransfer }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const [expandedName, setExpandedName] = useState(null);
 
   if (loading) return <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>;
@@ -37,7 +42,7 @@ function SemiFinishedTab({ items, loading, onCreateTransfer }) {
     return (
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
         <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-        <p className="text-[#8E8878] text-sm">Kho bán thành phẩm trống</p>
+        <p className="text-[#8E8878] text-sm">{t('production','sfg_empty')}</p>
       </div>
     );
   }
@@ -91,12 +96,15 @@ function SemiFinishedTab({ items, loading, onCreateTransfer }) {
 
 // ── Tab: Kho Scrap (hàng lỗi — chỉ xem, không thao tác) ───────────────────────
 function ScrapTab({ items, loading }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   if (loading) return <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>;
   if (items.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
         <AlertTriangle size={32} className="mx-auto text-[#8E8878] mb-2" />
-        <p className="text-[#8E8878] text-sm">Chưa ghi nhận hàng lỗi nào</p>
+        <p className="text-[#8E8878] text-sm">{t('production','sfg_scrap_empty')}</p>
       </div>
     );
   }
@@ -118,6 +126,9 @@ function ScrapTab({ items, loading }) {
 
 // ── Tab: Phiếu chuyển kho đã lập (xem trạng thái PENDING/RECEIVED) ────────────
 function TransfersTab({ items, loading }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const toast = useToast();
   const [printingId, setPrintingId] = useState(null);
 
@@ -137,7 +148,7 @@ function TransfersTab({ items, loading }) {
     return (
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
         <FileText size={32} className="mx-auto text-[#8E8878] mb-2" />
-        <p className="text-[#8E8878] text-sm">Chưa có phiếu chuyển kho nào</p>
+        <p className="text-[#8E8878] text-sm">{t('production','sfg_transfers_empty')}</p>
       </div>
     );
   }
@@ -179,6 +190,9 @@ function TransfersTab({ items, loading }) {
 
 // ── Modal: Lập phiếu chuyển kho (1 hoặc nhiều sản phẩm) ───────────────────────
 function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const toast = useToast();
   const [lines, setLines] = useState(
     initialProduct
@@ -223,9 +237,9 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
   };
 
   return (
-    <Modal open onClose={onClose} title="Lập phiếu chuyển kho bán thành phẩm → kho thành phẩm" size="lg">
+    <Modal open onClose={onClose} title={t('production','transfer_title')} size="lg">
       <div className="space-y-4">
-        <p className="text-sm text-[#8E8878]">Trừ FIFO theo mẻ cũ nhất trước. Có thể chuyển nhiều sản phẩm trong 1 phiếu.</p>
+        <p className="text-sm text-[#8E8878]">{t('production','transfer_description')}</p>
         {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
 
         <div className="space-y-3">
@@ -234,7 +248,7 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
             return (
               <div key={idx} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#8E8878]">Sản phẩm #{idx + 1}</span>
+                  <span className="text-xs font-semibold text-[#8E8878]">{t('production', 'product')} #{idx + 1}</span>
                   {lines.length > 1 && (
                     <button onClick={() => removeLine(idx)} className="text-[#8E8878] hover:text-red-500">
                       <Trash2 size={14} />
@@ -243,7 +257,7 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
                 </div>
                 <select className={inputCls} value={line.productName}
                   onChange={e => setLine(idx, 'productName', e.target.value)}>
-                  <option value="">Chọn sản phẩm</option>
+                  <option value="">{t('production', 'select_product')}</option>
                   {available.map(s => <option key={s.productName} value={s.productName}>{s.productName} (tồn {fmtQty(s.totalQuantity)} {s.unit})</option>)}
                 </select>
                 {line.productName && (
@@ -264,10 +278,10 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
 
         <button onClick={addLine}
           className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:text-[#A07830]">
-          <Plus size={13} /> Thêm sản phẩm
+          <Plus size={13} /> {t('production', 'add_product')}
         </button>
 
-        <Field label="Ghi chú">
+        <Field label={t('production', 'dash_plan_notes')} optional>
           <textarea rows={2} className={inputCls} value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="Ghi chú thêm (không bắt buộc)" />
         </Field>
@@ -283,6 +297,9 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function FactorySemiFinishedGoodsPage() {
+  const { t } = useLang();
+  const { fmtNum, fmtDateTime } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const [tab, setTab] = useState('semi'); // semi | scrap | transfers
   const [semiItems, setSemiItems] = useState([]);
   const [scrapItems, setScrapItems] = useState([]);
@@ -291,6 +308,16 @@ export default function FactorySemiFinishedGoodsPage() {
   const [search, setSearch] = useState('');
   const [createTarget, setCreateTarget] = useState(null); // null=chưa mở, {}=mở (chọn tay), {productName,...}=mở (đã chọn sẵn)
   const [showCreatePicker, setShowCreatePicker] = useState(false);
+  const [factories, setFactories] = useState([]);
+  const [factoryId, setFactoryId] = useState(null);
+
+  useEffect(() => {
+    factoryProdApi.listMyFactories().then(list => {
+      const active = (list || []).filter(f => f.status === 'ACTIVE');
+      setFactories(active);
+      if (active.length >= 1) setFactoryId(active[0].id);
+    }).catch(() => {});
+  }, []);
 
   const load = () => {
     setLoading(true);
@@ -316,19 +343,30 @@ export default function FactorySemiFinishedGoodsPage() {
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Kho bán thành phẩm</h1>
+        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','sfg_title')}</h1>
         <button onClick={() => setShowCreatePicker(true)}
           className="flex items-center gap-2 bg-[#1A2B1A] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#243524] transition-colors">
-          <ArrowRightLeft size={16} /> Chuyển kho
+          <ArrowRightLeft size={16} /> {t('production','create_transfer')}
         </button>
       </div>
+
+      {factories.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+            value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">{t('common','all')}</option>
+            {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm overflow-x-auto">
         {[
-          { id: 'semi', label: 'Kho bán thành phẩm', icon: Package },
-          { id: 'scrap', label: 'Kho Scrap', icon: AlertTriangle },
-          { id: 'transfers', label: `Phiếu chuyển kho${pendingCount > 0 ? ` (${pendingCount})` : ''}`, icon: FileText },
+          { id: 'semi', label: t('production','semi_finished_goods'), icon: Package },
+          { id: 'scrap', label: t('production','scrap_inventory'), icon: AlertTriangle },
+          { id: 'transfers', label: t('production','transfer_orders'), icon: FileText },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${tab === t.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>

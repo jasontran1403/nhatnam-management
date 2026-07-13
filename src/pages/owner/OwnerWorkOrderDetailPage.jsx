@@ -11,12 +11,14 @@ import { CardSkeleton } from '../../components/ui/Skeleton';
 import Modal from '../../components/ui/Modal';
 import {
   SectionCard, SectionHeader, SecondaryButton, PrimaryButton,
-  DangerButton, formatDate, inputCls,
+  DangerButton, inputCls,
 } from '../../components/ui';
 import { Badge } from '../../components/ui/Badge';
 import {
-  ownerProdApi, STATUS_LABELS, progressColor, fmtDate, fmtNum, fmtCurrency,
+  ownerProdApi, getStatusLabels, progressColor,
 } from '../../api/productionModuleApi';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 import { useAuth } from '../../context/AuthContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -30,12 +32,11 @@ function imgUrl(path) {
   return BASE_URL + path;
 }
 
-const fmtDateTime = (ms) => ms
-  ? new Date(Number(ms)).toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
-  : '—';
+// fmtDateTime removed — use useFmt()
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_LABELS[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const { t } = useLang();
+  const cfg = getStatusLabels(t)[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
@@ -76,7 +77,11 @@ function ImageLightbox({ images, onClose }) {
 
 // ── Step Popover (click trên roadmap) ────────────────────────────────────────
 function StepPopover({ step, onClose }) {
+  const { t } = useLang();
+  const { fmtDateTime } = useFmt();
   const [lightbox, setLightbox] = useState(null);
+  const done    = step.status === 'COMPLETED';
+  const running = step.status === 'IN_PROGRESS';
   return (
     <div className="fixed inset-0 z-[85] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
@@ -84,23 +89,36 @@ function StepPopover({ step, onClose }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
-              ${step.status==='COMPLETED'?'bg-emerald-500 text-white':'bg-black/10 text-[#8E8878]'}`}>
-              {step.status==='COMPLETED'?'✓':step.stepSequence}
+              ${done?'bg-emerald-500 text-white':running?'bg-blue-100 text-blue-600':'bg-black/10 text-[#8E8878]'}`}>
+              {done?'✓':step.stepSequence}
             </div>
             <p className="font-semibold text-sm text-[#1C1C1E]">{step.stepName}</p>
           </div>
           <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={16}/></button>
         </div>
-        {step.completedByName && (
+        {/* Đang thực hiện — hiện người bắt đầu + đồng hồ chạy từ startedAt */}
+        {running && (
+          <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs space-y-0.5">
+            <p className="font-medium text-blue-700">
+              {t('production','wodt_started_by',{name:step.startedByName||'—'})}
+            </p>
+            {Number(step.startedAt) > 0 && (
+              <p className="text-blue-600">
+                {fmtDateTime(step.startedAt)} · <ElapsedTimer startMs={Number(step.startedAt)} limitMin={step.durationMinutes} />
+              </p>
+            )}
+          </div>
+        )}
+        {done && step.completedByName && (
           <div className="bg-emerald-50 rounded-xl px-3 py-2 text-xs space-y-0.5">
-            <p className="font-medium text-emerald-700">✓ Đã xác nhận bởi {step.completedByName}</p>
+            <p className="font-medium text-emerald-700">{t('production','wodt_confirmed_by',{name:step.completedByName})}</p>
             <p className="text-emerald-600">{fmtDateTime(step.completedAt)}</p>
           </div>
         )}
         {step.notes && <p className="text-xs text-[#8E8878] italic">{step.notes}</p>}
         {step.attachments?.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Ảnh xác nhận ({step.attachments.length})</p>
+            <p className="text-[10px] font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production','wodt_photos',{n:step.attachments.length})}</p>
             <div className="flex gap-2 flex-wrap">
               {step.attachments.map((url,i)=>(
                 <button key={i} onClick={()=>setLightbox(step.attachments)}
@@ -111,8 +129,8 @@ function StepPopover({ step, onClose }) {
             </div>
           </div>
         )}
-        {!step.completedByName && step.status!=='COMPLETED' && (
-          <p className="text-xs text-[#8E8878] italic">Bước chưa được thực hiện</p>
+        {!done && !running && (
+          <p className="text-xs text-[#8E8878] italic">{t('production','wodt_step_not_done')}</p>
         )}
       </div>
       {lightbox && <ImageLightbox images={lightbox} onClose={()=>setLightbox(null)}/>}
@@ -120,31 +138,45 @@ function StepPopover({ step, onClose }) {
   );
 }
 
-// ── Live elapsed timer (từ startMs đến hiện tại, cập nhật mỗi giây) ──────────
-function ElapsedTimer({ startMs }) {
-  const [elapsed, setElapsed] = useState(Date.now() - startMs);
+// ── Live elapsed timer ────────────────────────────────────────────────────────
+// CHỈ dùng cho bước ĐANG THỰC HIỆN (status = IN_PROGRESS), đếm từ startedAt của
+// chính bước đó. KHÔNG được đếm từ completedAt của bước trước — đó là thời gian
+// CHỜ, không phải thời gian làm.
+// limitMin (tuỳ chọn): thời gian dự kiến của bước → quá giờ thì đổi màu đỏ.
+function ElapsedTimer({ startMs, limitMin }) {
+  const valid = Number.isFinite(startMs) && startMs > 0;
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    const t = setInterval(() => setElapsed(Date.now() - startMs), 1000);
+    if (!valid) return undefined;
+    const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [startMs]);
-  const totalSec = Math.floor(elapsed / 1000);
+  }, [valid, startMs]);
+  if (!valid) return null;
+
+  const totalSec = Math.max(0, Math.floor((now - startMs) / 1000));
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
-  if (h > 0) return <span className="tabular-nums text-blue-500">{h}:{String(m).padStart(2,'0')}:{String(s).padStart(2,'0')}</span>;
-  return <span className="tabular-nums text-blue-500">{m}p{String(s).padStart(2,'0')}s</span>;
+  const overdue = Number(limitMin) > 0 && totalSec > Number(limitMin) * 60;
+  const cls = `tabular-nums ${overdue ? 'text-red-500' : 'text-blue-500'}`;
+  if (h > 0) return <span className={cls}>{h}:{String(m).padStart(2,'0')}:{String(s).padStart(2,'0')}</span>;
+  return <span className={cls}>{m}p{String(s).padStart(2,'0')}s</span>;
 }
 
 // ── Batch Roadmap Row (checkpoint timeline) ───────────────────────────────────
 function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
+  const { t } = useLang();
+  const { fmtNum } = useFmt();
   const [selectedStep, setSelectedStep] = useState(null);
   const [showMaterials, setShowMaterials] = useState(false);
   const isCompleted = batch.status === 'COMPLETED';
   const isCancelled = batch.status === 'CANCELLED';
   const steps = batch.steps || [];
 
-  // Find current in-progress step index
-  const currentIdx = steps.findIndex((s,i)=>s.status!=='COMPLETED'&&steps.slice(0,i).every(x=>x.status==='COMPLETED'));
+  // Bước ĐANG THỰC HIỆN THẬT SỰ (đã bấm "Bắt đầu" → IN_PROGRESS)
+  const runningIdx = steps.findIndex(s => s.status === 'IN_PROGRESS');
+  // Bước KẾ TIẾP sẵn sàng làm (chưa bắt đầu, các bước trước đã xong) — chỉ tô nhạt, KHÔNG đếm giờ
+  const nextIdx = steps.findIndex((s,i) => s.status === 'PENDING' && steps.slice(0,i).every(x => x.status === 'COMPLETED'));
 
   // Badge màu theo sản lượng so với kế hoạch
   const planQty = Number(planBatchQty || batch.plannedQty || 0);
@@ -189,15 +221,15 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
         )}
         {isCancelled && (
           <>
-            <span className="text-[10px] text-red-500">🚫 Đã huỷ</span>
+            <span className="text-[10px] text-red-500">{t('production','wodt_cancelled')}</span>
             {batch.cancellation && (
               <button onClick={()=>onBatchCancelClick&&onBatchCancelClick(batch)}
-                className="text-[10px] text-red-500 underline">Xem lý do</button>
+                className="text-[10px] text-red-500 underline">{t('production','wodt_view_reason')}</button>
             )}
           </>
         )}
         {!isCompleted && !isCancelled && (
-          <span className="text-[10px] text-[#8E8878]">{batch.completedSteps||0}/{batch.totalSteps||0} bước</span>
+          <span className="text-[10px] text-[#8E8878]">{t('production','wodt_steps_progress',{done:batch.completedSteps||0,total:batch.totalSteps||0})}</span>
         )}
         {batch.batchMaterials?.length > 0 && (
           <button onClick={()=>setShowMaterials(v=>!v)}
@@ -222,19 +254,21 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
       {steps.length > 0 && (
         <div className="flex items-end px-[14px] pt-1">
           {steps.map((step,i)=>{
-            const done = step.status==='COMPLETED';
-            const isCur = i===currentIdx && !isCancelled && !isCompleted;
+            const done    = step.status==='COMPLETED';
+            const active  = !isCancelled && !isCompleted;
+            // Đang chạy: BE nói IN_PROGRESS và có mốc startedAt
+            const isRunning = active && i===runningIdx && step.status==='IN_PROGRESS';
+            // Sẵn sàng nhưng CHƯA bấm bắt đầu → không đếm giờ
+            const isNext    = active && !isRunning && i===nextIdx;
             const isFirst = i===0;
-            const isLast = i===steps.length-1;
+            const isLast  = i===steps.length-1;
 
-            // Bước trước đó (để lấy completedAt làm startMs cho đồng hồ bước hiện tại)
-            const prevStep = i > 0 ? steps[i-1] : null;
             // Thời gian hiển thị dưới icon:
-            // - Nếu done & batch chưa xong → hiện giờ hoàn thành (HH:mm)
-            // - Nếu là bước hiện tại → đồng hồ đếm từ lúc bước trước xong
-            // - Nếu batch đã xong → không hiện gì dưới icon
+            // - done  → giờ hoàn thành (HH:mm)
+            // - đang chạy → đồng hồ đếm từ startedAt CỦA CHÍNH BƯỚC ĐÓ
+            // - chưa bắt đầu → không hiện gì (trước đây đếm nhầm từ completedAt bước trước)
             const showCompletedTime = done && !isCompleted && step.completedAt;
-            const showTimer = isCur && prevStep?.completedAt;
+            const showTimer = isRunning && Number(step.startedAt) > 0;
 
             return (
               <div key={step.id} className="flex items-end flex-1 min-w-0">
@@ -245,7 +279,7 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
                 {/* Dot + label + time */}
                 <div className="flex flex-col items-center flex-shrink-0">
                   <p className={`text-[9px] font-semibold text-center leading-tight mb-1 w-14 truncate
-                    ${done?'text-emerald-600':isCur?'text-blue-500':'text-[#8E8878]'}`}
+                    ${done?'text-emerald-600':isRunning?'text-blue-500':isNext?'text-[#C9A84C]':'text-[#8E8878]'}`}
                     title={`B${step.stepSequence}: ${step.stepName}`}>
                     B{step.stepSequence}: {step.stepName}
                   </p>
@@ -253,8 +287,9 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
                     onClick={()=>setSelectedStep(step)}
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all hover:scale-125
                       ${done?'bg-emerald-500 border-emerald-500 text-white'
-                        :isCur?'bg-white border-blue-400 text-blue-500 animate-pulse shadow-md shadow-blue-200'
-                        :isCancelled&&!done?'bg-white border-red-300 text-red-400'
+                        :isRunning?'bg-white border-blue-400 text-blue-500 animate-pulse shadow-md shadow-blue-200'
+                        :isNext?'bg-white border-[#C9A84C] border-dashed text-[#C9A84C]'
+                        :isCancelled?'bg-white border-red-300 text-red-400'
                         :'bg-white border-black/15 text-[#8E8878]'}`}>
                     {done?'✓':step.stepSequence}
                   </button>
@@ -262,14 +297,17 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
                   <div className="mt-1 h-4 flex items-center justify-center">
                     {showCompletedTime && (
                       <span className="text-[9px] text-emerald-600 tabular-nums">
-                        {new Date(Number(step.completedAt)).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
+                        {new Date(Number(step.completedAt)).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
                       </span>
                     )}
                     {showTimer && (
                       <span className="text-[9px] font-semibold">
-                        <ElapsedTimer startMs={Number(prevStep.completedAt)} />
+                        <ElapsedTimer startMs={Number(step.startedAt)} limitMin={step.durationMinutes} />
                       </span>
                     )}
+                    {/* {!showCompletedTime && !showTimer && isNext && (
+                      <span className="text-[9px] text-[#C9A84C]">{t('production','wodt_step_waiting')}</span>
+                    )} */}
                   </div>
                 </div>
                 {/* Connector sau dot */}
@@ -290,17 +328,19 @@ function BatchRoadmapRow({ batch, onBatchCancelClick, planBatchQty }) {
 
 // ── Batch Cancel Info Modal ────────────────────────────────────────────────────
 function BatchCancelModal({ batch, onClose }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDate } = useFmt();
   const [lightbox, setLightbox] = useState(null);
   const c = batch.cancellation;
   return (
     <>
-      <Modal open title={`Huỷ mẻ ${batch.batchCode}`} onClose={onClose} size="sm"
-        footer={<div className="flex justify-end"><SecondaryButton onClick={onClose}>Đóng</SecondaryButton></div>}>
+      <Modal open title={t('production','wodt_cancel_batch_title',{code:batch.batchCode})} onClose={onClose} size="sm"
+        footer={<div className="flex justify-end"><SecondaryButton onClick={onClose}>{t('common','close')}</SecondaryButton></div>}>
         <div className="space-y-3">
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
-            <p className="text-sm font-semibold text-red-700">🚫 Mẻ bị huỷ</p>
+            <p className="text-sm font-semibold text-red-700">{t('production','wodt_batch_cancelled')}</p>
             <p className="text-sm text-red-600">{c.reason}</p>
-            <p className="text-xs text-red-500">Hướng xử lý: {c.resolution==='REDO'?'Làm lại':c.resolution==='REPLACE'?'Mua thêm NVL':'Dừng hẳn'}</p>
+            <p className="text-xs text-red-500">{t('production','wodt_resolution')}: {c.resolution==='REDO'?t('production','wodt_redo'):c.resolution==='REPLACE'?t('production','wodt_replace'):t('production','wodt_stop')}</p>
             {c.resolutionNotes && <p className="text-xs text-red-500 italic">{c.resolutionNotes}</p>}
             {c.attachments?.length>0&&(
               <div className="flex gap-2 flex-wrap mt-2">
@@ -317,7 +357,7 @@ function BatchCancelModal({ batch, onClose }) {
 
           {/* Sản lượng thực tế thu được trước khi huỷ */}
           <div className="bg-[#FAF7F2] border border-black/5 rounded-xl p-4">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">Sản lượng thực tế thu được</p>
+            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production','wodt_actual_output')}</p>
             <p className="text-lg font-bold text-[#1C1C1E]">
               {fmtNum(c.actualOutputQty ?? 0)} {batch.outputUnit}
             </p>
@@ -326,7 +366,7 @@ function BatchCancelModal({ batch, onClose }) {
           {/* Chi tiết nguyên liệu đã sử dụng / hoàn kho */}
           {c.materialUsage?.length > 0 && (
             <div className="bg-white border border-black/5 rounded-xl p-4">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Nguyên liệu đã sử dụng</p>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production','wodt_materials_used')}</p>
               <div className="space-y-2">
                 {c.materialUsage.map((m,i) => {
                   const returned = Math.max(0, Number(m.deductedQty||0) - Number(m.actualUsedQty||0));
@@ -334,10 +374,10 @@ function BatchCancelModal({ batch, onClose }) {
                     <div key={i} className="flex items-center justify-between text-xs border-b border-black/5 last:border-0 pb-2 last:pb-0">
                       <span className="font-medium text-[#1C1C1E]">{m.materialName}</span>
                       <div className="text-right">
-                        <p className="text-[#1C1C1E]">Đã dùng: <b>{fmtNum(m.actualUsedQty)} {m.unit}</b></p>
-                        <p className="text-[#8E8878]">Đã lấy từ kho: {fmtNum(m.deductedQty)} {m.unit}</p>
+                        <p className="text-[#1C1C1E]">{t('production','wodt_used')}: <b>{fmtNum(m.actualUsedQty)} {m.unit}</b></p>
+                        <p className="text-[#8E8878]">{t('production','wodt_deducted')}: {fmtNum(m.deductedQty)} {m.unit}</p>
                         {returned > 0 && (
-                          <p className="text-emerald-600">↩ Hoàn kho: {fmtNum(returned)} {m.unit}</p>
+                          <p className="text-emerald-600">{t('production','wodt_returned')}: {fmtNum(returned)} {m.unit}</p>
                         )}
                       </div>
                     </div>
@@ -348,7 +388,7 @@ function BatchCancelModal({ batch, onClose }) {
           )}
           {(!c.materialUsage || c.materialUsage.length === 0) && (
             <p className="text-xs text-[#8E8878] italic px-1">
-              Mẻ này chưa trừ kho nguyên liệu nào (chưa bắt đầu sản xuất hoặc không dùng NVL từ kho xưởng).
+              {t('production','wodt_no_materials_deducted')}
             </p>
           )}
         </div>
@@ -360,6 +400,8 @@ function BatchCancelModal({ batch, onClose }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OwnerWorkOrderDetailPage() {
+  const { t } = useLang();
+  const { fmtDate, fmtNum, fmtCurrency, fmtDateTime } = useFmt();
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
@@ -380,7 +422,7 @@ export default function OwnerWorkOrderDetailPage() {
   }, [id]);
 
   if (loading && !detail) return <div className="p-8"><CardSkeleton lines={6} /></div>;
-  if (!detail) return <div className="p-8 text-[#8E8878]">Không tìm thấy lệnh sản xuất</div>;
+  if (!detail) return <div className="p-8 text-[#8E8878]">{t('production','wodt_not_found')}</div>;
 
   const { workOrder: wo, plan, batches, progressPct, currentBatchNumber, currentStepName, packagingLoss } = detail;
   const color = progressColor(progressPct);
@@ -456,30 +498,30 @@ export default function OwnerWorkOrderDetailPage() {
             </div>
           </div>
           <div>
-            <p className="text-xs text-[#8E8878]">Tiến độ</p>
+            <p className="text-xs text-[#8E8878]">{t('production','plandt_progress')}</p>
             <p className="font-bold text-[#1C1C1E]">{fmtNum(wo.accumulatedQty)}</p>
             <p className="text-xs text-[#8E8878]">/ {fmtNum(wo.plannedQty)} {wo.outputUnit}</p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
-          <p className="text-xs text-[#8E8878]">Mẻ hiện tại</p>
+          <p className="text-xs text-[#8E8878]">{t('production','wodt_current_batch')}</p>
           <p className="text-2xl font-bold text-[#1C1C1E] mt-1">
             {currentBatchNumber > 0 ? `#${currentBatchNumber}` : '—'}
           </p>
           <p className="text-xs text-[#8E8878] mt-0.5">
-            {currentStepName ? `Bước: ${currentStepName}` : 'Chưa bắt đầu'}
+            {currentStepName ? t('production','wodt_current_step',{name:currentStepName}) : t('production','wodt_not_started')}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
-          <p className="text-xs text-[#8E8878]">Thời gian</p>
+          <p className="text-xs text-[#8E8878]">{t('common','time')}</p>
           <p className="text-sm font-semibold text-[#1C1C1E] mt-1">{fmtDate(wo.scheduledStartDate)}</p>
           <p className="text-xs text-[#8E8878]">→ {fmtDate(wo.plannedEndDate)}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
-          <p className="text-xs text-[#8E8878]">Mẻ sản xuất</p>
+          <p className="text-xs text-[#8E8878]">{t('production','wodt_batches')}</p>
           <p className="text-2xl font-bold text-[#1C1C1E] mt-1">
             {wo.completedBatches}/{plan?.totalBatches || wo.totalBatches || '?'}
           </p>
@@ -503,24 +545,24 @@ export default function OwnerWorkOrderDetailPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-[#8E8878]">Sản lượng thực tế</p>
+              <p className="text-xs text-[#8E8878]">{t('production','batchrv_actual_output')}</p>
               <p className="text-lg font-bold text-[#1C1C1E] mt-0.5">{fmtNum(packagingLoss.totalActualOutputQty)} {wo.outputUnit}</p>
             </div>
             <div>
-              <p className="text-xs text-[#8E8878]">Đã nhập kho TP</p>
+              <p className="text-xs text-[#8E8878]">{t('production','wodt_entered_fg')}</p>
               <p className="text-lg font-bold text-[#1C1C1E] mt-0.5">
                 {fmtNum(packagingLoss.totalPackagedQty)} {packagingLoss.packagedUnit}
               </p>
               <p className="text-xs text-[#8E8878]">({fmtNum(packagingLoss.totalActualReceivedWeight)} {wo.outputUnit})</p>
             </div>
             <div>
-              <p className="text-xs text-[#8E8878]">Trọng lượng hao hụt</p>
+              <p className="text-xs text-[#8E8878]">{t('production','wodt_loss_weight')}</p>
               <p className={`text-lg font-bold mt-0.5 ${packagingLoss.lossQty > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
                 {fmtNum(packagingLoss.lossQty)} {wo.outputUnit}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#8E8878]">Tỷ lệ hao hụt</p>
+              <p className="text-xs text-[#8E8878]">{t('production','wodt_loss_pct')}</p>
               <p className={`text-lg font-bold mt-0.5 ${packagingLoss.lossQty > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
                 {Number(packagingLoss.lossPct || 0).toFixed(2)}%
               </p>
@@ -533,11 +575,11 @@ export default function OwnerWorkOrderDetailPage() {
         {/* Left: Roadmap mẻ */}
         <div className="lg:col-span-2 space-y-4">
           <SectionCard>
-            <SectionHeader title={`Tiến độ từng mẻ (${batches?.length || 0} mẻ)`} />
+            <SectionHeader title={t('production','wodt_batch_progress',{n:batches?.length||0})} />
             <div className="p-4 space-y-4">
               {(!batches || batches.length === 0) ? (
                 <p className="text-sm text-[#8E8878] italic text-center py-8">
-                  {wo.status === 'IN_PROGRESS' ? 'Chưa có mẻ nào được bắt đầu' : 'Lệnh chưa bắt đầu sản xuất'}
+                  {wo.status === 'IN_PROGRESS' ? t('production','wodt_no_batch_started') : t('production','wodt_order_not_started')}
                 </p>
               ) : (
                 batches.map(b => (
@@ -559,31 +601,31 @@ export default function OwnerWorkOrderDetailPage() {
           {/* Phương án sản xuất */}
           {plan ? (
             <SectionCard>
-              <SectionHeader title="Phương án sản xuất" />
+              <SectionHeader title={t('production','wodt_plan_title')} />
               <div className="p-4 space-y-3 text-sm">
                 {plan.recipeName && (
                   <div className="flex justify-between">
-                    <span className="text-[#8E8878]">Biến thể sản xuất</span>
+                    <span className="text-[#8E8878]">{t('production','wodt_recipe_variant')}</span>
                     <span className="font-semibold text-[#1C1C1E]">{plan.recipeName}</span>
                   </div>
                 )}
                 {plan.requestedQty != null && (
                   <div className="flex justify-between">
-                    <span className="text-[#8E8878]">Sản lượng yêu cầu</span>
+                    <span className="text-[#8E8878]">{t('production','wodt_requested_qty')}</span>
                     <span className="font-semibold">{fmtNum(plan.requestedQty)} {wo.outputUnit}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-[#8E8878]">Số mẻ</span>
-                  <span className="font-semibold">{plan.totalBatches} mẻ</span>
+                  <span className="text-[#8E8878]">{t('production','wodt_total_batches')}</span>
+                  <span className="font-semibold">{t('production','wodt_n_batches',{n:plan.totalBatches})}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#8E8878]">Mỗi mẻ (chuẩn)</span>
+                  <span className="text-[#8E8878]">{t('production','wodt_qty_per_batch')}</span>
                   <span className="font-semibold">{fmtNum(plan.batchQtyPerRun)} {wo.outputUnit}</span>
                 </div>
                 {plan.totalEstimatedCost > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-[#8E8878]">Chi phí ước tính</span>
+                    <span className="text-[#8E8878]">{t('production','wodt_est_cost')}</span>
                     <span className="font-semibold text-amber-600">{fmtCurrency(plan.totalEstimatedCost)}</span>
                   </div>
                 )}
@@ -592,7 +634,7 @@ export default function OwnerWorkOrderDetailPage() {
                 {/* Bước sản xuất */}
                 {plan.batchSteps?.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Các bước (chung cho mọi mẻ)</p>
+                    <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production','wodt_common_steps')}</p>
                     <div className="space-y-1">
                       {plan.batchSteps.map((step, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs">
@@ -611,8 +653,8 @@ export default function OwnerWorkOrderDetailPage() {
                 <Clock size={24} className="mx-auto text-[#8E8878] mb-2" />
                 <p className="text-sm text-[#8E8878]">
                   {wo.status === 'PENDING_PLAN'
-                    ? 'Đang chờ nhân viên xưởng lập phương án'
-                    : 'Chưa có phương án sản xuất'}
+                    ? t('production','wodt_awaiting_plan')
+                    : t('production','wodt_no_plan')}
                 </p>
                 {wo.planDeadline && (
                   <p className="text-xs text-amber-600 mt-1">Deadline: {fmtDate(wo.planDeadline)}</p>
@@ -624,7 +666,7 @@ export default function OwnerWorkOrderDetailPage() {
           {/* Nguyên liệu */}
           {plan?.materials?.length > 0 && (
             <SectionCard>
-              <SectionHeader title="Nguyên liệu dùng chung (cả lệnh)" />
+              <SectionHeader title={t('production','wodt_shared_materials')} />
               <div className="divide-y divide-black/5">
                 {plan.materials.map(m => (
                   <div key={m.id} className="px-4 py-3">
@@ -666,16 +708,15 @@ export default function OwnerWorkOrderDetailPage() {
 
       {/* Confirm cancel */}
       {confirmCancel && (
-        <Modal open title="Huỷ lệnh sản xuất" onClose={() => setConfirmCancel(false)} size="sm"
+        <Modal open title={t('production','wodt_cancel_modal_title')} onClose={() => setConfirmCancel(false)} size="sm"
           footer={
             <div className="flex justify-end gap-2">
-              <SecondaryButton onClick={() => setConfirmCancel(false)}>Không</SecondaryButton>
-              <DangerButton onClick={() => doAction('CANCELLED')} loading={acting}>Xác nhận huỷ</DangerButton>
+              <SecondaryButton onClick={() => setConfirmCancel(false)}>{t('common','no')}</SecondaryButton>
+              <DangerButton onClick={() => doAction('CANCELLED')} loading={acting}>{t('production','wodt_confirm_cancel')}</DangerButton>
             </div>
           }>
           <p className="text-sm text-[#1C1C1E]">
-            Bạn có chắc muốn huỷ lệnh <strong>{wo.workOrderCode}</strong>?
-            Hành động này không thể hoàn tác.
+            {t('production','wodt_cancel_confirm_msg',{code:wo.workOrderCode})}
           </p>
         </Modal>
       )}

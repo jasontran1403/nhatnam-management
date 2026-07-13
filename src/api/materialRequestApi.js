@@ -33,8 +33,8 @@ export const factoryMaterialRequestApi = {
     api.post(`/api/factory/material-requests/${id}/receive`, body).then(r => r.data.data),
 
   // Lấy tồn kho (factory_material_stock) — dùng để hiển thị số lượng còn lại
-  getStock: () =>
-    api.get('/api/factory/material-stock').then(r => r.data.data),
+  getStock: (factoryId) =>
+    api.get('/api/factory/material-stock', { params: factoryId ? { factoryId } : {} }).then(r => r.data.data),
 
   // Lấy danh sách nguyên liệu từ factory_material — dùng cho dropdown tạo phiếu
   listMaterials: () =>
@@ -61,12 +61,33 @@ export const accountantMaterialRequestApi = {
   // body: { items: [{itemId, requestVendorId, unitPrice}], vendorPayments: [{requestVendorId, action, paymentMethod, paymentInfo, proofImages}] }
   complete: (id, body) =>
     api.post(`/api/super-accountant/material-requests/${id}/complete`, body).then(r => r.data.data),
+
+  extendDelivery: (id, body) =>
+    api.post(`/api/super-accountant/material-requests/${id}/extend-delivery`, body).then(r => r.data.data),
 };
 
 // ── Owner (stock) ─────────────────────────────────────────────────────────────
 export const ownerMaterialStockApi = {
-  getStock: () =>
-    api.get('/api/owner/factory/material-stock').then(r => r.data.data),
+  getStock: (factoryId) =>
+    api.get('/api/owner/factory/material-stock', { params: factoryId ? { factoryId } : {} }).then(r => r.data.data),
+
+  // Phân tích giá nguyên liệu — gộp đa nhà cung cấp theo tên nguyên liệu
+  getPriceAnalysis: (name) =>
+    api.get('/api/owner/production/material-price-analysis', { params: { name } })
+      .then(r => r.data.data),
+};
+
+// ── Owner — Phân tích danh mục chi (nguyên liệu + danh mục khoản chi NCC) ─────
+export const ownerExpenseCategoryApi = {
+  // kind: 'MATERIAL' | 'EXPENSE' | undefined (= cả hai)
+  list: ({ search, kind } = {}) =>
+    api.get('/api/owner/production/expense-categories', { params: { search, kind } })
+      .then(r => r.data.data),
+
+  // Phân tích chi tiết 1 danh mục — trả về cùng shape với getPriceAnalysis
+  getAnalysis: (name, kind = 'MATERIAL') =>
+    api.get('/api/owner/production/expense-category-analysis', { params: { name, kind } })
+      .then(r => r.data.data),
 };
 
 // ── Owner — Công nợ nhà cung cấp ──────────────────────────────────────────────
@@ -83,6 +104,41 @@ export const ownerVendorDebtApi = {
 
   listExpenses: ({ vendorId, search, page = 0, size = 20 } = {}) =>
     api.get('/api/owner/production/vendor-expenses', { params: { vendorId, search, page, size } }).then(r => r.data.data),
+};
+
+// ── Owner/Admin — Quản lý nhà cung cấp (danh sách + lịch sử đặt hàng + giá) ───
+export const ownerSupplierApi = {
+  // sortBy: 'debt' (nợ lâu nhất) | 'amount' (nợ nhiều nhất) | 'name'
+  list: ({ search, sortBy = 'debt' } = {}) =>
+    api.get('/api/owner/production/suppliers', { params: { search, sortBy } }).then(r => r.data.data),
+
+  getDebtLots: (vendorId) =>
+    api.get(`/api/owner/production/suppliers/${vendorId}/debt-lots`).then(r => r.data.data),
+
+  getInfo: (vendorId) =>
+    api.get(`/api/owner/production/suppliers/${vendorId}`).then(r => r.data.data),
+
+  updateVendor: (vendorId, body) =>
+    api.put(`/api/owner/production/suppliers/${vendorId}`, body).then(r => r.data.data),
+
+  getOrders: (vendorId, search) =>
+    api.get(`/api/owner/production/suppliers/${vendorId}/orders`, { params: { search } }).then(r => r.data.data),
+
+  getProductPriceStats: (vendorId, name) =>
+    api.get(`/api/owner/production/suppliers/${vendorId}/product-price-stats`, { params: { name } }).then(r => r.data.data),
+
+  // ── Danh mục khoản chi theo NCC (Owner quản lý; kế toán chỉ đọc) ──
+  listCategories: (vendorId, activeOnly = false) =>
+    api.get(`/api/owner/production/suppliers/${vendorId}/expense-categories`, { params: { activeOnly } }).then(r => r.data.data),
+
+  createCategory: (vendorId, body) =>
+    api.post(`/api/owner/production/suppliers/${vendorId}/expense-categories`, body).then(r => r.data.data),
+
+  updateCategory: (vendorId, categoryId, body) =>
+    api.put(`/api/owner/production/suppliers/${vendorId}/expense-categories/${categoryId}`, body).then(r => r.data.data),
+
+  deleteCategory: (vendorId, categoryId) =>
+    api.delete(`/api/owner/production/suppliers/${vendorId}/expense-categories/${categoryId}`).then(r => r.data.data),
 };
 
 // ── Accountant / Super Accountant — Phiếu chi trả công nợ NCC ────────────────

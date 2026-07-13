@@ -565,12 +565,22 @@ export default function FactoryMachinePage() {
   // FACTORY_WORKER chỉ được báo sự cố (CORRECTIVE); SUPER_FACTORY_WORKER (và Owner truy cập
   // qua route khác) được tạo cả bảo trì định kỳ (PREVENTIVE) lẫn báo sự cố.
   const canCreatePreventive = role !== 'FACTORY_WORKER';
-  const [machines, setMachines] = useState([]);
+  const [allMachines, setAllMachines] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createFor, setCreateFor] = useState(null);
   const [completeFor, setCompleteFor] = useState(null);
   const [expanded, setExpanded] = useState(new Set());
+  const [factories, setFactories] = useState([]);
+  const [factoryId, setFactoryId] = useState(null);
+
+  useEffect(() => {
+    factoryProdApi.listMyFactories().then(list => {
+      const active = (list || []).filter(f => f.status === 'ACTIVE');
+      setFactories(active);
+      if (active.length >= 1) setFactoryId(active[0].id);
+    }).catch(() => {});
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -579,12 +589,13 @@ export default function FactoryMachinePage() {
         ownerProdApi.listMachines(false),
         factoryProdApi.listMaintenance(new Date().getFullYear()),
       ]);
-      setMachines(m || []);
+      setAllMachines(m || []);
       setMaintenance(maint || []);
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
+  const machines = factoryId ? allMachines.filter(m => m.factoryId === factoryId) : allMachines;
   const maintForMachine = id => maintenance.filter(m => m.machineId === id);
   const toggle = id => setExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
@@ -597,6 +608,17 @@ export default function FactoryMachinePage() {
         <h1 className="text-xl font-bold mt-0.5">{t('production', 'machine_page_title')}</h1>
         <p className="text-white/60 text-xs mt-1">{machines.filter(m => m.status === 'UNDER_MAINTENANCE').length} {t('production', 'machine_page_under_maintenance_suffix')}</p>
       </div>
+
+      {factories.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[#8E8878] font-medium">Xưởng:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+            value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Tất cả</option>
+            {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-3">
         {machines.length === 0 && (

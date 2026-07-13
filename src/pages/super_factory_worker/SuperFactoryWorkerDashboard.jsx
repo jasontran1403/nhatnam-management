@@ -16,13 +16,15 @@ import {
   PageHeader, SectionCard, SectionHeader, PrimaryButton,
 } from '../../components/ui';
 import { StatCardSkeleton } from '../../components/ui/Skeleton';
-import { ownerProdApi } from '../../api/productionModuleApi';
+import { ownerProdApi, factoryProdApi } from '../../api/productionModuleApi';
+import { useLang } from '../../context/LangContext';
 import { factoryProductApi } from '../../api/productionApi';
 import {
   ProductionGantt, MaintenanceGantt, MaintenanceDetailModal, AddMachineModal, CreateWorkOrderModal,
 } from '../owner/OwnerProductionDashboard';
 
 export default function SuperFactoryWorkerDashboard() {
+  const { t } = useLang();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [dashboard, setDashboard] = useState(null);
@@ -39,6 +41,14 @@ export default function SuperFactoryWorkerDashboard() {
   const [activeSection, setActiveSection] = useState(
     searchParams.get('tab') === 'machines' ? 'machines' : 'orders'
   );
+  const [factoryId, setFactoryId] = useState(null);
+
+  useEffect(() => {
+    factoryProdApi.listMyFactories().then(list => {
+      const active = (list || []).filter(f => f.status === 'ACTIVE');
+      if (active.length >= 1) setFactoryId(active[0].id);
+    }).catch(() => {});
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -96,18 +106,29 @@ export default function SuperFactoryWorkerDashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <PageHeader icon={Factory} title="Quản lý sản xuất" subtitle="Kế hoạch · Lệnh sản xuất · Máy móc" />
+        <PageHeader icon={Factory} title={t('production','dash_title')} subtitle={t('production','dash_subtitle')} />
         {/* Không có nút "Kế hoạch mới" — kế hoạch chỉ do Owner tạo. Có nút "Tạo lệnh sản xuất"
             cho kế hoạch đã có (SUPER_FACTORY_WORKER được tạo lệnh sản xuất). */}
         <div className="flex gap-2">
           <PrimaryButton onClick={() => setShowCreateWorkOrder(true)}>
-            <ClipboardList size={15} /> Tạo lệnh sản xuất
+            <ClipboardList size={15} /> {t('production','dash_create_work_order')}
           </PrimaryButton>
         </div>
       </div>
 
+      {factories.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+            value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">{t('common','all')}</option>
+            {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
+
       <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
-        {[{ id: 'orders', label: 'Timeline sản xuất', icon: ClipboardList }, { id: 'machines', label: 'Máy móc', icon: Settings2 }].map(s => (
+        {[{ id: 'orders', label: t('production','dash_tab_orders'), icon: ClipboardList }, { id: 'machines', label: t('production','dash_tab_machines'), icon: Settings2 }].map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
             <s.icon size={14} />{s.label}
@@ -117,7 +138,7 @@ export default function SuperFactoryWorkerDashboard() {
 
       {activeSection === 'orders' && (
         <SectionCard>
-          <SectionHeader title="Timeline 39 tuần — Kế hoạch & Lệnh sản xuất" />
+          <SectionHeader title={t('production','dash_gantt_title')} />
           <div className="p-4">
             <ProductionGantt
               plans={d.recentPlans || []} orders={d.calendarItems || []}
@@ -129,8 +150,8 @@ export default function SuperFactoryWorkerDashboard() {
 
       {activeSection === 'machines' && (
         <SectionCard>
-          <SectionHeader title="Máy móc & lịch bảo trì — 39 tuần"
-            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12} /> Thêm máy</button>} />
+          <SectionHeader title={t('production','dash_machines_gantt_title')}
+            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12} />{t('production','dash_add_machine')}</button>} />
           <div className="p-4">
             {/* Không truyền onMachineClick — click vào máy không chuyển qua trang Metric */}
             <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy}

@@ -244,15 +244,26 @@ export const productionUploadApi = {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-export const STATUS_LABELS = {
-  SCHEDULED:    { label: 'Hẹn giờ',         cls: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-400' },
-  PENDING_PLAN: { label: 'Chờ phương án',    cls: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-400' },
-  PLANNED:      { label: 'Đã lên phương án', cls: 'bg-indigo-100 text-indigo-700',dot: 'bg-indigo-400' },
-  IN_PROGRESS:  { label: 'Đang sản xuất',    cls: 'bg-orange-100 text-orange-700',dot: 'bg-orange-400' },
-  COMPLETED:    { label: 'Hoàn thành',       cls: 'bg-emerald-100 text-emerald-700',dot:'bg-emerald-400' },
-  CANCELLED:    { label: 'Đã huỷ',           cls: 'bg-red-100 text-red-600',      dot: 'bg-red-400' },
-  ACTIVE:       { label: 'Đang triển khai',  cls: 'bg-emerald-100 text-emerald-700',dot:'bg-emerald-400' },
+// ── Trạng thái: TÁCH màu (STATUS_META) khỏi nhãn (dịch qua t) ─────────────────
+// Không hard-code label tiếng Việt ở đây nữa.
+export const STATUS_META = {
+  SCHEDULED:    { key: 'status_scheduled',    cls: 'bg-blue-100 text-blue-700',      dot: 'bg-blue-400' },
+  PENDING_PLAN: { key: 'status_pending_plan', cls: 'bg-amber-100 text-amber-700',    dot: 'bg-amber-400' },
+  PLANNED:      { key: 'status_planned',      cls: 'bg-indigo-100 text-indigo-700',  dot: 'bg-indigo-400' },
+  IN_PROGRESS:  { key: 'status_in_progress',  cls: 'bg-orange-100 text-orange-700',  dot: 'bg-orange-400' },
+  COMPLETED:    { key: 'status_completed',    cls: 'bg-emerald-100 text-emerald-700',dot: 'bg-emerald-400' },
+  CANCELLED:    { key: 'status_cancelled',    cls: 'bg-red-100 text-red-600',        dot: 'bg-red-400' },
+  ACTIVE:       { key: 'status_active',       cls: 'bg-emerald-100 text-emerald-700',dot: 'bg-emerald-400' },
 };
+
+// Dùng TRONG component: const STATUS = getStatusLabels(t);
+export const getStatusLabels = (t) =>
+  Object.fromEntries(
+    Object.entries(STATUS_META).map(([code, m]) => [
+      code,
+      { ...m, label: t('production', m.key) },
+    ])
+  );
 
 // Màu progress bar / Gantt theo % tiến độ
 export function progressColor(pct) {
@@ -265,11 +276,14 @@ export function progressColor(pct) {
   return             { bg: 'bg-red-400',      text: 'text-red-600',     hex: '#f87171' };
 }
 
+/** @deprecated dùng useFmt() để format theo ngôn ngữ đang chọn */
 export const fmtDate = (ms) =>
   ms ? new Date(Number(ms)).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
 
+/** @deprecated dùng useFmt() */
 export const fmtNum = (v) =>
   new Intl.NumberFormat('vi-VN').format(Number(v || 0));
 
+/** @deprecated dùng useFmt() */
 export const fmtCurrency = (v) =>
   new Intl.NumberFormat('vi-VN').format(Math.round(Number(v || 0))) + '₫';

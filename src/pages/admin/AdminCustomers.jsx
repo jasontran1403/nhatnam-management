@@ -6,7 +6,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
-  Edit2, MapPin, Star, Plus, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, FileText,
+  Edit2, MapPin, Star, Plus, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, FileText, Pencil,
 } from 'lucide-react';
 import { adminCustomerApi, reportApi } from '../../api/adminApi';
 import { formatPrice } from '../../utils/formatPrice';
@@ -422,9 +422,12 @@ function SellerFilterDropdown({ value, onChange }) {
 function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
   const { t } = useLang();
   const isEdit = !!customer;
+  // true khi user đã tự sửa ô "Tên trên hợp đồng" → ngừng tự điền theo tên khách
+  const [contractTouched, setContractTouched] = useState(false);
   const [form, setForm] = useState({
     name: '', phone: '', email: '', customerType: 'RETAIL',
-    pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
+    pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0, requirePrepayment: false,
+    contractName: '',
     companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
   });
   const [saving, setSaving] = useState(false);
@@ -440,23 +443,41 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         pricingType: customer.pricingType || 'RETAIL_PRICE',
         discountRate: customer.discountRate || 0,
         debtDays: customer.debtDays || 0,
+        requirePrepayment: !!customer.requirePrepayment,
+        contractName: customer.contractName || '',
         companyName: customer.companyName || '',
         taxCode: customer.taxCode || '',
         companyPhone: customer.companyPhone || '',
         companyAddress: customer.companyAddress || '',
         contactName: customer.contactName || '',
       });
+      // Đang sửa khách đã có tên hợp đồng riêng → không tự ghi đè
+      setContractTouched(!!customer.contractName);
     } else {
       setForm({
         name: '', phone: '', email: '', customerType: 'RETAIL',
-        pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0,
+        pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0, requirePrepayment: false,
+        contractName: '',
         companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
       });
+      setContractTouched(false);
     }
   }, [open, customer]);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm(f => {
+    const next = { ...f, [k]: v };
+    // TẠO MỚI: "Tên trên hợp đồng" tự bám theo tên khách / tên công ty,
+    // cho tới khi user tự sửa ô đó (contractTouched).
+    if (!isEdit && !contractTouched
+        && (k === 'name' || k === 'companyName' || k === 'customerType')) {
+      const isCo = (k === 'customerType' ? v : f.customerType) === 'COMPANY';
+      next.contractName = (isCo ? next.companyName : next.name) || '';
+    }
+    return next;
+  });
   const isCompany = form.customerType === 'COMPANY';
+  // Tên mặc định nếu ô hợp đồng để trống (dùng làm placeholder)
+  const contractPlaceholder = (isCompany ? form.companyName : form.name)?.trim() || 'Tên công ty / tên khách hàng';
 
   const handleSave = async () => {
     if (!form.name.trim() && !form.companyName.trim()) {
@@ -479,11 +500,21 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         companyPhone: isCompany ? (form.companyPhone || null) : null,
         companyAddress: isCompany ? (form.companyAddress || null) : null,
         contactName: isCompany ? (form.contactName || null) : null,
+        // Tên trên hợp đồng: gửi '' (không phải null) để BE hiểu là XOÁ → quay về tên mặc định
+        contractName: form.contractName ?? '',
       };
+      // "Yêu cầu thanh toán trước" có endpoint riêng (chỉ OWNER/ADMIN) → gọi tách.
       if (isEdit) {
         await adminCustomerApi.update(customer.id, payload);
+        if (!!customer.requirePrepayment !== !!form.requirePrepayment) {
+          await adminCustomerApi.updateRequirePrepayment(customer.id, !!form.requirePrepayment);
+        }
       } else {
-        await adminCustomerApi.create(payload);
+        const created = await adminCustomerApi.create(payload);
+        const newId = created?.id ?? created?.data?.id;
+        if (newId && form.requirePrepayment) {
+          await adminCustomerApi.updateRequirePrepayment(newId, true);
+        }
       }
       onSaved();
     } catch (e) {
@@ -573,6 +604,39 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
             <input type="number" min={0} max={365} value={form.debtDays} onChange={e => set('debtDays', e.target.value)} className={inputCls} />
           </Field>
         </div>
+
+        {/* ── TÊN TRÊN HỢP ĐỒNG ── */}
+        <Field label="Tên trên hợp đồng">
+          <input
+            value={form.contractName}
+            onChange={e => { setContractTouched(true); set('contractName', e.target.value); }}
+            className={inputCls}
+            placeholder={contractPlaceholder}
+          />
+        </Field>
+        <p className="text-xs text-[#8E8878] -mt-1">
+          Để trống nếu dùng {isCompany ? 'tên công ty' : 'tên khách hàng'}.
+          {contractPlaceholder && <> Mặc định: <b className="text-[#1C1C1E]">{contractPlaceholder}</b></>}
+        </p>
+
+        {/* ── YÊU CẦU THANH TOÁN TRƯỚC KHI GIAO HÀNG ── */}
+        <label className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl border border-[#E8DDD0]
+          bg-white cursor-pointer hover:border-[#C9A84C] transition">
+          <input
+            type="checkbox"
+            checked={!!form.requirePrepayment}
+            onChange={e => set('requirePrepayment', e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-[#C9A84C] flex-shrink-0"
+          />
+          <span className="text-sm">
+            <b className="text-[#1C1C1E]">Yêu cầu thanh toán trước khi giao hàng</b>
+            <span className="block text-xs text-[#8E8878] mt-0.5 leading-relaxed">
+              Bật: kho <b>không</b> chuyển được đơn của khách này sang "Đang giao" cho tới khi thu đủ tiền.
+              Kế toán vẫn tạo được phiếu thu khi đơn đang chuẩn bị (chỉ ghi nhận đã thu, không hoàn thành đơn).
+              <br />Chỉ áp dụng cho <b>đơn tạo mới</b> — đơn đang chạy dở giữ nguyên.
+            </span>
+          </span>
+        </label>
 
         {/* Địa chỉ nhận hàng — chỉ hiện khi edit */}
         {isEdit && customer?.id && (
@@ -717,6 +781,10 @@ export default function AdminCustomers() {
   const [activeConfirm, setActiveConfirm] = useState(null);
 
   const [debtDaysOpen, setDebtDaysOpen] = useState(false);
+  // Sửa nhanh "Tên trên hợp đồng" ngay trên bảng
+  const [contractOpen, setContractOpen] = useState(false);
+  const [contractTarget, setContractTarget] = useState(null);
+  const [contractValue, setContractValue] = useState('');
   const [debtDaysTarget, setDebtDaysTarget] = useState(null);
   const [debtDaysValue, setDebtDaysValue] = useState(0);
 
@@ -837,6 +905,12 @@ export default function AdminCustomers() {
   const openDiscountSingle = (c) => { setDiscountTarget(c); setDiscountValue(c.discountRate || 0); setDiscountOpen(true); };
   const openDiscountBulk = () => { if (!anyChecked) return; setDiscountTarget(null); setDiscountValue(0); setDiscountOpen(true); };
   const openDebtDays = (c, e) => { e.stopPropagation(); setDebtDaysTarget(c); setDebtDaysValue(c.debtDays || 0); setDebtDaysOpen(true); };
+  const openContractName = (c, e) => {
+    e.stopPropagation();
+    setContractTarget(c);
+    setContractValue(c.contractName || '');   // rỗng = đang dùng tên mặc định
+    setContractOpen(true);
+  };
   const openAssign = (c, e) => {
     e.stopPropagation();
     if (c.customerType !== 'COMPANY') return;
@@ -849,6 +923,16 @@ export default function AdminCustomers() {
       if (discountTarget) await adminCustomerApi.updateDiscount(discountTarget.id, Number(discountValue));
       else { await adminCustomerApi.bulkDiscount([...selectedIds], Number(discountValue)); setSelectedIds(new Set()); }
       setDiscountOpen(false); load();
+    } catch (e) { alert(e?.response?.data?.message || e.message); }
+    finally { setSaving(false); }
+  };
+
+  const saveContractName = async () => {
+    setSaving(true);
+    try {
+      // Gửi '' để xoá → BE quay về tên mặc định (tên công ty / tên khách)
+      await adminCustomerApi.updateContractName(contractTarget.id, contractValue.trim());
+      setContractOpen(false); load();
     } catch (e) { alert(e?.response?.data?.message || e.message); }
     finally { setSaving(false); }
   };
@@ -911,7 +995,7 @@ export default function AdminCustomers() {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
-            <input type="text" placeholder="Tìm tên, SĐT, email, công ty, mã KH..."
+            <input type="text" placeholder="Tìm tên, SĐT, email, công ty, tên hợp đồng, mã KH..."
               value={filters.q}
               onChange={e => { setFilters({ ...filters, q: e.target.value }); setPage(0); }}
               className={`${inputCls} pl-9 pr-9`} />
@@ -978,6 +1062,7 @@ export default function AdminCustomers() {
                   <tr className="bg-[#FAF7F2] text-[#8E8878]">
                     <th className="px-4 py-3 w-10"><input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded accent-[#C9A84C]" /></th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Khách hàng</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Tên trên hợp đồng</th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Liên hệ</th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Loại</th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">NV Kinh doanh</th>
@@ -1027,6 +1112,20 @@ export default function AdminCustomers() {
                               {c.customerCode && <p className="text-xs text-[#8E8878]">#{c.customerCode}</p>}
                             </div>
                           </div>
+                        </td>
+                        <td className="px-4 py-3 group/ct cursor-pointer" onClick={e => openContractName(c, e)}
+                          title="Bấm để sửa tên trên hợp đồng">
+                          <div className="flex items-center gap-1.5">
+                            <p className={`truncate max-w-[180px] ${c.contractName
+                              ? 'text-[#1C1C1E] font-medium'
+                              : 'text-[#8E8878] italic'}`}>
+                              {c.contractNameResolved || c.contractNameDefault || '—'}
+                            </p>
+                            <Pencil size={12} className="text-[#C9A84C] opacity-0 group-hover/ct:opacity-100 transition shrink-0" />
+                          </div>
+                          {!c.contractName && (
+                            <p className="text-[10px] text-[#C4B9A8]">mặc định</p>
+                          )}
                         </td>
                         <td className="px-4 py-3"><p className="text-[#1C1C1E]">{c.phone}</p></td>
                         <td className="px-4 py-3">
@@ -1145,6 +1244,15 @@ export default function AdminCustomers() {
                           {isCompany ? (c.companyName || c.name) : (c.name || '—')}
                         </p>
                         <p className="text-xs text-[#8E8878]">{c.phone} · CK {c.discountRate || 0}%</p>
+                        {/* Tên trên hợp đồng — bấm để sửa nhanh */}
+                        <button onClick={e => openContractName(c, e)}
+                          className="mt-0.5 flex items-center gap-1 text-[10px] text-left">
+                          <FileText size={10} className="text-[#C9A84C] shrink-0" />
+                          <span className={`truncate ${c.contractName ? 'text-[#1C1C1E] font-medium' : 'text-[#C4B9A8] italic'}`}>
+                            {c.contractNameResolved || c.contractNameDefault || '—'}
+                          </span>
+                          <Pencil size={9} className="text-[#C9A84C] shrink-0" />
+                        </button>
                         {c.debtDays > 0 && <p className="text-[10px] text-orange-500">📋 Công nợ {c.debtDays} ngày</p>}
                         {c.unpaidDebt > 0 && <p className="text-[10px] font-semibold text-red-600">💰 Chưa TT: {formatPrice(c.unpaidDebt)}</p>}
                         {isCompany && (
@@ -1203,6 +1311,36 @@ export default function AdminCustomers() {
         <Field label="Tỷ lệ chiết khấu (%)" required>
           <input type="number" min={0} max={100} value={discountValue} onChange={e => setDiscountValue(e.target.value)} className={inputCls} />
         </Field>
+      </Modal>
+
+      <Modal open={contractOpen} onClose={() => !saving && setContractOpen(false)}
+        title="Tên trên hợp đồng" size="sm"
+        footer={<div className="flex justify-end gap-2">
+          <SecondaryButton onClick={() => setContractOpen(false)} disabled={saving}>Hủy</SecondaryButton>
+          <PrimaryButton onClick={saveContractName} loading={saving}>Lưu</PrimaryButton>
+        </div>}>
+        {contractTarget && (
+          <>
+            <p className="text-sm text-[#1C1C1E] mb-3">
+              Khách: <span className="font-semibold">
+                {contractTarget.customerType === 'COMPANY'
+                  ? contractTarget.companyName : contractTarget.name}
+              </span>
+            </p>
+            <Field label="Tên trên hợp đồng">
+              <input
+                value={contractValue}
+                onChange={e => setContractValue(e.target.value)}
+                className={inputCls}
+                placeholder={contractTarget.contractNameDefault || 'Tên công ty / tên khách hàng'}
+              />
+            </Field>
+            <p className="text-xs text-[#8E8878] mt-1.5">
+              Để trống để dùng tên mặc định:{' '}
+              <b className="text-[#1C1C1E]">{contractTarget.contractNameDefault || '—'}</b>
+            </p>
+          </>
+        )}
       </Modal>
 
       <Modal open={debtDaysOpen} onClose={() => !saving && setDebtDaysOpen(false)}

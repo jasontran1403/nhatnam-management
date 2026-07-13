@@ -300,15 +300,61 @@ function ExportForm() {
 // ── CHUYỂN KHO ───────────────────────────────────────────────────────────────
 function TransferForm() {
   const { myWarehouse, allWarehouses, stocks } = useMyWarehouse();
-  const [toWh, setToWh] = useState('');
+  // dest được mã hoá "w:<id>" (kho thường) hoặc "f:<id>" (kho sản xuất/xưởng)
+  const [dest, setDest] = useState('');
   const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
   const [rows, setRows] = useState([emptyRow('transfer')]);
   const [loading, setLoading] = useMinLoading();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [factories, setFactories] = useState([]);
+  // Bộ khoá nguyên liệu mà kho ĐÍCH đang có (để lọc dropdown kho nguồn):
+  //  - kho thường: Set ingredientId
+  //  - kho xưởng : Set tên nguyên liệu (lowercase)
+  const [destIngredientIds, setDestIngredientIds] = useState(null);
+  const [destMaterialNames, setDestMaterialNames] = useState(null);
+  const [destLoading, setDestLoading] = useState(false);
 
   const destWarehouses = allWarehouses.filter(w => w.id !== myWarehouse?.id);
+
+  useEffect(() => {
+    warehouseApi.listProductionFactories()
+      .then(res => setFactories(res.data || []))
+      .catch(() => setFactories([]));
+  }, []);
+
+  // Khi đổi kho đích → nạp danh mục nguyên liệu kho đích + reset dòng
+  useEffect(() => {
+    setDestIngredientIds(null);
+    setDestMaterialNames(null);
+    setRows([emptyRow('transfer')]);
+    if (!dest) return;
+    const [kind, idStr] = dest.split(':');
+    const id = Number(idStr);
+    setDestLoading(true);
+    if (kind === 'w') {
+      // "kho đích có nguyên liệu X" = X đã ĐĂNG KÝ (gán) cho kho đích
+      warehouseApi.getRegisteredIngredientIds(id)
+        .then(res => setDestIngredientIds(new Set(res.data || [])))
+        .catch(() => setDestIngredientIds(new Set()))
+        .finally(() => setDestLoading(false));
+    } else {
+      warehouseApi.getFactoryMaterialNames(id)
+        .then(res => setDestMaterialNames(new Set((res.data || []).map(n => String(n).trim().toLowerCase()))))
+        .catch(() => setDestMaterialNames(new Set()))
+        .finally(() => setDestLoading(false));
+    }
+  }, [dest]);
+
+  // Kho nguồn chỉ hiển thị nguyên liệu CÓ TỒN (qty>0) và mà kho đích cũng có (Mục 4.1 & 4.2)
+  const availableStocks = (() => {
+    const inStock = stocks.filter(s => Number(s.stockQuantity) > 0);
+    if (!dest) return inStock;
+    if (destIngredientIds) return inStock.filter(s => destIngredientIds.has(s.ingredientId));
+    if (destMaterialNames) return inStock.filter(s => destMaterialNames.has(String(s.ingredientName || '').trim().toLowerCase()));
+    return [];
+  })();
 
   const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
   const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
@@ -316,25 +362,39 @@ function TransferForm() {
   const handleSubmit = async () => {
     setError(''); setSuccess('');
     if (!myWarehouse?.id) return setError('Không xác định được kho nguồn.');
-    if (!toWh) return setError('Vui lòng chọn kho đích.');
+    if (!dest) return setError('Vui lòng chọn kho đích.');
     const validRows = rows.filter(r => r.ingredientId && r.quantity > 0);
     if (!validRows.length) return setError('Vui lòng thêm ít nhất 1 nguyên liệu.');
+    const [kind, idStr] = dest.split(':');
+    const destId = Number(idStr);
     setLoading(true);
     try {
-      const res = await warehouseApi.transfer({
-        fromWarehouseId: myWarehouse.id, toWarehouseId: toWh, note, imageUrls: images,
+      const payload = {
+        fromWarehouseId: myWarehouse.id, note, imageUrls: images,
         items: validRows.map(r => ({ ingredientId: r.ingredientId, quantity: Number(r.quantity) })),
-      });
-      setSuccess(
-        `Chuyển kho thành công! Phiếu xuất: ${res.data.outReceipt.receiptCode} — Phiếu nhập: ${res.data.inReceipt.receiptCode}`
-      );
-      setRows([emptyRow('transfer')]); setToWh(''); setNote(''); setImages([]);
+      };
+      if (kind === 'w') payload.toWarehouseId = destId;
+      else payload.toProductionFactoryId = destId;
+      const res = await warehouseApi.transfer(payload);
+      const outCode = res.data?.outReceipt?.receiptCode;
+      const inCode = res.data?.inReceipt?.receiptCode;
+      setSuccess(inCode
+        ? `Chuyển kho thành công! Phiếu xuất: ${outCode} — Phiếu nhập: ${inCode}`
+        : `Chuyển sang kho sản xuất thành công! Phiếu xuất: ${outCode}`);
+      setRows([emptyRow('transfer')]); setDest(''); setNote(''); setImages([]);
     } catch (e) {
       setError(e?.response?.data?.message || e?.message || 'Có lỗi xảy ra');
     } finally { setLoading(false); }
   };
 
-  const toWhName = destWarehouses.find(w => w.id === toWh)?.name || '';
+  const toWhName = (() => {
+    if (!dest) return '';
+    const [kind, idStr] = dest.split(':');
+    const id = Number(idStr);
+    return kind === 'w'
+      ? (destWarehouses.find(w => w.id === id)?.name || '')
+      : (factories.find(f => f.id === id)?.name || '');
+  })();
 
   return (
     <FormShell title="🔄 Phiếu chuyển kho" warehouseName={myWarehouse?.name}
@@ -348,17 +408,28 @@ function TransferForm() {
         </div>
         <div>
           <label className="wh-label">Kho đích <span style={{ color: 'var(--wh-danger)' }}>*</span></label>
-          <select className="wh-select" value={toWh} onChange={e => setToWh(Number(e.target.value))}>
+          <select className="wh-select" value={dest} onChange={e => setDest(e.target.value)}>
             <option value="">-- Chọn kho đích --</option>
-            {destWarehouses.map(w => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.type === 'TRANSIT' ? 'Trung chuyển' : 'Bán hàng'})
-              </option>
-            ))}
+            {destWarehouses.length > 0 && (
+              <optgroup label="Kho hàng">
+                {destWarehouses.map(w => (
+                  <option key={`w${w.id}`} value={`w:${w.id}`}>
+                    {w.name} ({w.type === 'TRANSIT' ? 'Trung chuyển' : 'Bán hàng'})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {factories.length > 0 && (
+              <optgroup label="Kho sản xuất (xưởng)">
+                {factories.map(f => (
+                  <option key={`f${f.id}`} value={`f:${f.id}`}>{f.name}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
       </div>
-      {toWh && myWarehouse && (
+      {dest && myWarehouse && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '8px 14px', borderRadius: 8,
@@ -385,9 +456,21 @@ function TransferForm() {
       <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>
         Nguyên liệu cần chuyển (từ {myWarehouse?.name || 'kho nguồn'})
       </div>
+      {dest && (
+        <div style={{ fontSize: 12, color: 'var(--wh-muted)', marginBottom: 8 }}>
+          {destLoading
+            ? 'Đang tải danh mục kho đích…'
+            : `Chỉ hiển thị nguyên liệu mà kho đích (${toWhName}) đang có.`}
+        </div>
+      )}
+      {dest && !destLoading && availableStocks.length === 0 && (
+        <div style={{ fontSize: 13, color: 'var(--wh-danger)', marginBottom: 8 }}>
+          Kho đích không có nguyên liệu nào trùng với kho nguồn.
+        </div>
+      )}
       <div className="wh-ing-rows">
         {rows.map((row, i) => (
-          <IngredientSelector key={i} stocks={stocks} value={row}
+          <IngredientSelector key={i} stocks={availableStocks} value={row}
             selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
             onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="transfer"
             canRemove={rows.length > 1} />

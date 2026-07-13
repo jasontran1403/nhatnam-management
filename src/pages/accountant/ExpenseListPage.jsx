@@ -6,7 +6,8 @@ import DateRangePicker from '../../components/ui/DateRangePicker';
 import {
   Receipt, Search, ChevronLeft, ChevronRight,
   X, Plus, CheckCircle, XCircle, Clock,
-  Building2, Eye, TrendingDown, TrendingUp, Wallet
+  Building2, Eye, TrendingDown, TrendingUp, Wallet,
+  Landmark, ShieldCheck, Filter
 } from 'lucide-react';
 import ExpenseCreateModal from './ExpenseCreateModal';
 import ExpenseDetailModal from './ExpenseDetailModal';
@@ -52,6 +53,8 @@ export default function ExpenseListPage() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [detailVoucher, setDetailVoucher] = useState(null);
+  const [creatorFilter, setCreatorFilter] = useState('');
+  const [approverFilter, setApproverFilter] = useState('');
 
   const calcTotal = (list) => list.reduce((s, v) => s + (Number(v.totalAmount) || 0), 0);
 
@@ -94,6 +97,14 @@ export default function ExpenseListPage() {
   };
 
   const currentRange = dateRange || dayRange(selectedDate);
+
+  // Lọc client-side theo người tạo / người duyệt trên danh sách đang hiển thị
+  const creatorOptions = [...new Set(vouchers.map(v => v.createdByName).filter(Boolean))];
+  const approverOptions = [...new Set(vouchers.map(v => v.approvedByName).filter(Boolean))];
+  const displayed = vouchers.filter(v =>
+    (!creatorFilter || v.createdByName === creatorFilter) &&
+    (!approverFilter || v.approvedByName === approverFilter)
+  );
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
@@ -138,28 +149,53 @@ export default function ExpenseListPage() {
         )}
       </div>
 
+      {/* Bộ lọc người tạo / người duyệt */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="inline-flex items-center gap-1 text-xs text-[#8E8878] font-medium">
+          <Filter size={12} /> Lọc:
+        </span>
+        <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)}
+          className="px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-xs bg-white focus:outline-none focus:border-[#C9A84C] max-w-[45%]">
+          <option value="">Tất cả người tạo</option>
+          {creatorOptions.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <select value={approverFilter} onChange={e => setApproverFilter(e.target.value)}
+          className="px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-xs bg-white focus:outline-none focus:border-[#C9A84C] max-w-[45%]">
+          <option value="">Tất cả người duyệt</option>
+          {approverOptions.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        {(creatorFilter || approverFilter) && (
+          <button onClick={() => { setCreatorFilter(''); setApproverFilter(''); }}
+            className="text-xs text-[#C9A84C] hover:underline font-semibold">Xoá lọc</button>
+        )}
+      </div>
+
       {loading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
-      ) : vouchers.length === 0 ? (
+      ) : displayed.length === 0 ? (
         <div className="text-center py-16 text-[#8E8878]">
           <Receipt size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">Không có phiếu chi nào</p>
-          <p className="text-sm mt-1">{searchText ? 'Thử từ khoá khác' : 'Trong khoảng thời gian này'}</p>
+          <p className="text-sm mt-1">{searchText || creatorFilter || approverFilter ? 'Thử điều kiện lọc khác' : 'Trong khoảng thời gian này'}</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {vouchers.map(v => {
+          {displayed.map(v => {
             const s = STATUS_CFG[v.status] || STATUS_CFG.PENDING;
             const StatusIcon = s.icon;
+            const isBank = v.paymentType === 'BANK_TRANSFER';
             return (
               <div key={v.id} onClick={() => setDetailVoucher(v)}
                 className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 hover:border-[#C9A84C]/40 hover:shadow-md transition cursor-pointer">
                 {/* Row 1: mã + badge + tiền */}
                 <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono text-xs font-bold text-[#C9A84C]">Số phiếu chi {v.paymentNumber || v.voucherCode}</span>
                     <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${s.cls}`}>
                       <StatusIcon size={9} /> {s.label}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${isBank ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                      {isBank ? <Landmark size={9} /> : <Wallet size={9} />} {isBank ? 'CK' : 'Tiền mặt'}
                     </span>
                     {v.voucherType === 'VENDOR_DEBT_PAYMENT' && (
                       <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700">
@@ -170,15 +206,26 @@ export default function ExpenseListPage() {
                   <p className="font-bold text-[#1C1C1E] text-sm">{formatVND(v.totalAmount)}</p>
                 </div>
                 {/* Row 2: lý do */}
-                <p className="text-sm font-semibold text-[#1C1C1E] truncate mb-1.5">{v.reason}</p>
+                <p className="text-sm font-semibold text-[#1C1C1E] truncate mb-1.5">Nội dung: {v.reason}</p>
                 {/* Row 3: meta */}
                 <div className="flex items-center justify-between text-xs text-[#8E8878]">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    {v.vendorName && <span className="flex items-center gap-1 truncate max-w-[110px]"><Building2 size={9} />{v.vendorName}</span>}
+                    Nhà cung cấp: {v.vendorName && <span className="flex items-center gap-1">{v.vendorName}</span>}
                   </div>
                   <span className="flex-shrink-0">{formatDate(v.createdAt)}</span>
                 </div>
-                <p className="text-xs text-[#8E8878] mt-0.5">Bởi {v.createdByName}{v.items?.length > 0 ? ` · ${v.items.length} khoản` : ''}</p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <p className="text-xs text-[#8E8878]">Tạo bởi {v.createdByName}</p>
+                  {v.approvedByName ? (
+                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-[#C9A84C]/10 text-[#B8923E]">
+                      <ShieldCheck size={9} /> Người duyệt: {v.approvedByName}
+                    </span>
+                  ) : v.status === 'PENDING' && (
+                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-600">
+                      <Clock size={9} /> {v.approverScope === 'SUPER_ACCOUNTANT' ? 'Chờ KT trưởng' : 'Chờ chủ/quản trị'}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -203,7 +250,7 @@ export default function ExpenseListPage() {
       </button>
 
       {showCreate && <ExpenseCreateModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(0); }} />}
-      {detailVoucher && <ExpenseDetailModal voucher={detailVoucher} onClose={() => setDetailVoucher(null)} />}
+      {detailVoucher && <ExpenseDetailModal voucher={detailVoucher} onClose={() => setDetailVoucher(null)} onChanged={() => load(page)} />}
     </div>
   );
 }

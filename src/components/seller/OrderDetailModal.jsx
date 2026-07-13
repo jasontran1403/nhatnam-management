@@ -284,6 +284,9 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
     PARTIAL_PAYMENT: 'Thu tiền 1 phần', FULLY_PAID: 'Thanh toán đủ',
     PAYMENT_METHOD_UPDATED: 'Đổi phương thức TT', DEADLINE_EXTENDED: 'Gia hạn công nợ',
     ORDER_UPDATED: 'Sửa món/số lượng/giá (delta)', FAILED: 'Thất bại',
+    // Thu tiền TRƯỚC khi giao (khách bị yêu cầu thanh toán trước)
+    PREPAYMENT_FULL: 'Thu trước — đã đủ', PREPAYMENT_PARTIAL: 'Thu trước — chưa đủ',
+    WAIVE_REMAINDER: 'Bỏ số lẻ',
   };
 
   const ACTION_STYLE = {
@@ -295,6 +298,9 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
     CANCELLED: 'bg-red-50 text-red-600 border-red-200',
     PARTIAL_PAYMENT: 'bg-amber-50 text-amber-700 border-amber-200',
     FULLY_PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    PREPAYMENT_FULL: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    PREPAYMENT_PARTIAL: 'bg-amber-50 text-amber-700 border-amber-200',
+    WAIVE_REMAINDER: 'bg-gray-50 text-gray-600 border-gray-200',
     PAYMENT_METHOD_UPDATED: 'bg-gray-50 text-gray-600 border-gray-200',
     ORDER_UPDATED: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   };

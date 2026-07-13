@@ -1,34 +1,35 @@
 // src/pages/owner/OwnerWorkOrderPage.jsx
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, X, ChevronDown, ChevronUp, ClipboardList, Search } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { Field, inputCls, PrimaryButton } from '../../components/ui';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import { ownerProductionApi, factoryProductApi } from '../../api/productionApi';
 import { ownerProdApi } from '../../api/productionModuleApi';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 
-const fmtDate = (ms) => ms
-  ? new Date(ms).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' })
-  : '—';
+// fmtDate removed — use useFmt()
 
-const STATUS_CONFIG = {
-  DRAFT:       { label: 'Bản nháp',       cls: 'bg-gray-100 text-gray-600',        dot: 'bg-gray-400' },
-  RELEASED:    { label: 'Đã phát hành',   cls: 'bg-blue-100 text-blue-700',        dot: 'bg-blue-400' },
-  IN_PROGRESS: { label: 'Đang thực hiện', cls: 'bg-amber-100 text-amber-700',      dot: 'bg-amber-400' },
-  COMPLETED:   { label: 'Hoàn thành',     cls: 'bg-emerald-100 text-emerald-700',  dot: 'bg-emerald-400' },
-  CLOSED:      { label: 'Đóng',           cls: 'bg-gray-100 text-gray-500',        dot: 'bg-gray-300' },
-  CANCELLED:   { label: 'Huỷ',            cls: 'bg-red-100 text-red-600',          dot: 'bg-red-400' },
-};
+const getStatusConfig = (t) => ({
+  DRAFT:       { label: t('production','wo_status_draft'),       cls: 'bg-gray-100 text-gray-600',        dot: 'bg-gray-400' },
+  RELEASED:    { label: t('production','wo_status_released'),    cls: 'bg-blue-100 text-blue-700',        dot: 'bg-blue-400' },
+  IN_PROGRESS: { label: t('production','wo_status_in_progress'), cls: 'bg-amber-100 text-amber-700',      dot: 'bg-amber-400' },
+  COMPLETED:   { label: t('production','status_completed'),      cls: 'bg-emerald-100 text-emerald-700',  dot: 'bg-emerald-400' },
+  CLOSED:      { label: t('production','wo_status_closed'),      cls: 'bg-gray-100 text-gray-500',        dot: 'bg-gray-300' },
+  CANCELLED:   { label: t('production','status_cancelled'),      cls: 'bg-red-100 text-red-600',          dot: 'bg-red-400' },
+});
 
-const QC_STATUS = {
-  PENDING:      { label: 'Chờ',         cls: 'text-gray-500' },
-  PASS:         { label: '✓ Đạt',       cls: 'text-emerald-600' },
-  FAIL:         { label: '✗ Không đạt', cls: 'text-red-600' },
-  NEEDS_REVIEW: { label: '⚠ Xem lại',   cls: 'text-amber-600' },
-};
+const getQcStatus = (t) => ({
+  PENDING:      { label: t('production','wo_qc_pending'),      cls: 'text-gray-500' },
+  PASS:         { label: t('production','wo_qc_pass'),         cls: 'text-emerald-600' },
+  FAIL:         { label: t('production','wo_qc_fail'),         cls: 'text-red-600' },
+  NEEDS_REVIEW: { label: t('production','wo_qc_needs_review'), cls: 'text-amber-600' },
+});
 
 // ── Search dropdown ────────────────────────────────────────────────────────────
-function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'Tìm...' }) {
+function SearchDropdown({ items, value, onChange, onCreateNew, placeholder }) {
+  const { t } = useLang();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -63,7 +64,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
               autoFocus
               className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
                 focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
-              placeholder="Tìm sản phẩm..."
+              placeholder={t('production','wo_search_product_ph')}
               value={q}
               onChange={e => setQ(e.target.value)}
               onClick={e => e.stopPropagation()}
@@ -71,7 +72,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-[#8E8878] italic">Không tìm thấy</div>
+              <div className="px-3 py-2 text-sm text-[#8E8878] italic">{t('production','wo_not_found')}</div>
             ) : (
               filtered.map(item => (
                 <button
@@ -91,7 +92,7 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
                 border-t border-[#F0EBE3] hover:bg-[#FAF7F2] flex items-center gap-1.5"
               onClick={() => { setOpen(false); onCreateNew(q); }}
             >
-              <Plus size={13} /> Tạo sản phẩm mới{q ? `: "${q}"` : ''}
+              <Plus size={13} /> {t('production','wo_create_product')}{q ? `: "${q}"` : ''}
             </button>
           )}
         </div>
@@ -106,15 +107,16 @@ function QuickCreateProductModal({ initialName = '', onClose, onCreated }) {
   const [unit, setUnit] = useState('Kg');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const { t } = useLang();
 
   const submit = async () => {
-    if (!name.trim()) { setErr('Vui lòng nhập tên sản phẩm'); return; }
+    if (!name.trim()) { setErr(t('production','wo_err_product_name')); return; }
     setSaving(true);
     try {
       const created = await factoryProductApi.create({ name: name.trim(), unit });
       onCreated(created);
     } catch (e) {
-      setErr(e?.response?.data?.message || 'Có lỗi xảy ra');
+      setErr(e?.response?.data?.message || t('error','generic'));
     } finally { setSaving(false); }
   };
 
@@ -122,24 +124,28 @@ function QuickCreateProductModal({ initialName = '', onClose, onCreated }) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[#1C1C1E]">Tạo sản phẩm mới</h3>
+          <h3 className="font-semibold text-[#1C1C1E]">{t('production','wo_create_product')}</h3>
           <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
         </div>
         {err && <p className="text-xs text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-xl">{err}</p>}
         <div className="space-y-3">
-          <Field label="Tên sản phẩm *">
+          <Field label={`${t('production','wo_field_product_name')} *`}>
             <input
               autoFocus
               className={inputCls}
-              placeholder="VD: Xúc xích heo"
+              placeholder={t('production','wo_ph_product_name')}
               value={name}
               onChange={e => setName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && submit()}
             />
           </Field>
-          <Field label="Đơn vị">
+          <Field label={t('production','oinv_unit')}>
             <select className={inputCls} value={unit} onChange={e => setUnit(e.target.value)}>
-              {['Kg', 'Gr', 'Hộp', 'Túi', 'Cái', 'Thùng'].map(u => <option key={u}>{u}</option>)}
+              {[
+                { val: 'Kg', key: 'kg' }, { val: 'Gr', key: 'gram' },
+                { val: 'Hộp', key: 'box' }, { val: 'Túi', key: 'bag' },
+                { val: 'Cái', key: 'piece' }, { val: 'Thùng', key: 'barrel' },
+              ].map(u => <option key={u.val} value={u.val}>{t('unit_labels', u.key)}</option>)}
             </select>
           </Field>
         </div>
@@ -159,6 +165,10 @@ function QuickCreateProductModal({ initialName = '', onClose, onCreated }) {
 
 // ── Work Order Card ────────────────────────────────────────────────────────────
 function WorkOrderCard({ wo, onStatusChange }) {
+  const { t } = useLang();
+  const { fmtDate, fmtNum } = useFmt();
+  const STATUS_CONFIG = useMemo(() => getStatusConfig(t), [t]);
+  const QC_STATUS = useMemo(() => getQcStatus(t), [t]);
   const [expanded, setExpanded] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const cfg = STATUS_CONFIG[wo.status] || STATUS_CONFIG.DRAFT;
@@ -188,8 +198,8 @@ function WorkOrderCard({ wo, onStatusChange }) {
             </div>
             <p className="text-sm text-[#8E8878] mt-0.5 truncate">{wo.productName}</p>
             <div className="flex gap-4 mt-1 text-xs text-[#8E8878] flex-wrap">
-              <span>KH: <b className="text-[#1C1C1E]">{Number(wo.plannedQty || 0).toLocaleString('vi-VN')} {wo.outputUnit}</b></span>
-              {wo.actualQty && <span>TT: <b className="text-emerald-600">{Number(wo.actualQty).toLocaleString('vi-VN')} {wo.outputUnit}</b></span>}
+              <span>KH: <b className="text-[#1C1C1E]">{Number(wo.plannedQty || 0)} {wo.outputUnit}</b></span>
+              {wo.actualQty && <span>TT: <b className="text-emerald-600">{Number(wo.actualQty)} {wo.outputUnit}</b></span>}
               {wo.plannedStartDate && <span>📅 {fmtDate(wo.plannedStartDate)} → {fmtDate(wo.plannedEndDate)}</span>}
               {wo.assignedToName && <span>👤 {wo.assignedToName}</span>}
             </div>
@@ -212,7 +222,7 @@ function WorkOrderCard({ wo, onStatusChange }) {
         <div className="px-5 pb-4 border-t border-black/5">
           {wo.operations?.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Các bước</p>
+              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production','wo_steps')}</p>
               <div className="space-y-1.5">
                 {wo.operations.map((op, i) => {
                   const qcCfg = QC_STATUS[op.qcStatus] || QC_STATUS.PENDING;
@@ -241,6 +251,8 @@ function WorkOrderCard({ wo, onStatusChange }) {
 
 // ── Modal tạo Work Order ──────────────────────────────────────────────────────
 function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }) {
+  const { t } = useLang();
+  const { fmtDate } = useFmt();
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [form, setForm] = useState({
     factoryProductId: '',
@@ -282,7 +294,7 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
 
   const submit = async () => {
     if (!form.factoryProductId || !form.plannedQty) {
-      setErr('Vui lòng chọn sản phẩm và nhập sản lượng');
+      setErr(t('production','wo_err_select_product_qty'));
       return;
     }
     setSaving(true);
@@ -310,7 +322,7 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
       await ownerProductionApi.createWorkOrder(payload);
       onSaved();
     } catch (e) {
-      setErr(e?.response?.data?.message || 'Có lỗi xảy ra');
+      setErr(e?.response?.data?.message || t('error','generic'));
     } finally { setSaving(false); }
   };
 
@@ -333,7 +345,7 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
           {/* Header */}
           <div className="px-6 py-4 border-b border-black/5 bg-[#1A2B1A] flex items-center justify-between flex-shrink-0">
-            <h2 className="text-white font-semibold text-sm">Tạo lệnh sản xuất mới</h2>
+            <h2 className="text-white font-semibold text-sm">{t('production','wo_create_title')}</h2>
             <button onClick={onClose} className="text-white/60 hover:text-white"><X size={18} /></button>
           </div>
 
@@ -342,7 +354,7 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
 
             {/* Kế hoạch sản xuất (optional) */}
             {plans.length > 0 && (
-              <Field label="Kế hoạch sản xuất">
+              <Field label={t('production','mps_title')}>
                 <SearchDropdown
                   items={planItems}
                   value={selectedPlanId ? Number(selectedPlanId) : ''}
@@ -350,14 +362,14 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
                     setSelectedPlanId(id);
                     set('factoryProductId', '');
                   }}
-                  placeholder="Chọn kế hoạch (không bắt buộc)"
+                  placeholder={t('production','wo_select_plan_ph')}
                 />
               </Field>
             )}
 
             {/* Sản phẩm + sản lượng */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Thành phẩm" required>
+              <Field label={t('production','amps_field_product')} required>
                 <SearchDropdown
                   items={planProducts}
                   value={form.factoryProductId ? Number(form.factoryProductId) : ''}
@@ -365,26 +377,26 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
                   onCreateNew={(name) => { setQuickCreateName(name); setShowQuickCreate(true); }}
                   placeholder={
                     selectedPlanId && planProducts.length === 0
-                      ? 'Kế hoạch chưa có sản phẩm'
-                      : 'Chọn sản phẩm...'
+                      ? t('production','mps_no_product_in_plan')
+                      : t('production','mps_select_product')
                   }
                 />
               </Field>
-              <Field label="Sản lượng kế hoạch" required>
-                <input type="number" className={inputCls} placeholder="VD: 500"
+              <Field label={t('production','amps_field_planned_qty')} required>
+                <input type="number" className={inputCls} placeholder={t('production','mps_ph_qty')}
                   value={form.plannedQty} onChange={e => set('plannedQty', e.target.value)} />
               </Field>
-              <Field label="Ngày bắt đầu">
+              <Field label={t('production','omaint_field_start')}>
                 <input type="date" className={inputCls} value={form.plannedStartDate}
                   onChange={e => set('plannedStartDate', e.target.value)} />
               </Field>
-              <Field label="Ngày kết thúc">
+              <Field label={t('production','omaint_field_end')}>
                 <input type="date" className={inputCls} value={form.plannedEndDate}
                   onChange={e => set('plannedEndDate', e.target.value)} />
               </Field>
             </div>
 
-            <Field label="Ghi chú">
+            <Field label={t('common','note')}>
               <textarea className={inputCls} rows={2} value={form.notes}
                 onChange={e => set('notes', e.target.value)} />
             </Field>
@@ -392,7 +404,7 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
             {/* Operations */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-[#1C1C1E]">Các bước thao tác</p>
+                <p className="text-sm font-semibold text-[#1C1C1E]">{t('production','wo_operations')}</p>
                 <button onClick={addOp}
                   className="flex items-center gap-1 text-xs text-[#1A2B1A] font-semibold hover:underline">
                   <Plus size={13} />Thêm bước
@@ -405,7 +417,7 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
                       <div className="w-5 h-5 rounded-full bg-[#1A2B1A] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                         {op.operationSequence}
                       </div>
-                      <span className="text-xs font-medium text-[#8E8878]">Bước {op.operationSequence}</span>
+                      <span className="text-xs font-medium text-[#8E8878]">{t('production','wo_step_n',{n:op.operationSequence})}</span>
                       {operations.length > 1 && (
                         <button onClick={() => removeOp(idx)} className="ml-auto text-[#8E8878] hover:text-red-500">
                           <X size={13} />
@@ -413,19 +425,19 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
                       )}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Field label="Tên thao tác" required>
-                        <input className={inputCls} placeholder="VD: Xay thịt, Trộn gia vị..."
+                      <Field label={t('production','wo_field_op_name')} required>
+                        <input className={inputCls} placeholder={t('production','wo_ph_op_name')}
                           value={op.operationName} onChange={e => setOp(idx, 'operationName', e.target.value)} />
                       </Field>
-                      <Field label="Máy thực hiện">
+                      <Field label={t('production','wo_field_machine')}>
                         <select className={inputCls} value={op.machineId}
                           onChange={e => setOp(idx, 'machineId', e.target.value)}>
-                          <option value="">-- Không cần máy --</option>
+                          <option value="">{t('production','wo_no_machine')}</option>
                           {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                         </select>
                       </Field>
-                      <Field label="Giờ kế hoạch">
-                        <input type="number" className={inputCls} placeholder="VD: 2"
+                      <Field label={t('production','wo_field_planned_hours')}>
+                        <input type="number" className={inputCls} placeholder={t('production','wo_ph_hours')}
                           value={op.plannedHours} onChange={e => setOp(idx, 'plannedHours', e.target.value)} />
                       </Field>
                       <div className="flex items-end gap-3">
@@ -433,23 +445,23 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
                           <input type="checkbox" checked={op.qcRequired}
                             onChange={e => setOp(idx, 'qcRequired', e.target.checked)}
                             className="w-4 h-4 rounded accent-[#1A2B1A]" />
-                          <span className="text-[#1C1C1E]">Cần kiểm QC</span>
+                          <span className="text-[#1C1C1E]">{t('production','wo_qc_required')}</span>
                         </label>
                       </div>
                       {op.qcRequired && (
                         <>
-                          <Field label="Loại QC">
+                          <Field label={t('production','wo_field_qc_type')}>
                             <select className={inputCls} value={op.qcType}
                               onChange={e => setOp(idx, 'qcType', e.target.value)}>
-                              <option value="">-- Chọn --</option>
-                              <option value="VISUAL">Quan sát</option>
-                              <option value="MEASUREMENT">Đo lường</option>
-                              <option value="SAMPLING">Lấy mẫu</option>
-                              <option value="OTHER">Khác</option>
+                              <option value="">{t('production','wo_select_qc')}</option>
+                              <option value="VISUAL">{t('production','wo_qc_visual')}</option>
+                              <option value="MEASUREMENT">{t('production','wo_qc_measurement')}</option>
+                              <option value="SAMPLING">{t('production','wo_qc_sampling')}</option>
+                              <option value="OTHER">{t('production','wo_qc_other')}</option>
                             </select>
                           </Field>
-                          <Field label="Điểm kiểm soát">
-                            <input className={inputCls} placeholder="VD: Bước 2 – Nhồi"
+                          <Field label={t('production','wo_field_qc_checkpoint')}>
+                            <input className={inputCls} placeholder={t('production','wo_ph_qc_checkpoint')}
                               value={op.qcControlPoint} onChange={e => setOp(idx, 'qcControlPoint', e.target.value)} />
                           </Field>
                         </>
@@ -463,7 +475,7 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-black/5 bg-[#FAF7F2]/50 flex gap-3 justify-end flex-shrink-0">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-[#8E8878]">Hủy</button>
+            <button onClick={onClose} className="px-4 py-2 text-sm text-[#8E8878]">{t('common','cancel')}</button>
             <PrimaryButton onClick={submit} loading={saving}
               disabled={!form.factoryProductId || !form.plannedQty}>
               Tạo lệnh sản xuất
@@ -485,6 +497,8 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function OwnerWorkOrderPage() {
+  const { t } = useLang();
+  const STATUS_CONFIG = useMemo(() => getStatusConfig(t), [t]);
   const [workOrders, setWorkOrders] = useState([]);
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(0);
@@ -527,8 +541,8 @@ export default function OwnerWorkOrderPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]">Lệnh sản xuất</h1>
-          <p className="text-sm text-[#8E8878] mt-1">Tạo và theo dõi các lệnh sản xuất</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]">{t('production','wo_title')}</h1>
+          <p className="text-sm text-[#8E8878] mt-1">{t('production','wo_subtitle')}</p>
         </div>
         <button onClick={() => setShowModal(true)}
           className="flex items-center gap-2 bg-[#1A2B1A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#243824] transition-colors">
@@ -538,7 +552,7 @@ export default function OwnerWorkOrderPage() {
 
       {/* Status filter tabs */}
       <div className="flex gap-2 flex-wrap">
-        {[['', 'Tất cả'], ...Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label])].map(([val, label]) => (
+        {[['', t('common','all')], ...Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label])].map(([val, label]) => (
           <button key={val}
             onClick={() => setStatusFilter(val)}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
@@ -561,7 +575,7 @@ export default function OwnerWorkOrderPage() {
         {!loading && workOrders.length === 0 && (
           <div className="bg-white rounded-2xl border border-black/5 p-12 text-center">
             <ClipboardList size={32} className="mx-auto text-[#8E8878] mb-3" />
-            <p className="text-sm text-[#8E8878]">Chưa có lệnh sản xuất nào</p>
+            <p className="text-sm text-[#8E8878]">{t('production','wo_empty')}</p>
           </div>
         )}
       </div>

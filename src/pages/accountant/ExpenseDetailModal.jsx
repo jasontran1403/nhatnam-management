@@ -1,5 +1,10 @@
 // src/pages/accountant/ExpenseDetailModal.jsx
-import { X, Receipt, Building2, User, Clock, CheckCircle, XCircle, Package, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { X, Receipt, Building2, User, Clock, CheckCircle, XCircle, Wallet, Landmark, ShieldCheck, Pencil } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/common/Toast';
+import { expenseApi } from '../../api/services';
+import { VENDOR_TYPE_LABELS } from './ExpenseCreateModal';
 
 function formatVND(n) {
   if (!n && n !== 0) return '0 đ';
@@ -23,9 +28,66 @@ function imgSrc(url) {
   return url.startsWith('http') ? url : `${BASE_URL}/api/auth${url}`;
 }
 
-export default function ExpenseDetailModal({ voucher: v, onClose }) {
+export default function ExpenseDetailModal({ voucher: v, onClose, onChanged }) {
+  const { role } = useAuth();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [editingReason, setEditingReason] = useState(false);
+  const [editedReason, setEditedReason] = useState(v.reason || '');
+  const [savingReason, setSavingReason] = useState(false);
+
+  // Cho phép sửa lý do: PENDING hoặc APPROVED (REJECTED thì không)
+  const canEditReason = v.status !== 'REJECTED';
+
   const s = STATUS_CFG[v.status] || STATUS_CFG.PENDING;
   const StatusIcon = s.icon;
+  const isBank = v.paymentType === 'BANK_TRANSFER';
+
+  // Ai được duyệt phiếu này?
+  const isVendorDebt = v.voucherType === 'VENDOR_DEBT_PAYMENT';
+  const canApprove = v.status === 'PENDING' && !isVendorDebt && (
+    role === 'OWNER' || role === 'ADMIN' ||
+    (role === 'SUPER_ACCOUNTANT' && v.approverScope === 'SUPER_ACCOUNTANT')
+  );
+
+  const doSaveReason = async () => {
+    if (!editedReason.trim()) { toast('Lý do chi không được để trống', 'error'); return; }
+    setSavingReason(true);
+    try {
+      await expenseApi.updateReason(v.id, editedReason.trim());
+      toast('Đã cập nhật lý do phiếu chi', 'success');
+      setEditingReason(false);
+      onChanged && onChanged();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
+    } finally { setSavingReason(false); }
+  };
+
+  const doApprove = async () => {
+    setBusy(true);
+    try {
+      await expenseApi.approve(v.id, null);
+      toast('Đã duyệt phiếu chi', 'success');
+      onChanged && onChanged();
+      onClose();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi khi duyệt', 'error');
+    } finally { setBusy(false); }
+  };
+  const doReject = async () => {
+    if (!rejectReason.trim()) { toast('Vui lòng nhập lý do từ chối', 'error'); return; }
+    setBusy(true);
+    try {
+      await expenseApi.reject(v.id, rejectReason.trim());
+      toast('Đã từ chối phiếu chi', 'success');
+      onChanged && onChanged();
+      onClose();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi khi từ chối', 'error');
+    } finally { setBusy(false); }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -37,11 +99,14 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
             <Receipt size={20} className="text-[#C9A84C]" />
             <div>
               <p className="font-mono text-sm font-bold text-[#C9A84C]">Số phiếu chi {v.paymentNumber || v.voucherCode}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>
                   <StatusIcon size={10} /> {s.label}
                 </span>
-                {v.voucherType === 'VENDOR_DEBT_PAYMENT' && (
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${isBank ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                  {isBank ? <Landmark size={10} /> : <Wallet size={10} />} {isBank ? 'Chuyển khoản' : 'Tiền mặt'}
+                </span>
+                {isVendorDebt && (
                   <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700">
                     <Wallet size={10} /> Trả công nợ NCC
                   </span>
@@ -57,16 +122,59 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
 
-          {/* Info rows */}
           <div className="grid grid-cols-2 gap-3">
-            <InfoRow label="Lý do chi" value={v.reason} full />
+            {/* Lý do chi — có thể sửa nếu chưa bị từ chối */}
+            <div className="col-span-2 bg-[#FAF7F2] rounded-xl px-3 py-2">
+              <p className="text-[10px] text-[#8E8878] uppercase tracking-wider font-semibold mb-0.5">Lý do chi</p>
+              {editingReason ? (
+                <div className="flex items-start gap-2 mt-1">
+                  <textarea
+                    className="flex-1 px-2.5 py-1.5 text-sm rounded-lg border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white"
+                    rows={2}
+                    value={editedReason}
+                    onChange={e => setEditedReason(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex flex-col gap-1">
+                    <button onClick={doSaveReason} disabled={savingReason}
+                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#1A2B1A] text-white hover:bg-[#2a3b2a] disabled:opacity-50">
+                      {savingReason ? '...' : 'Lưu'}
+                    </button>
+                    <button onClick={() => { setEditingReason(false); setEditedReason(v.reason || ''); }}
+                      className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[#E8DDD0] text-[#8E8878] hover:bg-[#F5F0EB]">
+                      Huỷ
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-[#1C1C1E] flex-1">{v.reason || '—'}</p>
+                  {canEditReason && (
+                    <button onClick={() => setEditingReason(true)}
+                      className="p-1 rounded-lg hover:bg-[#E8DDD0] text-[#8E8878] hover:text-[#C9A84C] transition-colors"
+                      title="Sửa lý do">
+                      <Pencil size={13} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             {v.vendorName && <InfoRow label="Nhà cung cấp" value={v.vendorName} icon={<Building2 size={12} />} full />}
+            {v.vendorType && <InfoRow label="Danh mục" value={VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType} />}
             <InfoRow label="Người lập" value={v.createdByName} icon={<User size={12} />} />
             {v.requestedByName && <InfoRow label="Người yêu cầu" value={v.requestedByName} icon={<User size={12} />} />}
             <InfoRow label="Ngày tạo" value={formatDate(v.createdAt)} />
-            {/* {v.approvedByName && <InfoRow label="Người duyệt" value={v.approvedByName} />} */}
-            {/* {v.approvedAt && <InfoRow label="Ngày duyệt" value={formatDate(v.approvedAt)} />} */}
+            {v.approvedByName && <InfoRow label="Người duyệt" value={v.approvedByName} icon={<ShieldCheck size={12} />} />}
+            {v.approvedAt && <InfoRow label="Ngày duyệt" value={formatDate(v.approvedAt)} />}
           </div>
+
+          {/* Thông tin ngân hàng */}
+          {isBank && (
+            <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 grid grid-cols-2 gap-3">
+              <InfoRow label="Ngân hàng" value={v.bankName} icon={<Landmark size={12} />} />
+              <InfoRow label="Mã tham chiếu" value={v.bankRef} />
+            </div>
+          )}
 
           {v.rejectReason && (
             <div className="bg-red-50 border border-red-100 rounded-xl p-3">
@@ -76,7 +184,7 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
           )}
 
           {/* Items */}
-          {v.items?.length > 0 && (
+          {v.items?.length > 0 ? (
             <div>
               <p className="text-sm font-semibold text-[#1C1C1E] mb-2">Các khoản chi</p>
               <div className="space-y-2">
@@ -95,8 +203,7 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
                 <span className="text-base font-bold text-[#C9A84C]">{formatVND(v.totalAmount)}</span>
               </div>
             </div>
-          )}
-          {(!v.items || v.items.length === 0) && (
+          ) : (
             <div className="flex justify-between items-center bg-[#FAF7F2] rounded-xl px-4 py-3">
               <span className="text-sm font-semibold text-[#8E8878]">Tổng cộng</span>
               <span className="text-base font-bold text-[#C9A84C]">{formatVND(v.totalAmount)}</span>
@@ -116,12 +223,49 @@ export default function ExpenseDetailModal({ voucher: v, onClose }) {
               </div>
             </div>
           )}
+
+          {/* Khối từ chối */}
+          {rejecting && (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+              <label className="block text-xs font-semibold text-red-600 mb-1">Lý do từ chối *</label>
+              <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={2}
+                placeholder="Nhập lý do..."
+                className="w-full px-3 py-2 rounded-lg border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 bg-white" />
+            </div>
+          )}
         </div>
 
-        <div className="p-5 border-t border-black/5">
-          <button onClick={onClose} className="w-full py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
-            Đóng
-          </button>
+        {/* Footer */}
+        <div className="p-5 border-t border-black/5 flex gap-3">
+          {canApprove && !rejecting && (
+            <>
+              <button onClick={() => setRejecting(true)} disabled={busy}
+                className="flex-1 py-3 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition disabled:opacity-50">
+                Từ chối
+              </button>
+              <button onClick={doApprove} disabled={busy}
+                className="flex-1 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition disabled:opacity-50">
+                {busy ? 'Đang xử lý...' : 'Duyệt phiếu'}
+              </button>
+            </>
+          )}
+          {canApprove && rejecting && (
+            <>
+              <button onClick={() => { setRejecting(false); setRejectReason(''); }} disabled={busy}
+                className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition disabled:opacity-50">
+                Huỷ
+              </button>
+              <button onClick={doReject} disabled={busy}
+                className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition disabled:opacity-50">
+                {busy ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+              </button>
+            </>
+          )}
+          {!canApprove && (
+            <button onClick={onClose} className="w-full py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+              Đóng
+            </button>
+          )}
         </div>
       </div>
     </div>

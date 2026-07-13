@@ -41,20 +41,31 @@ function handleSessionExpired(message) {
   }, 3000);
 }
 
-// Các code lỗi business (server trả HTTP 200 nhưng là lỗi thực sự)
-const BUSINESS_ERROR_CODES = new Set([921, 922, 924, 925, 926, 927, 928, 929, 930]);
+// ⚠️ FIX LỖI NGHIÊM TRỌNG:
+// Backend LUÔN trả HTTP 200, lỗi nằm ở `code` trong body (900 = thành công).
+// Bản cũ chỉ reject với một danh sách code cứng {921,922,924...} — nghĩa là các lỗi
+// phổ biến nhất (903 BAD_REQUEST, 904 NOT_FOUND, 902 FORBIDDEN, 905 CONFLICT,
+// 906 VALIDATION_ERROR, 947 OUT_OF_STOCK, 941, 942, 950...) KHÔNG bị reject
+// → khối try/catch ở component chạy vào nhánh thành công, toast báo "Thành công"
+// dù server đã từ chối. Rất nguy hiểm với các thao tác kho/kế toán.
+//
+// Fix: MỌI code khác 900 đều là lỗi → reject để catch block xử lý đúng.
+const SUCCESS_CODE = 900;
 
 api.interceptors.response.use(
   (res) => {
-    // Backend luôn trả HTTP 200 — check business code trong body
     const code = res.data?.code;
-    if (code && SESSION_EXPIRED_CODES.has(code)) {
+
+    // Không có code (blob, file download, endpoint ngoài chuẩn) → trả nguyên
+    if (code === undefined || code === null) return res;
+
+    if (SESSION_EXPIRED_CODES.has(code)) {
       handleSessionExpired(res.data?.message);
     }
-    // Throw business errors so catch blocks in components work normally
-    if (code && BUSINESS_ERROR_CODES.has(code)) {
+
+    if (code !== SUCCESS_CODE) {
       const err = new Error(res.data?.message || 'Có lỗi xảy ra');
-      err.response = res;  // giữ lại response để catch có thể đọc
+      err.response = res;      // giữ lại response để catch có thể đọc message
       err.businessCode = code;
       return Promise.reject(err);
     }

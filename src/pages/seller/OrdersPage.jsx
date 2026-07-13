@@ -332,6 +332,8 @@ export default function OrdersPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState('INGREDIENT');
   const [reportDateRange, setReportDateRange] = useState({ from: null, to: null });
+  const [reportCategories, setReportCategories] = useState([]);
+  const [reportCategoryId, setReportCategoryId] = useState('');
   const [exportingReport, setExportingReport] = useState(false);
 
   const STATUS_MAP = {
@@ -366,6 +368,8 @@ export default function OrdersPage() {
   const currentId = currentUser.userId || 0;
   const isThuytm = currentId === 15;
   const isSuperSeller = currentUser.role === 'SUPER_SELLER';
+  const canSeeReport = currentId === 12 || currentId === 15
+    || currentUser.role === 'OWNER' || currentUser.role === 'ADMIN';
 
   const canActOnOrder = useCallback((o) => {
     if (isSuperSeller) return true;
@@ -412,6 +416,14 @@ export default function OrdersPage() {
     finally { setExporting(false); setShowExportPicker(false); }
   };
 
+  useEffect(() => {
+    if (showReportModal && canSeeReport) {
+      orderApi.getReportCategories()
+        .then(res => setReportCategories(res.data?.data ?? res.data ?? []))
+        .catch(() => {});
+    }
+  }, [showReportModal]);
+
   const handleReportExport = async () => {
     if (!reportDateRange.from || !reportDateRange.to) { toast('Vui lòng chọn khoảng thời gian', 'error'); return; }
     setExportingReport(true);
@@ -423,7 +435,7 @@ export default function OrdersPage() {
         res = await orderApi.exportIngredients({ from: fromDate.getTime(), to: toDate.getTime() });
         filename = `nguyen-lieu-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
       } else if (reportType === 'CUSTOMER_PRODUCT') {
-        res = await orderApi.exportCustomerProductReport({ from: fromDate.toISOString().slice(0, 10), to: toDate.toISOString().slice(0, 10) });
+        res = await orderApi.exportCustomerProductReport({ from: fromDate.toISOString().slice(0, 10), to: toDate.toISOString().slice(0, 10), ...(reportCategoryId ? { categoryId: reportCategoryId } : {}) });
         filename = `bao-cao-kh-sp-${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}.xlsx`;
       } else if (reportType === 'DELIVERY') {
         res = await orderApi.exportDeliveryReport({ from: fromDate.getTime(), to: toDate.getTime() });
@@ -552,7 +564,7 @@ export default function OrdersPage() {
             className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0">
             {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
           </button>
-          {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).userId === 15 && (
+          {canSeeReport && (
             <button onClick={() => setShowReportModal(true)} title="Xuất báo cáo"
               className="p-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors shrink-0">
               <FileBarChart size={14} />
@@ -597,7 +609,7 @@ export default function OrdersPage() {
               className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-60 shrink-0">
               {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600" /> : <Download size={14} />}
             </button>
-            {currentUser.userId === 15 && (
+            {canSeeReport && (
               <button onClick={() => setShowReportModal(true)} title="Xuất báo cáo"
                 className="p-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors shrink-0">
                 <FileBarChart size={14} />
@@ -852,6 +864,19 @@ export default function OrdersPage() {
                 {reportType === 'DELIVERY' && 'Báo cáo giao hàng theo tài xế, thời gian giao hàng thực tế.'}
               </p>
               <DateRangePicker from={reportDateRange.from} to={reportDateRange.to} onChange={r => setReportDateRange(r)} placeholder="Chọn khoảng ngày (mặc định: hôm nay)" />
+              {reportType === 'CUSTOMER_PRODUCT' && (
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Danh mục sản phẩm</label>
+                  <select
+                    value={reportCategoryId}
+                    onChange={e => setReportCategoryId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]">
+                    <option value="">-- Danh mục mặc định --</option>
+                    {reportCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <p className="text-[11px] text-[#8E8878] mt-1">Để trống sẽ dùng danh mục mặc định (kem).</p>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => { setShowReportModal(false); setReportDateRange({ from: null, to: null }); }}

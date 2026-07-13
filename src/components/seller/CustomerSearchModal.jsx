@@ -295,7 +295,11 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     contactName: '',
     companyName: '', taxCode: '', companyPhone: '', companyAddress: '',
     pricingType: 'RETAIL_PRICE',
+    contractName: '',
   });
+  // Tên trên hợp đồng MẶC ĐỊNH = tên công ty (COMPANY) / họ tên (RETAIL).
+  // Chừng nào user chưa tự sửa ô này, nó tự bám theo tên khách. Sửa 1 lần → dừng bám.
+  const [contractTouched, setContractTouched] = useState(false);
   const [receivers, setReceivers] = useState([
     { receiverName: '', receiverPhone: '', receiverAddress: '', isDefault: true }
   ]);
@@ -305,9 +309,27 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
   const [isPrivate, setIsPrivate] = useState(false);
 
   const isCompany = customerType === 'COMPANY';
+  const contractDefault = (isCompany ? form.companyName : form.name)?.trim() || '';
+
+  // Đổi loại khách (RETAIL ↔ COMPANY) → tên hợp đồng bám theo tên tương ứng
+  // (chỉ khi user chưa tự sửa ô này)
+  useEffect(() => {
+    if (contractTouched) return;
+    setForm(p => ({ ...p, contractName: (isCompany ? p.companyName : p.name) || '' }));
+  }, [customerType, contractTouched, isCompany]);
 
   const setField = (key, val) => {
-    setForm(p => ({ ...p, [key]: val }));
+    setForm(p => {
+      const next = { ...p, [key]: val };
+      // Tự điền tên hợp đồng theo tên khách/tên công ty khi user chưa tự sửa ô đó
+      if (!contractTouched && (key === 'name' || key === 'companyName')) {
+        const isCo = customerType === 'COMPANY';
+        if ((isCo && key === 'companyName') || (!isCo && key === 'name')) {
+          next.contractName = val;
+        }
+      }
+      return next;
+    });
     if (errors[key]) setErrors(p => ({ ...p, [key]: '' }));
   };
 
@@ -419,6 +441,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
         companyPhone: form.companyPhone.trim() || null,
         companyAddress: form.companyAddress.trim() || null,
         pricingType: form.pricingType || 'RETAIL_PRICE',
+        // Tên trên hợp đồng — gửi '' để BE hiểu là dùng tên mặc định
+        contractName: form.contractName.trim(),
         discountRate: 0,
         // Khách doanh nghiệp do seller tạo → luôn ngầm định là khách riêng (không có toggle).
         // Khách cá nhân → theo lựa chọn của seller (Khách chung / Khách riêng).
@@ -559,6 +583,19 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
             </div>
           </>
         )}
+
+        {/* ── TÊN TRÊN HỢP ĐỒNG ──────────────────────────────────────────────
+            Mặc định = tên công ty (COMPANY) / họ tên (RETAIL), tự điền theo khi gõ.
+            Sửa tay → ngừng tự điền, dùng đúng tên đã nhập. */}
+        <Field label="Tên trên hợp đồng" error={errors.contractName}
+          placeholder={contractDefault || 'Tên công ty / tên khách hàng'}
+          value={form.contractName}
+          onChange={e => { setContractTouched(true); setField('contractName', e.target.value); }} />
+        <p className="text-[10px] text-[#C4B9A8] -mt-1">
+          {contractTouched && form.contractName.trim()
+            ? 'Đang dùng tên riêng cho hợp đồng.'
+            : `Mặc định theo ${isCompany ? 'tên công ty' : 'tên khách hàng'}. Sửa nếu hợp đồng ký tên khác.`}
+        </p>
 
         {/* Địa chỉ giao hàng — bắt buộc với COMPANY, tuỳ chọn với RETAIL */}
         <div className="flex items-center justify-between pt-1">

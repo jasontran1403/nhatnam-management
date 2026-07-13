@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import IncomeCreateModal from './IncomeCreateModal';
 import IncomeDetailModal from './IncomeDetailModal';
+import { VOUCHER_PAGE_SIZE } from '../../constants/pagination';
 
 function formatVND(n) {
   if (!n && n !== 0) return '0 đ';
@@ -28,7 +29,8 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const PAGE_SIZE = 10;
+// Số item/trang DÙNG CHUNG cho mọi role (xem src/constants/pagination.js)
+const PAGE_SIZE = VOUCHER_PAGE_SIZE;
 
 export default function IncomeListPage() {
   const toast = useToast();
@@ -64,23 +66,30 @@ export default function IncomeListPage() {
     finally { setExporting(false); }
   };
 
-  const calcTotal = (list) => list.reduce((s, v) => s + (Number(v.totalAmount) || 0), 0);
-
   const load = useCallback(async (p = 0) => {
     setLoading(true);
     try {
       const range = dateRange || dayRange(selectedDate);
       const q = searchTextRef.current.trim();
-      const res = q
-        ? await incomeApi.search(q, range.from, range.to, { page: p, size: PAGE_SIZE })
-        : await incomeApi.listByDate(range.from, range.to, { page: p, size: PAGE_SIZE });
+
+      // FIX: "Tổng số tiền" trước đây cộng totalAmount của các phiếu TRÊN TRANG HIỆN TẠI
+      // → lệch số khi kết quả có nhiều trang. Giờ lấy tổng từ API /summary — SUM trên
+      // TOÀN BỘ kết quả khớp bộ lọc/tìm kiếm, không phụ thuộc phân trang.
+      const [res, sumRes] = await Promise.all([
+        q
+          ? incomeApi.search(q, range.from, range.to, { page: p, size: PAGE_SIZE })
+          : incomeApi.listByDate(range.from, range.to, { page: p, size: PAGE_SIZE }),
+        incomeApi.summary(q || undefined, range.from, range.to),
+      ]);
+
       const data = res.data?.data || res.data || {};
-      const content = data.content || [];
-      setVouchers(content);
+      setVouchers(data.content || []);
       setTotalPages(data.totalPages || 0);
       setTotalElements(data.totalElements || 0);
-      setTotalAmount(calcTotal(content));
       setPage(p);
+
+      const sum = sumRes.data?.data || sumRes.data || {};
+      setTotalAmount(Number(sum.totalAmount) || 0);
     } catch { toast('Lỗi tải danh sách', 'error'); }
     finally { setLoading(false); }
   }, [selectedDate, dateRange]);

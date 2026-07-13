@@ -2,7 +2,7 @@
 // Kho thành phẩm của xưởng — Issue #1 + #2
 // UI tổng hợp theo Tên thành phẩm: tồn kho, cận date gần nhất/xa nhất, search/filter
 // + nút Xuất kho (cần lý do) và Chuyển kho (cần kho đích — kho bán hàng)
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Package, AlertTriangle, ChevronDown, ChevronUp, Search,
   ArrowUpFromLine, ArrowRightLeft, Calendar, History,
@@ -12,7 +12,9 @@ import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
-import { finishedGoodsApi } from '../../api/productionModuleApi';
+import { finishedGoodsApi, factoryProdApi } from '../../api/productionModuleApi';
+import { useLang } from '../../context/LangContext';
+import { useFmt } from '../../utils/useFmt';
 import { useToast } from '../../components/common/Toast.jsx';
 import { useAuth } from '../../context/AuthContext';
 
@@ -32,6 +34,9 @@ function daysLeft(ms) {
 
 // ── Export Modal — cần lý do ─────────────────────────────────────────────────
 function ExportGoodsModal({ item, onClose, onDone }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDate } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const toast = useToast();
   const [qty, setQty] = useState('');
   const [reason, setReason] = useState('');
@@ -89,6 +94,9 @@ function ExportGoodsModal({ item, onClose, onDone }) {
 
 // ── Transfer Modal — cần kho đích (kho bán hàng) ─────────────────────────────
 function TransferGoodsModal({ item, onClose, onDone }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDate } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const toast = useToast();
   const [qty, setQty] = useState('');
   const [warehouses, setWarehouses] = useState([]);
@@ -163,6 +171,9 @@ function TransferGoodsModal({ item, onClose, onDone }) {
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
+  const { t } = useLang();
+  const { fmtNum, fmtDate } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const [expanded, setExpanded] = useState(false);
   const nearExpiryLots = (item.lots || []).filter(l => {
     const d = daysLeft(l.expiryDate);
@@ -261,6 +272,9 @@ function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FactoryFinishedGoodsPage() {
+  const { t } = useLang();
+  const { fmtNum, fmtDate } = useFmt();
+  const fmtQty = v => fmtNum(v,3);
   const { role } = useAuth();
   // Chỉ FACTORY_ACCOUNTANT mới được xuất kho/chuyển kho thành phẩm — các role
   // khác (FACTORY_WORKER, SUPER_FACTORY_WORKER, OWNER) chỉ xem được tồn kho.
@@ -271,19 +285,38 @@ export default function FactoryFinishedGoodsPage() {
   const [expiryFilter, setExpiryFilter] = useState(null); // chỉ hiện thành phẩm có lô cận date trước ngày này
   const [exportItem, setExportItem] = useState(null);
   const [transferItem, setTransferItem] = useState(null);
+  const [factories, setFactories] = useState([]);
+  const [factoryId, setFactoryId] = useState(null);
 
-  const load = () => {
+  useEffect(() => {
+    factoryProdApi.listMyFactories().then(list => {
+      const active = (list || []).filter(f => f.status === 'ACTIVE');
+      setFactories(active);
+      if (active.length >= 1) setFactoryId(active[0].id);
+    }).catch(() => {});
+  }, []);
+
+  const load = useCallback(() => {
     setLoading(true);
     finishedGoodsApi.listSummary(search || undefined, expiryFilter || undefined)
-      .then(d => setItems(d || []))
+      .then(d => {
+        // Filter by factory client-side (lots have factoryId)
+        if (factoryId && d) {
+          d = d.map(item => ({
+            ...item,
+            lots: (item.lots || []).filter(l => l.factoryId === factoryId),
+          })).map(item => ({
+            ...item,
+            totalQuantity: (item.lots || []).reduce((s, l) => s + Number(l.quantity || 0), 0),
+            lotCount: item.lots.length,
+          })).filter(item => item.lots.length > 0);
+        }
+        setItems(d || []);
+      })
       .finally(() => setLoading(false));
-  };
+  }, [search, expiryFilter, factoryId]);
 
-  useEffect(() => { load(); }, []); // eslint-disable-line
-  useEffect(() => {
-    const t = setTimeout(load, 400);
-    return () => clearTimeout(t);
-  }, [search, expiryFilter]); // eslint-disable-line
+  useEffect(() => { load(); }, [load]);
 
   const nearExpiryCount = useMemo(() =>
     items.reduce((acc, it) => acc + (it.lots || []).filter(l => {
@@ -295,17 +328,28 @@ export default function FactoryFinishedGoodsPage() {
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Kho thành phẩm</h1>
+        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','fg_title')}</h1>
       </div>
+
+      {factories.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+            value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">{t('common','all')}</option>
+            {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
-          <p className="text-xs text-[#8E8878]">Số loại thành phẩm</p>
+          <p className="text-xs text-[#8E8878]">{t('production','fg_product_types')}</p>
           <p className="text-2xl font-bold text-[#1A2B1A] mt-1">{items.length}</p>
         </div>
         <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
-          <p className="text-xs text-[#8E8878]">Lô sắp hết hạn (&lt;30 ngày)</p>
+          <p className="text-xs text-[#8E8878]">{t('production','inv_near_expiry')}</p>
           <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700' : 'text-[#1A2B1A]'}`}>
             {nearExpiryCount}
           </p>
@@ -344,7 +388,7 @@ export default function FactoryFinishedGoodsPage() {
           ? (
             <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
               <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">Kho thành phẩm trống</p>
+              <p className="text-[#8E8878] text-sm">{t('production','fg_empty')}</p>
             </div>
           )
           : (
