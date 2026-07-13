@@ -659,16 +659,24 @@ function FactoriesTab() {
     } catch { setFactories([]); }
   }, []);
 
-  // Nhân viên xưởng (trưởng xưởng + nv sản xuất) để gán quản lý xưởng
+  // Nhân viên xưởng để gán vào xưởng.
+  //
+  // LƯU Ý: API lọc theo role giờ xét CẢ tập role của user (_user_roles), không chỉ
+  // role chính lúc đăng nhập — nên user đa role (VD role chính là ACCOUNTANT nhưng
+  // có thêm SUPER_FACTORY_WORKER) vẫn xuất hiện ở đây.
+  //
+  // Thiếu FACTORY_ACCOUNTANT (kế toán kho xưởng) — cũng là nhân sự thuộc xưởng.
+  const FACTORY_ROLES = ['SUPER_FACTORY_WORKER', 'FACTORY_WORKER', 'FACTORY_ACCOUNTANT'];
+
   const loadWorkers = useCallback(async () => {
     try {
-      const [sup, wrk] = await Promise.all([
-        adminUserApi.list({ role: 'SUPER_FACTORY_WORKER', size: 200 }),
-        adminUserApi.list({ role: 'FACTORY_WORKER', size: 200 }),
-      ]);
+      const results = await Promise.all(
+        FACTORY_ROLES.map(role => adminUserApi.list({ role, size: 200 })),
+      );
       const merge = (d) => (d?.content ?? d ?? []);
+      // Dedupe theo id: user đa role sẽ xuất hiện ở nhiều lời gọi
       const map = new Map();
-      [...merge(sup), ...merge(wrk)].forEach(u => map.set(u.id, u));
+      results.flatMap(merge).forEach(u => map.set(u.id, u));
       setWorkers([...map.values()]);
     } catch { setWorkers([]); }
   }, []);
@@ -848,6 +856,26 @@ function AssignManagersModal({ factory, workers, onClose, onSaved }) {
 }
 
 // Multiselect nhân viên xưởng dạng chip
+// Nhãn ngắn cho các role thuộc xưởng
+const FACTORY_ROLE_LABEL = {
+  SUPER_FACTORY_WORKER: 'Trưởng xưởng',
+  FACTORY_WORKER:       'NV xưởng',
+  FACTORY_ACCOUNTANT:   'KT kho xưởng',
+};
+
+/**
+ * Vai trò XƯỞNG của user.
+ *
+ * Đọc từ TẬP ROLE (`u.roles`, tức bảng _user_roles) chứ không phải `u.role` —
+ * `u.role` chỉ là role mặc định khi đăng nhập, nên với user đa role nó thường
+ * KHÔNG phải role xưởng (VD role chính là ACCOUNTANT nhưng vẫn là trưởng xưởng).
+ * Fallback về `u.role` cho các tài khoản cũ chưa có bản ghi trong _user_roles.
+ */
+function factoryRolesOf(u) {
+  const all = new Set([...(u.roles || []), ...(u.role ? [u.role] : [])]);
+  return Object.keys(FACTORY_ROLE_LABEL).filter(r => all.has(r));
+}
+
 function ManagerPicker({ workers, selected, onChange }) {
   const toggle = (id) =>
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
@@ -856,18 +884,27 @@ function ManagerPicker({ workers, selected, onChange }) {
     <div>
       <label className="text-sm font-medium text-[#1C1C1E]">Nhân viên quản lý xưởng</label>
       {workers.length === 0 ? (
-        <p className="text-xs text-[#8E8878] mt-1">Chưa có tài khoản trưởng xưởng / nhân viên sản xuất.</p>
+        <p className="text-xs text-[#8E8878] mt-1">
+          Chưa có tài khoản trưởng xưởng / nhân viên xưởng / kế toán kho xưởng.
+        </p>
       ) : (
         <div className="flex flex-wrap gap-2 mt-2 max-h-56 overflow-y-auto">
           {workers.map(u => {
             const on = selected.includes(u.id);
+            const roles = factoryRolesOf(u);
             return (
               <button key={u.id} type="button" onClick={() => toggle(u.id)}
+                title={roles.map(r => FACTORY_ROLE_LABEL[r]).join(' · ')}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${on
                   ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40'
                   : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]/40'}`}>
                 {on && <Check size={12} className="inline mr-1" />}
                 {u.fullName || u.username}
+                {roles.length > 0 && (
+                  <span className="ml-1.5 text-[10px] opacity-70">
+                    ({roles.map(r => FACTORY_ROLE_LABEL[r]).join(', ')})
+                  </span>
+                )}
               </button>
             );
           })}
