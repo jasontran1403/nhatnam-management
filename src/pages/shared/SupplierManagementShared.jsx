@@ -50,7 +50,7 @@ const PAY_CFG = {
 // ══════════════════════════════════════════════════════════════════════════
 // 1) DANH SÁCH NCC — group theo danh mục, collapse/expand, filter
 // ══════════════════════════════════════════════════════════════════════════
-function SupplierListPage({ basePath, dashboardPath, analysisPath }) {
+function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCatalog = false }) {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -145,6 +145,11 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath }) {
         </div>
         <Wallet size={28} className="text-amber-600/40" />
       </div>
+
+      {/* DANH MỤC KHOẢN CHI — POOL DÙNG CHUNG cho mọi NCC.
+          Trước đây nằm trong trang chi tiết từng NCC (mỗi NCC một danh mục riêng),
+          giờ chuyển lên đây vì nhãn dùng chung: tạo 1 lần, mọi NCC đều chọn được. */}
+      <ExpenseCategorySection canManage={canManageCatalog} />
 
       {/* Tìm kiếm + sắp xếp */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -407,8 +412,6 @@ function SupplierDetailPage({ basePath, canManageCatalog }) {
         />
       )}
 
-      {isService && <ExpenseCategorySection vendorId={vendorId} canManage={canManageCatalog} />}
-
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-base font-bold text-[#1C1C1E] flex items-center gap-2">
           <Receipt size={18} className="text-[#C9A84C]" /> {isService ? 'Lịch sử sử dụng' : 'Lịch sử đặt hàng'}
@@ -562,8 +565,12 @@ function SupplierInfoHeader({ info, isService }) {
   );
 }
 
-// ── Danh mục khoản chi theo NCC (Owner quản lý) ──────────────────────────
-function ExpenseCategorySection({ vendorId, canManage }) {
+// ── DANH MỤC KHOẢN CHI — POOL DÙNG CHUNG cho MỌI NCC (Owner quản lý) ──────
+//
+// Trước đây mỗi NCC có danh mục riêng → 10 nhãn × 200 NCC = 2.000 thao tác tạo,
+// và cùng một khoản chi ("Tiền điện") nằm ở 200 bản ghi khác nhau nên rất khó
+// tổng hợp chi phí theo mục. Giờ Owner tạo nhãn MỘT LẦN, mọi NCC đều chọn được.
+function ExpenseCategorySection({ canManage }) {
   const [cats, setCats] = useState(null);
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -574,10 +581,10 @@ function ExpenseCategorySection({ vendorId, canManage }) {
 
   const load = useCallback(async () => {
     try {
-      const data = await ownerSupplierApi.listCategories(vendorId, false);
+      const data = await ownerSupplierApi.listCategories(false);
       setCats(data || []);
     } catch { setCats([]); }
-  }, [vendorId]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -588,7 +595,7 @@ function ExpenseCategorySection({ vendorId, canManage }) {
     if (!name) return;
     setBusy(true); setErr('');
     try {
-      await ownerSupplierApi.createCategory(vendorId, { name });
+      await ownerSupplierApi.createCategory({ name });
       setNewName(''); setAdding(false);
       await load();
     } catch (e) { setErr(e?.response?.data?.message || 'Không tạo được nhãn'); }
@@ -600,7 +607,7 @@ function ExpenseCategorySection({ vendorId, canManage }) {
     if (!name) return;
     setBusy(true); setErr('');
     try {
-      await ownerSupplierApi.updateCategory(vendorId, id, { name });
+      await ownerSupplierApi.updateCategory(id, { name });
       setEditing(null);
       await load();
     } catch (e) { setErr(e?.response?.data?.message || 'Không cập nhật được'); }
@@ -610,17 +617,17 @@ function ExpenseCategorySection({ vendorId, canManage }) {
   const toggleActive = async (c) => {
     setBusy(true); setErr('');
     try {
-      await ownerSupplierApi.updateCategory(vendorId, c.id, { active: !c.active });
+      await ownerSupplierApi.updateCategory(c.id, { active: !c.active });
       await load();
     } catch (e) { setErr(e?.response?.data?.message || 'Không cập nhật được'); }
     finally { setBusy(false); }
   };
 
   const doDelete = async (c) => {
-    if (!window.confirm(`Ẩn nhãn "${c.name}"? Nhãn sẽ không còn chọn được khi lập phiếu chi (phiếu cũ giữ nguyên).`)) return;
+    if (!window.confirm(`Ẩn nhãn "${c.name}"? Nhãn sẽ không còn chọn được khi lập phiếu chi cho BẤT KỲ nhà cung cấp nào (phiếu cũ giữ nguyên).`)) return;
     setBusy(true); setErr('');
     try {
-      await ownerSupplierApi.deleteCategory(vendorId, c.id);
+      await ownerSupplierApi.deleteCategory(c.id);
       await load();
     } catch (e) { setErr(e?.response?.data?.message || 'Không xoá được'); }
     finally { setBusy(false); }
@@ -632,6 +639,9 @@ function ExpenseCategorySection({ vendorId, canManage }) {
         <div className="flex items-center gap-2">
           <Tag size={16} className="text-[#C9A84C]" />
           <span className="text-sm font-semibold text-[#1C1C1E]">Danh mục khoản chi</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30">
+            Dùng chung
+          </span>
           {cats && <span className="text-xs text-[#8E8878]">({activeCats.length} nhãn)</span>}
         </div>
         <span className="text-xs text-[#8E8878]">{open ? 'Thu gọn' : 'Mở rộng'}</span>
@@ -641,8 +651,8 @@ function ExpenseCategorySection({ vendorId, canManage }) {
         <div className="px-4 pb-4 border-t border-black/5 pt-3 space-y-3">
           <p className="text-xs text-[#8E8878]">
             {canManage
-              ? 'Nhãn khoản chi dùng khi lập phiếu chi cho NCC này. Kế toán chỉ được chọn từ danh sách này, không gõ tự do.'
-              : 'Danh sách nhãn khoản chi của NCC (do chủ quản lý). Kế toán chọn nhãn khi lập phiếu chi.'}
+              ? 'Danh mục DÙNG CHUNG cho tất cả nhà cung cấp — tạo nhãn một lần, mọi NCC đều chọn được. Kế toán chỉ được chọn từ danh sách này, không gõ tự do.'
+              : 'Danh mục khoản chi dùng chung cho mọi nhà cung cấp (do chủ quản lý). Kế toán chọn nhãn khi lập phiếu chi.'}
           </p>
 
           {err && <p className="text-xs text-red-600">{err}</p>}
@@ -795,5 +805,6 @@ export default function SupplierManagementShared({
   const { vendorId } = useParams();
   return vendorId
     ? <SupplierDetailPage basePath={basePath} canManageCatalog={canManageCatalog} />
-    : <SupplierListPage basePath={basePath} dashboardPath={dashboardPath} analysisPath={analysisPath} />;
+    : <SupplierListPage basePath={basePath} dashboardPath={dashboardPath}
+        analysisPath={analysisPath} canManageCatalog={canManageCatalog} />;
 }

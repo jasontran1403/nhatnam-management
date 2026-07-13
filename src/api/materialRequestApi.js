@@ -127,18 +127,20 @@ export const ownerSupplierApi = {
   getProductPriceStats: (vendorId, name) =>
     api.get(`/api/owner/production/suppliers/${vendorId}/product-price-stats`, { params: { name } }).then(r => r.data.data),
 
-  // ── Danh mục khoản chi theo NCC (Owner quản lý; kế toán chỉ đọc) ──
-  listCategories: (vendorId, activeOnly = false) =>
-    api.get(`/api/owner/production/suppliers/${vendorId}/expense-categories`, { params: { activeOnly } }).then(r => r.data.data),
+  // ── DANH MỤC KHOẢN CHI — POOL DÙNG CHUNG cho MỌI NCC ──────────────────
+  // Owner tạo nhãn MỘT LẦN, tất cả nhà cung cấp đều chọn được.
+  // (Trước: mỗi NCC một danh mục riêng → 10 nhãn × 200 NCC = 2.000 thao tác tạo.)
+  listCategories: (activeOnly = false) =>
+    api.get('/api/owner/production/suppliers/expense-categories', { params: { activeOnly } }).then(r => r.data.data),
 
-  createCategory: (vendorId, body) =>
-    api.post(`/api/owner/production/suppliers/${vendorId}/expense-categories`, body).then(r => r.data.data),
+  createCategory: (body) =>
+    api.post('/api/owner/production/suppliers/expense-categories', body).then(r => r.data.data),
 
-  updateCategory: (vendorId, categoryId, body) =>
-    api.put(`/api/owner/production/suppliers/${vendorId}/expense-categories/${categoryId}`, body).then(r => r.data.data),
+  updateCategory: (categoryId, body) =>
+    api.put(`/api/owner/production/suppliers/expense-categories/${categoryId}`, body).then(r => r.data.data),
 
-  deleteCategory: (vendorId, categoryId) =>
-    api.delete(`/api/owner/production/suppliers/${vendorId}/expense-categories/${categoryId}`).then(r => r.data.data),
+  deleteCategory: (categoryId) =>
+    api.delete(`/api/owner/production/suppliers/expense-categories/${categoryId}`).then(r => r.data.data),
 };
 
 // ── Accountant / Super Accountant — Phiếu chi trả công nợ NCC ────────────────

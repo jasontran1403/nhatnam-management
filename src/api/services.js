@@ -225,7 +225,10 @@ export const expenseApi = {
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
   nextPaymentNumber: () => api.get('/api/expense-vouchers/next-payment-number'),
   // Danh mục khoản chi (đang bật) của 1 NCC — cho form lập phiếu chi
-  vendorCategories: (vendorId) => api.get(`/api/expense-vouchers/vendor-categories/${vendorId}`),
+  /** Danh mục khoản chi đang bật — POOL DÙNG CHUNG cho mọi NCC */
+  expenseCategories: () => api.get('/api/expense-vouchers/expense-categories'),
+  /** @deprecated danh mục là pool chung — vendorId bị bỏ qua */
+  vendorCategories: () => api.get('/api/expense-vouchers/expense-categories'),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
   updateReason: (id, reason) => api.patch(`/api/expense-vouchers/${id}/reason`, { reason }),

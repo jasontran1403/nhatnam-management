@@ -469,18 +469,18 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
-  // Tải danh mục khoản chi của NCC đang chọn; đổi NCC thì reset nhãn đã chọn ở các khoản
+  // DANH MỤC KHOẢN CHI — POOL DÙNG CHUNG cho mọi NCC.
+  // Trước đây tải lại danh mục RIÊNG mỗi lần đổi NCC (và reset hết nhãn đã chọn).
+  // Giờ chỉ tải MỘT LẦN khi mở form; đổi NCC không còn ảnh hưởng tới nhãn đã chọn.
   useEffect(() => {
-    if (!selectedVendor) { setCategories([]); return; }
     let alive = true;
     setCatLoading(true);
-    expenseApi.vendorCategories(selectedVendor.id)
+    expenseApi.expenseCategories()
       .then(res => { if (alive) setCategories(res.data?.data || res.data || []); })
       .catch(() => { if (alive) setCategories([]); })
       .finally(() => { if (alive) setCatLoading(false); });
-    setItems(p => p.map(i => ({ ...i, categoryId: '' })));
     return () => { alive = false; };
-  }, [selectedVendor]);
+  }, []);
 
   // Gợi ý số phiếu chi kế tiếp (placeholder) — user vẫn có thể tự nhập số khác
   useEffect(() => {
@@ -542,7 +542,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
 
   const handleSubmit = async () => {
     if (!selectedVendor) { toast('Vui lòng chọn nhà cung cấp', 'error'); return; }
-    if (categories.length === 0) { toast('NCC chưa có danh mục khoản chi — cần Owner thêm nhãn trước', 'error'); return; }
+    if (categories.length === 0) { toast('Chưa có danh mục khoản chi — cần Owner thêm nhãn trước', 'error'); return; }
     if (!reason.trim())  { toast('Lý do chi là bắt buộc', 'error'); return; }
     const validItems = items.filter(i => i.categoryId && parseVND(i.amount) > 0);
     if (validItems.length === 0) { toast('Mỗi khoản chi cần chọn nhãn và nhập số tiền > 0', 'error'); return; }
@@ -823,12 +823,13 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
               </div>
 
               {!selectedVendor ? (
-                <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Chọn nhà cung cấp trước để chọn nhãn khoản chi.</p>
+                <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Chọn nhà cung cấp trước khi thêm khoản chi.</p>
               ) : catLoading ? (
                 <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Đang tải danh mục khoản chi...</p>
               ) : categories.length === 0 ? (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  Nhà cung cấp này chưa có danh mục khoản chi. Cần chủ (Owner) thêm nhãn ở trang <b>Quản lý nhà cung cấp</b> trước khi lập phiếu.
+                  Chưa có danh mục khoản chi nào. Cần chủ (Owner) thêm nhãn ở trang <b>Quản lý nhà cung cấp</b> trước khi lập phiếu.
+                  Danh mục này <b>dùng chung cho mọi nhà cung cấp</b> — chỉ cần tạo một lần.
                 </p>
               ) : (
               <div className="space-y-2">
