@@ -10,10 +10,19 @@ export const PAYMENT_METHODS = [
 ];
 
 export const STATUS_CONFIG = {
-  NEW:       { label: 'Mới tạo',      cls: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-400' },
-  ORDERED:   { label: 'Đã đặt hàng',  cls: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-400' },
-  RECEIVED:  { label: 'Đã nhận hàng', cls: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
-  COMPLETED: { label: 'Hoàn thành',   cls: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-300' },
+  NEW:                { label: 'Mới tạo',        cls: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-400' },
+  ORDERED:            { label: 'Đã đặt hàng',    cls: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-400' },
+  PARTIALLY_RECEIVED: { label: 'Đang nhận hàng', cls: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400' },
+  RECEIVED:           { label: 'Đã nhận hàng',   cls: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
+  COMPLETED:          { label: 'Hoàn thành',     cls: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-300' },
+};
+
+// Tiến độ nhận của từng dòng nguyên liệu
+export const RECEIVE_STATUS_CONFIG = {
+  PENDING:      { label: 'Chưa nhận',   cls: 'bg-gray-100 text-gray-500' },
+  PARTIAL:      { label: 'Nhận 1 phần', cls: 'bg-amber-100 text-amber-700' },
+  FULFILLED:    { label: 'Đã đủ',       cls: 'bg-emerald-100 text-emerald-700' },
+  CLOSED_SHORT: { label: 'Chốt thiếu',  cls: 'bg-red-100 text-red-600' },
 };
 
 // ── Factory Worker ────────────────────────────────────────────────────────────
@@ -29,6 +38,17 @@ export const factoryMaterialRequestApi = {
   getById: (id) =>
     api.get(`/api/factory/material-requests/${id}`).then(r => r.data.data),
 
+  // Lưu MỘT đợt nhận hàng (nhận lẻ / giao bù). Gọi được nhiều lần.
+  // body: { notes, items: [{ itemId, qty, expiryDate, receivedUnitType, weighingLogs }] }
+  // LƯU Ý: chỉ gửi các dòng THỰC GIAO trong đợt này — đừng gửi qty = 0.
+  saveReceipt: (id, body) =>
+    api.post(`/api/factory/material-requests/${id}/receipts`, body).then(r => r.data.data),
+
+  // Chốt "đã giao xong" — bước cuối, khoá phiếu. body: { shortageReason }
+  finishReceiving: (id, body) =>
+    api.post(`/api/factory/material-requests/${id}/finish-receiving`, body).then(r => r.data.data),
+
+  // [LEGACY] nhận 1 lần duy nhất
   receive: (id, body) =>
     api.post(`/api/factory/material-requests/${id}/receive`, body).then(r => r.data.data),
 

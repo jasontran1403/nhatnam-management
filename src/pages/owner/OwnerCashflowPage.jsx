@@ -14,6 +14,10 @@ import { useFmt } from '../../utils/useFmt';
 
 const parseVND = (s) => Number(String(s).replace(/[^\d]/g, '')) || 0;
 
+// Mệnh giá tiền mặt VNĐ đang lưu hành — phải KHỚP với CashDenominations.ALLOWED ở BE.
+// Giảm dần để người đếm quỹ đi từ tờ to xuống tờ nhỏ, đúng thao tác thực tế.
+const DENOMINATIONS = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200];
+
 const getPresets = (t) => [
   { key: 'today', label: t('production', 'oinv_preset_today') },
   { key: 'week',  label: t('production', 'oinv_preset_week') },
@@ -367,7 +371,8 @@ function ConfirmModal({ onClose, onDone }) {
   const { fmtCurrency } = useFmt();
   const fmtVND = (n) => fmtCurrency(n);
   const [banks, setBanks] = useState([]);
-  const [cash, setCash] = useState('');
+  // counts: { [mệnh giá]: số tờ }. Tổng tiền mặt LUÔN là số dẫn xuất, không nhập tay.
+  const [counts, setCounts] = useState({});
   const [balances, setBalances] = useState({});
   const [reason, setReason] = useState('');
   const [result, setResult] = useState(null);
@@ -384,7 +389,25 @@ function ConfirmModal({ onClose, onDone }) {
     })();
   }, []); // eslint-disable-line
 
-  const setBal = (name, v) => setBalances(p => ({ ...p, [name]: String(parseVND(v)) }));
+  const setBal = (name, v) => { setBalances(p => ({ ...p, [name]: String(parseVND(v)) })); setResult(null); };
+  const setCount = (denom, v) => {
+    const q = Math.max(0, parseVND(v));
+    setCounts(p => ({ ...p, [denom]: q }));
+    setResult(null);
+  };
+
+  // ── TỔNG TỰ ĐỘNG ─────────────────────────────────────────────────────────
+  // Đổi số lượng bất kỳ mệnh giá nào, hoặc số dư bất kỳ ngân hàng nào → cả 3 tổng
+  // (tiền mặt / chuyển khoản / tổng cuối) đều tính lại ngay.
+  const cashTotal = useMemo(
+    () => DENOMINATIONS.reduce((s2, d) => s2 + d * (counts[d] || 0), 0),
+    [counts]
+  );
+  const bankTotal = useMemo(
+    () => banks.reduce((s2, b) => s2 + parseVND(balances[b.name] || 0), 0),
+    [banks, balances]
+  );
+  const grandTotal = cashTotal + bankTotal;
 
   const addBank = async () => {
     if (!newBank.trim()) return;
@@ -404,7 +427,13 @@ function ConfirmModal({ onClose, onDone }) {
     }
     setSaving(true);
     try {
-      const res = await cashflowApi.confirm({ cashCounted: parseVND(cash), bankBalances, reason: reason.trim() || null });
+      const cashDenominations = DENOMINATIONS
+        .filter(d => (counts[d] || 0) > 0)
+        .map(d => ({ denomination: d, quantity: counts[d] }));
+      // cashCounted gửi kèm chỉ để hiển thị/log — BE tính lại từ cashDenominations.
+      const res = await cashflowApi.confirm({
+        cashCounted: cashTotal, cashDenominations, bankBalances, reason: reason.trim() || null,
+      });
       const r = res.data?.data || res.data;
       if (!r.matched && !reason.trim()) {
         setResult(r);
@@ -436,14 +465,48 @@ function ConfirmModal({ onClose, onDone }) {
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           <p className="text-xs text-[#8E8878]">{t('production', 'cash_confirm_desc')}</p>
 
+          {/* ── TIỀN MẶT: đếm theo mệnh giá ─────────────────────────────── */}
           <div>
-            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-              <Wallet size={14} className="text-emerald-600" /> {t('production', 'cash_actual_cash')}
-            </label>
-            <input value={cash ? new Intl.NumberFormat('vi-VN').format(parseVND(cash)) : ''}
-              onChange={e => { setCash(String(parseVND(e.target.value))); setResult(null); }}
-              placeholder={t('production', 'cash_actual_cash_ph')}
-              className="w-full px-4 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-right focus:outline-none focus:border-[#C9A84C]" />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-semibold text-[#1C1C1E] flex items-center gap-1.5">
+                <Wallet size={14} className="text-emerald-600" /> {t('production', 'cash_actual_cash')}
+              </label>
+              {cashTotal > 0 && (
+                <button onClick={() => { setCounts({}); setResult(null); }}
+                  className="text-xs text-[#8E8878] hover:text-red-500 font-medium">Xoá hết</button>
+              )}
+            </div>
+            <p className="text-xs text-[#8E8878] mb-2">Nhập SỐ TỜ của từng mệnh giá — tổng tự cộng.</p>
+
+            <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+              {DENOMINATIONS.map((d, i) => {
+                const qty = counts[d] || 0;
+                const line = d * qty;
+                return (
+                  <div key={d}
+                    className={`flex items-center gap-2 px-3 py-2 ${i % 2 ? 'bg-[#FAF7F2]' : 'bg-white'}`}>
+                    <span className="text-sm font-semibold text-[#1C1C1E] w-20 flex-shrink-0 text-right tabular-nums">
+                      {new Intl.NumberFormat('vi-VN').format(d)}
+                    </span>
+                    <span className="text-xs text-[#8E8878] flex-shrink-0">×</span>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={qty || ''}
+                      onChange={e => setCount(d, e.target.value)}
+                      placeholder="0"
+                      className="w-20 px-2 py-1.5 rounded-lg border border-[#E8DDD0] text-sm text-right tabular-nums focus:outline-none focus:border-[#C9A84C]" />
+                    <span className="text-xs text-[#8E8878] flex-shrink-0">tờ</span>
+                    <span className={`flex-1 text-sm text-right tabular-nums font-medium ${line > 0 ? 'text-[#1C1C1E]' : 'text-[#D5CCC0]'}`}>
+                      {new Intl.NumberFormat('vi-VN').format(line)}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between px-3 py-2.5 bg-emerald-50 border-t border-emerald-100">
+                <span className="text-sm font-semibold text-emerald-800">Tổng tiền mặt</span>
+                <span className="text-base font-bold text-emerald-700 tabular-nums">{fmtVND(cashTotal)}</span>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -476,6 +539,18 @@ function ConfirmModal({ onClose, onDone }) {
               ))}
               {banks.length === 0 && <p className="text-xs text-[#8E8878]">{t('production', 'cash_bank_empty')}</p>}
             </div>
+            {banks.length > 0 && (
+              <div className="flex items-center justify-between px-3 py-2.5 mt-2 rounded-xl bg-sky-50 border border-sky-100">
+                <span className="text-sm font-semibold text-sky-800">Tổng chuyển khoản</span>
+                <span className="text-base font-bold text-sky-700 tabular-nums">{fmtVND(bankTotal)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* ── TỔNG CUỐI = tiền mặt + chuyển khoản ─────────────────────── */}
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#1A2B1A] text-white">
+            <span className="text-sm font-semibold">TỔNG CỘNG</span>
+            <span className="text-lg font-bold tabular-nums">{fmtVND(grandTotal)}</span>
           </div>
 
           {mismatch && (

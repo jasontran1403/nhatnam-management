@@ -32,6 +32,7 @@ function CountdownBadge({ targetMs, label }) {
 }
 
 function cardBg(req) {
+  if (req.status === 'PARTIALLY_RECEIVED') return 'bg-amber-50 border-amber-200';
   if (req.status === 'RECEIVED' || req.status === 'COMPLETED') return 'bg-white';
   if (!req.estimatedDelivery) return 'bg-white';
   const info = countdownInfo(req.estimatedDelivery);
@@ -193,6 +194,12 @@ function RequestCard({ req, onReceive }) {
                     {item.qtyReceived != null && (
                       <span className="ml-2 text-emerald-600 text-xs">({t('production', 'mr_actual_received_label')}: {item.qtyReceived} {item.unit})</span>
                     )}
+                    {Number(item.qtyOutstanding) > 0 && item.receiveStatus === 'PARTIAL' && (
+                      <span className="ml-2 text-amber-600 text-xs font-medium">còn {item.qtyOutstanding} {item.unit}</span>
+                    )}
+                    {item.receiveStatus === 'CLOSED_SHORT' && (
+                      <span className="ml-2 text-red-500 text-xs font-medium">chốt thiếu</span>
+                    )}
                   </div>
                   {item.weighingLogs?.length > 0 && (
                     <p className="text-[11px] text-[#8E8878] mt-0.5">
@@ -213,17 +220,27 @@ function RequestCard({ req, onReceive }) {
               ))}
             </div>
           )}
-          {req.status === 'ORDERED' && (
+          {(req.status === 'ORDERED' || req.status === 'PARTIALLY_RECEIVED') && (
             <div className="mt-4">
               <PrimaryButton className="w-full" onClick={() => onReceive(req)}>
-                <CheckCircle2 size={14} className="mr-2" /> {t('production', 'mr_confirm_receive_btn')}
+                <CheckCircle2 size={14} className="mr-2" />
+                {req.status === 'PARTIALLY_RECEIVED'
+                  ? `Tiếp tục nhận hàng (đã ${req.receipts?.length || 0} đợt)`
+                  : t('production', 'mr_confirm_receive_btn')}
               </PrimaryButton>
             </div>
           )}
           {req.status === 'RECEIVED' && (
-            <p className="mt-3 text-xs text-emerald-600 font-medium">
-              ✓ {t('production', 'mr_received_at_prefix')} {fmtDateTime(req.receivedAt)}{req.receiveNotes ? ` · ${req.receiveNotes}` : ''}
-            </p>
+            <>
+              <p className="mt-3 text-xs text-emerald-600 font-medium">
+                ✓ {t('production', 'mr_received_at_prefix')} {fmtDateTime(req.receivedAt)}
+                {req.receipts?.length > 1 ? ` · ${req.receipts.length} đợt` : ''}
+                {req.receiveNotes ? ` · ${req.receiveNotes}` : ''}
+              </p>
+              {req.shortageReason && (
+                <p className="mt-1 text-xs text-red-500">Nhận thiếu — lý do: {req.shortageReason}</p>
+              )}
+            </>
           )}
         </div>
       )}
@@ -291,139 +308,312 @@ function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
   );
 }
 
-function ReceiveModal({ req, allMaterials = [], onClose, onDone }) {
+// ── Nhận hàng NHIỀU ĐỢT ────────────────────────────────────────────────────────
+//
+// NCC giao lẻ (mỗi NCC giao một lúc) và có thể giao thiếu rồi giao bù. Vì vậy:
+//   • [Lưu đợt nhận]          — lưu phần hàng VỪA nhận. Bấm được nhiều lần.
+//                               Hàng vào kho ngay, phiếu chuyển "Đang nhận hàng".
+//   • [Xác nhận đã giao xong]  — BƯỚC CUỐI. Khoá phiếu, kế toán mới xử lý được.
+//
+// Ô nhập của mỗi dòng là SL CỦA ĐỢT NÀY, không phải tổng cộng dồn.
+function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
   const toast = useToast();
   const { t } = useLang();
-  const [notes, setNotes] = useState('');
 
-  // Build lookup: factoryMaterialId → { shelfLifeDays, orderUnit, conversionRatio, unit }
+  const [req, setReq] = useState(initialReq);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [askShortage, setAskShortage] = useState(false);
+  const [shortageReason, setShortageReason] = useState('');
+  const [dirty, setDirty] = useState(false);   // đã lưu ít nhất 1 đợt trong phiên này?
+
   const matLookup = {};
   (allMaterials || []).forEach(m => { if (m.id) matLookup[m.id] = m; });
 
-  const [items, setItems] = useState((req.items || []).map(i => {
+  // Dựng lại form nhập cho ĐỢT MỚI mỗi khi phiếu được refresh sau một lần lưu.
+  const buildDraft = useCallback((r) => (r.items || []).map(i => {
     const fm = matLookup[i.factoryMaterialId];
-    // HSD mặc định = hôm nay + shelfLifeDays
     let defaultExpiry = null;
-    if (fm?.shelfLifeDays > 0) {
-      defaultExpiry = Date.now() + fm.shelfLifeDays * 86400000;
-    }
+    if (fm?.shelfLifeDays > 0) defaultExpiry = Date.now() + fm.shelfLifeDays * 86400000;
     return {
       ...i,
       weighings: [''],
       expiryDate: defaultExpiry,
-      receivedUnitType: 'STORAGE', // mặc định đvt lưu kho
-      _fm: fm, // cache for UI
+      // Đvt bị KHOÁ theo đợt đầu tiên: đợt 1 nhận theo Kg thì đợt bù cũng phải Kg,
+      // nếu không tổng cộng dồn "50 Kg + 2 Thùng" sẽ vô nghĩa.
+      receivedUnitType: i.receivedUnitType || 'STORAGE',
+      unitLocked: !!i.receivedUnitType,
+      _fm: fm,
     };
-  }));
-  const [saving, setSaving] = useState(false);
-  const setItem = (idx, key, val) => setItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
-  const setWeighings = (idx, arr) => setItem(idx, 'weighings', arr);
+  }), [allMaterials]); // eslint-disable-line
 
-  const totalOf = (weighings) => weighings.reduce((sum, w) => {
+  const [items, setItems] = useState(() => buildDraft(initialReq));
+
+  const setItem = (idx, key, val) => setItems(p => p.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+  const setWeighings = (idx, arr) => setItem(idx, 'weighings', arr);
+  const totalOf = (weighings) => weighings.reduce((s, w) => {
     const n = parseFloat(w);
-    return sum + (Number.isFinite(n) ? n : 0);
+    return s + (Number.isFinite(n) ? n : 0);
   }, 0);
 
-  const handleSubmit = async () => {
+  const num = (v) => Number(v || 0);
+  const fmtQty = (n) => Number(n).toFixed(3).replace(/\.?0+$/, '');
+
+  // Các dòng thực sự có hàng trong đợt đang nhập
+  const batchLines = items.filter(it => totalOf(it.weighings) > 0);
+  const allFulfilled = (req.items || []).every(i => i.receiveStatus === 'FULFILLED');
+  const shortNames = (req.items || [])
+    .filter(i => i.receiveStatus !== 'FULFILLED')
+    .map(i => i.materialName);
+
+  const refresh = async () => {
+    const fresh = await factoryMaterialRequestApi.getById(req.id);
+    setReq(fresh);
+    setItems(buildDraft(fresh));
+    setNotes('');
+  };
+
+  // ── Lưu 1 đợt ───────────────────────────────────────────────────────────────
+  const handleSaveBatch = async () => {
+    if (batchLines.length === 0) {
+      toast('Chưa nhập số lượng nào cho đợt này', 'error');
+      return;
+    }
     setSaving(true);
     try {
-      await factoryMaterialRequestApi.receive(req.id, {
+      await factoryMaterialRequestApi.saveReceipt(req.id, {
         notes,
-        items: items.map(it => {
-          const validLogs = it.weighings.map(w => parseFloat(w)).filter(n => Number.isFinite(n) && n > 0);
-          const qtyReceived = validLogs.reduce((s, n) => s + n, 0);
+        // CHỈ gửi dòng thực giao. Dòng bỏ trống = NCC chưa giao ở đợt này,
+        // gửi qty 0 sẽ khiến BE hiểu nhầm là đã nhận.
+        items: batchLines.map(it => {
+          const logs = it.weighings.map(w => parseFloat(w)).filter(n => Number.isFinite(n) && n > 0);
           return {
             itemId: it.id,
-            qtyReceived,
+            qty: logs.reduce((s, n) => s + n, 0),
             expiryDate: it.expiryDate || null,
             receivedUnitType: it.receivedUnitType || 'STORAGE',
-            weighingLogs: validLogs.length > 1 ? validLogs : null,
+            weighingLogs: logs.length > 1 ? logs : null,
           };
         }),
       });
-      toast(t('production', 'mr_receive_success'), 'success');
-      onDone();
+      toast('Đã lưu đợt nhận hàng', 'success');
+      setDirty(true);
+      await refresh();
     } catch (e) {
       toast(e?.response?.data?.message || t('production', 'mr_err_generic'), 'error');
     } finally { setSaving(false); }
   };
 
+  // ── Chốt đã giao xong ───────────────────────────────────────────────────────
+  const handleFinish = async () => {
+    if (!allFulfilled && !shortageReason.trim()) {
+      setAskShortage(true);
+      toast('Còn nguyên liệu nhận thiếu — vui lòng nhập lý do', 'warning');
+      return;
+    }
+    setFinishing(true);
+    try {
+      await factoryMaterialRequestApi.finishReceiving(req.id, {
+        shortageReason: shortageReason.trim() || null,
+      });
+      toast('Đã xác nhận nhận hàng xong', 'success');
+      onDone();
+    } catch (e) {
+      toast(e?.response?.data?.message || t('production', 'mr_err_generic'), 'error');
+      setFinishing(false);
+    }
+  };
+
+  const close = () => (dirty ? onDone() : onClose());
+
+  // Nhóm dòng theo NCC để đối chiếu đúng thực tế "NCC nào giao đợt này"
+  const groups = [];
+  items.forEach((it, idx) => {
+    const key = it.requestVendorId || 0;
+    let g = groups.find(x => x.key === key);
+    if (!g) { g = { key, name: it.suppliedByVendorName || 'Chưa gán NCC', rows: [] }; groups.push(g); }
+    g.rows.push({ it, idx });
+  });
+
+  const nextSeq = (req.receipts?.length || 0) + 1;
+
   return (
-    <Modal open onClose={onClose} title={`${t('production', 'mr_receive_title_prefix')} — ${req.requestCode}`} size="lg">
+    <Modal open onClose={close} title={`Nhận hàng — ${req.requestCode}`} size="lg">
       <div className="space-y-4" style={{ minHeight: 520 }}>
-        <p className="text-sm text-[#8E8878]">
-          {t('production', 'mr_receive_hint')}
-        </p>
-        <div className="space-y-3">
-          {items.map((item, idx) => {
-            const total = totalOf(item.weighings);
-            const diff = total - Number(item.qtyRequested || 0);
-            const fm = item._fm;
-            const hasOrderUnit = fm?.orderUnit && fm.orderUnit !== fm.unit;
-            const displayUnit = item.receivedUnitType === 'ORDER' && hasOrderUnit ? fm.orderUnit : item.unit;
-            // Khi chọn đvt đặt hàng, hiển thị quy đổi
-            const ratio = fm?.conversionRatio;
-            const stockQty = item.receivedUnitType === 'ORDER' && ratio > 0 ? total * ratio : null;
 
-            return (
-              <div key={item.id || idx} className="bg-[#FAF7F2] rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-[#1C1C1E]">{item.materialName}</span>
-                  <span className="text-xs text-[#8E8878]">{t('production', 'mr_ordered_label')}: {item.qtyRequested} {item.unit}</span>
-                </div>
+        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+          <p className="text-xs text-amber-800">
+            Nhập số lượng <b>vừa nhận ở đợt này</b>. NCC giao thiếu thì cứ lưu, đợt sau giao bù lưu tiếp.
+            Chỉ bấm <b>Xác nhận đã giao xong</b> khi không còn hàng về nữa.
+          </p>
+        </div>
 
-                {/* Chọn ĐVT nhận: lưu kho hoặc đặt hàng */}
-                {hasOrderUnit && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-[#8E8878]">{t('production','mr_received_unit')}:</span>
-                    <select className="text-xs px-2 py-1 rounded-lg border border-[#E8DDD0] bg-white text-[#1C1C1E]"
-                      value={item.receivedUnitType}
-                      onChange={e => setItem(idx, 'receivedUnitType', e.target.value)}>
-                      <option value="STORAGE">{fm.unit} (lưu kho)</option>
-                      <option value="ORDER">{fm.orderUnit} (đặt hàng)</option>
-                    </select>
-                    {stockQty != null && total > 0 && (
-                      <span className="text-xs text-[#C9A84C] font-medium">
-                        → {stockQty.toFixed(3).replace(/\.?0+$/, '')} {fm.unit} vào kho
-                      </span>
-                    )}
+        {/* ── Lịch sử các đợt đã nhận ───────────────────────────────────────── */}
+        {req.receipts?.length > 0 && (
+          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+            <p className="px-3 py-2 bg-[#F0EBE3] text-xs font-semibold text-[#5C4E3D]">
+              Đã nhận {req.receipts.length} đợt
+            </p>
+            <div className="divide-y divide-black/5">
+              {req.receipts.map(r => (
+                <div key={r.id} className="px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#1C1C1E]">Đợt {r.sequenceNo}</span>
+                    <span className="text-[11px] text-[#8E8878]">
+                      {fmtDateTime(r.receivedAt)}{r.receivedByName ? ` · ${r.receivedByName}` : ''}
+                    </span>
                   </div>
-                )}
+                  {r.items?.map(li => (
+                    <div key={li.id} className="flex justify-between text-[11px] text-[#5C4E3D] mt-0.5">
+                      <span>{li.materialName}{li.vendorName ? ` · ${li.vendorName}` : ''}</span>
+                      <span className="font-medium">+{fmtQty(li.qty)} {li.receivedUnit}</span>
+                    </div>
+                  ))}
+                  {r.notes && <p className="text-[11px] text-[#8E8878] italic mt-1">{r.notes}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                <WeighingInput
-                  qtyRequested={item.qtyRequested}
-                  unit={displayUnit}
-                  weighings={item.weighings}
-                  onChange={arr => setWeighings(idx, arr)}
-                />
+        {/* ── Form nhập đợt mới, nhóm theo NCC ──────────────────────────────── */}
+        <p className="text-sm font-semibold text-[#1C1C1E]">Đợt {nextSeq} — nhập hàng vừa về</p>
 
-                {total > 0 && Math.abs(diff) > 0.001 && item.receivedUnitType === 'STORAGE' && (
-                  <p className={`mt-1.5 text-xs font-medium ${diff > 0 ? 'text-amber-600' : 'text-orange-600'}`}>
-                    {diff > 0
-                      ? `${t('production', 'mr_over_ordered')} ${diff.toFixed(3).replace(/\.?0+$/, '')} ${item.unit} ${t('production', 'mr_over_ordered_suffix')}`
-                      : `${t('production', 'mr_under_ordered')} ${Math.abs(diff).toFixed(3).replace(/\.?0+$/, '')} ${item.unit} ${t('production', 'mr_under_ordered_suffix')}`}
-                  </p>
-                )}
+        {groups.map(g => (
+          <div key={g.key} className="space-y-2">
+            <p className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider">{g.name}</p>
 
-                <div className="mt-2">
-                  <Field label={t('production', 'mr_expiry_label')}>
-                    <DatePicker value={item.expiryDate} onChange={val => setItem(idx, 'expiryDate', val)} placeholder={t('production', 'mr_expiry_placeholder')} minDate={new Date()} />
-                  </Field>
-                  {item.expiryDate && fm?.shelfLifeDays > 0 && (
-                    <p className="text-[10px] text-[#8E8878] mt-0.5">Mặc định HSD: {fm.shelfLifeDays} ngày từ hôm nay</p>
+            {g.rows.map(({ it: item, idx }) => {
+              const done = num(item.qtyReceived);
+              const left = num(item.qtyOutstanding);
+              const closed = item.receiveStatus === 'CLOSED_SHORT';
+              const full = item.receiveStatus === 'FULFILLED';
+
+              const batch = totalOf(item.weighings);
+              const fm = item._fm;
+              const hasOrderUnit = fm?.orderUnit && fm.orderUnit !== fm.unit;
+              const isOrder = item.receivedUnitType === 'ORDER';
+              const displayUnit = isOrder && hasOrderUnit ? fm.orderUnit : item.unit;
+              const ratio = fm?.conversionRatio;
+              const stockQty = isOrder && ratio > 0 ? batch * ratio : null;
+
+              // Cảnh báo giao DƯ (được phép, chỉ nhắc)
+              const over = batch > 0 && left > 0 && batch - left > 0.001;
+              const overNoLeft = batch > 0 && left <= 0;
+
+              return (
+                <div key={item.id || idx} className={`rounded-xl p-3 ${closed ? 'bg-red-50/60' : 'bg-[#FAF7F2]'}`}>
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <span className="text-sm font-medium text-[#1C1C1E]">{item.materialName}</span>
+                    {full && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Đã đủ</span>}
+                    {closed && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">Chốt thiếu</span>}
+                  </div>
+
+                  {/* Đặt / Đã nhận / Còn lại */}
+                  <div className="grid grid-cols-3 gap-2 mb-2 text-center">
+                    <div className="bg-white rounded-lg py-1 border border-[#E8DDD0]">
+                      <p className="text-[10px] text-[#8E8878]">Đặt</p>
+                      <p className="text-xs font-bold text-[#1C1C1E]">{fmtQty(item.qtyRequested)} {item.unit}</p>
+                    </div>
+                    <div className="bg-white rounded-lg py-1 border border-[#E8DDD0]">
+                      <p className="text-[10px] text-[#8E8878]">Đã nhận</p>
+                      <p className="text-xs font-bold text-emerald-600">{done ? fmtQty(done) : '—'}</p>
+                    </div>
+                    <div className="bg-white rounded-lg py-1 border border-[#E8DDD0]">
+                      <p className="text-[10px] text-[#8E8878]">Còn lại</p>
+                      <p className={`text-xs font-bold ${left > 0 ? 'text-amber-600' : 'text-[#8E8878]'}`}>
+                        {left > 0 ? fmtQty(left) : '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {closed ? (
+                    <p className="text-xs text-red-500">Đã chốt thiếu — không nhận thêm được.</p>
+                  ) : (
+                    <>
+                      {hasOrderUnit && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs text-[#8E8878]">{t('production', 'mr_received_unit')}:</span>
+                          <select
+                            className="text-xs px-2 py-1 rounded-lg border border-[#E8DDD0] bg-white text-[#1C1C1E] disabled:opacity-60"
+                            value={item.receivedUnitType}
+                            disabled={item.unitLocked}
+                            onChange={e => setItem(idx, 'receivedUnitType', e.target.value)}>
+                            <option value="STORAGE">{fm.unit} (lưu kho)</option>
+                            <option value="ORDER">{fm.orderUnit} (đặt hàng)</option>
+                          </select>
+                          {item.unitLocked && (
+                            <span className="text-[10px] text-[#8E8878] italic">đã khoá theo đợt 1</span>
+                          )}
+                          {stockQty != null && batch > 0 && (
+                            <span className="text-xs text-[#C9A84C] font-medium">
+                              → {fmtQty(stockQty)} {fm.unit} vào kho
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <WeighingInput
+                        qtyRequested={left > 0 ? fmtQty(left) : fmtQty(item.qtyRequested)}
+                        unit={displayUnit}
+                        weighings={item.weighings}
+                        onChange={arr => setWeighings(idx, arr)}
+                      />
+
+                      {(over || overNoLeft) && (
+                        <p className="mt-1.5 text-xs font-medium text-amber-600">
+                          Giao dư {fmtQty(batch - Math.max(left, 0))} {displayUnit} so với số còn lại — vẫn lưu được.
+                        </p>
+                      )}
+
+                      {batch > 0 && (
+                        <div className="mt-2">
+                          <Field label={t('production', 'mr_expiry_label')}>
+                            <DatePicker value={item.expiryDate} onChange={v => setItem(idx, 'expiryDate', v)}
+                              placeholder={t('production', 'mr_expiry_placeholder')} minDate={new Date()} />
+                          </Field>
+                          <p className="text-[10px] text-[#8E8878] mt-0.5">HSD của riêng lô đợt này.</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-        <Field label={t('production', 'mr_notes_label')}>
-          <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} placeholder={t('production', 'mr_notes_placeholder')} />
+              );
+            })}
+          </div>
+        ))}
+
+        <Field label="Ghi chú đợt này">
+          <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className={inputCls}
+            placeholder="VD: NCC Minh Phát giao trước phần ba rọi" />
         </Field>
+
+        {/* ── Lý do nhận thiếu (chỉ khi chốt mà còn thiếu) ──────────────────── */}
+        {askShortage && !allFulfilled && (
+          <div className="bg-red-50 border border-red-100 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-red-600">
+              Còn thiếu: {shortNames.join(', ')}
+            </p>
+            <textarea rows={2} value={shortageReason} onChange={e => setShortageReason(e.target.value)}
+              className={inputCls} placeholder="Lý do nhận thiếu (bắt buộc) — VD: NCC hết hàng, không giao bù" />
+          </div>
+        )}
+
         <div className="flex gap-2 pt-2">
-          <SecondaryButton className="flex-1" onClick={onClose}>{t('production', 'mr_cancel')}</SecondaryButton>
-          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving}>{saving ? t('production', 'mr_confirm_processing') : t('production', 'mr_confirm')}</PrimaryButton>
+          <SecondaryButton className="flex-1" onClick={handleSaveBatch} disabled={saving || batchLines.length === 0}>
+            {saving ? 'Đang lưu…' : `Lưu đợt ${nextSeq}`}
+          </SecondaryButton>
+          <PrimaryButton className="flex-1" onClick={handleFinish}
+            disabled={finishing || (req.receipts?.length || 0) === 0}>
+            {finishing ? 'Đang chốt…' : 'Xác nhận đã giao xong'}
+          </PrimaryButton>
         </div>
+        {(req.receipts?.length || 0) === 0 && (
+          <p className="text-[11px] text-[#8E8878] text-center">
+            Phải lưu ít nhất 1 đợt nhận trước khi xác nhận đã giao xong.
+          </p>
+        )}
       </div>
     </Modal>
   );
@@ -655,7 +845,9 @@ export default function FactoryMaterialRequestPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {[
             { val: '', label: t('production', 'mr_filter_all') }, { val: 'NEW', label: t('production', 'mr_filter_new') },
-            { val: 'ORDERED', label: t('production', 'mr_filter_ordered') }, { val: 'RECEIVED', label: t('production', 'mr_filter_received') },
+            { val: 'ORDERED', label: t('production', 'mr_filter_ordered') },
+            { val: 'PARTIALLY_RECEIVED', label: 'Đang nhận' },
+            { val: 'RECEIVED', label: t('production', 'mr_filter_received') },
             { val: 'COMPLETED', label: t('production', 'mr_filter_completed') },
           ].map(s => (
             <button key={s.val} onClick={() => { setStatusFilter(s.val); setPage(0); }}
