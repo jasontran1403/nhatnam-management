@@ -13,9 +13,11 @@ import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 
 const parseVND = (s) => Number(String(s).replace(/[^\d]/g, '')) || 0;
+const nf = (n) => new Intl.NumberFormat('vi-VN').format(n);
 
 // Mệnh giá tiền mặt VNĐ đang lưu hành — phải KHỚP với CashDenominations.ALLOWED ở BE.
 // Giảm dần để người đếm quỹ đi từ tờ to xuống tờ nhỏ, đúng thao tác thực tế.
+// 11 mệnh giá → lưới 3 cột × 4 dòng.
 const DENOMINATIONS = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200];
 
 const getPresets = (t) => [
@@ -364,6 +366,31 @@ function FlowList({ title, flows, kind }) {
   );
 }
 
+// ── Ô nhập 1 mệnh giá — dùng trong lưới 3 cột × 4 dòng ────────────────────────
+function DenomCell({ denom, qty, line, onChange }) {
+  const active = qty > 0;
+  return (
+    <div className={`rounded-xl border px-2.5 py-2 transition ${active ? 'border-[#C9A84C] bg-[#C9A84C]/5' : 'border-[#E8DDD0] bg-white'}`}>
+      <div className="flex items-baseline justify-between">
+        <span className="text-[13px] font-bold text-[#1C1C1E] tabular-nums">{nf(denom)}</span>
+        <span className="text-[10px] text-[#8E8878]">×</span>
+      </div>
+      <div className="flex items-center gap-1 mt-1">
+        <input
+          type="text" inputMode="numeric"
+          value={qty || ''}
+          onChange={e => onChange(denom, e.target.value)}
+          placeholder="0"
+          className="w-full min-w-0 px-2 py-1.5 rounded-lg border border-[#E8DDD0] bg-white text-sm text-right tabular-nums focus:outline-none focus:border-[#C9A84C]" />
+        <span className="text-[10px] text-[#8E8878] flex-shrink-0">tờ</span>
+      </div>
+      <p className={`mt-1 text-[11px] text-right tabular-nums font-medium ${active ? 'text-[#B8923E]' : 'text-[#D5CCC0]'}`}>
+        {nf(line)}
+      </p>
+    </div>
+  );
+}
+
 // ── Modal xác nhận dòng tiền ──
 function ConfirmModal({ onClose, onDone }) {
   const toast = useToast();
@@ -453,7 +480,8 @@ function ConfirmModal({ onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      {/* max-w-2xl để lưới mệnh giá 3 cột không bị bóp */}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b border-black/5">
           <div className="flex items-center gap-2">
             <ShieldCheck size={20} className="text-[#C9A84C]" />
@@ -465,7 +493,7 @@ function ConfirmModal({ onClose, onDone }) {
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           <p className="text-xs text-[#8E8878]">{t('production', 'cash_confirm_desc')}</p>
 
-          {/* ── TIỀN MẶT: đếm theo mệnh giá ─────────────────────────────── */}
+          {/* ── TIỀN MẶT: đếm theo mệnh giá — lưới 3 cột × 4 dòng ────────── */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-semibold text-[#1C1C1E] flex items-center gap-1.5">
@@ -478,31 +506,14 @@ function ConfirmModal({ onClose, onDone }) {
             </div>
             <p className="text-xs text-[#8E8878] mb-2">Nhập SỐ TỜ của từng mệnh giá — tổng tự cộng.</p>
 
-            <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
-              {DENOMINATIONS.map((d, i) => {
-                const qty = counts[d] || 0;
-                const line = d * qty;
-                return (
-                  <div key={d}
-                    className={`flex items-center gap-2 px-3 py-2 ${i % 2 ? 'bg-[#FAF7F2]' : 'bg-white'}`}>
-                    <span className="text-sm font-semibold text-[#1C1C1E] w-20 flex-shrink-0 text-right tabular-nums">
-                      {new Intl.NumberFormat('vi-VN').format(d)}
-                    </span>
-                    <span className="text-xs text-[#8E8878] flex-shrink-0">×</span>
-                    <input
-                      type="text" inputMode="numeric"
-                      value={qty || ''}
-                      onChange={e => setCount(d, e.target.value)}
-                      placeholder="0"
-                      className="w-20 px-2 py-1.5 rounded-lg border border-[#E8DDD0] text-sm text-right tabular-nums focus:outline-none focus:border-[#C9A84C]" />
-                    <span className="text-xs text-[#8E8878] flex-shrink-0">tờ</span>
-                    <span className={`flex-1 text-sm text-right tabular-nums font-medium ${line > 0 ? 'text-[#1C1C1E]' : 'text-[#D5CCC0]'}`}>
-                      {new Intl.NumberFormat('vi-VN').format(line)}
-                    </span>
-                  </div>
-                );
-              })}
-              <div className="flex items-center justify-between px-3 py-2.5 bg-emerald-50 border-t border-emerald-100">
+            <div className="rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] p-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {DENOMINATIONS.map(d => (
+                  <DenomCell key={d} denom={d} qty={counts[d] || 0}
+                    line={d * (counts[d] || 0)} onChange={setCount} />
+                ))}
+              </div>
+              <div className="flex items-center justify-between px-3 py-2.5 mt-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
                 <span className="text-sm font-semibold text-emerald-800">Tổng tiền mặt</span>
                 <span className="text-base font-bold text-emerald-700 tabular-nums">{fmtVND(cashTotal)}</span>
               </div>
@@ -527,14 +538,14 @@ function ConfirmModal({ onClose, onDone }) {
                   className="px-3 py-2 rounded-lg bg-[#C9A84C] text-white text-sm font-semibold">{t('common', 'add')}</button>
               </div>
             )}
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {banks.map(b => (
                 <div key={b.id || b.name} className="flex items-center gap-2">
-                  <span className="text-sm text-[#5C4E3D] w-32 flex-shrink-0 truncate">{b.name}</span>
-                  <input value={balances[b.name] ? new Intl.NumberFormat('vi-VN').format(parseVND(balances[b.name])) : ''}
-                    onChange={e => { setBal(b.name, e.target.value); setResult(null); }}
+                  <span className="text-sm text-[#5C4E3D] w-28 flex-shrink-0 truncate">{b.name}</span>
+                  <input value={balances[b.name] ? nf(parseVND(balances[b.name])) : ''}
+                    onChange={e => setBal(b.name, e.target.value)}
                     placeholder="0"
-                    className="flex-1 px-3 py-2 rounded-lg border border-[#E8DDD0] text-sm text-right focus:outline-none focus:border-[#C9A84C]" />
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-[#E8DDD0] text-sm text-right tabular-nums focus:outline-none focus:border-[#C9A84C]" />
                 </div>
               ))}
               {banks.length === 0 && <p className="text-xs text-[#8E8878]">{t('production', 'cash_bank_empty')}</p>}
