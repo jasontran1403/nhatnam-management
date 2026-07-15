@@ -309,6 +309,7 @@ function TransferForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [factories, setFactories] = useState([]);
+  const [fgFactories, setFgFactories] = useState([]);
   // Bộ khoá nguyên liệu mà kho ĐÍCH đang có (để lọc dropdown kho nguồn):
   //  - kho thường: Set ingredientId
   //  - kho xưởng : Set tên nguyên liệu (lowercase)
@@ -322,6 +323,9 @@ function TransferForm() {
     warehouseApi.listProductionFactories()
       .then(res => setFactories(res.data || []))
       .catch(() => setFactories([]));
+    warehouseApi.listFinishedGoodsFactories()
+      .then(res => setFgFactories(res.data || []))
+      .catch(() => setFgFactories([]));
   }, []);
 
   // Khi đổi kho đích → nạp danh mục nguyên liệu kho đích + reset dòng
@@ -338,6 +342,12 @@ function TransferForm() {
       warehouseApi.getRegisteredIngredientIds(id)
         .then(res => setDestIngredientIds(new Set(res.data || [])))
         .catch(() => setDestIngredientIds(new Set()))
+        .finally(() => setDestLoading(false));
+    } else if (kind === 'g') {
+      // kho THÀNH PHẨM xưởng: lọc theo tên thành phẩm đang có
+      warehouseApi.getFinishedGoodsProductNames(id)
+        .then(res => setDestMaterialNames(new Set((res.data || []).map(n => String(n).trim().toLowerCase()))))
+        .catch(() => setDestMaterialNames(new Set()))
         .finally(() => setDestLoading(false));
     } else {
       warehouseApi.getFactoryMaterialNames(id)
@@ -374,6 +384,7 @@ function TransferForm() {
         items: validRows.map(r => ({ ingredientId: r.ingredientId, quantity: Number(r.quantity) })),
       };
       if (kind === 'w') payload.toWarehouseId = destId;
+      else if (kind === 'g') payload.toFinishedGoodsFactoryId = destId;
       else payload.toProductionFactoryId = destId;
       const res = await warehouseApi.transfer(payload);
       const outCode = res.data?.outReceipt?.receiptCode;
@@ -393,7 +404,9 @@ function TransferForm() {
     const id = Number(idStr);
     return kind === 'w'
       ? (destWarehouses.find(w => w.id === id)?.name || '')
-      : (factories.find(f => f.id === id)?.name || '');
+      : kind === 'g'
+        ? (fgFactories.find(f => f.id === id)?.name || '')
+        : (factories.find(f => f.id === id)?.name || '');
   })();
 
   return (
@@ -423,6 +436,13 @@ function TransferForm() {
               <optgroup label="Kho sản xuất (xưởng)">
                 {factories.map(f => (
                   <option key={`f${f.id}`} value={`f:${f.id}`}>{f.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {fgFactories.length > 0 && (
+              <optgroup label="Kho thành phẩm xưởng">
+                {fgFactories.map(f => (
+                  <option key={`g${f.id}`} value={`g:${f.id}`}>{f.name}</option>
                 ))}
               </optgroup>
             )}

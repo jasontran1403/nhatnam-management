@@ -71,6 +71,18 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
     } finally { setLoading(false); }
   }, [search, sortBy]);
 
+  const listToast = useToast();
+  const handleDeleteSupplier = useCallback(async (v) => {
+    if (!window.confirm(`Xóa nhà cung cấp "${v.vendorName}"?\n\nNCC sẽ bị ẩn khỏi danh sách. Lịch sử phiếu/công nợ vẫn được giữ. Bạn có thể tạo lại NCC trùng tên sau này.`)) return;
+    try {
+      await ownerSupplierApi.deleteVendor(v.vendorId);
+      listToast('Đã xóa nhà cung cấp', 'success');
+      load();
+    } catch (e) {
+      listToast(e?.response?.data?.message || 'Không xóa được nhà cung cấp', 'error');
+    }
+  }, [listToast, load]);
+
   useEffect(() => {
     const t = setTimeout(load, search ? 300 : 0);
     return () => clearTimeout(t);
@@ -232,6 +244,8 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
                     {vendors.map(v => (
                       <SupplierCard key={v.vendorId} v={v}
                         expanded={expandedId === v.vendorId}
+                        canManage={canManageCatalog}
+                        onDelete={handleDeleteSupplier}
                         onToggleExpand={() => setExpandedId(id => id === v.vendorId ? null : v.vendorId)}
                         onOpen={() => navigate(`${basePath}/${v.vendorId}`)} />
                     ))}
@@ -246,7 +260,7 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
   );
 }
 
-function SupplierCard({ v, expanded, onToggleExpand, onOpen }) {
+function SupplierCard({ v, expanded, onToggleExpand, onOpen, canManage, onDelete }) {
   const hasDebt = Number(v.totalDebt || 0) > 0;
   const days = v.oldestDebtDays;
 
@@ -278,6 +292,13 @@ function SupplierCard({ v, expanded, onToggleExpand, onOpen }) {
               <Clock size={11} />
               {days != null ? `Nợ ${days} ngày` : 'Có công nợ'}
               <ChevronDown size={12} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+
+          {canManage && onDelete && (
+            <button onClick={() => onDelete(v)} title="Xóa nhà cung cấp"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#8E8878] hover:text-red-600 transition-colors">
+              <Trash2 size={12} /> Xóa
             </button>
           )}
         </div>

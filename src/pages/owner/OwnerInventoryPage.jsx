@@ -7,7 +7,7 @@ import { useToast } from '../../components/common/Toast';
 import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
 import {
   Package, Warehouse, Search, RefreshCw, ChevronDown, ChevronRight,
-  ClipboardCheck, X, Filter, Layers
+  ClipboardCheck, X, Filter, Layers, Factory
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
@@ -52,6 +52,10 @@ export default function OwnerInventoryPage() {
   const [collapsedCats, setCollapsedCats] = useState(new Set());
   const [collapsedSubs, setCollapsedSubs] = useState(new Set());
 
+  // Mục 1: tồn kho theo xưởng (bảng riêng phía dưới)
+  const [factoryBlocks, setFactoryBlocks] = useState([]);
+  const [showFactory, setShowFactory] = useState(true);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -63,6 +67,13 @@ export default function OwnerInventoryPage() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const tm = setTimeout(() => setSearch(searchInput), 400); return () => clearTimeout(tm); }, [searchInput]);
+
+  // Tồn kho theo xưởng — tải theo cùng ô tìm kiếm
+  useEffect(() => {
+    inventoryFlowApi.factoryStock(search.trim() || undefined)
+      .then(res => setFactoryBlocks(res.data?.data || res.data || []))
+      .catch(() => setFactoryBlocks([]));
+  }, [search]);
 
   const applyPreset = (key) => { setPreset(key); setRange(presetToRange(key)); };
   const applyCustom = (r) => { if (!r.from && !r.to) return; setPreset('custom'); setRange({ from: r.from, to: r.to }); };
@@ -179,6 +190,13 @@ export default function OwnerInventoryPage() {
           className="px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]">
           <option value="ALL">🏬 {t('production', 'oinv_all_warehouses')}</option>
           {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+          {factoryBlocks.length > 0 && (
+            <optgroup label="🏭 Kho hàng của xưởng">
+              {factoryBlocks.map(b => (
+                <option key={`f${b.factoryId}`} value={`f:${b.factoryId}`}>{b.factoryName} — Kho xưởng</option>
+              ))}
+            </optgroup>
+          )}
         </select>
         <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setSubFilter(''); }}
           title={t('production', 'oinv_parent_category')}
@@ -201,7 +219,29 @@ export default function OwnerInventoryPage() {
         )}
       </div>
 
-      {loading ? (
+      {String(scope).startsWith('f:') ? (
+        // Kho hàng của xưởng: render tồn kho (nguyên liệu + thành phẩm) theo layout kho
+        (() => {
+          const fid = String(scope).slice(2);
+          const block = factoryBlocks.find(b => String(b.factoryId) === fid);
+          if (!block) return (
+            <div className="text-center py-16 text-[#8E8878]">
+              <Package size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="font-medium">Kho xưởng trống</p>
+            </div>
+          );
+          return (
+            <CollapsibleCard
+              title={`${t('production', 'oinv_stock_movement')} · ${block.factoryName} — Kho xưởng`}
+              icon={Factory} open={showTable} onToggle={() => setShowTable(v => !v)}>
+              <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#E8DDD0]">
+                <FactoryStockList title="Kho nguyên liệu" rows={block.materials} fmtQty={fmtQty} />
+                <FactoryStockList title="Kho thành phẩm" rows={block.finishedGoods} fmtQty={fmtQty} />
+              </div>
+            </CollapsibleCard>
+          );
+        })()
+      ) : loading ? (
         <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-[#8E8878]">
@@ -222,6 +262,26 @@ export default function OwnerInventoryPage() {
         </CollapsibleCard>
       )}
 
+      {/* Bảng tổng hợp tồn kho tất cả xưởng — chỉ hiện khi đang xem ALL */}
+      {scope === 'ALL' && factoryBlocks.length > 0 && (
+        <CollapsibleCard title="Tồn kho xưởng (nguyên liệu & thành phẩm)"
+          icon={Factory} open={showFactory} onToggle={() => setShowFactory(v => !v)}>
+          <div className="p-3 space-y-4">
+            {factoryBlocks.map(block => (
+              <div key={block.factoryId} className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+                <div className="px-4 py-2 bg-[#FAF7F2] font-semibold text-sm text-[#1C1C1E] flex items-center gap-2">
+                  <Factory size={14} className="text-[#C9A84C]" /> {block.factoryName}
+                </div>
+                <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#E8DDD0]">
+                  <FactoryStockList title="Kho nguyên liệu" rows={block.materials} fmtQty={fmtQty} />
+                  <FactoryStockList title="Kho thành phẩm" rows={block.finishedGoods} fmtQty={fmtQty} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleCard>
+      )}
+
       {showConfirm && (
         <ConfirmModal warehouses={warehouses} onClose={() => setShowConfirm(false)}
           onDone={() => { setShowConfirm(false); load(); }} />
@@ -230,8 +290,30 @@ export default function OwnerInventoryPage() {
   );
 }
 
-function CollapsibleCard({ title, icon: Icon, open, onToggle, children }) {
+function FactoryStockList({ title, rows, fmtQty }) {
   return (
+    <div className="p-3">
+      <p className="text-xs font-semibold text-[#8E8878] mb-2">{title}</p>
+      {(!rows || rows.length === 0) ? (
+        <p className="text-xs text-[#B0A99A] italic py-2">Trống</p>
+      ) : (
+        <div className="space-y-1">
+          {rows.map((r, i) => (
+            <div key={i} className="flex items-center justify-between text-sm px-2.5 py-1.5 rounded-lg bg-[#FAF7F2]">
+              <span className="text-[#1C1C1E] truncate mr-2">{r.name}</span>
+              <span className="text-[#1A2B1A] font-medium whitespace-nowrap">
+                {fmtQty(r.quantity)} {r.unit}
+                {r.lotCount > 0 && <span className="text-[10px] text-[#8E8878] ml-1">({r.lotCount} lô)</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollapsibleCard({ title, icon: Icon, open, onToggle, children }) {  return (
     <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FAF7F2] transition">
         <span className="flex items-center gap-2 text-sm font-semibold text-[#1C1C1E]">

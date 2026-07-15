@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { CardSkeleton, Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Warehouse as WarehouseIcon, Plus, Edit2, Power, Truck, Store, Package } from 'lucide-react';
+import { Warehouse as WarehouseIcon, Plus, Edit2, Power, Truck, Store, Package, Factory, Boxes, PackageOpen } from 'lucide-react';
 import { adminWarehouseApi } from '../../api/adminApi';
+import { ownerProdApi } from '../../api/productionModuleApi';
 import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import useDebounce from '../../utils/useDebounce.js';
@@ -42,6 +43,16 @@ export default function AdminWarehouses() {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
+  // Kho xưởng chỉ hiển thị cho OWNER (mỗi xưởng gồm 3 kho: NL / bán TP / TP)
+  const isOwner = rolePrefix === '/owner';
+  const [factories, setFactories] = useState([]);
+  useEffect(() => {
+    if (!isOwner) return;
+    ownerProdApi.listFactories()
+      .then(list => setFactories((list || []).filter(f => f.status === 'ACTIVE')))
+      .catch(() => setFactories([]));
+  }, [isOwner]);
+
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
@@ -61,9 +72,9 @@ export default function AdminWarehouses() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader
         icon={WarehouseIcon}
-        {...{title: t("warehouse","warehouses")}}
-        subtitle={t('admin','warehouse_count').replace('{n}',items.length)}
-        action={<PrimaryButton onClick={openCreate}><Plus size={15} />{t('warehouse','create_warehouse_new')}</PrimaryButton>}
+        {...{ title: t("warehouse", "warehouses") }}
+        subtitle={t('admin', 'warehouse_count').replace('{n}', items.length)}
+        action={<PrimaryButton onClick={openCreate}><Plus size={15} />{t('warehouse', 'create_warehouse_new')}</PrimaryButton>}
       />
 
       {loading ? (
@@ -83,12 +94,12 @@ export default function AdminWarehouses() {
                   {w.type === 'TRANSIT' ? <Truck size={22} /> : <Store size={22} />}
                 </div>
                 <Badge className={w.active ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-50 text-slate-600 ring-slate-200'}>
-                  {w.active ? t('status','active'): t('common','close')}
+                  {w.active ? t('status', 'active') : t('common', 'close')}
                 </Badge>
               </div>
 
               <h3 className="font-bold text-[#1C1C1E] text-lg mt-3 truncate">{w.name}</h3>
-              <p className="text-xs text-[#8E8878] mt-0.5 truncate">{w.address || t('common','no_data')}</p>
+              <p className="text-xs text-[#8E8878] mt-0.5 truncate">{w.address || t('common', 'no_data')}</p>
 
               <div className="flex items-center gap-1.5 mt-3">
                 <Badge className={w.type === 'TRANSIT' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}>
@@ -117,9 +128,30 @@ export default function AdminWarehouses() {
         </div>
       )}
 
-      {formOpen && (
-        <WarehouseFormModal open={formOpen} editing={editing} onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); load(); }} />
+      {/* ── KHO XƯỞNG (chỉ OWNER) ── */}
+      {isOwner && factories.length > 0 && (
+        <div className="space-y-3 pt-2">
+          {factories.map(f => (
+            <div key={f.id}>
+              <p className="text-xs font-semibold text-[#8E8878] mb-2 flex items-center gap-1.5">
+                <Factory size={13} className="text-[#C9A84C]" /> {f.name}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-2">
+                <FactoryStockCard factory={f} kind="material" icon={Package}
+                  title="Kho nguyên liệu xưởng" color="amber"
+                  onClick={() => navigate(`${rolePrefix}/factory-stock?factoryId=${f.id}&kind=material`)} />
+                <FactoryStockCard factory={f} kind="semi" icon={Boxes}
+                  title="Kho bán thành phẩm" color="blue"
+                  onClick={() => navigate(`${rolePrefix}/factory-stock?factoryId=${f.id}&kind=semi`)} />
+                <FactoryStockCard factory={f} kind="finished" icon={PackageOpen}
+                  title="Kho thành phẩm (kho xưởng)" color="green"
+                  onClick={() => navigate(`${rolePrefix}/factory-stock?factoryId=${f.id}&kind=finished`)} />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+      <WarehouseFormModal open={formOpen} editing={editing} onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); load(); }} />
 
       <Modal
         open={!!activeConfirm}
@@ -178,7 +210,7 @@ function WarehouseFormModal({ open, editing, onClose, onSaved }) {
       footer={
         <div className="flex justify-end gap-2">
           <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
-          <PrimaryButton onClick={submit} loading={saving}>{editing ? 'Cập nhật': 'Tạo kho'}</PrimaryButton>
+          <PrimaryButton onClick={submit} loading={saving}>{editing ? 'Cập nhật' : 'Tạo kho'}</PrimaryButton>
         </div>
       }
     >
@@ -228,11 +260,29 @@ function WarehouseFormModal({ open, editing, onClose, onSaved }) {
             >
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${form.active ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
-            <span className="text-sm text-[#1C1C1E]">{form.active ? t('status','active'): t('common','close')}</span>
+            <span className="text-sm text-[#1C1C1E]">{form.active ? t('status', 'active') : t('common', 'close')}</span>
           </div>
         </Field>
       </div>
     </Modal>
+  );
+}
+
+function FactoryStockCard({ title, icon: Icon, color, onClick }) {
+  const colorMap = {
+    amber: 'bg-[#C9A84C]/10 text-[#C9A84C] ring-[#C9A84C]/20',
+    blue: 'bg-blue-50 text-blue-600 ring-blue-200',
+    green: 'bg-emerald-50 text-emerald-600 ring-emerald-200',
+  };
+  return (
+    <div onClick={onClick}
+      className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer">
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ring-1 ${colorMap[color]}`}>
+        <Icon size={22} />
+      </div>
+      <h3 className="font-bold text-[#1C1C1E] text-base mt-3">{title}</h3>
+      <p className="text-xs text-[#8E8878] mt-1">Nhấn để xem tồn kho</p>
+    </div>
   );
 }
 

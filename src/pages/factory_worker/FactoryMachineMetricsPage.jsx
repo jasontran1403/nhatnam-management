@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Activity, Wrench, Calendar, DollarSign, Settings2,
-  TrendingUp, AlertTriangle, FileText, ArrowLeft,
+  TrendingUp, AlertTriangle, FileText, ArrowLeft, Pencil,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -15,6 +15,7 @@ import { CardSkeleton, ChartSkeleton } from '../../components/ui/Skeleton';
 import Modal from '../../components/ui/Modal';
 import { SecondaryButton, EmptyState } from '../../components/ui';
 import { ownerProdApi, factoryProdApi } from '../../api/productionModuleApi';
+import { MachineModal } from '../owner/OwnerMachinePage';
 import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 
@@ -191,6 +192,17 @@ export default function FactoryMachineMetricsPage() {
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [openMaint, setOpenMaint] = useState(null);
   const [err, setErr] = useState('');
+  // Sửa máy ngay tại trang chi tiết
+  const [factories, setFactories] = useState([]);
+  const [editOpen, setEditOpen] = useState(false);
+
+  useEffect(() => {
+    ownerProdApi.listFactories().then(d => setFactories(d || [])).catch(() => setFactories([]));
+  }, []);
+
+  const reloadMachines = async () => {
+    try { setMachines(await ownerProdApi.listMachines(false) || []); } catch { /* ignore */ }
+  };
 
   const fmtHours = (v) => t('production', 'metrics_hours', { n: fmtNum(v) });
 
@@ -221,6 +233,7 @@ export default function FactoryMachineMetricsPage() {
 
   const machineName = machines.find(m => String(m.id) === String(machineId))?.name
     || t('production', 'metrics_machine_fallback', { id: machineId });
+  const currentMachine = machines.find(m => String(m.id) === String(machineId)) || null;
 
   const labelProduction  = t('production', 'metrics_chart_production');
   const labelMaintenance = t('production', 'metrics_chart_maintenance');
@@ -244,8 +257,14 @@ export default function FactoryMachineMetricsPage() {
           className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors mb-2">
           <ArrowLeft size={14} />
         </button>
-        <h1 className="text-xl font-bold mt-0.5">
+        <h1 className="text-xl font-bold mt-0.5 flex items-center gap-2">
           {t('production', 'metrics_title', { name: machineName })}
+          {currentMachine && (
+            <button onClick={() => setEditOpen(true)} title="Sửa máy"
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors">
+              <Pencil size={13} />
+            </button>
+          )}
         </h1>
         <p className="text-white/60 text-xs mt-1">
           {t('production', 'metrics_subtitle', { name: machineName })}
@@ -327,6 +346,14 @@ export default function FactoryMachineMetricsPage() {
       )}
 
       {openMaint && <MaintenanceDetailModal item={openMaint} onClose={() => setOpenMaint(null)} />}
+      {editOpen && currentMachine && (
+        <MachineModal
+          machine={currentMachine}
+          factories={factories}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => { setEditOpen(false); reloadMachines(); }}
+        />
+      )}
     </div>
   );
 }

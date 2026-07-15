@@ -1,7 +1,7 @@
 // src/pages/owner/OwnerMaterialStockPage.jsx
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, AlertTriangle, Search, ArrowDownAZ, ArrowUpZA, CalendarClock, ChevronLeft, ChevronDown, ChevronRight, Plus, BarChart3, Layers, Receipt } from 'lucide-react';
+import { Package, AlertTriangle, Search, ArrowDownAZ, ArrowUpZA, CalendarClock, ChevronLeft, ChevronDown, ChevronRight, Plus, BarChart3, Layers, Receipt, Pencil } from 'lucide-react';
 import { PageHeader, EmptyState, PrimaryButton, SecondaryButton, Field, inputCls } from '../../components/ui';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import Modal from '../../components/ui/Modal';
@@ -54,7 +54,9 @@ function MaterialDetail({ item, onBack }) {
       // Lọc theo mã phiếu (keyword gần đúng)
       if (q) {
         const code = (lot.materialRequestCode || '').toLowerCase();
-        if (!code.includes(q)) return false;
+        const imp = (lot.importReceiptInfo || '').toLowerCase();
+        const ser = (lot.serialImei || '').toLowerCase();
+        if (!code.includes(q) && !imp.includes(q) && !ser.includes(q)) return false;
       }
       // Lọc theo ngày tạo phiếu đặt hàng (orderedAt) trong khoảng đã chọn
       if (range.from != null || range.to != null) {
@@ -142,6 +144,20 @@ function MaterialDetail({ item, onBack }) {
                         </span>
                       )}
                     </div>
+                    {(lot.importReceiptInfo || lot.serialImei) && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                        {lot.importReceiptInfo && (
+                          <span className="text-[11px] text-[#8E8878]">
+                            Phiếu nhập: <span className="text-[#1C1C1E]">{lot.importReceiptInfo}</span>
+                          </span>
+                        )}
+                        {lot.serialImei && (
+                          <span className="text-[11px] text-[#8E8878]">
+                            Serial/IMEI: <span className="text-[#1C1C1E]">{lot.serialImei}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="text-right flex-shrink-0">
                     {lot.expiryDate ? (
@@ -184,12 +200,13 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
     supplierLeadDays: editData.supplierLeadDays ?? '',
     storageCondition: editData.storageCondition || '',
     description: editData.description || '',
+    isMixable: editData.isMixable ?? false,
     subCategoryId: editData.subCategoryId || '',
     factoryIds: editData.factoryIds || [],
   } : {
     name: '', unit: 'Kg', orderUnit: '', conversionRatio: '',
     shelfLifeDays: '', supplierLeadDays: '', storageCondition: '',
-    description: '', subCategoryId: '', factoryIds: [],
+    description: '', isMixable: false, subCategoryId: '', factoryIds: [],
   });
 
   const [saving, setSaving] = useState(false);
@@ -291,6 +308,7 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
         supplierLeadDays: form.supplierLeadDays !== '' ? Number(form.supplierLeadDays) : null,
         storageCondition: form.storageCondition.trim() || null,
         description: form.description.trim() || null,
+        isMixable: !!form.isMixable,
         subCategoryId: Number(form.subCategoryId),
         factoryIds: form.factoryIds,
       };
@@ -386,6 +404,13 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
             placeholder={t('production','mstock_ph_storage_cond')} />
         </Field>
 
+        {/* Mục 4: đánh dấu là sản phẩm đầu ra của mix gia vị */}
+        <label className="flex items-center gap-2 cursor-pointer select-none py-1">
+          <input type="checkbox" className="w-4 h-4 rounded border-[#E8DDD0] accent-[#C9A84C]"
+            checked={!!form.isMixable} onChange={e => set('isMixable', e.target.checked)} />
+          <span className="text-sm text-[#1C1C1E]">Có thể mix (dùng làm sản phẩm đầu ra khi trộn gia vị)</span>
+        </label>
+
         {/* Mô tả */}
         <Field label={t('production','omach_field_desc')}>
           <textarea className={inputCls} rows={2} value={form.description} onChange={e => set('description', e.target.value)} />
@@ -427,6 +452,23 @@ export default function OwnerMaterialStockPage() {
   const [expirySort, setExpirySort] = useState(null);
   const [selected, setSelected] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  // Nút Sửa nguyên liệu: cần bản ghi FactoryMaterial đầy đủ (có id) → tra theo tên
+  const [editMaterial, setEditMaterial] = useState(null);
+  const [materialsByName, setMaterialsByName] = useState({});
+
+  const loadMaterials = useCallback(() => {
+    factoryMaterialApi.list(true).then(list => {
+      const map = {};
+      (list || []).forEach(m => { if (m.name) map[m.name.trim().toLowerCase()] = m; });
+      setMaterialsByName(map);
+    }).catch(() => setMaterialsByName({}));
+  }, []);
+  useEffect(() => { loadMaterials(); }, [loadMaterials]);
+
+  const openEdit = useCallback((materialName) => {
+    const m = materialsByName[(materialName || '').trim().toLowerCase()];
+    if (m) setEditMaterial(m);
+  }, [materialsByName]);
 
   // Xưởng
   const [factories, setFactories] = useState([]);
@@ -620,7 +662,7 @@ export default function OwnerMaterialStockPage() {
                           {!subCollapsed && (
                             <div className="space-y-2 px-4 pb-3">
                               {items.map((item, i) => (
-                                <MaterialCard key={i} item={item} navigate={navigate} onSelectLot={() => setSelected(item)} />
+                                <MaterialCard key={i} item={item} navigate={navigate} onSelectLot={() => setSelected(item)} onEdit={() => openEdit(item.materialName)} />
                               ))}
                             </div>
                           )}
@@ -638,7 +680,15 @@ export default function OwnerMaterialStockPage() {
       {showCreateModal && (
         <CreateMaterialModal
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => { setShowCreateModal(false); reload(); }}
+          onCreated={() => { setShowCreateModal(false); reload(); loadMaterials(); }}
+        />
+      )}
+
+      {editMaterial && (
+        <CreateMaterialModal
+          editData={editMaterial}
+          onClose={() => setEditMaterial(null)}
+          onCreated={() => { setEditMaterial(null); reload(); loadMaterials(); }}
         />
       )}
     </div>
@@ -646,7 +696,7 @@ export default function OwnerMaterialStockPage() {
 }
 
 // ── Card nguyên liệu (extracted for readability) ─────────────────────────────
-function MaterialCard({ item, navigate, onSelectLot }) {
+function MaterialCard({ item, navigate, onSelectLot, onEdit }) {
   const { t } = useLang();
   const { fmtNum, fmtDate } = useFmt();
   const fmtQty = v => fmtNum(v,3);
@@ -685,6 +735,14 @@ function MaterialCard({ item, navigate, onSelectLot }) {
           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-[#E8DDD0] text-[#1A2B1A] bg-white hover:border-[#1A2B1A] hover:bg-[#F5F0EB] transition-all">
           <Layers size={12} /> Chi tiết lô
         </button>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            title="Sửa nguyên liệu"
+            className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-[#E8DDD0] text-[#1A2B1A] bg-white hover:border-[#1A2B1A] hover:bg-[#F5F0EB] transition-all">
+            <Pencil size={12} /> Sửa
+          </button>
+        )}
       </div>
     </div>
   );

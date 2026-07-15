@@ -61,10 +61,22 @@ export default function ExpenseListPage() {
   const load = useCallback(async (p = 0) => {
     setLoading(true);
     try {
-      const range = dateRange || dayRange(selectedDate);
       const q = searchTextRef.current.trim();
+
+      // Quy tắc lọc ngày khi tìm kiếm (giống phiếu thu):
+      //  - dateRange === null → mặc định "hôm nay" (user chưa chỉnh):
+      //      không search → lọc hôm nay; có search → BỎ filter ngày (tìm toàn bộ).
+      //  - dateRange !== null → user đã chọn khoảng ngày → luôn áp filter đó.
+      //  Nút X gọi setDateRange(null) → về hôm nay → search lại thành không-filter.
+      const userPickedRange = dateRange !== null;
+      const ignoreDateForSearch = !!q && !userPickedRange;
+
+      const range = dateRange || dayRange(selectedDate);
+      const from = ignoreDateForSearch ? undefined : range.from;
+      const to = ignoreDateForSearch ? undefined : range.to;
+
       const res = q
-        ? await expenseApi.search(q, range.from, range.to, { page: p, size: PAGE_SIZE })
+        ? await expenseApi.search(q, from, to, { page: p, size: PAGE_SIZE })
         : await expenseApi.listByDate(range.from, range.to, { page: p, size: PAGE_SIZE });
       const data = res.data?.data || res.data || {};
       const content = data.content || [];
@@ -130,7 +142,7 @@ export default function ExpenseListPage() {
           <input
             value={searchText}
             onChange={e => handleSearchChange(e.target.value)}
-            placeholder="Tìm số phiếu chi, lý do, nhà cung cấp..."
+            placeholder="Tìm số phiếu chi, lý do, nhà cung cấp, số tiền..."
             className="w-full pl-9 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]"
           />
           {searchText && (

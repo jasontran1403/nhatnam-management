@@ -214,8 +214,14 @@ function RequestCard({ req, onReceive }) {
             <div className="mt-3 pt-3 border-t border-black/5">
               <p className="text-xs font-medium text-[#8E8878] mb-1">{t('production', 'mr_vendor_section_label')}</p>
               {req.vendors.map((v, i) => (
-                <div key={v.id || i} className="text-xs text-[#1C1C1E]">
-                  {v.vendorName}{v.contactPhone ? ` · ${v.contactPhone}` : ''}
+                <div key={v.id || i} className="text-xs text-[#1C1C1E] py-0.5">
+                  <div>{v.vendorName}{v.contactPhone ? ` · ${v.contactPhone}` : ''}</div>
+                  {(v.importReceiptInfo || v.serialImei) && (
+                    <div className="flex flex-wrap gap-x-3 mt-0.5 text-[11px] text-[#8E8878]">
+                      {v.importReceiptInfo && <span>Phiếu nhập: <span className="text-[#1C1C1E]">{v.importReceiptInfo}</span></span>}
+                      {v.serialImei && <span>Serial/IMEI: <span className="text-[#1C1C1E]">{v.serialImei}</span></span>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

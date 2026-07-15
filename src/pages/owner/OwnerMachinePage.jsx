@@ -12,13 +12,17 @@ import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 
 // ── Modal thêm / sửa máy ────────────────────────────────────────────────────
-function MachineModal({ machine, factories, onClose, onSaved }) {
+export function MachineModal({ machine, factories, onClose, onSaved }) {
   const { t } = useLang();
   const [form, setForm] = useState({
     name: machine?.name || '',
     capacityHoursPerMonth: machine?.capacityHoursPerMonth || '',
     description: machine?.description || '',
     factoryId: machine?.factoryId || '',
+    status: machine?.status || 'ACTIVE',
+    manufacturer: machine?.manufacturer || '',
+    purchaseCost: machine?.purchaseCost ?? '',
+    serialNumber: machine?.serialNumber || '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -28,7 +32,12 @@ function MachineModal({ machine, factories, onClose, onSaved }) {
     if (!form.name || !form.capacityHoursPerMonth || !form.factoryId) return;
     setSaving(true);
     try {
-      const payload = { ...form, factoryId: Number(form.factoryId) };
+      const payload = {
+        ...form,
+        factoryId: Number(form.factoryId),
+        capacityHoursPerMonth: Number(form.capacityHoursPerMonth),
+        purchaseCost: form.purchaseCost !== '' ? Number(form.purchaseCost) : null,
+      };
       const saved = machine?.id
         ? await ownerProductionApi.updateMachine(machine.id, payload)
         : await ownerProductionApi.createMachine(payload);
@@ -66,6 +75,27 @@ function MachineModal({ machine, factories, onClose, onSaved }) {
               value={form.capacityHoursPerMonth}
               onChange={e => set('capacityHoursPerMonth', e.target.value)} />
           </Field>
+          {/* Mục 6: trạng thái sửa trực tiếp */}
+          <Field label="Trạng thái">
+            <select className={inputCls} value={form.status} onChange={e => set('status', e.target.value)}>
+              <option value="ACTIVE">Hoạt động</option>
+              <option value="INACTIVE">Ngừng</option>
+            </select>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Nhà cung cấp">
+              <input className={inputCls} placeholder="VD: Bosch"
+                value={form.manufacturer} onChange={e => set('manufacturer', e.target.value)} />
+            </Field>
+            <Field label="Serial">
+              <input className={inputCls} placeholder="Số serial"
+                value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} />
+            </Field>
+          </div>
+          <Field label="Giá mua (đ)">
+            <input type="number" className={inputCls} placeholder="VD: 15000000"
+              value={form.purchaseCost} onChange={e => set('purchaseCost', e.target.value)} />
+          </Field>
           <Field label={t('production', 'omach_field_desc')}>
             <textarea className={inputCls} rows={3} placeholder={t('production', 'omach_field_desc_ph')}
               value={form.description} onChange={e => set('description', e.target.value)} />
@@ -86,9 +116,23 @@ function MachineModal({ machine, factories, onClose, onSaved }) {
   );
 }
 
+// Nhóm máy theo xưởng — máy chưa gán xưởng gom cuối cùng
+function groupMachinesByFactory(machines) {
+  const map = {};
+  (machines || []).forEach(m => {
+    const key = m.factoryId != null ? String(m.factoryId) : '__none__';
+    if (!map[key]) map[key] = { key, factoryId: m.factoryId ?? null, factoryName: m.factoryName || 'Chưa gán xưởng', machines: [] };
+    map[key].machines.push(m);
+  });
+  return Object.values(map).sort((a, b) => {
+    if (a.factoryId == null) return 1;
+    if (b.factoryId == null) return -1;
+    return String(a.factoryName).localeCompare(String(b.factoryName), 'vi');
+  });
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function OwnerMachinePage() {
-  const navigate = useNavigate();
+export default function OwnerMachinePage() {  const navigate = useNavigate();
   const { t } = useLang();
   const { fmtNum } = useFmt();
   const [machines, setMachines] = useState([]);
@@ -170,8 +214,16 @@ export default function OwnerMachinePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {machines.map(m => (
+      <div className="space-y-6">
+        {groupMachinesByFactory(machines).map(group => (
+          <div key={group.key}>
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 size={15} className="text-[#C9A84C]" />
+              <h2 className="text-sm font-bold text-[#1C1C1E] uppercase tracking-wide">{group.factoryName}</h2>
+              <span className="text-xs text-[#8E8878]">({group.machines.length} máy)</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {group.machines.map(m => (
           <div key={m.id}
                className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-opacity ${
                  m.status !== 'ACTIVE' ? 'opacity-60 border-black/5' : 'border-black/5'
@@ -214,6 +266,9 @@ export default function OwnerMachinePage() {
                   {t('production', 'omach_hours_per_month', { n: fmtNum(m.capacityHoursPerMonth) })}
                 </span>
               </div>
+            </div>
+          </div>
+              ))}
             </div>
           </div>
         ))}

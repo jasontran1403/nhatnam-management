@@ -262,24 +262,37 @@ function ConfirmStepModal({ batch, step, onClose, onSaved }) {
 }
 
 // ── Confirm Stage Run Modal (xác nhận 1 lần chạy công đoạn: bước chung/riêng) ──
-function ConfirmStageRunModal({ run, stageName, onClose, onSaved }) {
+function ConfirmStageRunModal({ run, stageName, outputUnit, onClose, onSaved }) {
   const toast = useToast();
   const { t } = useLang();
   const [notes, setNotes] = useState('');
   const [attachments, setAttachments] = useState([]);
+  const [damagedQty, setDamagedQty] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const controlType = run.controlType || (run.requiresQc === true ? 'PHOTO_WEIGHT' : 'NONE');
   const requiresPhoto = controlType === 'PHOTO_WEIGHT';
   const isVisualControl = controlType === 'VISUAL';
+  // Mục 3: bước CÓ kiểm soát (trực quan hoặc cân ký) → cho nhập số hư hỏng.
+  // Đơn vị luôn theo đơn vị sản lượng của sản phẩm đang sản xuất.
+  const hasControl = requiresPhoto || isVisualControl;
+  const unit = outputUnit || 'kg';
   const runLabel = run.batchNumber != null
     ? `Mẻ ${run.batchNumber}`
     : (run.totalRuns > 1 ? `Lần ${run.runNumber}/${run.totalRuns}` : 'Làm chung');
   const submit = async () => {
     if (requiresPhoto && attachments.length === 0) { setErr(t('production', 'confirm_step_err_need_photo')); return; }
+    let damaged = null;
+    if (hasControl && String(damagedQty).trim() !== '') {
+      damaged = Number(damagedQty);
+      if (isNaN(damaged) || damaged < 0) { setErr('Số hư hỏng không hợp lệ (phải ≥ 0)'); return; }
+    }
     setSaving(true);
     try {
-      await factoryProdApi.completeStageRun(run.id, { attachments, notes });
+      await factoryProdApi.completeStageRun(run.id, {
+        attachments, notes,
+        damagedQty: hasControl ? (damaged ?? 0) : undefined,
+      });
       onSaved();
     } catch (e) {
       const msg = e?.response?.data?.message || e?.message || t('production', 'confirm_step_err_generic');
@@ -317,6 +330,13 @@ function ConfirmStageRunModal({ run, stageName, onClose, onSaved }) {
               setAttachments(p=>[...p,...urls]); return urls;
             }}/>
         )}
+        {hasControl && (
+          <Field label={`Số hư hỏng (${unit})`} hint="Bỏ trống hoặc 0 nếu không có hư hỏng. Chỉ ghi nhận thống kê, không tự trừ sản lượng.">
+            <input type="number" step="0.001" min="0" className={inputCls}
+              placeholder={`0 (${unit})`}
+              value={damagedQty} onChange={e=>setDamagedQty(e.target.value)}/>
+          </Field>
+        )}
         <Field label={t('production', 'confirm_step_notes_label')}><textarea className={inputCls} rows={2} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={t('production', 'confirm_step_notes_placeholder')}/></Field>
       </div>
     </Modal>
@@ -324,7 +344,7 @@ function ConfirmStageRunModal({ run, stageName, onClose, onSaved }) {
 }
 
 // ── Stage Roadmap (công đoạn cấp lệnh: bước chung + bước riêng) ────────────────
-function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId }) {
+function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId, outputUnit }) {
   const { t } = useLang();
   const [lightbox, setLightbox] = useState(null);
   if (!stages || stages.length === 0) {
@@ -372,6 +392,11 @@ function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId }) {
                         {rLabel}{qty?` · ${qty}`:''}
                       </span>
                       {rDone && <span className="text-xs text-emerald-600">✓ {run.completedByName} · {fmtDate(run.completedAt)}</span>}
+                      {rDone && Number(run.damagedQty) > 0 && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          Hư hỏng: {fmtNum(run.damagedQty)} {outputUnit || 'kg'}
+                        </span>
+                      )}
                       {rRunning && <span className="text-xs text-amber-600">▶ {run.startedByName} · {fmtDate(run.startedAt)}</span>}
                       <div className="flex-1"/>
                       {run.status === 'PENDING' && run.canStart && (
@@ -1206,7 +1231,8 @@ function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
               <StageRoadmap stages={stages}
                 onStartRun={handleStartRun}
                 onConfirmRun={(stage,run)=>setConfirmRun({stage,run})}
-                startingRunId={startingRunId}/>
+                startingRunId={startingRunId}
+                outputUnit={wo?.outputUnit}/>
             )}
           </div>
         )}
@@ -1231,7 +1257,7 @@ function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
 
       {showPlanModal&&<SubmitPlanModal workOrder={wo} onClose={()=>setShowPlanModal(false)} onSaved={onModalSaved}/>}
       {confirmStep&&<ConfirmStepModal batch={confirmStep.batch} step={confirmStep.step} onClose={()=>setConfirmStep(null)} onSaved={onModalSaved}/>}
-      {confirmRun&&<ConfirmStageRunModal run={confirmRun.run} stageName={confirmRun.stage?.stageName} onClose={()=>setConfirmRun(null)} onSaved={onModalSaved}/>}
+      {confirmRun&&<ConfirmStageRunModal run={confirmRun.run} stageName={confirmRun.stage?.stageName} outputUnit={wo?.outputUnit} onClose={()=>setConfirmRun(null)} onSaved={onModalSaved}/>}
       {cancelBatchTarget&&<CancelBatchModal batch={cancelBatchTarget} workOrder={wo} onClose={()=>setCancelBatchTarget(null)} onSaved={onModalSaved}/>}
     </Modal>
   );

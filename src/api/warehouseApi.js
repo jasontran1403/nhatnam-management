@@ -47,6 +47,10 @@ export const warehouseApi = {
   listProductionFactories: () => api.get(`${BASE}/production-factories`),
   getFactoryMaterialNames: (factoryId) =>
     api.get(`${BASE}/production-factories/${factoryId}/material-names`),
+  // Chuyển kho hàng → KHO THÀNH PHẨM xưởng — Mục 1
+  listFinishedGoodsFactories: () => api.get(`${BASE}/finished-goods-factories`),
+  getFinishedGoodsProductNames: (factoryId) =>
+    api.get(`${BASE}/finished-goods-factories/${factoryId}/product-names`),
   adjust: (data) => api.post(`${BASE}/adjust`, data),
 
   // ── Lịch sử — gửi warehouseId qua query param ────────────────────────────

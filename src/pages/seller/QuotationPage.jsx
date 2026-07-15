@@ -58,15 +58,21 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
   const [selectedTierId, setSelectedTierId] = useState(existing?.tierId ?? null);
   const [vatRate, setVatRate] = useState(existing?.vatRate ?? (product.vatRate ?? 0));
   const [vatMode, setVatMode] = useState(existing?.vatMode ?? (product.vatMode ?? 'INCLUSIVE'));
+  // Sửa giá: khi bật, dùng giá tự nhập thay cho giá lẻ/khung
+  const [useCustom, setUseCustom] = useState(existing?.isCustomPrice ?? false);
+  const [customPrice, setCustomPrice] = useState(
+    existing?.isCustomPrice ? String(existing.unitPrice ?? '') : ''
+  );
 
   // Giá đang chọn
   const selectedPrice = useMemo(() => {
+    if (useCustom) return Number(customPrice) || 0;
     if (selectedTierId !== null) {
       const tier = product.priceTiers?.find(t => t.id === selectedTierId);
       return tier?.price ?? product.basePrice ?? 0;
     }
     return product.basePrice ?? 0;
-  }, [selectedTierId, product]);
+  }, [useCustom, customPrice, selectedTierId, product]);
 
   const { preTax, postTax } = useMemo(
     () => calcPrices(selectedPrice, vatRate, vatMode),
@@ -74,7 +80,13 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
   );
 
   const handleConfirm = () => {
-    onConfirm({ tierId: selectedTierId, vatRate, vatMode, unitPrice: selectedPrice });
+    if (useCustom && (!customPrice || Number(customPrice) <= 0)) return;
+    onConfirm({
+      tierId: useCustom ? null : selectedTierId,
+      vatRate, vatMode,
+      unitPrice: selectedPrice,
+      isCustomPrice: useCustom,
+    });
   };
 
   return (
@@ -100,14 +112,14 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
             <div className="space-y-2">
               {/* Giá lẻ */}
               <button
-                onClick={() => setSelectedTierId(null)}
+                onClick={() => { setSelectedTierId(null); setUseCustom(false); }}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
-                  ${selectedTierId === null
+                  ${!useCustom && selectedTierId === null
                     ? 'border-sky-400 bg-sky-50'
                     : 'border-[#E8DDD0] hover:border-sky-300 hover:bg-sky-50/40'}`}
               >
                 <div className="flex items-center gap-2">
-                  {selectedTierId === null && <Check size={13} className="text-sky-500" />}
+                  {!useCustom && selectedTierId === null && <Check size={13} className="text-sky-500" />}
                   <span className="text-sm font-semibold text-[#1C1C1E]">Giá lẻ</span>
                 </div>
                 <span className="text-sm font-bold text-sky-600">{fmt(product.basePrice)}</span>
@@ -119,14 +131,14 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
                 .map((tier, idx) => (
                   <button
                     key={tier.id}
-                    onClick={() => setSelectedTierId(tier.id)}
+                    onClick={() => { setSelectedTierId(tier.id); setUseCustom(false); }}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
-                      ${selectedTierId === tier.id
+                      ${!useCustom && selectedTierId === tier.id
                         ? 'border-orange-400 bg-orange-50'
                         : 'border-[#E8DDD0] hover:border-orange-300 hover:bg-orange-50/40'}`}
                   >
                     <div className="flex items-center gap-2">
-                      {selectedTierId === tier.id && <Check size={13} className="text-orange-500" />}
+                      {!useCustom && selectedTierId === tier.id && <Check size={13} className="text-orange-500" />}
                       <span className="text-sm font-semibold text-[#1C1C1E]">
                         {tier.tierName || `Sỉ ${idx + 1}`}
                       </span>
@@ -138,6 +150,36 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
                   </button>
                 ))
               }
+
+              {/* Giá tùy chỉnh (sửa giá) */}
+              <button
+                onClick={() => setUseCustom(true)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
+                  ${useCustom
+                    ? 'border-emerald-400 bg-emerald-50'
+                    : 'border-[#E8DDD0] hover:border-emerald-300 hover:bg-emerald-50/40'}`}
+              >
+                <div className="flex items-center gap-2">
+                  {useCustom && <Check size={13} className="text-emerald-500" />}
+                  <span className="text-sm font-semibold text-[#1C1C1E]">Giá tùy chỉnh</span>
+                </div>
+                <span className="text-[10px] text-[#8E8878]">Tự nhập giá</span>
+              </button>
+              {useCustom && (
+                <div className="px-1 pt-1">
+                  <input
+                    type="number" min="0" step="1000" autoFocus
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    placeholder="Nhập giá (đ)"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-emerald-300 text-sm font-semibold text-right
+                      focus:outline-none focus:border-emerald-500 bg-emerald-50/40"
+                  />
+                  {(!customPrice || Number(customPrice) <= 0) && (
+                    <p className="text-[11px] text-red-500 mt-1 ml-1">Vui lòng nhập giá lớn hơn 0</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -204,7 +246,8 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
             Huỷ
           </button>
           <button onClick={handleConfirm}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] transition-colors">
+            disabled={useCustom && (!customPrice || Number(customPrice) <= 0)}
+            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             {existing ? 'Cập nhật' : 'Thêm vào báo giá'}
           </button>
         </div>
@@ -216,9 +259,11 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
 // ── QuotationCartItem ──────────────────────────────────────────────────────
 function QuotationCartItem({ item, onEdit, onRemove }) {
   const { preTax, postTax } = calcPrices(item.unitPrice, item.vatRate, item.vatMode);
-  const tierLabel = item.tierId
-    ? (item.tierName || 'Giá sỉ')
-    : 'Giá lẻ';
+  const tierLabel = item.isCustomPrice
+    ? 'Giá tùy chỉnh'
+    : item.tierId
+      ? (item.tierName || 'Giá sỉ')
+      : 'Giá lẻ';
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-[#F0EBE3] last:border-0">
@@ -496,7 +541,7 @@ export default function QuotationPage() {
   }, [products]);
 
   // Confirm từ PricePickerModal
-  const handlePickerConfirm = useCallback(({ tierId, vatRate, vatMode, unitPrice }) => {
+  const handlePickerConfirm = useCallback(({ tierId, vatRate, vatMode, unitPrice, isCustomPrice }) => {
     const tierName = tierId
       ? pickerProduct.priceTiers?.find(t => t.id === tierId)?.tierName || 'Giá sỉ'
       : null;
@@ -505,7 +550,7 @@ export default function QuotationPage() {
       // Edit existing
       setCartItems(prev => prev.map(i =>
         i.id === pickerExisting.id
-          ? { ...i, tierId, tierName, vatRate, vatMode, unitPrice }
+          ? { ...i, tierId, tierName, vatRate, vatMode, unitPrice, isCustomPrice }
           : i
       ));
     } else {
@@ -524,6 +569,7 @@ export default function QuotationPage() {
         vatRate,
         vatMode,
         unitPrice,
+        isCustomPrice,
       };
       setCartItems(prev => {
         // Nếu đã có sản phẩm này rồi → replace
@@ -554,9 +600,11 @@ export default function QuotationPage() {
         quotationContent: content || null,
         items: cartItems.map(i => ({
           productId: i.productId,
-          tierId: i.tierId ?? null,
+          tierId: i.isCustomPrice ? null : (i.tierId ?? null),
           vatRate: i.vatRate,
           vatMode: i.vatMode,
+          customPrice: !!i.isCustomPrice,
+          customUnitPrice: i.isCustomPrice ? i.unitPrice : null,
         })),
       };
       const res = await quotationApi.exportPdf(payload);

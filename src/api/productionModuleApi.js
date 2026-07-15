@@ -156,13 +156,43 @@ export const factoryProdApi = {
 
 // ── Finished Goods Warehouse APIs (Kho thành phẩm — Issue #1 + #2) ─────────────
 
-export const finishedGoodsApi = {
-  // Danh sách tổng hợp theo Tên thành phẩm — search + filter cận date (mọi role liên quan xem được)
-  listSummary: (q, expiryBeforeMs) =>
-    api.get('/api/factory/finished-goods', { params: { q, expiryBeforeMs } }).then(r => r.data.data),
-  // Danh sách kho bán hàng (loại SALE) — cho dropdown chọn kho đích khi chuyển kho (FACTORY_ACCOUNTANT)
+// ── Mix gia vị (Mục 4) ───────────────────────────────────────────────────────
+export const mixApi = {
+  listOutputs: (factoryId) =>
+    api.get('/api/factory/mix/outputs', { params: { factoryId } }).then(r => r.data.data),
+  check: (payload) => api.post('/api/factory/mix/check', payload).then(r => r.data.data),
+  execute: (payload) => api.post('/api/factory/mix/execute', payload).then(r => r.data.data),
+};
+
+// ── Kho nguyên liệu xưởng: xuất / chuyển kho (Mục 2) ─────────────────────────
+export const factoryStockApi = {
+  // Kho đích: kho bán/trung chuyển + kho NL xưởng khác + kho TP xưởng khác
+  listTransferTargets: (factoryId) =>
+    api.get('/api/factory/material-stock/transfer-targets', { params: { factoryId } }).then(r => r.data.data),
+  // Nguyên liệu chuyển được sang kho đích (chỉ cái kho đích đang có, trùng tên)
+  listTransferable: (factoryId, targetKey) =>
+    api.get('/api/factory/material-stock/transferable', { params: { factoryId, targetKey } }).then(r => r.data.data),
+  exportStock: (payload) =>
+    api.post('/api/factory/material-stock/export', payload).then(r => r.data.data),
+  transferStock: (payload) =>
+    api.post('/api/factory/material-stock/transfer', payload).then(r => r.data.data),
+  listNotes: (factoryId, type) =>
+    api.get('/api/factory/material-stock/notes', { params: { factoryId, type } }).then(r => r.data.data),
+};
+
+export const finishedGoodsApi = {  // Danh sách tổng hợp theo Tên thành phẩm — search + filter cận date + LỌC THEO XƯỞNG (server-side)
+  listSummary: (q, expiryBeforeMs, factoryId) =>
+    api.get('/api/factory/finished-goods', { params: { q, expiryBeforeMs, factoryId } }).then(r => r.data.data),
+  // Danh sách kho bán hàng (loại SALE) — legacy, giữ cho tương thích
   listSaleWarehouses: () =>
     api.get('/api/factory-accountant/finished-goods/sale-warehouses').then(r => r.data.data),
+  // Kho đích khi chuyển kho: Kho bán + Trung chuyển (kèm typeLabel để hiện "Tên kho — Loại kho")
+  listTransferTargets: () =>
+    api.get('/api/factory-accountant/finished-goods/transfer-targets').then(r => r.data.data),
+  // Thành phẩm chuyển được sang kho đích — CHỈ những cái kho đích đang có nguyên liệu trùng tên
+  listTransferable: (factoryId, targetWarehouseId) =>
+    api.get('/api/factory-accountant/finished-goods/transferable',
+      { params: { factoryId, targetWarehouseId } }).then(r => r.data.data),
   // Xuất kho — cần lý do (chỉ FACTORY_ACCOUNTANT)
   exportGoods: (body) =>
     api.post('/api/factory-accountant/finished-goods/export', body).then(r => r.data.data),
@@ -179,8 +209,8 @@ export const finishedGoodsApi = {
 
 export const semiFinishedGoodsApi = {
   // Bước 1 — xem tồn kho bán thành phẩm (mọi role liên quan xem được)
-  listSummary: (q) =>
-    api.get('/api/factory/semi-finished-goods', { params: { q } }).then(r => r.data.data),
+  listSummary: (q, factoryId) =>
+    api.get('/api/factory/semi-finished-goods', { params: { q, factoryId } }).then(r => r.data.data),
   // Bước 1 — xem kho Scrap (hàng lỗi)
   listScrap: (page = 0, size = 20) =>
     api.get('/api/factory/scrap-stock', { params: { page, size } }).then(r => r.data.data),

@@ -575,8 +575,30 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
   (maintenanceList || []).forEach(m => { if (!maintByMachine[m.machineId]) maintByMachine[m.machineId] = []; maintByMachine[m.machineId].push(m); });
   const occByMachine = {};
   (occupancyList || []).forEach(o => { if (!occByMachine[o.machineId]) occByMachine[o.machineId] = []; occByMachine[o.machineId].push(o); });
+  // ── Mục 5: nhóm máy THEO XƯỞNG. Mỗi nhóm có 1 dòng label tên xưởng, rồi tới các
+  // máy của xưởng đó. Máy chưa gán xưởng gom vào nhóm "Chưa gán xưởng" ở cuối. ──
+  const factoryMap = {};
+  (machines || []).forEach(m => {
+    const key = m.factoryId != null ? String(m.factoryId) : '__none__';
+    if (!factoryMap[key]) {
+      factoryMap[key] = {
+        factoryId: m.factoryId ?? null,
+        factoryName: m.factoryName || 'Chưa gán xưởng',
+        machines: [],
+      };
+    }
+    factoryMap[key].machines.push(m);
+  });
+  const factoryGroups = Object.values(factoryMap).sort((a, b) => {
+    if (a.factoryId == null) return 1;            // "Chưa gán xưởng" xuống cuối
+    if (b.factoryId == null) return -1;
+    return String(a.factoryName).localeCompare(String(b.factoryName), 'vi');
+  });
+
   const rows = [];
-  (machines || []).forEach(machine => {
+  factoryGroups.forEach(group => {
+    rows.push({ type: 'factory', data: group });
+    group.machines.forEach(machine => {
     rows.push({ type: 'machine', data: machine });
     const maints = maintByMachine[machine.id] || [];
     const groups = {};
@@ -593,7 +615,8 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
       if (!occGroups[key]) occGroups[key] = { workOrderCode: o.workOrderCode, stepName: o.stepName, items: [] };
       occGroups[key].items.push(o);
     });
-    Object.values(occGroups).forEach(group => rows.push({ type: 'occ', data: group, machine }));
+    Object.values(occGroups).forEach(g => rows.push({ type: 'occ', data: g, machine }));
+    });
   });
   if (!machines || !machines.length) return <EmptyState icon={Settings2} title={t('production','dash_empty_machine')} />;
   const maintColor = item => {
@@ -649,7 +672,15 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
             const isMachine = row.type === 'machine'; const d = row.data;
             return (
               <div key={`lbl-${ri}`} style={{ height: ROW_H, marginBottom: 4 }} className="flex items-center pr-3">
-                {isMachine ? (
+                {row.type === 'factory' ? (
+                  <div className="flex items-center gap-1.5 w-full min-w-0">
+                    <Building2 size={12} className="flex-shrink-0 text-[#C9A84C]" />
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#1C1C1E] truncate">
+                      {d.factoryName}
+                    </span>
+                    <span className="text-[10px] text-[#8E8878] flex-shrink-0">({d.machines.length})</span>
+                  </div>
+                ) : isMachine ? (
                   <div className="flex items-center gap-2 w-full">
                     {(() => {
                       const nowMs = Date.now(); const machineMaintList = maintByMachine[d.id] || [];
@@ -664,7 +695,7 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                         className="text-xs font-bold text-[#1C1C1E] truncate hover:text-[#C9A84C] hover:underline transition-colors block text-left">
                         {d.name}
                       </button>
-                      {d.factoryName && <p className="text-[9px] text-[#8E8878] truncate">{d.factoryName}</p>}
+                      {/* Mục 5: bỏ label nhỏ tên xưởng dưới máy — đã có dòng label xưởng ở trên */}
                     </div>
                   </div>
                 ) : row.type === 'occ' ? (
@@ -706,6 +737,14 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
             {rows.map((row, ri) => {
               const isMachine = row.type === 'machine'; const d = row.data; const machineMaints = isMachine ? (maintByMachine[d.id] || []) : []; const machineOcc = isMachine ? (occByMachine[d.id] || []) : [];
               const isOcc = row.type === 'occ';
+              // Dòng label xưởng — chỉ là dải phân cách bên phần lưới, không vẽ bar
+              if (row.type === 'factory') {
+                return (
+                  <div key={`row-${ri}`} style={{ height: ROW_H, marginBottom: 4, position: 'relative' }}>
+                    <div className="absolute inset-0" style={{ background: 'rgba(201,168,76,0.06)' }} />
+                  </div>
+                );
+              }
               return (
                 <div key={`row-${ri}`} style={{ height: ROW_H, marginBottom: 4, position: 'relative' }}>
                   <div className="absolute inset-0" style={{ background: ri % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.012)' }} />

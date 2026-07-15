@@ -1,16 +1,23 @@
 // src/pages/factory_worker/FactoryFinishedGoodsPage.jsx
-// Kho thành phẩm của xưởng — Issue #1 + #2
-// UI tổng hợp theo Tên thành phẩm: tồn kho, cận date gần nhất/xa nhất, search/filter
-// + nút Xuất kho (cần lý do) và Chuyển kho (cần kho đích — kho bán hàng)
-import { useState, useEffect, useMemo, useCallback } from 'react';
+// Kho thành phẩm của xưởng.
+//
+// THAY ĐỔI (mục 1):
+//  - Lọc theo XƯỞNG ở SERVER. Trước đây lọc client-side theo lot.factoryId, mà lô tạo
+//    từ phiếu chuyển kho bán thành phẩm lại không được set factoryId → luôn hiển thị 0.
+//  - Phiếu XUẤT KHO: lý do (bắt buộc) + ảnh chứng từ (optional) — giống kho warehouse.
+//  - Phiếu CHUYỂN KHO: chọn kho đích trước (dropdown "Tên kho — Loại kho": Kho bán /
+//    Trung chuyển), rồi chọn thành phẩm bằng INPUT SEARCH CÓ DROPDOWN — dropdown CHỈ
+//    liệt kê thành phẩm mà kho đích ĐANG CÓ nguyên liệu trùng tên.
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Package, AlertTriangle, ChevronDown, ChevronUp, Search,
-  ArrowUpFromLine, ArrowRightLeft, Calendar, History,
+  ArrowUpFromLine, ArrowRightLeft, Calendar, X,
 } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
+import ImageUploader from '../../components/warehouse/ImageUploader';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { finishedGoodsApi, factoryProdApi } from '../../api/productionModuleApi';
 import { useLang } from '../../context/LangContext';
@@ -18,28 +25,79 @@ import { useFmt } from '../../utils/useFmt';
 import { useToast } from '../../components/common/Toast.jsx';
 import { useAuth } from '../../context/AuthContext';
 
-function fmtQty(v) {
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(Number(v || 0));
-}
-
-function fmtDate(ms) {
-  if (!ms) return null;
-  return new Date(Number(ms)).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
 function daysLeft(ms) {
   if (!ms) return null;
   return Math.ceil((Number(ms) - Date.now()) / 86400000);
 }
 
-// ── Export Modal — cần lý do ─────────────────────────────────────────────────
-function ExportGoodsModal({ item, onClose, onDone }) {
-  const { t } = useLang();
-  const { fmtNum, fmtDate } = useFmt();
-  const fmtQty = v => fmtNum(v,3);
+// ── Input search + dropdown (combobox) ───────────────────────────────────────
+// options: [{ value, label, hint }]
+function SearchSelect({ options, value, onChange, placeholder, disabled, emptyText }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const boxRef = useRef(null);
+
+  const selected = options.find(o => o.value === value) || null;
+
+  useEffect(() => {
+    const onDocClick = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(o => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  return (
+    <div className="relative" ref={boxRef}>
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+        <input
+          className={inputCls + ' pl-9 pr-8'}
+          disabled={disabled}
+          placeholder={placeholder}
+          value={open ? query : (selected ? selected.label : '')}
+          onFocus={() => { if (!disabled) { setOpen(true); setQuery(''); } }}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        />
+        {selected && !disabled && (
+          <button type="button"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"
+            onClick={() => { onChange(''); setQuery(''); setOpen(false); }}>
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {open && !disabled && (
+        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-xl border border-[#E8DDD0] bg-white shadow-lg">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-3 text-xs text-[#8E8878]">{emptyText || 'Không có kết quả'}</p>
+          ) : filtered.map(o => (
+            <button key={o.value} type="button"
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] ${o.value === value ? 'bg-[#FAF7F2] font-semibold' : ''}`}
+              onClick={() => { onChange(o.value); setOpen(false); setQuery(''); }}>
+              <span className="text-[#1C1C1E]">{o.label}</span>
+              {o.hint && <span className="block text-[11px] text-[#8E8878]">{o.hint}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Xuất kho — lý do (bắt buộc) + ảnh chứng từ (optional) ────────────────────
+function ExportGoodsModal({ item, factoryId, onClose, onDone }) {
+  const { fmtNum } = useFmt();
+  const fmtQty = v => fmtNum(v, 3);
   const toast = useToast();
   const [qty, setQty] = useState('');
   const [reason, setReason] = useState('');
+  const [images, setImages] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
@@ -53,6 +111,8 @@ function ExportGoodsModal({ item, onClose, onDone }) {
         productName: item.productName,
         quantity: n,
         reason: reason.trim(),
+        factoryId,
+        documentImages: images,
       });
       toast('Đã xuất kho thành công', 'success');
       onDone();
@@ -69,7 +129,7 @@ function ExportGoodsModal({ item, onClose, onDone }) {
         </p>
         <Field label="Số lượng xuất *">
           <input
-            type="number" step="0.1" autoFocus className={inputCls}
+            type="number" step="0.001" autoFocus className={inputCls}
             placeholder={`Số lượng (${item.unit})`}
             value={qty} onChange={e => setQty(e.target.value)}
           />
@@ -77,9 +137,12 @@ function ExportGoodsModal({ item, onClose, onDone }) {
         <Field label="Lý do xuất kho *">
           <textarea
             className={inputCls + ' min-h-[80px]'}
-            placeholder="VD: Bán cho khách lẻ, tiêu hao nội bộ..."
+            placeholder="VD: Bán cho khách lẻ, tiêu hao nội bộ, hàng hỏng..."
             value={reason} onChange={e => setReason(e.target.value)}
           />
+        </Field>
+        <Field label="Ảnh chứng từ (không bắt buộc)">
+          <ImageUploader value={images} onChange={setImages} />
         </Field>
         <div className="flex gap-2 pt-2">
           <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
@@ -92,37 +155,60 @@ function ExportGoodsModal({ item, onClose, onDone }) {
   );
 }
 
-// ── Transfer Modal — cần kho đích (kho bán hàng) ─────────────────────────────
-function TransferGoodsModal({ item, onClose, onDone }) {
-  const { t } = useLang();
-  const { fmtNum, fmtDate } = useFmt();
-  const fmtQty = v => fmtNum(v,3);
+// ── Chuyển kho — chọn kho đích → chọn thành phẩm (chỉ cái kho đích đang có) ──
+function TransferGoodsModal({ factoryId, presetProduct, onClose, onDone }) {
+  const { fmtNum } = useFmt();
+  const fmtQty = v => fmtNum(v, 3);
   const toast = useToast();
+
+  const [targets, setTargets] = useState([]);
+  const [targetId, setTargetId] = useState('');
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productName, setProductName] = useState(presetProduct || '');
   const [qty, setQty] = useState('');
-  const [warehouses, setWarehouses] = useState([]);
-  const [targetWarehouseId, setTargetWarehouseId] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loadingWh, setLoadingWh] = useState(true);
 
   useEffect(() => {
-    finishedGoodsApi.listSaleWarehouses()
-      .then(d => setWarehouses(d || []))
-      .finally(() => setLoadingWh(false));
+    finishedGoodsApi.listTransferTargets()
+      .then(d => setTargets(d || []))
+      .catch(() => setTargets([]));
   }, []);
 
+  // Đổi kho đích → nạp lại danh sách thành phẩm chuyển được (giao theo TÊN)
+  useEffect(() => {
+    if (!targetId || !factoryId) { setProducts([]); return; }
+    setLoadingProducts(true);
+    finishedGoodsApi.listTransferable(factoryId, Number(targetId))
+      .then(d => {
+        const list = d || [];
+        setProducts(list);
+        // Thành phẩm đang chọn không tồn tại ở kho đích → bỏ chọn
+        setProductName(prev => (list.some(p => p.productName === prev) ? prev : ''));
+      })
+      .catch(() => setProducts([]))
+      .finally(() => setLoadingProducts(false));
+  }, [targetId, factoryId]);
+
+  const selected = products.find(p => p.productName === productName) || null;
+
   const handleSubmit = async () => {
+    if (!targetId) { toast('Vui lòng chọn kho đích', 'error'); return; }
+    if (!productName) { toast('Vui lòng chọn thành phẩm cần chuyển', 'error'); return; }
     const n = Number(qty);
-    if (!qty || isNaN(n) || n <= 0) { toast('Vui lòng nhập số lượng chuyển kho hợp lệ', 'error'); return; }
-    if (n > Number(item.totalQuantity)) { toast('Số lượng chuyển vượt tồn kho hiện có', 'error'); return; }
-    if (!targetWarehouseId) { toast('Vui lòng chọn kho đích', 'error'); return; }
+    if (!qty || isNaN(n) || n <= 0) { toast('Vui lòng nhập số lượng chuyển hợp lệ', 'error'); return; }
+    if (selected && n > Number(selected.availableQuantity)) {
+      toast('Số lượng chuyển vượt tồn kho hiện có', 'error'); return;
+    }
     setSaving(true);
     try {
       await finishedGoodsApi.transferGoods({
-        productName: item.productName,
+        productName,
         quantity: n,
-        targetWarehouseId: Number(targetWarehouseId),
+        targetWarehouseId: Number(targetId),
+        factoryId,
       });
-      toast('Đã chuyển kho thành công — ngày SX và HSD đã được chuyển theo lô', 'success', 4000);
+      toast('Đã chuyển kho thành công — ngày SX và HSD được giữ nguyên theo lô', 'success', 4000);
       onDone();
     } catch (e) {
       toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
@@ -130,37 +216,55 @@ function TransferGoodsModal({ item, onClose, onDone }) {
   };
 
   return (
-    <Modal open onClose={onClose} title={`Chuyển kho — ${item.productName}`}>
+    <Modal open onClose={onClose} title="Chuyển kho thành phẩm">
       <div className="space-y-4">
-        <p className="text-sm text-[#8E8878]">
-          Tồn kho hiện có: <strong>{fmtQty(item.totalQuantity)} {item.unit}</strong>
-        </p>
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          Ngày sản xuất và hạn sử dụng của các lô sẽ được chuyển nguyên vẹn sang kho đích
-          (kho đích sẽ trở thành nguyên liệu, có ngày sản xuất + HSD tương ứng).
+          Ngày sản xuất, hạn sử dụng và giá vốn của từng lô được chuyển nguyên vẹn sang kho đích.
+          Dropdown thành phẩm chỉ hiện những mặt hàng mà kho đích <strong>đã có nguyên liệu trùng tên</strong>.
         </p>
+
+        <Field label="Kho đích *">
+          <select className={inputCls} value={targetId} onChange={e => setTargetId(e.target.value)}>
+            <option value="">— Chọn kho đích —</option>
+            {targets.map(w => (
+              <option key={w.id} value={w.id}>{w.name} — {w.typeLabel}</option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Thành phẩm *" hint={targetId ? undefined : 'Chọn kho đích trước'}>
+          <SearchSelect
+            disabled={!targetId || loadingProducts}
+            placeholder={loadingProducts ? 'Đang tải...' : 'Tìm & chọn thành phẩm...'}
+            emptyText="Kho đích chưa có nguyên liệu nào trùng tên với thành phẩm của xưởng"
+            value={productName}
+            onChange={setProductName}
+            options={products.map(p => ({
+              value: p.productName,
+              label: p.productName,
+              hint: `Tồn: ${fmtQty(p.availableQuantity)} ${p.unit}`,
+            }))}
+          />
+        </Field>
+
+        {selected && (
+          <p className="text-sm text-[#8E8878]">
+            Tồn khả dụng: <strong>{fmtQty(selected.availableQuantity)} {selected.unit}</strong>
+          </p>
+        )}
+
         <Field label="Số lượng chuyển *">
           <input
-            type="number" step="0.1" autoFocus className={inputCls}
-            placeholder={`Số lượng (${item.unit})`}
+            type="number" step="0.001" className={inputCls}
+            disabled={!selected}
+            placeholder={selected ? `Số lượng (${selected.unit})` : 'Chọn thành phẩm trước'}
             value={qty} onChange={e => setQty(e.target.value)}
           />
         </Field>
-        <Field label="Kho đích (kho bán hàng) *">
-          {loadingWh ? (
-            <p className="text-xs text-[#8E8878] py-2">Đang tải danh sách kho...</p>
-          ) : warehouses.length === 0 ? (
-            <p className="text-xs text-red-600 py-2">Chưa có kho bán hàng nào, vui lòng tạo trước.</p>
-          ) : (
-            <select className={inputCls} value={targetWarehouseId} onChange={e => setTargetWarehouseId(e.target.value)}>
-              <option value="">— Chọn kho đích —</option>
-              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          )}
-        </Field>
+
         <div className="flex gap-2 pt-2">
           <SecondaryButton className="flex-1" onClick={onClose}>Huỷ</SecondaryButton>
-          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving || warehouses.length === 0}>
+          <PrimaryButton className="flex-1" onClick={handleSubmit} disabled={saving || !selected}>
             {saving ? 'Đang xử lý...' : 'Chuyển kho'}
           </PrimaryButton>
         </div>
@@ -171,9 +275,8 @@ function TransferGoodsModal({ item, onClose, onDone }) {
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
-  const { t } = useLang();
   const { fmtNum, fmtDate } = useFmt();
-  const fmtQty = v => fmtNum(v,3);
+  const fmtQty = v => fmtNum(v, 3);
   const [expanded, setExpanded] = useState(false);
   const nearExpiryLots = (item.lots || []).filter(l => {
     const d = daysLeft(l.expiryDate);
@@ -201,13 +304,11 @@ function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
             <div className="flex items-center gap-3 mt-1.5 text-xs text-[#8E8878]">
               {item.nearestExpiryDate && (
                 <span className="flex items-center gap-1">
-                  <Calendar size={11} /> Lô mới nhất: {fmtDate(item.nearestExpiryDate)}
+                  <Calendar size={11} /> Cận date nhất: {fmtDate(item.nearestExpiryDate)}
                 </span>
               )}
               {item.farthestExpiryDate && item.farthestExpiryDate !== item.nearestExpiryDate && (
-                <span className="flex items-center gap-1">
-                  Xa nhất: {fmtDate(item.farthestExpiryDate)}
-                </span>
+                <span className="flex items-center gap-1">Xa nhất: {fmtDate(item.farthestExpiryDate)}</span>
               )}
             </div>
           </div>
@@ -226,7 +327,7 @@ function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
                 className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-white border border-black/10 text-[#1C1C1E] hover:bg-[#FAF7F2]">
                 <ArrowUpFromLine size={13} /> Xuất kho
               </button>
-              <button onClick={() => onTransfer(item)}
+              <button onClick={() => onTransfer(item.productName)}
                 className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[#1A2B1A] text-white hover:bg-[#243524]">
                 <ArrowRightLeft size={13} /> Chuyển kho
               </button>
@@ -273,18 +374,17 @@ function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FactoryFinishedGoodsPage() {
   const { t } = useLang();
-  const { fmtNum, fmtDate } = useFmt();
-  const fmtQty = v => fmtNum(v,3);
   const { role } = useAuth();
-  // Chỉ FACTORY_ACCOUNTANT mới được xuất kho/chuyển kho thành phẩm — các role
-  // khác (FACTORY_WORKER, SUPER_FACTORY_WORKER, OWNER) chỉ xem được tồn kho.
+  // Chỉ FACTORY_ACCOUNTANT được xuất/chuyển kho thành phẩm; các role khác chỉ xem.
   const canManage = role === 'FACTORY_ACCOUNTANT';
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
-  const [expiryFilter, setExpiryFilter] = useState(null); // chỉ hiện thành phẩm có lô cận date trước ngày này
+  const [expiryFilter, setExpiryFilter] = useState(null);
   const [exportItem, setExportItem] = useState(null);
-  const [transferItem, setTransferItem] = useState(null);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferPreset, setTransferPreset] = useState('');
   const [factories, setFactories] = useState([]);
   const [factoryId, setFactoryId] = useState(null);
 
@@ -292,31 +392,22 @@ export default function FactoryFinishedGoodsPage() {
     factoryProdApi.listMyFactories().then(list => {
       const active = (list || []).filter(f => f.status === 'ACTIVE');
       setFactories(active);
-      if (active.length >= 1) setFactoryId(active[0].id);
+      if (active.length >= 1) setFactoryId(active[0].id);   // mặc định chọn kho đầu tiên
     }).catch(() => {});
   }, []);
 
   const load = useCallback(() => {
+    if (!factoryId) { setItems([]); return; }
     setLoading(true);
-    finishedGoodsApi.listSummary(search || undefined, expiryFilter || undefined)
-      .then(d => {
-        // Filter by factory client-side (lots have factoryId)
-        if (factoryId && d) {
-          d = d.map(item => ({
-            ...item,
-            lots: (item.lots || []).filter(l => l.factoryId === factoryId),
-          })).map(item => ({
-            ...item,
-            totalQuantity: (item.lots || []).reduce((s, l) => s + Number(l.quantity || 0), 0),
-            lotCount: item.lots.length,
-          })).filter(item => item.lots.length > 0);
-        }
-        setItems(d || []);
-      })
+    // Lọc theo xưởng ở SERVER — không lọc client-side nữa
+    finishedGoodsApi.listSummary(search || undefined, expiryFilter || undefined, factoryId)
+      .then(d => setItems(d || []))
       .finally(() => setLoading(false));
-  }, [search, expiryFilter, factoryId]);
+  }, [search, expiryFilter, factoryId, setLoading]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openTransfer = (productName = '') => { setTransferPreset(productName); setTransferOpen(true); };
 
   const nearExpiryCount = useMemo(() =>
     items.reduce((acc, it) => acc + (it.lots || []).filter(l => {
@@ -327,16 +418,21 @@ export default function FactoryFinishedGoodsPage() {
 
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','fg_title')}</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production', 'fg_title')}</h1>
+        {canManage && (
+          <button onClick={() => openTransfer('')}
+            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl bg-[#1A2B1A] text-white hover:bg-[#243524]">
+            <ArrowRightLeft size={14} /> Lập phiếu chuyển kho
+          </button>
+        )}
       </div>
 
-      {factories.length > 1 && (
+      {factories.length >= 1 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
+          <span className="text-xs text-[#8E8878] font-medium">{t('production', 'mstock_factory_label')}:</span>
           <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
             value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">{t('common','all')}</option>
             {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
         </div>
@@ -345,11 +441,11 @@ export default function FactoryFinishedGoodsPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
-          <p className="text-xs text-[#8E8878]">{t('production','fg_product_types')}</p>
+          <p className="text-xs text-[#8E8878]">{t('production', 'fg_product_types')}</p>
           <p className="text-2xl font-bold text-[#1A2B1A] mt-1">{items.length}</p>
         </div>
         <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
-          <p className="text-xs text-[#8E8878]">{t('production','inv_near_expiry')}</p>
+          <p className="text-xs text-[#8E8878]">{t('production', 'inv_near_expiry')}</p>
           <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700' : 'text-[#1A2B1A]'}`}>
             {nearExpiryCount}
           </p>
@@ -388,26 +484,28 @@ export default function FactoryFinishedGoodsPage() {
           ? (
             <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
               <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">{t('production','fg_empty')}</p>
+              <p className="text-[#8E8878] text-sm">{t('production', 'fg_empty')}</p>
             </div>
           )
           : (
             <div className="space-y-3">
               {items.map((item, i) => (
                 <FinishedGoodsCard key={item.productName || i} item={item}
-                  onExport={setExportItem} onTransfer={setTransferItem} canManage={canManage} />
+                  onExport={setExportItem} onTransfer={openTransfer} canManage={canManage} />
               ))}
             </div>
           )
       }
 
       {exportItem && (
-        <ExportGoodsModal item={exportItem} onClose={() => setExportItem(null)}
+        <ExportGoodsModal item={exportItem} factoryId={factoryId}
+          onClose={() => setExportItem(null)}
           onDone={() => { setExportItem(null); load(); }} />
       )}
-      {transferItem && (
-        <TransferGoodsModal item={transferItem} onClose={() => setTransferItem(null)}
-          onDone={() => { setTransferItem(null); load(); }} />
+      {transferOpen && (
+        <TransferGoodsModal factoryId={factoryId} presetProduct={transferPreset}
+          onClose={() => setTransferOpen(false)}
+          onDone={() => { setTransferOpen(false); load(); }} />
       )}
     </div>
   );

@@ -58,7 +58,7 @@ export default function IncomeListPage() {
       const res = await incomeApi.exportReport(range.from, range.to);
       const d = new Date(range.from);
       const dEnd = new Date(range.to);
-      const fmt = (dt) => `${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;
+      const fmt = (dt) => `${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()}`;
       downloadBlob(res.data, `phieu-thu-${fmt(d)}_${fmt(dEnd)}.xlsx`);
       toast('Xuất báo cáo thành công', 'success');
       setShowExport(false);
@@ -69,17 +69,27 @@ export default function IncomeListPage() {
   const load = useCallback(async (p = 0) => {
     setLoading(true);
     try {
-      const range = dateRange || dayRange(selectedDate);
       const q = searchTextRef.current.trim();
 
-      // FIX: "Tổng số tiền" trước đây cộng totalAmount của các phiếu TRÊN TRANG HIỆN TẠI
-      // → lệch số khi kết quả có nhiều trang. Giờ lấy tổng từ API /summary — SUM trên
-      // TOÀN BỘ kết quả khớp bộ lọc/tìm kiếm, không phụ thuộc phân trang.
+      // Quy tắc lọc ngày khi tìm kiếm:
+      //  - dateRange === null  → đang ở mặc định "hôm nay" (user CHƯA chỉnh filter).
+      //      · Không search  → lọc theo hôm nay.
+      //      · Có search     → BỎ filter ngày, tìm trên toàn bộ.
+      //  - dateRange !== null  → user ĐÃ chủ động chọn khoảng ngày.
+      //      · Search hay không, đều áp filter ngày đó.
+      //  (Nút X gọi setDateRange(null) → về "hôm nay" → search lại thành không-filter.)
+      const userPickedRange = dateRange !== null;
+      const ignoreDateForSearch = !!q && !userPickedRange;
+
+      const range = dateRange || dayRange(selectedDate);
+      const from = ignoreDateForSearch ? undefined : range.from;
+      const to = ignoreDateForSearch ? undefined : range.to;
+
       const [res, sumRes] = await Promise.all([
         q
-          ? incomeApi.search(q, range.from, range.to, { page: p, size: PAGE_SIZE })
+          ? incomeApi.search(q, from, to, { page: p, size: PAGE_SIZE })
           : incomeApi.listByDate(range.from, range.to, { page: p, size: PAGE_SIZE }),
-        incomeApi.summary(q || undefined, range.from, range.to),
+        incomeApi.summary(q || undefined, from, to),
       ]);
 
       const data = res.data?.data || res.data || {};
@@ -139,7 +149,7 @@ export default function IncomeListPage() {
           <input
             value={searchText}
             onChange={e => handleSearchChange(e.target.value)}
-            placeholder="Tìm số phiếu thu, lý do, người nộp tiền..."
+            placeholder="Tìm số phiếu thu, lý do, người nộp, số tiền..."
             className="w-full pl-9 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]"
           />
           {searchText && (

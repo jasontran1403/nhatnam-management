@@ -141,6 +141,9 @@ export const ownerSupplierApi = {
   updateVendor: (vendorId, body) =>
     api.put(`/api/owner/production/suppliers/${vendorId}`, body).then(r => r.data.data),
 
+  deleteVendor: (vendorId) =>
+    api.delete(`/api/owner/production/suppliers/${vendorId}`).then(r => r.data),
+
   getOrders: (vendorId, search) =>
     api.get(`/api/owner/production/suppliers/${vendorId}/orders`, { params: { search } }).then(r => r.data.data),
 

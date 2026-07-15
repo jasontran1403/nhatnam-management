@@ -269,6 +269,7 @@ export const bankApi = {
 export const inventoryFlowApi = {
   summary: (from, to, q) => api.get('/api/inventory/summary', { params: { from, to, ...(q ? { q } : {}) } }),
   ingredients: (q) => api.get('/api/inventory/ingredients', { params: q ? { q } : {} }),
+  factoryStock: (q) => api.get('/api/inventory/factory-stock', { params: q ? { q } : {} }),
   confirm: (data) => api.post('/api/inventory/confirm', data),
 };
 

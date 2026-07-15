@@ -39,6 +39,7 @@ import OwnerProductionDashboard from '../pages/owner/OwnerProductionDashboard';
 import OwnerVendorDebtPage from '../pages/owner/OwnerVendorDebtPage';
 import OwnerSupplierManagementPage from '../pages/owner/OwnerSupplierManagementPage';
 import OwnerMaterialStockPage from '../pages/owner/OwnerMaterialStockPage';
+import OwnerFactoryStockPage from '../pages/owner/OwnerFactoryStockPage';
 import OwnerMaterialPriceAnalysisPage from '../pages/owner/OwnerMaterialPriceAnalysisPage';
 import OwnerPlanDetailPage from '../pages/owner/OwnerPlanDetailPage';
 import OwnerWorkOrderDetailPage from '../pages/owner/OwnerWorkOrderDetailPage';
@@ -202,6 +203,7 @@ export default function AppRoutes() {
         <Route path="production/suppliers/:vendorId" element={<OwnerSupplierManagementPage />} />
         {/* Tồn kho nguyên liệu sản xuất — chỉ xem */}
         <Route path="production/material-stock" element={<OwnerMaterialStockPage />} />
+        <Route path="factory-stock" element={<OwnerFactoryStockPage />} />
         {/* Phân tích giá nguyên liệu — gộp đa nhà cung cấp (mở từ Tồn kho NL)
             Cũng dùng cho danh mục khoản chi qua ?kind=EXPENSE */}
         <Route path="production/material-price-analysis" element={<OwnerMaterialPriceAnalysisPage />} />

@@ -663,7 +663,7 @@ function CompleteModal({ req, onClose, onDone }) {
   const [vendorDecisions, setVendorDecisions] = useState(() => {
     const init = {};
     vendors.forEach(v => {
-      init[v.id] = { action: null, paymentMethod: 'BANK', paymentInfo: '', proofImages: [] };
+      init[v.id] = { action: null, paymentMethod: 'BANK', paymentInfo: '', proofImages: [], importReceiptInfo: '', serialImei: '' };
     });
     return init;
   });
@@ -677,6 +677,8 @@ function CompleteModal({ req, onClose, onDone }) {
   const allDecisionsValid = vendorsWithAmount.every(v => {
     const d = vendorDecisions[v.id];
     if (!d || !d.action) return false;
+    // Mục 7: 2 field bắt buộc cho mọi NCC
+    if (!d.importReceiptInfo?.trim() || !d.serialImei?.trim()) return false;
     if (d.action === 'PAID') return d.proofImages.length > 0 && d.paymentMethod;
     return true;
   });
@@ -727,6 +729,8 @@ function CompleteModal({ req, onClose, onDone }) {
           paymentMethod: d.action === 'PAID' ? d.paymentMethod : null,
           paymentInfo: d.action === 'PAID' ? d.paymentInfo : null,
           proofImages: d.action === 'PAID' ? d.proofImages : [],
+          importReceiptInfo: d.importReceiptInfo?.trim() || null,
+          serialImei: d.serialImei?.trim() || null,
         };
       });
       await accountantMaterialRequestApi.complete(req.id, {
@@ -960,6 +964,27 @@ function CompleteModal({ req, onClose, onDone }) {
                       <p className="text-sm font-bold text-[#C9A84C]">{fmtMoney(total)} đ</p>
                     </div>
 
+                    {/* Mục 7: 2 field bắt buộc theo từng NCC */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#8E8878] mb-1">Thông tin phiếu nhập *</label>
+                        <input className={inputCls}
+                          placeholder="Mã phiếu nhập, mã batch NCC..."
+                          value={d.importReceiptInfo}
+                          onChange={e => setVendorDecision(v.id, { importReceiptInfo: e.target.value })}/>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#8E8878] mb-1">Serial / IMEI *</label>
+                        <input className={inputCls}
+                          placeholder="Dãy số / text từ NCC"
+                          value={d.serialImei}
+                          onChange={e => setVendorDecision(v.id, { serialImei: e.target.value })}/>
+                      </div>
+                    </div>
+                    {(!d.importReceiptInfo?.trim() || !d.serialImei?.trim()) && (
+                      <p className="text-xs text-red-500">Vui lòng nhập thông tin phiếu nhập và Serial/IMEI</p>
+                    )}
+
                     <div className="flex gap-2">
                       <button
                         className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${d.action === 'PAID' ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}
@@ -1167,18 +1192,26 @@ function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
             <div className="mt-3 pt-3 border-t border-black/5">
               <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production','metrics_vendor')}</p>
               {req.vendors.map((v, i) => (
-                <div key={i} className="flex items-center justify-between text-xs text-[#1C1C1E] py-0.5">
-                  <span>
-                    {v.vendorName}{v.contactPerson ? ` · ${v.contactPerson}` : ''}{v.contactPhone ? ` · ${v.contactPhone}` : ''}
-                  </span>
-                  {v.paymentStatus === 'PAID' && (
-                    <span className="text-emerald-600 font-semibold">Đã thanh toán {fmtVND(v.totalAmount)}</span>
-                  )}
-                  {v.paymentStatus === 'DEBT' && (
-                    <span className="text-amber-700 font-semibold">
-                      Công nợ {fmtVND(v.debtRemaining)}
-                      {v.debtSettlementStatus === 'SETTLED' ? ' (đã trả hết)' : v.debtSettlementStatus === 'PARTIAL' ? ' (đã trả 1 phần)' : ''}
+                <div key={i} className="py-0.5">
+                  <div className="flex items-center justify-between text-xs text-[#1C1C1E]">
+                    <span>
+                      {v.vendorName}{v.contactPerson ? ` · ${v.contactPerson}` : ''}{v.contactPhone ? ` · ${v.contactPhone}` : ''}
                     </span>
+                    {v.paymentStatus === 'PAID' && (
+                      <span className="text-emerald-600 font-semibold">Đã thanh toán {fmtVND(v.totalAmount)}</span>
+                    )}
+                    {v.paymentStatus === 'DEBT' && (
+                      <span className="text-amber-700 font-semibold">
+                        Công nợ {fmtVND(v.debtRemaining)}
+                        {v.debtSettlementStatus === 'SETTLED' ? ' (đã trả hết)' : v.debtSettlementStatus === 'PARTIAL' ? ' (đã trả 1 phần)' : ''}
+                      </span>
+                    )}
+                  </div>
+                  {(v.importReceiptInfo || v.serialImei) && (
+                    <div className="flex flex-wrap gap-x-3 mt-0.5 text-[11px] text-[#8E8878]">
+                      {v.importReceiptInfo && <span>Phiếu nhập: <span className="text-[#1C1C1E]">{v.importReceiptInfo}</span></span>}
+                      {v.serialImei && <span>Serial/IMEI: <span className="text-[#1C1C1E]">{v.serialImei}</span></span>}
+                    </div>
                   )}
                 </div>
               ))}

@@ -1,12 +1,14 @@
 // src/pages/factory_worker/FactoryMaterialStockPage.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { Package, AlertTriangle, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Package, AlertTriangle, ChevronDown, ChevronUp, Search, ArrowUpFromLine, ArrowRightLeft, History, FileText, FlaskConical } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import { factoryMaterialRequestApi } from '../../api/materialRequestApi.js';
 import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
-import { factoryProdApi } from '../../api/productionModuleApi';
+import { useAuth } from '../../context/AuthContext';
+import { factoryProdApi, factoryStockApi } from '../../api/productionModuleApi';
+import { ExportMaterialModal, TransferMaterialModal, MixModal } from '../../components/production/FactoryStockModals.jsx';
 
 function fmtQty(v) {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(Number(v || 0));
@@ -94,14 +96,95 @@ function StockCard({ item }) {
   );
 }
 
+// ── Lịch sử phiếu ─────────────────────────────────────────────────────────────
+function NoteHistory({ factoryId }) {
+  const { fmtNum, fmtDateTime } = useFmt();
+  const [notes, setNotes] = useState([]);
+  const [type, setType] = useState('ALL');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!factoryId) return;
+    setLoading(true);
+    factoryStockApi.listNotes(factoryId, type === 'ALL' ? undefined : type)
+      .then(d => setNotes(d || [])).catch(() => setNotes([])).finally(() => setLoading(false));
+  }, [factoryId, type]);
+
+  const typeColor = t => t === 'EXPORT' ? 'text-red-600 bg-red-50'
+    : t === 'IMPORT' ? 'text-emerald-600 bg-emerald-50'
+    : t === 'TRANSFER_OUT' ? 'text-amber-600 bg-amber-50'
+    : 'text-sky-600 bg-sky-50';
+
+  const filters = [
+    { v: 'ALL', l: 'Tất cả' }, { v: 'EXPORT', l: 'Xuất kho' },
+    { v: 'TRANSFER_OUT', l: 'Chuyển đi' }, { v: 'TRANSFER_IN', l: 'Chuyển đến' },
+    { v: 'IMPORT', l: 'Nhập kho' },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1.5 flex-wrap">
+        {filters.map(f => (
+          <button key={f.v} onClick={() => setType(f.v)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border ${type === f.v ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}>
+            {f.l}
+          </button>
+        ))}
+      </div>
+      {loading ? <CardSkeleton />
+        : notes.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-8 text-center">
+            <FileText size={28} className="mx-auto text-[#8E8878] mb-2" />
+            <p className="text-[#8E8878] text-sm">Chưa có phiếu nào</p>
+          </div>
+        ) : notes.map(n => (
+          <div key={n.id} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold text-[#1C1C1E]">{n.noteCode}</span>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${typeColor(n.type)}`}>{n.typeLabel}</span>
+              </div>
+              <span className="text-[11px] text-[#8E8878]">{fmtDateTime(n.createdAt)}</span>
+            </div>
+            {n.targetName && (
+              <p className="text-xs text-[#8E8878] mt-1">
+                Đích: <span className="font-medium text-[#1C1C1E]">{n.targetName}</span>
+                {n.targetTypeLabel && ` (${n.targetTypeLabel})`}
+              </p>
+            )}
+            {n.reason && <p className="text-xs text-[#8E8878] mt-0.5">Lý do: {n.reason}</p>}
+            <div className="mt-2 space-y-1">
+              {(n.lines || []).map((l, i) => (
+                <div key={i} className="flex justify-between text-sm bg-[#FAF7F2] rounded-lg px-3 py-1.5">
+                  <span className="text-[#1C1C1E]">{l.materialName}</span>
+                  <span className="font-medium text-[#1A2B1A]">{fmtNum(l.quantity, 3)} {l.unit}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-[#8E8878] mt-2">{n.createdByName}</p>
+          </div>
+        ))
+      }
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FactoryMaterialStockPage() {
   const { t } = useLang();
+  const { role } = useAuth();
+  // SUPER_FACTORY_WORKER quản lý kho NL xưởng → được xuất/chuyển kho.
+  const canManage = role === 'SUPER_FACTORY_WORKER';
+
+  const [tab, setTab] = useState('stock');   // stock | history
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [factories, setFactories] = useState([]);
   const [factoryId, setFactoryId] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [mixOpen, setMixOpen] = useState(false);
 
   useEffect(() => {
     factoryProdApi.listMyFactories().then(list => {
@@ -116,7 +199,7 @@ export default function FactoryMaterialStockPage() {
     factoryMaterialRequestApi.getStock(factoryId)
       .then(d => setStocks(d || []))
       .finally(() => setLoading(false));
-  }, [factoryId]);
+  }, [factoryId, setLoading]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -127,10 +210,35 @@ export default function FactoryMaterialStockPage() {
   const nearExpiryCount = stocks.reduce((acc, s) =>
     acc + (s.lots || []).filter(l => l.nearExpiry).length, 0);
 
+  // Nguồn cho modal XUẤT kho: chỉ nguyên liệu CÓ tồn
+  const sourceMaterials = stocks
+    .filter(s => Number(s.totalQty) > 0)
+    .map(s => ({ materialName: s.materialName, unit: s.unit, availableQuantity: s.totalQty }));
+
+  // Nguồn cho modal MIX: TẤT CẢ nguyên liệu của kho đang chọn (kể cả tồn 0)
+  const allMaterials = stocks
+    .map(s => ({ materialName: s.materialName, unit: s.unit, availableQuantity: s.totalQty }));
+
   return (
     <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','inv_factory_stock_title')}</h1>
+        {canManage && (
+          <div className="flex gap-2">
+            <button onClick={() => setMixOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[#C9A84C] text-white hover:bg-[#b89540]">
+              <FlaskConical size={13} /> Mix gia vị
+            </button>
+            <button onClick={() => setExportOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-white border border-black/10 text-[#1C1C1E] hover:bg-[#FAF7F2]">
+              <ArrowUpFromLine size={13} /> Xuất kho
+            </button>
+            <button onClick={() => setTransferOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[#1A2B1A] text-white hover:bg-[#243524]">
+              <ArrowRightLeft size={13} /> Chuyển kho
+            </button>
+          </div>
+        )}
       </div>
 
       {factories.length > 1 && (
@@ -138,56 +246,89 @@ export default function FactoryMaterialStockPage() {
           <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
           <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
             value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">{t('common','all')}</option>
             {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
         </div>
       )}
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
-          <p className="text-xs text-[#8E8878]">{t('production','inv_material_types')}</p>
-          <p className="text-2xl font-bold text-[#1A2B1A] mt-1">{stocks.length}</p>
+      {/* Tabs */}
+      {canManage && (
+        <div className="flex gap-1.5">
+          <button onClick={() => setTab('stock')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold ${tab === 'stock' ? 'bg-[#1A2B1A] text-white' : 'bg-white text-[#8E8878] border border-[#E8DDD0]'}`}>
+            <Package size={13} /> Tồn kho
+          </button>
+          <button onClick={() => setTab('history')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold ${tab === 'history' ? 'bg-[#1A2B1A] text-white' : 'bg-white text-[#8E8878] border border-[#E8DDD0]'}`}>
+            <History size={13} /> Lịch sử phiếu
+          </button>
         </div>
-        <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
-          <p className="text-xs text-[#8E8878]">{t('production','inv_near_expiry')}</p>
-          <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700' : 'text-[#1A2B1A]'}`}>
-            {nearExpiryCount}
-          </p>
-        </div>
-      </div>
+      )}
 
-      {/* Search */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
-          <input
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0]
-              focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
-            placeholder={t('production','inv_search_material_ph')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
+      {tab === 'history' ? <NoteHistory factoryId={factoryId} /> : (
+        <>
+          {/* Summary */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+              <p className="text-xs text-[#8E8878]">{t('production','inv_material_types')}</p>
+              <p className="text-2xl font-bold text-[#1A2B1A] mt-1">{stocks.length}</p>
+            </div>
+            <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
+              <p className="text-xs text-[#8E8878]">{t('production','inv_near_expiry')}</p>
+              <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700' : 'text-[#1A2B1A]'}`}>
+                {nearExpiryCount}
+              </p>
+            </div>
+          </div>
 
-      {/* List */}
-      {loading
-        ? <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>
-        : filtered.length === 0
-          ? (
-            <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-              <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">{t('production','inv_empty_stock')}</p>
+          {/* Search */}
+          <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <input
+                className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0]
+                  focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+                placeholder={t('production','inv_search_material_ph')}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
             </div>
-          )
-          : (
-            <div className="space-y-3">
-              {filtered.map((item, i) => <StockCard key={i} item={item} />)}
-            </div>
-          )
-      }
+          </div>
+
+          {/* List */}
+          {loading
+            ? <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>
+            : filtered.length === 0
+              ? (
+                <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
+                  <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
+                  <p className="text-[#8E8878] text-sm">{t('production','inv_empty_stock')}</p>
+                </div>
+              )
+              : (
+                <div className="space-y-3">
+                  {filtered.map((item, i) => <StockCard key={i} item={item} />)}
+                </div>
+              )
+          }
+        </>
+      )}
+
+      {exportOpen && (
+        <ExportMaterialModal factoryId={factoryId} sourceMaterials={sourceMaterials}
+          onClose={() => setExportOpen(false)}
+          onDone={() => { setExportOpen(false); load(); }} />
+      )}
+      {transferOpen && (
+        <TransferMaterialModal factoryId={factoryId}
+          onClose={() => setTransferOpen(false)}
+          onDone={() => { setTransferOpen(false); load(); }} />
+      )}
+      {mixOpen && (
+        <MixModal factoryId={factoryId} sourceMaterials={allMaterials}
+          onClose={() => setMixOpen(false)}
+          onDone={() => { setMixOpen(false); load(); }} />
+      )}
     </div>
   );
 }
