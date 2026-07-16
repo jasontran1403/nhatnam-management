@@ -1,5 +1,5 @@
 // src/pages/accountant/IncomeDetailModal.jsx
-import { X, TrendingUp, Banknote, CreditCard, ShoppingCart } from 'lucide-react';
+import { X, TrendingUp, Banknote, CreditCard, ShoppingCart, User } from 'lucide-react';
 
 function formatVND(n) {
   if (!n && n !== 0) return '0 đ';
@@ -73,6 +73,23 @@ export default function IncomeDetailModal({ voucher: v, onClose }) {
                 {v.linkedOrderCodes.map((code, i) => (
                   <span key={i} className="font-mono text-xs bg-[#FAF7F2] border border-[#C9A84C]/20 text-[#C9A84C] px-3 py-1.5 rounded-lg font-bold">
                     {code}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Khách hàng của các đơn liên kết */}
+          {v.linkedCustomerNames?.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#1C1C1E] mb-2">
+                <User size={14} className="text-[#C9A84C]" />
+                {v.linkedCustomerNames.length > 1 ? 'Khách hàng' : 'Khách hàng'} ({v.linkedCustomerNames.length})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {v.linkedCustomerNames.map((name, i) => (
+                  <span key={i} className="text-xs bg-[#FAF7F2] border border-[#C9A84C]/20 text-[#1C1C1E] px-3 py-1.5 rounded-lg font-medium">
+                    {name}
                   </span>
                 ))}
               </div>

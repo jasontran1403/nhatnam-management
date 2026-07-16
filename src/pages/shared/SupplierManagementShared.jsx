@@ -4,12 +4,13 @@
 //  1) Danh sách NCC: group theo danh mục (vendorType), collapse/expand,
 //     filter theo danh mục. Badge số ngày công nợ lâu nhất.
 //  2) Click NCC → trang chi tiết: thông tin NCC + lịch sử đặt hàng.
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Building2, ChevronLeft, ChevronDown, ChevronRight, Search, Phone, User, MapPin, Hash,
   Wallet, Clock, ArrowUpDown, TrendingUp, TrendingDown, Minus, Package,
   Receipt, X, BarChart3, Calendar, Layers, Plus, Pencil, Trash2, Tag, Check,
+  Download, Upload,
 } from 'lucide-react';
 import {
   PageHeader, EmptyState, formatCurrency, formatDate,
@@ -88,6 +89,51 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
     return () => clearTimeout(t);
   }, [load, search]);
 
+  // ── Export / Import Excel ─────────────────────────────────────────────────
+  const importInputRef = useRef(null);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const res = await ownerSupplierApi.exportSuppliers(search.trim() || undefined);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      a.download = `danh-sach-nha-cung-cap-${dd}${mm}${now.getFullYear()}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+      listToast('Đã xuất file nhà cung cấp', 'success');
+    } catch (e) {
+      listToast(e?.response?.data?.message || 'Lỗi xuất file', 'error');
+    } finally { setExporting(false); }
+  }, [search, listToast]);
+
+  const handleImport = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset để chọn lại cùng file được
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await ownerSupplierApi.importSuppliers(file);
+      // res = ApiResponse { success, message, data:{updated,skipped,errors} }
+      const data = res?.data || {};
+      if (!res?.success) {
+        listToast(res?.message || 'Import thất bại', 'error');
+      } else {
+        listToast(res?.message || `Cập nhật ${data.updated || 0} NCC`, data.skipped ? 'warning' : 'success');
+        if (data.errors?.length) console.warn('Import lỗi:', data.errors);
+      }
+      load();
+    } catch (err) {
+      listToast(err?.response?.data?.message || 'Lỗi import file', 'error');
+    } finally { setImporting(false); }
+  }, [listToast, load]);
+
   // Lọc theo danh mục
   const filtered = useMemo(() => {
     if (!typeFilter) return suppliers;
@@ -140,13 +186,35 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
         <PageHeader icon={Building2} title="Quản lý nhà cung cấp"
           subtitle={`${suppliers.length} nhà cung cấp · ${withDebt} đang có công nợ`} />
 
-        {/* Phân tích danh mục chi — nguyên liệu đã mua + khoản chi/dịch vụ đã dùng */}
-        {analysisPath && (
-          <button onClick={() => navigate(analysisPath)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#1A2B1A] text-white hover:bg-[#243824] transition-colors flex-shrink-0 self-start">
-            <BarChart3 size={15} /> Phân tích danh mục chi
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap self-start">
+          {canManageCatalog && (
+            <>
+              <input ref={importInputRef} type="file" accept=".xlsx" hidden onChange={handleImport} />
+              <button onClick={handleExport} disabled={exporting}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-white text-[#1A2B1A] border border-[#E8DDD0] hover:border-[#1A2B1A] transition-colors disabled:opacity-50">
+                {exporting
+                  ? <span className="w-4 h-4 border-2 border-[#1A2B1A]/30 border-t-[#1A2B1A] rounded-full animate-spin" />
+                  : <Download size={15} />}
+                Export
+              </button>
+              <button onClick={() => importInputRef.current?.click()} disabled={importing}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-white text-[#1A2B1A] border border-[#E8DDD0] hover:border-[#1A2B1A] transition-colors disabled:opacity-50">
+                {importing
+                  ? <span className="w-4 h-4 border-2 border-[#1A2B1A]/30 border-t-[#1A2B1A] rounded-full animate-spin" />
+                  : <Upload size={15} />}
+                Import
+              </button>
+            </>
+          )}
+
+          {/* Phân tích danh mục chi — nguyên liệu đã mua + khoản chi/dịch vụ đã dùng */}
+          {analysisPath && (
+            <button onClick={() => navigate(analysisPath)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#1A2B1A] text-white hover:bg-[#243824] transition-colors flex-shrink-0">
+              <BarChart3 size={15} /> Phân tích danh mục chi
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tổng công nợ */}

@@ -1,5 +1,6 @@
 // src/pages/accountant/ExpenseCreateModal.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { expenseApi, bankApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -412,6 +413,151 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
 }
 
 // ── Modal tạo phiếu chi chính ─────────────────────────────────────────────────
+// ── Input search dropdown chọn nhãn khoản chi + tạo nhanh ─────────────────────
+// Viết hoa chữ cái đầu của từ nhập vào (VD: "tiền chành xe" → "Tiền chành xe").
+function capitalizeFirst(s) {
+  const t = (s || '').trim();
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function CategorySearchSelect({ categories, setCategories, value, onChange, index, toast }) {
+  const [open, setOpen]       = useState(false);
+  const [search, setSearch]   = useState('');
+  const [creating, setCreating] = useState(false);
+  // Toạ độ dropdown (fixed) — tính từ ô trigger để render qua portal, không bị modal cắt
+  const [menuPos, setMenuPos] = useState(null); // { left, width, top?, bottom? }
+  const triggerRef = useRef(null);
+  const menuRef    = useRef(null);
+
+  const selected = categories.find(c => String(c.id) === String(value)) || null;
+
+  // Tính vị trí dropdown theo trigger. Tự lật lên trên nếu dưới không đủ chỗ.
+  const updatePosition = () => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const MENU_MAX_H = 320; // ước lượng chiều cao tối đa dropdown
+    const spaceBelow = window.innerHeight - r.bottom;
+    const openUp = spaceBelow < MENU_MAX_H && r.top > spaceBelow;
+    setMenuPos(
+      openUp
+        ? { left: r.left, width: r.width, bottom: window.innerHeight - r.top + 4 }
+        : { left: r.left, width: r.width, top: r.bottom + 4 }
+    );
+  };
+
+  // Cập nhật vị trí khi mở + khi cuộn (kể cả cuộn trong modal) / đổi kích thước
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const onScroll = () => updatePosition();
+    const onResize = () => updatePosition();
+    window.addEventListener('scroll', onScroll, true); // capture=true để bắt scroll của container trong modal
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [open]);
+
+  // Đóng khi click ra ngoài (menu nằm ở portal nên phải kiểm tra cả trigger lẫn menu)
+  useEffect(() => {
+    const fn = (e) => {
+      if (triggerRef.current && triggerRef.current.contains(e.target)) return;
+      if (menuRef.current && menuRef.current.contains(e.target)) return;
+      setOpen(false);
+      setSearch('');
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  const kw = search.trim().toLowerCase();
+  const filtered = kw
+    ? categories.filter(c => c.name.toLowerCase().includes(kw))
+    : categories;
+  const exactExists = categories.some(c => c.name.trim().toLowerCase() === kw);
+  const canCreate = kw.length > 0 && !exactExists;
+
+  const handleCreate = async () => {
+    const name = capitalizeFirst(search);
+    if (!name) return;
+    setCreating(true);
+    try {
+      const res = await expenseApi.createExpenseCategory(name);
+      const created = res.data?.data || res.data;
+      if (!created || !created.id) throw new Error('Tạo nhãn thất bại');
+      setCategories(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, 'vi')));
+      onChange(String(created.id));
+      toast(`Đã tạo nhãn "${created.name}"`, 'success');
+      setOpen(false);
+      setSearch('');
+    } catch (e) {
+      toast(e?.response?.data?.message || e.message || 'Không thể tạo nhãn', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div className="relative flex-1">
+      <div
+        ref={triggerRef}
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm cursor-pointer bg-white transition ${open ? 'border-[#C9A84C] ring-2 ring-[#C9A84C]/40' : 'border-black/10 hover:border-[#C9A84C]'}`}>
+        <span className={selected ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}>
+          {selected ? selected.name : `— Chọn nhãn khoản chi ${index + 1} —`}
+        </span>
+        <ChevronDown size={15} className={`text-[#8E8878] flex-shrink-0 ml-2 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </div>
+
+      {open && menuPos && createPortal(
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed',
+            left: menuPos.left,
+            width: menuPos.width,
+            ...(menuPos.top != null ? { top: menuPos.top } : {}),
+            ...(menuPos.bottom != null ? { bottom: menuPos.bottom } : {}),
+            zIndex: 70, // cao hơn modal (z-50) để luôn nổi lên trên
+          }}
+          className="bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-black/5 relative">
+            <Search size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Tìm hoặc nhập nhãn mới..."
+              className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+          </div>
+          <div className="max-h-52 overflow-y-auto">
+            {filtered.map(c => (
+              <button key={c.id}
+                onClick={() => { onChange(String(c.id)); setOpen(false); setSearch(''); }}
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#FAF7F2] transition border-b border-black/5 last:border-0 ${String(c.id) === String(value) ? 'bg-[#FAF7F2] font-semibold text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+                {c.name}
+              </button>
+            ))}
+            {filtered.length === 0 && !canCreate && (
+              <p className="text-center py-4 text-xs text-[#8E8878]">Không tìm thấy nhãn</p>
+            )}
+          </div>
+          {canCreate && (
+            <button onClick={handleCreate} disabled={creating}
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[#C9A84C] hover:bg-[#C9A84C]/5 border-t border-black/5 transition disabled:opacity-50">
+              {creating
+                ? <span className="w-3.5 h-3.5 border-2 border-[#C9A84C]/40 border-t-[#C9A84C] rounded-full animate-spin" />
+                : <Plus size={14} />}
+              Tạo nhãn "<span className="font-bold">{capitalizeFirst(search)}</span>"
+            </button>
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 export default function ExpenseCreateModal({ onClose, onCreated, initialMode = 'EXPENSE', initialVendorId = null, initialVendorName = '' }) {
   const toast = useToast();
   const fileRef = useRef();
@@ -542,7 +688,6 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
 
   const handleSubmit = async () => {
     if (!selectedVendor) { toast('Vui lòng chọn nhà cung cấp', 'error'); return; }
-    if (categories.length === 0) { toast('Chưa có danh mục khoản chi — cần Owner thêm nhãn trước', 'error'); return; }
     if (!reason.trim())  { toast('Lý do chi là bắt buộc', 'error'); return; }
     const validItems = items.filter(i => i.categoryId && parseVND(i.amount) > 0);
     if (validItems.length === 0) { toast('Mỗi khoản chi cần chọn nhãn và nhập số tiền > 0', 'error'); return; }
@@ -816,7 +961,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                 <label className="text-sm font-semibold text-[#1C1C1E]">
                   Các khoản chi <span className="text-red-500">*</span>
                 </label>
-                <button onClick={addItem} disabled={!selectedVendor || categories.length === 0}
+                <button onClick={addItem} disabled={!selectedVendor}
                   className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline font-semibold disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
                   <Plus size={13} /> Thêm khoản
                 </button>
@@ -826,24 +971,24 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                 <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Chọn nhà cung cấp trước khi thêm khoản chi.</p>
               ) : catLoading ? (
                 <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Đang tải danh mục khoản chi...</p>
-              ) : categories.length === 0 ? (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  Chưa có danh mục khoản chi nào. Cần chủ (Owner) thêm nhãn ở trang <b>Quản lý nhà cung cấp</b> trước khi lập phiếu.
-                  Danh mục này <b>dùng chung cho mọi nhà cung cấp</b> — chỉ cần tạo một lần.
-                </p>
               ) : (
               <div className="space-y-2">
+                {categories.length === 0 && (
+                  <p className="text-xs text-[#8E8878] bg-[#FAF7F2] border border-black/5 rounded-xl p-3">
+                    Chưa có nhãn khoản chi. Gõ tên nhãn vào ô bên dưới rồi bấm <b>Tạo nhãn</b> để thêm mới ngay.
+                  </p>
+                )}
                 {items.map((item, idx) => (
                   <div key={item.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
                     <div className="flex gap-2">
-                      <select
-                        value={item.categoryId} onChange={e => updateItem(item.id, 'categoryId', e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white cursor-pointer">
-                        <option value="">— Chọn nhãn khoản chi {idx + 1} —</option>
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                      <CategorySearchSelect
+                        categories={categories}
+                        setCategories={setCategories}
+                        value={item.categoryId}
+                        onChange={(val) => updateItem(item.id, 'categoryId', val)}
+                        index={idx}
+                        toast={toast}
+                      />
                       <input
                         value={item.amount ? new Intl.NumberFormat('vi-VN').format(parseVND(item.amount)) : ''}
                         onChange={e => updateItem(item.id, 'amount', String(parseVND(e.target.value)))}

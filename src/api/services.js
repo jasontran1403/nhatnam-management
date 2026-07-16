@@ -227,6 +227,8 @@ export const expenseApi = {
   // Danh mục khoản chi (đang bật) của 1 NCC — cho form lập phiếu chi
   /** Danh mục khoản chi đang bật — POOL DÙNG CHUNG cho mọi NCC */
   expenseCategories: () => api.get('/api/expense-vouchers/expense-categories'),
+  /** Tạo nhanh nhãn khoản chi ngay khi lập phiếu chi (ACCOUNTANT/SUPER_ACCOUNTANT). */
+  createExpenseCategory: (name) => api.post('/api/expense-vouchers/expense-categories', { name }),
   /** @deprecated danh mục là pool chung — vendorId bị bỏ qua */
   vendorCategories: () => api.get('/api/expense-vouchers/expense-categories'),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
@@ -251,8 +253,8 @@ export const incomeApi = {
   summary: (q, from, to) => api.get('/api/income-vouchers/summary', { params: { q, from, to } }),
   getById: (id) => api.get(`/api/income-vouchers/${id}`),
   nextReceiptNumber: () => api.get('/api/income-vouchers/next-receipt-number'),
-  exportReport: (from, to) =>
-    api.get('/api/income-vouchers/export', { params: { from, to }, responseType: 'blob' }),
+  exportReport: (from, to, paymentType) =>
+    api.get('/api/income-vouchers/export', { params: { from, to, paymentType }, responseType: 'blob' }),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
     return api.post('/api/upload/income-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });

@@ -416,8 +416,9 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
           <textarea className={inputCls} rows={2} value={form.description} onChange={e => set('description', e.target.value)} />
         </Field>
 
-        {/* Chọn xưởng có nguyên liệu */}
-        {factories.length > 0 && (
+        {/* Chọn xưởng có nguyên liệu — chỉ hiển thị khi SỬA.
+            Khi TẠO mới: nguyên liệu tự động có ở tất cả xưởng đang hoạt động. */}
+        {isEdit && factories.length > 0 && (
           <Field label={t('production','mstock_field_factories')} hint={t('production','mstock_hint_factories')}>
             <div className="flex flex-wrap gap-2 mt-1">
               {factories.filter(f => f.status === 'ACTIVE').map(f => {
@@ -432,6 +433,11 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
               })}
             </div>
           </Field>
+        )}
+        {!isEdit && (
+          <p className="text-xs text-[#8E8878] mt-1">
+            Nguyên liệu mới sẽ tự động có mặt ở kho của tất cả xưởng đang hoạt động.
+          </p>
         )}
       </div>
     </Modal>

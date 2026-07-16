@@ -17,12 +17,55 @@ import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 import api from '../../api/axios.js';
 import {
-  allocateCost, unitPriceFromTotal, parseMoneyInput, clampDecimalInput,
+  allocateCost, unitPriceFromTotal,
   normalizeMoney, fmtMoney, fmtDong, MONEY_DECIMALS,
 } from '../../utils/costCalc';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const imgUrl = (p) => { if (!p) return ''; if (p.startsWith('http')) return p; return BASE_URL + "/api/auth" + p; };
+
+// ── Định dạng số tiền kiểu Việt Nam khi gõ ────────────────────────────────────
+// Quy ước: dấu CHẤM ngăn cách hàng nghìn, dấu PHẨY là dấu thập phân (tối đa 3 số).
+//   "123123123"  → "123.123.123"
+//   "123123,45"  → "123.123,45"
+//   đã có phẩy + đủ 3 số lẻ → không nhận thêm ký tự thập phân nữa.
+function formatMoneyTyping(raw) {
+  if (raw == null) return '';
+  let s = String(raw).replace(/[^\d,]/g, ''); // chỉ giữ chữ số và dấu phẩy
+  const firstComma = s.indexOf(',');
+  let intPart, decPart;
+  if (firstComma === -1) {
+    intPart = s;
+    decPart = null;
+  } else {
+    intPart = s.slice(0, firstComma).replace(/,/g, '');
+    decPart = s.slice(firstComma + 1).replace(/,/g, '').slice(0, MONEY_DECIMALS); // tối đa 3 số lẻ
+  }
+  intPart = intPart.replace(/^0+(?=\d)/, ''); // bỏ số 0 vô nghĩa ở đầu
+  if (intPart === '') intPart = decPart === null ? '' : '0';
+  const intFmt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  if (decPart === null) return intFmt;
+  return `${intFmt},${decPart}`;
+}
+
+// Chuỗi hiển thị VN ("1.234.567,89") → number (hoặc null nếu rỗng/không hợp lệ)
+function parseMoneyVN(s) {
+  if (s == null || s === '') return null;
+  const cleaned = String(s).replace(/\./g, '').replace(',', '.');
+  if (cleaned === '' || cleaned === '.') return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+// number → chuỗi hiển thị VN (tối đa 3 số lẻ, bỏ số 0 lẻ thừa)
+function moneyToVN(n) {
+  if (n == null || !Number.isFinite(n)) return '';
+  const neg = n < 0;
+  const [i, dRaw] = Math.abs(n).toFixed(MONEY_DECIMALS).split('.');
+  const d = (dRaw || '').replace(/0+$/, '');
+  const iFmt = i.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (neg ? '-' : '') + (d ? `${iFmt},${d}` : iFmt);
+}
 
 // ── Countdown badge — đếm ngược giây ─────────────────────────────────────────
 function CountdownBadge({ targetMs, label }) {
@@ -569,7 +612,7 @@ function CompleteModal({ req, onClose, onDone }) {
   // 'TOTAL' : nhập TỔNG TIỀN của 1 nguyên liệu → tự chia SL ra đơn giá (3 số lẻ)
   const [priceMode, setPriceMode] = useState('UNIT');
 
-  // itemId -> chuỗi người dùng gõ (ý nghĩa tuỳ priceMode). Tối đa 3 số thập phân.
+  // itemId -> chuỗi người dùng gõ (đã format kiểu VN, ý nghĩa tuỳ priceMode).
   const [priceInputs, setPriceInputs] = useState(() => {
     const init = {};
     receivedItems.forEach(it => { init[it.id] = ''; });
@@ -577,7 +620,8 @@ function CompleteModal({ req, onClose, onDone }) {
   });
 
   const setPriceInput = (itemId, raw) => {
-    setPriceInputs(p => ({ ...p, [itemId]: clampDecimalInput(raw) }));
+    // Format ngay theo chuẩn VN mỗi lần gõ/xoá 1 ký tự.
+    setPriceInputs(p => ({ ...p, [itemId]: formatMoneyTyping(raw) }));
     setShowPreview(false);
   };
 
@@ -586,12 +630,12 @@ function CompleteModal({ req, onClose, onDone }) {
     setPriceInputs(prev => {
       const next = {};
       receivedItems.forEach(it => {
-        const v = parseMoneyInput(prev[it.id]);
+        const v = parseMoneyVN(prev[it.id]);
         const qty = Number(it.qtyReceived) || 0;
         if (v === null || !qty) { next[it.id] = ''; return; }
         next[it.id] = mode === 'TOTAL'
-          ? String(v * qty)                      // đơn giá → tổng tiền
-          : String(unitPriceFromTotal(v, qty));  // tổng tiền → đơn giá (3 số lẻ)
+          ? moneyToVN(v * qty)                      // đơn giá → tổng tiền
+          : moneyToVN(unitPriceFromTotal(v, qty));  // tổng tiền → đơn giá (3 số lẻ)
       });
       return next;
     });
@@ -603,7 +647,7 @@ function CompleteModal({ req, onClose, onDone }) {
   const unitPrices = useMemo(() => {
     const m = {};
     receivedItems.forEach(it => {
-      const v = parseMoneyInput(priceInputs[it.id]);
+      const v = parseMoneyVN(priceInputs[it.id]);
       const qty = Number(it.qtyReceived) || 0;
       m[it.id] = v === null ? 0 : (priceMode === 'TOTAL' ? unitPriceFromTotal(v, qty) : v);
     });
@@ -635,8 +679,8 @@ function CompleteModal({ req, onClose, onDone }) {
       unitPrice: unitPrices[it.id] || 0,
     })),
     customEntries
-      .filter(ce => ce.label.trim() && parseMoneyInput(ce.amount) > 0)
-      .map(ce => ({ label: ce.label.trim(), amount: parseMoneyInput(ce.amount), itemIds: ce.itemIds })),
+      .filter(ce => ce.label.trim() && parseMoneyVN(ce.amount) > 0)
+      .map(ce => ({ label: ce.label.trim(), amount: parseMoneyVN(ce.amount), itemIds: ce.itemIds })),
   ), [unitPrices, customEntries, req.id]);
 
   // Tiền THẬT phải trả NCC của mỗi dòng = giá trị hàng + thuế/phí phân bổ (chưa làm tròn về đồng)
@@ -657,7 +701,7 @@ function CompleteModal({ req, onClose, onDone }) {
   const vendorsWithAmount = vendors.filter(v => totalsByVendor[v.id] > 0);
   const grandTotal = Object.values(totalsByVendor).reduce((s, v) => s + v, 0);
   const grandMaterialTotal = receivedItems.reduce((s, it) => s + (alloc.get(it.id)?.lineValue || 0), 0);
-  const grandFeeTotal = customEntries.reduce((s, ce) => s + (parseMoneyInput(ce.amount) || 0), 0);
+  const grandFeeTotal = customEntries.reduce((s, ce) => s + (parseMoneyVN(ce.amount) || 0), 0);
 
   // requestVendorId -> { action, paymentMethod, paymentInfo, proofImages }
   const [vendorDecisions, setVendorDecisions] = useState(() => {
@@ -672,7 +716,7 @@ function CompleteModal({ req, onClose, onDone }) {
 
   const allVendorsAssigned = receivedItems.every(it => !!itemVendors[it.id]);
   const allMaterialEntered = receivedItems.every(it => (unitPrices[it.id] || 0) > 0);
-  const allCustomValid = customEntries.every(ce => ce.label.trim() && parseMoneyInput(ce.amount) > 0 && ce.itemIds.length > 0);
+  const allCustomValid = customEntries.every(ce => ce.label.trim() && parseMoneyVN(ce.amount) > 0 && ce.itemIds.length > 0);
 
   const allDecisionsValid = vendorsWithAmount.every(v => {
     const d = vendorDecisions[v.id];
@@ -717,7 +761,7 @@ function CompleteModal({ req, onClose, onDone }) {
         ...customEntries.map(ce => ({
           type: 'CUSTOM',
           label: ce.label.trim(),
-          amount: parseMoneyInput(ce.amount),
+          amount: parseMoneyVN(ce.amount),
           itemIds: ce.itemIds,
         })),
       ];
@@ -771,7 +815,7 @@ function CompleteModal({ req, onClose, onDone }) {
             </button>
           </div>
           <p className="text-[11px] text-[#8E8878] mt-1.5">
-            Nhập tối đa {MONEY_DECIMALS} số sau dấu thập phân.
+            Nhập tối đa {MONEY_DECIMALS} số sau dấu thập phân (dùng dấu phẩy).
             {priceMode === 'TOTAL' && ' Hệ thống tự chia cho số lượng thực nhận để ra đơn giá.'}
           </p>
         </div>
@@ -810,7 +854,7 @@ function CompleteModal({ req, onClose, onDone }) {
                     )}
                     <input
                       type="text" inputMode="decimal"
-                      className={inputCls}
+                      className={`${inputCls} text-right tabular-nums`}
                       placeholder={priceMode === 'UNIT'
                         ? `Đơn giá / ${it.unit || 'đv'} (đ)`
                         : 'Tổng tiền nguyên liệu (đ)'}
@@ -862,9 +906,9 @@ function CompleteModal({ req, onClose, onDone }) {
                   <div className="flex gap-2">
                     <input className={inputCls} placeholder={t('production','mr_ph_cost_name')}
                       value={ce.label} onChange={e => updateCustomEntry(ce.id, { label: e.target.value })} />
-                    <input type="text" inputMode="decimal" className={`${inputCls} w-40`} placeholder="Số tiền (đ)"
+                    <input type="text" inputMode="decimal" className={`${inputCls} w-40 text-right tabular-nums`} placeholder="Số tiền (đ)"
                       value={ce.amount}
-                      onChange={e => updateCustomEntry(ce.id, { amount: clampDecimalInput(e.target.value) })} />
+                      onChange={e => updateCustomEntry(ce.id, { amount: formatMoneyTyping(e.target.value) })} />
                     <button onClick={() => removeCustomEntry(ce.id)}
                       className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
                       <Trash2 size={14} />

@@ -36,6 +36,17 @@ export const factoryProductApi = {
     api.post('/api/owner/factory/products', data).then(r => r.data.data),
   update: (id, data) =>
     api.put(`/api/owner/factory/products/${id}`, data).then(r => r.data.data),
+
+  // Export/Import Excel thành phẩm (chỉ export isActive=true; import đổi "Xóa" → soft delete)
+  exportProducts: () =>
+    api.get('/api/owner/factory/products/export', { responseType: 'blob' }),
+  importProducts: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/api/owner/factory/products/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data);
+  },
 };
 
 // ── Production Recipes (= Biến thể sản xuất) — Owner chỉ XEM + bật/tắt ────────
@@ -151,6 +162,17 @@ export const ownerProductionApi = {
     api.put(`/api/owner/factory/machines/${id}`, body).then(r => r.data.data),
   toggleMachine: (id, active) =>
     api.patch(`/api/owner/factory/machines/${id}/toggle?active=${active}`).then(r => r.data.data),
+
+  // Export/Import Excel máy móc (chỉ export status=ACTIVE; import đổi "Xóa" → INACTIVE + đổi tên)
+  exportMachines: () =>
+    api.get('/api/owner/factory/machines/export', { responseType: 'blob' }),
+  importMachines: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/api/owner/factory/machines/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data);
+  },
 
   // ── Maintenance Schedule (MỚI) ────────────────────────────────────────────
   getMaintenanceSummary: (year, machineId) => {

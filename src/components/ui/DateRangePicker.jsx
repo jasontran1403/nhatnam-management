@@ -1,6 +1,7 @@
 // src/components/ui/DateRangePicker.jsx
 import { useLang } from '../../context/LangContext';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { DateRange } from 'react-date-range';
 import { vi } from 'date-fns/locale';
 import {
@@ -11,6 +12,52 @@ import {
   format,
 } from 'date-fns';
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+
+// ── Panel neo theo trigger, render qua portal ────────────────────────────────
+// Đưa panel (lịch / chọn tháng) ra thẳng document.body bằng position:fixed nên
+// KHÔNG bị `overflow-hidden` của modal cắt nữa. Toạ độ tính từ getBoundingClientRect
+// của trigger, tự bám theo khi cuộn (kể cả cuộn trong modal) / đổi kích thước, và
+// tự lật LÊN TRÊN khi khoảng trống bên dưới không đủ.
+function AnchoredPortal({ anchorRef, open, align = 'left', panelRef, children }) {
+  const [style, setStyle] = useState(null);
+
+  const update = useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const GAP = 8;
+    const EST_H = 430; // ước lượng chiều cao panel (lịch khá cao)
+    const spaceBelow = window.innerHeight - r.bottom;
+    const openUp = spaceBelow < EST_H && r.top > spaceBelow;
+
+    const next = { position: 'fixed', zIndex: 70 };
+    if (align === 'right') next.right = Math.max(8, window.innerWidth - r.right);
+    else next.left = Math.max(8, r.left);
+    if (openUp) next.bottom = window.innerHeight - r.top + GAP;
+    else next.top = r.bottom + GAP;
+
+    setStyle(next);
+  }, [anchorRef, align]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    update();
+    const onScroll = () => update();
+    const onResize = () => update();
+    window.addEventListener('scroll', onScroll, true); // capture=true để bắt scroll của container trong modal
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [open, update]);
+
+  if (!open || !style) return null;
+  return createPortal(
+    <div ref={panelRef} style={style}>{children}</div>,
+    document.body
+  );
+}
 
 // ── Preset helpers ────────────────────────────────────────────────────────────
 export function presetToRange(key) {
@@ -62,7 +109,8 @@ function getPresets(t) {
 }
 
 // ── Month/Year picker dropdown (nút "Tháng") ─────────────────────────────────
-function MonthYearDropdown({ value, onSelect, onCancel, t, align = 'left' }) {
+// Lưu ý: bỏ hết class định vị (absolute/top/left/right) — vị trí do AnchoredPortal lo.
+function MonthYearDropdown({ value, onSelect, onCancel, t }) {
   const now = new Date();
   const curYear = now.getFullYear();
   const curMonth = now.getMonth() + 1; // 1-12
@@ -74,9 +122,7 @@ function MonthYearDropdown({ value, onSelect, onCancel, t, align = 'left' }) {
 
   return (
     <div
-      className={`absolute top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl
-        border border-[#E8DDD0] overflow-hidden w-[300px]
-        ${align === 'right' ? 'right-0' : 'left-0'}`}
+      className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden w-[300px]"
       style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.12))' }}
     >
       {/* Year navigator */}
@@ -135,15 +181,13 @@ function MonthYearDropdown({ value, onSelect, onCancel, t, align = 'left' }) {
 }
 
 // ── Calendar dropdown ─────────────────────────────────────────────────────────
-function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, align = 'left' }) {
+// Lưu ý: bỏ hết class định vị (absolute/top/left/right) — vị trí do AnchoredPortal lo.
+function CalendarDropdown({ selection, onSelect, onApply, onCancel, t }) {
   return (
     <div
-      className={`absolute top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl
-        border border-[#E8DDD0] overflow-hidden
-        ${align === 'right' ? 'right-0' : 'left-0'}`}
+      className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden"
       style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.12))' }}
     >
-
       <DateRange
         ranges={[selection]}
         onChange={onSelect}
@@ -198,11 +242,16 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
     endDate: new Date(),
     key: 'selection',
   });
-  const ref = useRef(null);
+  const ref = useRef(null);       // wrapper (chứa các nút preset) — dùng làm anchor
+  const panelRef = useRef(null);  // panel render ở portal (calendar/month)
 
+  // Đóng khi click ra ngoài: panel nằm ở portal nên phải kiểm tra cả ref lẫn panelRef.
   useEffect(() => {
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setMonthOpen(false); }
+      if (ref.current && ref.current.contains(e.target)) return;
+      if (panelRef.current && panelRef.current.contains(e.target)) return;
+      setOpen(false);
+      setMonthOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -268,7 +317,7 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
         </button>
       ))}
 
-      {open && (
+      <AnchoredPortal anchorRef={ref} open={open} align="left" panelRef={panelRef}>
         <CalendarDropdown
           selection={selection}
           onSelect={({ selection: sel }) => setSelection(sel)}
@@ -276,16 +325,16 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
           onCancel={() => setOpen(false)}
           t={t}
         />
-      )}
+      </AnchoredPortal>
 
-      {monthOpen && (
+      <AnchoredPortal anchorRef={ref} open={monthOpen} align="left" panelRef={panelRef}>
         <MonthYearDropdown
           value={monthSel}
           onSelect={handleMonthSelect}
           onCancel={() => setMonthOpen(false)}
           t={t}
         />
-      )}
+      </AnchoredPortal>
     </div>
   );
 }
@@ -299,7 +348,8 @@ function SimplePicker({ from, to, onChange, placeholder, align = 'left' }) {
     endDate: to ? new Date(to) : new Date(),
     key: 'selection',
   }));
-  const ref = useRef(null);
+  const ref = useRef(null);       // wrapper (nút mở) — dùng làm anchor
+  const panelRef = useRef(null);  // panel lịch render ở portal
 
   useEffect(() => {
     setSelection({
@@ -309,9 +359,12 @@ function SimplePicker({ from, to, onChange, placeholder, align = 'left' }) {
     });
   }, [from, to]);
 
+  // Đóng khi click ra ngoài: lịch nằm ở portal nên phải kiểm tra cả ref lẫn panelRef.
   useEffect(() => {
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && ref.current.contains(e.target)) return;
+      if (panelRef.current && panelRef.current.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -361,16 +414,15 @@ function SimplePicker({ from, to, onChange, placeholder, align = 'left' }) {
         }
       </button>
 
-      {open && (
+      <AnchoredPortal anchorRef={ref} open={open} align={align} panelRef={panelRef}>
         <CalendarDropdown
           selection={selection}
           onSelect={({ selection: sel }) => setSelection(sel)}
           onApply={handleApply}
           onCancel={() => setOpen(false)}
           t={t}
-          align={align}
         />
-      )}
+      </AnchoredPortal>
     </div>
   );
 }

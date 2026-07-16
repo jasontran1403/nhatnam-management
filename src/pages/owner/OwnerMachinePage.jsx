@@ -1,13 +1,14 @@
 // OwnerMachinePage.jsx
 // Trang quản lý máy móc / dây chuyền sản xuất (Owner only)
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings2, ToggleLeft, ToggleRight, Pencil, X, Check, Building2 } from 'lucide-react';
+import { Plus, Settings2, ToggleLeft, ToggleRight, Pencil, X, Check, Building2, Download, Upload } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { Field, inputCls, PrimaryButton } from '../../components/ui';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import { ownerProductionApi } from '../../api/productionApi';
 import { ownerProdApi } from '../../api/productionModuleApi';
+import { useToast } from '../../components/common/Toast.jsx';
 import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 
@@ -135,10 +136,61 @@ function groupMachinesByFactory(machines) {
 export default function OwnerMachinePage() {  const navigate = useNavigate();
   const { t } = useLang();
   const { fmtNum } = useFmt();
+  const toast = useToast();
   const [machines, setMachines] = useState([]);
   const [factories, setFactories] = useState([]);
   const [loading, setLoading] = useMinLoading();
   const [modal, setModal] = useState(null); // null | 'create' | machine obj
+
+  // ── Export / Import Excel ─────────────────────────────────────────────────
+  const importInputRef = useRef(null);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const reload = useCallback(() => {
+    ownerProductionApi.listMachines(false)
+      .then(d => setMachines(d || []))
+      .catch(() => {});
+  }, []);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const res = await ownerProductionApi.exportMachines();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      a.download = `danh-sach-may-moc-${dd}${mm}${now.getFullYear()}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+      toast('Đã xuất file máy móc', 'success');
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi xuất file', 'error');
+    } finally { setExporting(false); }
+  }, [toast]);
+
+  const handleImport = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await ownerProductionApi.importMachines(file);
+      const data = res?.data || {};
+      if (!res?.success) {
+        toast(res?.message || 'Import thất bại', 'error');
+      } else {
+        toast(res?.message || `Cập nhật ${data.updated || 0} máy`, data.skipped ? 'warning' : 'success');
+        if (data.errors?.length) console.warn('Import lỗi:', data.errors);
+      }
+      reload();
+    } catch (err) {
+      toast(err?.response?.data?.message || 'Lỗi import file', 'error');
+    } finally { setImporting(false); }
+  }, [toast, reload]);
 
   useEffect(() => {
     ownerProductionApi.listMachines(false)
@@ -188,12 +240,25 @@ export default function OwnerMachinePage() {  const navigate = useNavigate();
             {t('production', 'omach_subtitle')}
           </p>
         </div>
-        <button
-          onClick={() => setModal('create')}
-          className="flex items-center gap-2 bg-[#1A2B1A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#243824] transition-colors">
-          <Plus size={16} />
-          {t('production', 'omach_add')}
-        </button>
+        <div className="flex items-center gap-2">
+          <input ref={importInputRef} type="file" accept=".xlsx" hidden onChange={handleImport} />
+          <button onClick={handleExport} disabled={exporting}
+            className="flex items-center gap-2 border border-[#E8DDD0] text-[#1C1C1E] px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#FAF7F2] transition-colors disabled:opacity-50">
+            <Download size={16} />
+            {exporting ? 'Đang xuất…' : 'Export'}
+          </button>
+          <button onClick={() => importInputRef.current?.click()} disabled={importing}
+            className="flex items-center gap-2 border border-[#E8DDD0] text-[#1C1C1E] px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#FAF7F2] transition-colors disabled:opacity-50">
+            <Upload size={16} />
+            {importing ? 'Đang nhập…' : 'Import'}
+          </button>
+          <button
+            onClick={() => setModal('create')}
+            className="flex items-center gap-2 bg-[#1A2B1A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#243824] transition-colors">
+            <Plus size={16} />
+            {t('production', 'omach_add')}
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

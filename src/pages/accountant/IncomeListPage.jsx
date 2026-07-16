@@ -50,12 +50,13 @@ export default function IncomeListPage() {
   const [detailVoucher, setDetailVoucher] = useState(null);
   const [showExport, setShowExport] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportPaymentType, setExportPaymentType] = useState('ALL'); // ALL | CASH | BANK_TRANSFER
 
   const handleExport = async () => {
     const range = dateRange || dayRange(selectedDate);
     setExporting(true);
     try {
-      const res = await incomeApi.exportReport(range.from, range.to);
+      const res = await incomeApi.exportReport(range.from, range.to, exportPaymentType);
       const d = new Date(range.from);
       const dEnd = new Date(range.to);
       const fmt = (dt) => `${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()}`;
@@ -242,6 +243,32 @@ export default function IncomeListPage() {
                 <p className="text-[10px] text-emerald-500 mt-1 italic">Theo bộ lọc ngày đang chọn</p>
               </div>
 
+              {/* Phương thức thanh toán */}
+              <div>
+                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Phương thức thanh toán</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { key: 'CASH', label: 'Tiền mặt' },
+                    { key: 'BANK_TRANSFER', label: 'Chuyển khoản' },
+                    { key: 'ALL', label: 'Cả 2' },
+                  ].map(opt => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setExportPaymentType(opt.key)}
+                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                        exportPaymentType === opt.key
+                          ? 'bg-emerald-500 text-white border-emerald-500'
+                          : 'bg-white text-[#5C5C5C] border-[#E8DDD0] hover:bg-[#F0EBE3]'
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {exportPaymentType === 'ALL' && (
+                  <p className="text-[10px] text-emerald-500 mt-1 italic">File sẽ có thêm cột "Phương thức thanh toán"</p>
+                )}
+              </div>
+
               {/* Các cột sẽ có */}
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">Nội dung file</p>
@@ -249,6 +276,7 @@ export default function IncomeListPage() {
                   'Thời gian tạo phiếu thu',
                   'Số phiếu thu',
                   'Hóa đơn thu (mỗi đơn 1 dòng)',
+                  ...(exportPaymentType === 'ALL' ? ['Phương thức thanh toán'] : []),
                   'Tổng tiền thu',
                 ].map(col => (
                   <div key={col} className="flex items-center gap-2 text-xs text-[#5C4E3D]">

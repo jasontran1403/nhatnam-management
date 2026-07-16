@@ -1,17 +1,19 @@
 import { useLang } from '../../context/LangContext';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Factory, Plus, Edit2, Check, X, Package, FlaskConical,
   ClipboardList, TrendingUp, TrendingDown, CalendarDays,
   Power, Eye, Clock, ShieldCheck, Wrench, Building2, Users, MapPin,
+  Download, Upload,
 } from 'lucide-react';
 import {
   factoryMaterialApi, factoryProductApi, recipeApi, batchOwnerApi,
 } from '../../api/productionApi';
 import { ownerProdApi } from '../../api/productionModuleApi';
 import { adminUserApi } from '../../api/adminApi';
+import { useToast } from '../../components/common/Toast.jsx';
 import Modal from '../../components/ui/Modal';
 import {
   PageHeader, LoadingSpinner, EmptyState, PrimaryButton, SecondaryButton,
@@ -41,6 +43,7 @@ function VarianceBadge({ pct }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OwnerProductionPage() {
   const { t } = useLang();
+  const toast = useToast();
   const [batches, setBatches] = useState([]);
   const [recipes, setRecipes] = useState([]);
   const [products, setProducts] = useState([]);
@@ -85,6 +88,50 @@ export default function OwnerProductionPage() {
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // ── Export / Import Excel thành phẩm ──────────────────────────────────────
+  const prodImportRef = useRef(null);
+  const [exportingProd, setExportingProd] = useState(false);
+  const [importingProd, setImportingProd] = useState(false);
+
+  const handleExportProducts = useCallback(async () => {
+    setExportingProd(true);
+    try {
+      const res = await factoryProductApi.exportProducts();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      a.download = `danh-sach-thanh-pham-${dd}${mm}${now.getFullYear()}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+      toast('Đã xuất file thành phẩm', 'success');
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi xuất file', 'error');
+    } finally { setExportingProd(false); }
+  }, [toast]);
+
+  const handleImportProducts = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportingProd(true);
+    try {
+      const res = await factoryProductApi.importProducts(file);
+      const data = res?.data || {};
+      if (!res?.success) {
+        toast(res?.message || 'Import thất bại', 'error');
+      } else {
+        toast(res?.message || `Cập nhật ${data.updated || 0} thành phẩm`, data.skipped ? 'warning' : 'success');
+        if (data.errors?.length) console.warn('Import lỗi:', data.errors);
+      }
+      loadAll();
+    } catch (err) {
+      toast(err?.response?.data?.message || 'Lỗi import file', 'error');
+    } finally { setImportingProd(false); }
+  }, [toast, loadAll]);
 
   // Filter batches by date range
   const filteredBatches = batches.filter(b => {
@@ -294,7 +341,14 @@ export default function OwnerProductionPage() {
           {/* ── Products ─────────────────────────────────────────────────── */}
           {tab === 'products' && (
             <div className="space-y-3">
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <input ref={prodImportRef} type="file" accept=".xlsx" hidden onChange={handleImportProducts} />
+                <SecondaryButton onClick={handleExportProducts} disabled={exportingProd}>
+                  <Download size={15} /> {exportingProd ? 'Đang xuất…' : 'Export'}
+                </SecondaryButton>
+                <SecondaryButton onClick={() => prodImportRef.current?.click()} disabled={importingProd}>
+                  <Upload size={15} /> {importingProd ? 'Đang nhập…' : 'Import'}
+                </SecondaryButton>
                 <PrimaryButton onClick={() => { setEditProd(null); setShowProdModal(true); }}>
                   <Plus size={15} /> Thêm thành phẩm
                 </PrimaryButton>

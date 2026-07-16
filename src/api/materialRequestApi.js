@@ -144,6 +144,18 @@ export const ownerSupplierApi = {
   deleteVendor: (vendorId) =>
     api.delete(`/api/owner/production/suppliers/${vendorId}`).then(r => r.data),
 
+  // ── Export / Import nhà cung cấp (Excel, file token 1-lần) ──────────────
+  exportSuppliers: (search) =>
+    api.get('/api/owner/production/suppliers/export', { params: { search }, responseType: 'blob' }),
+
+  importSuppliers: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/api/owner/production/suppliers/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data);
+  },
+
   getOrders: (vendorId, search) =>
     api.get(`/api/owner/production/suppliers/${vendorId}/orders`, { params: { search } }).then(r => r.data.data),
 
