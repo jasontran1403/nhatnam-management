@@ -43,11 +43,12 @@ export default function AccountantCustomersPage() {
     return new Intl.NumberFormat('vi-VN').format(Math.round(num)) + ' đ';
   };
 
-  // Export báo cáo công nợ
+  // Export báo cáo công nợ — theo đúng từ khoá đang tìm
   const handleExportAgedReceivables = useCallback(async () => {
     setExportingDebt(true);
     try {
-      const res = await reportApi.exportAgedReceivables();
+      const activeFilters = { q: search.trim() || undefined };
+      const res = await reportApi.exportAgedReceivables(undefined, activeFilters);
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -65,7 +66,7 @@ export default function AccountantCustomersPage() {
     } finally {
       setExportingDebt(false);
     }
-  }, [toast]);
+  }, [toast, search]);
 
   const [historyCustomerId, setHistoryCustomerId] = useState(null);
 

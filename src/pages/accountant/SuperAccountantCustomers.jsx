@@ -692,11 +692,17 @@ export default function SuperAccountantCustomers() {
     }
   }, [debouncedQ, filters.type, filters.isActive, filters.sellerId, toast]);
 
-  // Export báo cáo công nợ (Aged Receivables) — PDF, tính đến hôm nay
+  // Export báo cáo công nợ (Aged Receivables) — PDF, theo đúng bộ lọc đang hiển thị
   const handleExportAgedReceivables = useCallback(async () => {
     setExportingDebt(true);
     try {
-      const res = await reportApi.exportAgedReceivables();        // asOf = hôm nay
+      const activeFilters = {
+        q: debouncedQ || undefined,
+        type: filters.type || undefined,
+        isActive: filters.isActive !== '' ? filters.isActive : undefined,
+        sellerId: filters.sellerId !== '' ? filters.sellerId : undefined,
+      };
+      const res = await reportApi.exportAgedReceivables(undefined, activeFilters); // asOf = hôm nay
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -714,7 +720,7 @@ export default function SuperAccountantCustomers() {
     } finally {
       setExportingDebt(false);
     }
-  }, [toast]);
+  }, [toast, debouncedQ, filters]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setSelectedIds(new Set()); }, [page, filters]);

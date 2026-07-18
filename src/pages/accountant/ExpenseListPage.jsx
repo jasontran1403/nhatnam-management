@@ -1,13 +1,14 @@
 // src/pages/accountant/ExpenseListPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { expenseApi } from '../../api/services';
+import { expenseApi, downloadBlob } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import {
   Receipt, Search, ChevronLeft, ChevronRight,
   X, Plus, CheckCircle, XCircle, Clock,
   Building2, Eye, TrendingDown, TrendingUp, Wallet,
-  Landmark, ShieldCheck, Filter
+  Landmark, ShieldCheck, Filter,
+  Download, Upload, Loader2, AlertTriangle, FileSpreadsheet
 } from 'lucide-react';
 import ExpenseCreateModal from './ExpenseCreateModal';
 import ExpenseDetailModal from './ExpenseDetailModal';
@@ -41,6 +42,7 @@ export default function ExpenseListPage() {
   const toast = useToast();
   const searchDebounce = useRef(null);
   const searchTextRef = useRef('');
+  const fileInputRef = useRef(null);
 
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [dateRange, setDateRange] = useState(null);
@@ -55,6 +57,12 @@ export default function ExpenseListPage() {
   const [detailVoucher, setDetailVoucher] = useState(null);
   const [creatorFilter, setCreatorFilter] = useState('');
   const [approverFilter, setApproverFilter] = useState('');
+  const [downloadingTpl, setDownloadingTpl] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [showExport, setShowExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportPaymentType, setExportPaymentType] = useState('ALL'); // ALL | CASH | BANK_TRANSFER
 
   const calcTotal = (list) => list.reduce((s, v) => s + (Number(v.totalAmount) || 0), 0);
 
@@ -108,6 +116,61 @@ export default function ExpenseListPage() {
     setDateRange(!r.from && !r.to ? null : r);
   };
 
+  const handleDownloadTemplate = async () => {
+    setDownloadingTpl(true);
+    try {
+      const res = await expenseApi.downloadImportTemplate();
+      const today = todayStr().replace(/-/g, '');
+      downloadBlob(res.data, `mau-nhap-phieu-chi-${today}.xlsx`);
+    } catch {
+      toast('Không tải được file mẫu', 'error');
+    } finally {
+      setDownloadingTpl(false);
+    }
+  };
+
+  const handlePickFile = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // cho phép chọn lại cùng 1 file
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await expenseApi.importExcel(file);
+      const data = res.data?.data || res.data || {};
+      setImportResult(data);
+      if ((data.created || 0) > 0) {
+        toast(`Đã tạo ${data.created} phiếu chi từ Excel`, 'success');
+        load(0);
+      } else if ((data.failed || 0) > 0) {
+        toast('Không tạo được phiếu nào — xem chi tiết lỗi', 'error');
+      }
+    } catch (err) {
+      toast(err?.response?.data?.message || 'Lỗi nhập file Excel', 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExportReport = async () => {
+    const range = dateRange || dayRange(selectedDate);
+    setExporting(true);
+    try {
+      const res = await expenseApi.exportReport(range.from, range.to, exportPaymentType);
+      const d = new Date(range.from);
+      const dEnd = new Date(range.to);
+      const fmt = (dt) => `${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()}`;
+      downloadBlob(res.data, `phieu-chi-${fmt(d)}_${fmt(dEnd)}.xlsx`);
+      toast('Xuất báo cáo thành công', 'success');
+      setShowExport(false);
+    } catch {
+      toast('Lỗi xuất báo cáo', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const currentRange = dateRange || dayRange(selectedDate);
 
   // Lọc client-side theo người tạo / người duyệt trên danh sách đang hiển thị
@@ -134,6 +197,40 @@ export default function ExpenseListPage() {
           <p className="text-2xl font-bold text-[#C9A84C] mt-0.5">{formatVND(totalAmount)}</p>
         </div>
         <TrendingDown size={28} className="text-[#C9A84C]/40" />
+      </div>
+
+      {/* Nhập từ Excel */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={handleDownloadTemplate}
+          disabled={downloadingTpl}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] bg-white text-sm font-semibold text-[#1C1C1E] hover:bg-[#FAF7F2] disabled:opacity-50 transition"
+        >
+          {downloadingTpl ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} className="text-[#C9A84C]" />}
+          Tải template
+        </button>
+        <button
+          onClick={handlePickFile}
+          disabled={importing}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#B8923E] text-sm font-semibold text-white disabled:opacity-60 transition"
+        >
+          {importing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+          {importing ? 'Đang nhập...' : 'Tạo từ file Excel'}
+        </button>
+        <button
+          onClick={() => setShowExport(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] bg-white text-sm font-semibold text-[#1C1C1E] hover:bg-[#FAF7F2] transition"
+        >
+          <FileSpreadsheet size={15} className="text-[#C9A84C]" />
+          Export báo cáo
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={handleFileChange}
+          className="hidden"
+        />
       </div>
 
       <div className="flex items-center gap-2">
@@ -263,6 +360,158 @@ export default function ExpenseListPage() {
 
       {showCreate && <ExpenseCreateModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(0); }} />}
       {detailVoucher && <ExpenseDetailModal voucher={detailVoucher} onClose={() => setDetailVoucher(null)} onChanged={() => load(page)} />}
+
+      {/* ── Export báo cáo Modal ── */}
+      {showExport && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" onClick={() => !exporting && setShowExport(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-[#C9A84C] to-[#B8923E] px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Download size={16} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">Xuất báo cáo phiếu chi</h3>
+                  <p className="text-white/70 text-[10px]">File Excel · gộp khoản chi theo phiếu</p>
+                </div>
+              </div>
+              <button onClick={() => setShowExport(false)}
+                className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3">
+              <div className="rounded-xl bg-[#FAF7F2] border border-[#E8DDD0] px-4 py-3">
+                <p className="text-[10px] font-bold text-[#B8923E] uppercase tracking-wider mb-1">Khoảng thời gian</p>
+                <p className="text-sm font-semibold text-[#5C4E3D]">
+                  {formatDate(currentRange.from).split(' ').slice(1).join(' ')}
+                  {' — '}
+                  {formatDate(currentRange.to).split(' ').slice(1).join(' ')}
+                </p>
+                <p className="text-[10px] text-[#C9A84C] mt-1 italic">Theo bộ lọc ngày đang chọn (mặc định hôm nay)</p>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Phương thức thanh toán</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { key: 'CASH', label: 'Tiền mặt' },
+                    { key: 'BANK_TRANSFER', label: 'Chuyển khoản' },
+                    { key: 'ALL', label: 'Cả 2' },
+                  ].map(opt => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setExportPaymentType(opt.key)}
+                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                        exportPaymentType === opt.key
+                          ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
+                          : 'bg-white text-[#5C5C5C] border-[#E8DDD0] hover:bg-[#F0EBE3]'
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {exportPaymentType === 'ALL' && (
+                  <p className="text-[10px] text-[#C9A84C] mt-1 italic">File sẽ có thêm cột "Phương thức thanh toán"</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">Nội dung file</p>
+                {[
+                  'Thời gian tạo · Trạng thái · Thời gian duyệt',
+                  'Người tạo · Người duyệt · Nhà cung cấp',
+                  'Thời gian/Kỳ · Nội dung · Tổng tiền',
+                  ...(exportPaymentType === 'ALL' ? ['Phương thức thanh toán'] : []),
+                  'Danh mục khoản chi · Số tiền mỗi khoản',
+                ].map(col => (
+                  <div key={col} className="flex items-center gap-2 text-xs text-[#5C4E3D]">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] flex-shrink-0" />
+                    {col}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 px-5 pb-5">
+              <button onClick={() => setShowExport(false)} disabled={exporting}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3] transition-colors font-medium disabled:opacity-50">
+                Huỷ
+              </button>
+              <button onClick={handleExportReport} disabled={exporting}
+                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#B8923E] text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5">
+                {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importResult && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" onClick={() => setImportResult(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-black/5">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet size={18} className="text-[#C9A84C]" />
+                <h3 className="font-bold text-[#1C1C1E]">Kết quả nhập từ Excel</h3>
+              </div>
+              <button onClick={() => setImportResult(null)} className="p-1.5 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878]">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-[#FAF7F2] p-3">
+                  <p className="text-2xl font-bold text-[#1C1C1E]">{importResult.totalVouchers || 0}</p>
+                  <p className="text-xs text-[#8E8878] mt-0.5">Tổng phiếu</p>
+                </div>
+                <div className="rounded-xl bg-green-50 p-3">
+                  <p className="text-2xl font-bold text-green-600">{importResult.created || 0}</p>
+                  <p className="text-xs text-green-700 mt-0.5">Thành công</p>
+                </div>
+                <div className="rounded-xl bg-red-50 p-3">
+                  <p className="text-2xl font-bold text-red-500">{importResult.failed || 0}</p>
+                  <p className="text-xs text-red-600 mt-0.5">Bị lỗi</p>
+                </div>
+              </div>
+
+              {Array.isArray(importResult.errors) && importResult.errors.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-[#1C1C1E] mb-2 flex items-center gap-1.5">
+                    <AlertTriangle size={13} className="text-amber-500" /> Các phiếu chưa nhập được:
+                  </p>
+                  <div className="space-y-2">
+                    {importResult.errors.map((er, i) => (
+                      <div key={i} className="rounded-xl border border-red-100 bg-red-50/50 p-3 text-sm">
+                        <p className="font-semibold text-[#1C1C1E]">
+                          {er.groupKey ? `Số phiếu chi "${er.groupKey}"` : 'Phiếu'} <span className="text-xs text-[#8E8878] font-normal">(dòng {er.excelRow})</span>
+                        </p>
+                        <p className="text-red-600 text-xs mt-0.5">{er.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(importResult.created || 0) > 0 && (importResult.failed || 0) === 0 && (
+                <div className="rounded-xl bg-green-50 p-3 flex items-center gap-2 text-sm text-green-700">
+                  <CheckCircle size={16} /> Đã nhập tất cả phiếu chi thành công.
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-black/5">
+              <button onClick={() => setImportResult(null)}
+                className="w-full py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#B8923E] text-white text-sm font-semibold transition">
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

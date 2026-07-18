@@ -102,11 +102,21 @@ export const adminUserApi = {
 // ─── Reports (báo cáo công nợ / aged receivables) ─────────────────────────────
 export const reportApi = {
   // asOf: chuỗi 'yyyy-MM-dd' (tuỳ chọn). Bỏ trống = hôm nay (backend tự lấy).
-  exportAgedReceivables: (asOf) =>
-    api.get('/api/accountant/reports/aged-receivables', {
-      params: asOf ? { asOf } : {},
+  // filters (tuỳ chọn): { q, type, isActive, sellerId } — chỉ xuất KH khớp bộ lọc đang hiển thị.
+  exportAgedReceivables: (asOf, filters = {}) => {
+    const params = {};
+    if (asOf) params.asOf = asOf;
+    if (filters.q) params.q = filters.q;
+    if (filters.type) params.type = filters.type;
+    if (filters.isActive !== undefined && filters.isActive !== '' && filters.isActive !== null)
+      params.isActive = filters.isActive;
+    if (filters.sellerId !== undefined && filters.sellerId !== '' && filters.sellerId !== null)
+      params.sellerId = filters.sellerId;
+    return api.get('/api/accountant/reports/aged-receivables', {
+      params,
       responseType: 'blob',
-    }),
+    });
+  },
 };
 
 // ─── Warehouses ──────────────────────────────────────────────────────────────

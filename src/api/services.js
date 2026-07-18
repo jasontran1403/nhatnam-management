@@ -224,6 +224,19 @@ export const expenseApi = {
     api.get('/api/expense-vouchers/search', { params: { q, from, to, ...params } }),
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
   nextPaymentNumber: () => api.get('/api/expense-vouchers/next-payment-number'),
+  /** Tải file Excel mẫu để nhập phiếu chi hàng loạt (trả blob). */
+  downloadImportTemplate: () =>
+    api.get('/api/expense-vouchers/import-template', { responseType: 'blob' }),
+  /** Nhập phiếu chi hàng loạt từ file Excel. */
+  importExcel: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/api/expense-vouchers/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  /** Xuất báo cáo phiếu chi (Excel) theo khoảng thời gian. paymentType: CASH | BANK_TRANSFER | ALL */
+  exportReport: (from, to, paymentType) =>
+    api.get('/api/expense-vouchers/export', { params: { from, to, paymentType }, responseType: 'blob' }),
   // Danh mục khoản chi (đang bật) của 1 NCC — cho form lập phiếu chi
   /** Danh mục khoản chi đang bật — POOL DÙNG CHUNG cho mọi NCC */
   expenseCategories: () => api.get('/api/expense-vouchers/expense-categories'),
