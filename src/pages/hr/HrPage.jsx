@@ -47,16 +47,8 @@ function MoneyInput({ value, onChange, placeholder, autoFocus, className }) {
 
 
 // ── Salary Modal (single) — lương trước thuế + phụ cấp + thưởng ──────────────
-function TaxToggle({ value, onChange }) {
-  return (
-    <button type="button" onClick={() => onChange(!value)}
-      className={`shrink-0 text-[11px] px-2 py-1 rounded-md border transition ${
-        value ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-[#F5F1EA] border-[#E8E0D6] text-[#8E8878]'}`}
-      title="Khoản này có tính vào thu nhập chịu thuế TNCN hay không">
-      {value ? 'Chịu thuế' : 'Miễn thuế'}
-    </button>
-  );
-}
+// TaxToggle ĐÃ BỎ: mọi phụ cấp và thưởng đều cộng vào thu nhập rồi mới tính
+// thuế TNCN, không còn khoản nào "miễn thuế" để bật/tắt.
 
 function SalaryModal({ user, onClose, onSaved }) {
   const { t } = useLang();
@@ -65,7 +57,7 @@ function SalaryModal({ user, onClose, onSaved }) {
   const [insuranceSalary, setInsuranceSalary] = useState('');
   const [allowances, setAllowances] = useState([]); // [{label, amount, taxable}]
   const [bonus, setBonus] = useState('');
-  const [bonusTaxable, setBonusTaxable] = useState(false);
+  const [bonusTaxable, setBonusTaxable] = useState(true);  // luôn chịu thuế
   const [dependents, setDependents] = useState('0');
   const [saving, setSaving] = useState(false);
   const [loadingCurrent, setLoadingCurrent] = useState(true);
@@ -93,14 +85,14 @@ function SalaryModal({ user, onClose, onSaved }) {
         setBaseSalary(data.baseSalary != null ? String(data.baseSalary) : '');
         setInsuranceSalary(data.insuranceSalary != null && data.insuranceSalary > 0 ? String(data.insuranceSalary) : '');
         setBonus(data.bonus != null ? String(data.bonus) : '');
-        setBonusTaxable(!!data.bonusTaxable);
+        setBonusTaxable(true);
         setDependents(data.dependents != null ? String(data.dependents) : '0');
         if (Array.isArray(data.allowances) && data.allowances.length > 0) {
           setAllowances(data.allowances.map(a => ({
-            label: a.label || '', amount: String(a.amount ?? ''), taxable: !!a.taxable,
+            label: a.label || '', amount: String(a.amount ?? ''), taxable: true,
           })));
         } else if (data.allowance) {
-          setAllowances([{ label: 'Phụ cấp', amount: String(data.allowance), taxable: false }]);
+          setAllowances([{ label: 'Phụ cấp', amount: String(data.allowance), taxable: true }]);
         }
       }
     }).finally(() => { if (active) setLoadingCurrent(false); });
@@ -117,7 +109,7 @@ function SalaryModal({ user, onClose, onSaved }) {
     dependents: Number(digitsOnly(dependents) || 0),
     allowances: allowances
       .filter(a => toNumber(a.amount) > 0)
-      .map(a => ({ label: a.label || 'Phụ cấp', amount: toNumber(a.amount), taxable: !!a.taxable })),
+      .map(a => ({ label: a.label || 'Phụ cấp', amount: toNumber(a.amount), taxable: true })),
   }), [user.id, baseSalary, insuranceSalary, bonus, bonusTaxable, dependents, allowances]);
 
   // Live preview (debounce 450ms) — gọi cùng công thức backend để khớp màn Owner
@@ -135,7 +127,7 @@ function SalaryModal({ user, onClose, onSaved }) {
     return () => clearTimeout(timer);
   }, [buildPayload, loadingCurrent, baseSalary]);
 
-  const addAllowance = () => setAllowances(a => [...a, { label: labels[0]?.name || 'Phụ cấp', amount: '', taxable: false }]);
+  const addAllowance = () => setAllowances(a => [...a, { label: labels[0]?.name || 'Phụ cấp', amount: '', taxable: true }]);
   const updateAllowance = (i, patch) => setAllowances(a => a.map((x, idx) => idx === i ? { ...x, ...patch } : x));
   const removeAllowance = (i) => setAllowances(a => a.filter((_, idx) => idx !== i));
 
@@ -234,7 +226,6 @@ function SalaryModal({ user, onClose, onSaved }) {
                       <MoneyInput className={`${inputCls} !py-1.5 text-sm`} value={a.amount}
                         onChange={v => updateAllowance(i, { amount: v })} placeholder="Số tiền" />
                     </div>
-                    <TaxToggle value={a.taxable} onChange={v => updateAllowance(i, { taxable: v })} />
                     <button type="button" className="text-red-400 hover:text-red-600 p-1" onClick={() => removeAllowance(i)}>
                       <Trash2 size={15} />
                     </button>
@@ -248,7 +239,6 @@ function SalaryModal({ user, onClose, onSaved }) {
               hint="Thưởng KPI — sẽ được nhân theo tỷ lệ KPI đạt được khi tính lương.">
               <div className="flex items-center gap-1.5">
                 <div className="flex-1"><MoneyInput value={bonus} onChange={setBonus} placeholder="VD: 8.360.000" /></div>
-                <TaxToggle value={bonusTaxable} onChange={setBonusTaxable} />
               </div>
             </Field>
 
@@ -360,16 +350,51 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
 }
 
 // ── Info Modal (dept/pos) ─────────────────────────────────────────────────────
+
+/**
+ * DANH MỤC CỐ ĐỊNH "Bộ phận → Chức vụ".
+ *
+ * PHẢI KHỚP với OrgCatalog.java bên backend — mỗi chức vụ ở đây ứng với đúng
+ * một role hưởng lương, và backend sẽ ghi role đó vào _user.payroll_role khi
+ * lưu. Sửa danh sách này thì phải sửa OrgCatalog.java tương ứng.
+ *
+ * Có thể lấy động từ GET /api/hr/org-structure nếu muốn khỏi khai báo 2 nơi.
+ */
+const ORG = {
+  'Xưởng sản xuất': ['Trưởng xưởng', 'Quản lý xưởng', 'Kế toán xưởng',
+                     'Công nhân sản xuất', 'Trợ lý xưởng', 'Nhân viên văn phòng', 'Bảo vệ'],
+  'Kế Toán':        ['Kế toán trưởng', 'Chuyên viên kế toán'],
+  'Kinh doanh':     ['Trưởng phòng kinh doanh', 'Nhân viên kinh doanh'],
+  'Kho':            ['Quản lý kho', 'Nhân viên kho'],
+  'Tài xế':         ['Tài xế giao nhận'],
+};
+
 function InfoModal({ user, onClose, onSaved }) {
   const toast = useToast();
+
+  // Dữ liệu cũ nhập tay có thể không khớp danh mục → bỏ qua, buộc chọn lại
   const [form, setForm] = useState({
-    department: user.department || '',
+    department: ORG[user.department] ? user.department : '',
     division: user.division || '',
-    position: user.position || '',
+    position: '',
   });
+
+  // Đổi bộ phận thì chức vụ phải nằm trong bộ phận mới, nếu không thì xoá trắng
+  useEffect(() => {
+    const list = ORG[form.department] || [];
+    if (!list.includes(form.position)) {
+      setForm(f => ({ ...f, position: list.includes(user.position) ? user.position : '' }));
+    }
+  }, [form.department]);
+
   const [saving, setSaving] = useState(false);
+  const positions = ORG[form.department] || [];
 
   const submit = async () => {
+    if (!form.department || !form.position) {
+      toast('Vui lòng chọn đầy đủ Bộ phận và Chức vụ', 'error');
+      return;
+    }
     setSaving(true);
     try {
       await hrEmployeeApi.updateInfo(user.id, form);
@@ -385,20 +410,26 @@ function InfoModal({ user, onClose, onSaved }) {
     <Modal open onClose={onClose} title={`Thông tin — ${user.fullName}`}>
       <div className="space-y-3 py-1">
         <Field label="Bộ phận">
-          <input className={inputCls} value={form.department}
-            onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
-            placeholder="VD: Kinh doanh, Kế toán, Xưởng sản xuất…" />
+          <select className={selectCls} value={form.department}
+            onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
+            <option value="">— Chọn bộ phận —</option>
+            {Object.keys(ORG).map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
         </Field>
-        {/* <Field label="Phòng ban">
-          <input className={inputCls} value={form.division}
-            onChange={e => setForm(f => ({ ...f, division: e.target.value }))}
-            placeholder="VD: Phòng Kinh doanh 1, Phòng Kế toán tổng hợp…" />
-        </Field> */}
+
         <Field label="Chức vụ">
-          <input className={inputCls} value={form.position}
-            onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
-            placeholder="VD: Trưởng phòng, Nhân viên, Thực tập sinh…" />
+          <select className={selectCls} value={form.position} disabled={!form.department}
+            onChange={e => setForm(f => ({ ...f, position: e.target.value }))}>
+            <option value="">{form.department ? '— Chọn chức vụ —' : '— Chọn bộ phận trước —'}</option>
+            {positions.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
         </Field>
+
+        <p className="text-xs text-[#8E8878] leading-relaxed">
+          Role hưởng lương được đặt tự động theo chức vụ. Nhân viên kiêm nhiệm vẫn
+          giữ nguyên các quyền truy cập khác — ví dụ Nhân viên kinh doanh kiêm coi
+          kho vẫn vào được màn hình kho nhưng lương luôn tính ở bộ phận Kinh doanh.
+        </p>
       </div>
       <div className="flex gap-2 pt-3">
         <SecondaryButton onClick={onClose} className="flex-1">Huỷ</SecondaryButton>

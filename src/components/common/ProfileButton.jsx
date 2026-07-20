@@ -30,12 +30,42 @@ export const ROLE_LABELS = {
 
     FACTORY_WORKER: 'Nhân viên Xưởng',
     SUPER_FACTORY_WORKER: 'Trưởng Xưởng Sản Xuất',
-    FACTORY_ACCOUNTANT: 'Kế Toán Kho Xưởng',
+    FACTORY_ACCOUNTANT: 'Kế toán Xưởng',
+    FACTORY_STAFF: 'Trợ lý Xưởng',
+    FACTORY_SECURITY: 'Bảo vệ xưởng',
+    FACTORY_PRODUCTION_WORKER: 'Công nhân sản xuất',
+    
+    FACTORY_MANAGER: 'Quản lý Xưởng',
 
-    HR: 'Hành chính Nhân sự',
+    DRIVER: 'Tài xế',
+    SECURITY: 'Bảo vệ',
+
+    HR: 'Nhân sự',
 
     OPERATOR: 'Nhân viên Nhập liệu',
+    POS: 'Bán hàng tại quầy',
+    SHIPPER: 'Giao hàng',
+    USER: 'Người dùng',
+    UN_AUTH: 'Chưa phân quyền',
 };
+
+/**
+ * TÊN HIỂN THỊ CỦA ROLE.
+ *
+ * <p>Lưu ý: hàm `t()` KHÔNG trả về null khi thiếu key — nó trả lại CHÍNH KEY
+ * ('factory_staff'). Nếu cứ dùng `t(...) || ROLE_LABELS[...]` thì key thiếu vẫn
+ * là chuỗi truthy nên màn hình hiện tên biến thay vì tên thật.
+ *
+ * <p>Vì vậy phải so sánh kết quả với key: chỉ khi bản dịch KHÁC key mới coi là
+ * dịch được, ngược lại rơi xuống ROLE_LABELS rồi mới tới tên role gốc.
+ */
+export function roleLabelOf(role, t) {
+    if (!role) return '';
+    const key = String(role).toLowerCase();
+    const translated = t ? t('roles', key) : null;
+    if (translated && translated !== key) return translated;
+    return ROLE_LABELS[role] || role;
+}
 
 const ROLE_COLORS = {
     ADMIN: 'bg-red-100 text-red-700', OWNER: 'bg-purple-100 text-purple-700',
@@ -150,7 +180,7 @@ export default function ProfileButton({ compact = false }) {
         setSwitchingRole(role);
         try {
             await switchRole(role);
-            toast(`Đã chuyển sang ${ROLE_LABELS[role] || role}`, 'success');
+            toast(`Đã chuyển sang ${roleLabelOf(role, t)}`, 'success');
             setOpen(false);
             // Force reload to apply new role routing
             setTimeout(() => window.location.href = '/', 300);
@@ -168,7 +198,7 @@ export default function ProfileButton({ compact = false }) {
                 toast('Đã bỏ role mặc định', 'info');
             } else {
                 await setDefaultRole(role);
-                toast(`${ROLE_LABELS[role] || role} sẽ là role mặc định khi đăng nhập`, 'success');
+                toast(`${roleLabelOf(role, t)} sẽ là role mặc định khi đăng nhập`, 'success');
             }
         } catch {
             toast('Lỗi cập nhật role mặc định', 'error');
@@ -177,7 +207,7 @@ export default function ProfileButton({ compact = false }) {
         }
     };
 
-    const displayRole = t('roles', currentRole.toLowerCase()) || ROLE_LABELS[currentRole] || currentRole;
+    const displayRole = roleLabelOf(currentRole, t);
 
     const tabs = [
         { key: 'info', label: t('profile', 'info_tab'), icon: UserCircle },
@@ -247,7 +277,7 @@ export default function ProfileButton({ compact = false }) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-semibold text-[#1C1C1E]">Chuyển đổi vai trò</p>
-                                            <p className="text-xs text-[#8E8878]">Đang dùng: <span className={`px-1.5 py-0.5 rounded font-medium ${ROLE_COLORS[currentRole] || 'bg-gray-100 text-gray-700'}`}>{ROLE_LABELS[currentRole] || currentRole}</span></p>
+                                            <p className="text-xs text-[#8E8878]">Đang dùng: <span className={`px-1.5 py-0.5 rounded font-medium ${ROLE_COLORS[currentRole] || 'bg-gray-100 text-gray-700'}`}>{roleLabelOf(currentRole, t)}</span></p>
                                         </div>
                                         <ChevronRight size={16} className="text-[#C4B9A8] group-hover:text-[#C9A84C] flex-shrink-0" />
                                     </button>
@@ -297,7 +327,7 @@ export default function ProfileButton({ compact = false }) {
                                                 }
                                                 <div>
                                                     <p className={`text-sm font-semibold ${isActive ? 'text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
-                                                        {ROLE_LABELS[r] || r}
+                                                        {roleLabelOf(r, t)}
                                                     </p>
                                                 </div>
                                             </button>

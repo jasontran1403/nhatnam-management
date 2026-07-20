@@ -125,10 +125,20 @@
     "super_seller": "Sales Manager",
     "operator": "Operator",
     "shipper": "Delivery",
-    "factory_worker": "Factory Worker",
+    "factory_worker": "Factory Office Staff",
     "super_factory_worker": "Factory Manager",
     "factory_accountant": "Factory Accountant",
-    "hr": "HR"
+    "factory_security": "Factory Security",
+    "factory_staff": "Factory Staff",
+    "factory_production_worker": "Factory Production Worker",
+    "driver": "Driver",
+    "hr": "HR",
+    "superadmin": "System Administrator",
+    "factory_manager": "Factory Supervisor",
+    "security": "Security",
+    "pos": "Point of Sale",
+    "user": "User",
+    "un_auth": "Unassigned"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -181,7 +191,9 @@
     "packaging_loss_reports": "Packaging Loss Reports",
     "pricing": "Pricing",
     "cashflow": "Cash Flow",
-    "materials": "Materials"
+    "materials": "Materials",
+    "my_payroll": "Payroll",
+    "attendance_sheets": "Timesheets"
   },
   "profile": {
     "my_profile": "My Profile",

@@ -125,10 +125,20 @@
     "super_seller": "Trưởng phòng Kinh doanh",
     "operator": "Nhập liệu",
     "shipper": "Giao hàng",
-    "factory_worker": "Nhân viên nhà máy",
+    "factory_worker": "Nhân viên xưởng",
     "super_factory_worker": "Trưởng xưởng sản xuất",
-    "factory_accountant": "Kế toán kho xưởng",
-    "hr": "Nhân sự"
+    "factory_accountant": "Kế toán xưởng",
+    "hr": "Nhân sự",
+    "superadmin": "Quản trị hệ thống",
+    "factory_staff": "Trợ lý Xưởng",
+    "factory_security": "Bảo vệ xưởng",
+    "factory_production_worker": "Công nhân sản xuất",
+    "factory_manager": "Quản lý xưởng",
+    "driver": "Tài xế",
+    "security": "Bảo vệ",
+    "pos": "Bán hàng tại quầy",
+    "user": "Người dùng",
+    "un_auth": "Chưa phân quyền"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -181,7 +191,9 @@
     "packaging_loss_reports": "Biên bản hao hụt đóng gói",
     "pricing": "Tính giá",
     "cashflow": "Dòng tiền",
-    "materials": "Nguyên liệu"
+    "materials": "Nguyên liệu",
+    "my_payroll": "Quản lý lương",
+    "attendance_sheets": "Bảng chấm công"
   },
   "profile": {
     "my_profile": "Hồ sơ cá nhân",

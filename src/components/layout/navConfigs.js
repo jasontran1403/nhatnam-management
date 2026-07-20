@@ -8,6 +8,7 @@ import {
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
   Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet, Calculator, Building2,
+  ClipboardSignature,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -43,6 +44,7 @@ export const ownerNavRaw = [
   { to: '/owner/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
   { to: '/owner/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
+  { to: '/owner/attendance', labelKey: 'attendance_sheets', icon: ClipboardSignature },
   { to: '/owner/production', labelKey: 'production', icon: Factory },
 ];
 
@@ -59,6 +61,8 @@ export const sellerNavRaw = [
   { to: '/seller/customers', labelKey: 'customers', icon: Users },
   { to: '/seller/quotation', labelKey: 'quotation', icon: Receipt },
   { to: '/seller/material-requests', labelKey: 'material_requests', icon: ShoppingBag, roles: ['SUPER_SELLER'] },
+  // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
+  { to: '/seller/my-payroll', labelKey: 'my_payroll', icon: Wallet },
 ];
 
 export const warehouseNavRaw = [
@@ -67,6 +71,8 @@ export const warehouseNavRaw = [
   { to: '/warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
   { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
+  // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
+  { to: '/warehouse/my-payroll', labelKey: 'my_payroll', icon: Wallet },
 ];
 
 export const superWarehouseNavRaw = [
@@ -76,6 +82,8 @@ export const superWarehouseNavRaw = [
   { to: '/super-warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
   { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
+  // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
+  { to: '/super-warehouse/my-payroll', labelKey: 'my_payroll', icon: Wallet },
 ];
 
 export const accountantNavRaw = [
@@ -85,6 +93,8 @@ export const accountantNavRaw = [
   { to: '/accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
   { to: '/accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
+  // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
+  { to: '/accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
 ];
 
 export const superAccountantNavRaw = [
@@ -101,6 +111,8 @@ export const superAccountantNavRaw = [
   // ── Quản lý nhân sự (SUPER_ACCOUNTANT được xem HR) ───────────────────────
   { to: '/super-accountant/manage', labelKey: 'hr_manage', icon: UserCog },
   { to: '/super-accountant/salaries', labelKey: 'salaries', icon: Receipt },
+  // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
+  { to: '/super-accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
 ];
 
 export const operatorNavRaw = [
@@ -121,6 +133,8 @@ export const factoryWorkerNavRaw = [
   { to: '/factory/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
   // ── Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm ──
   { to: '/factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  // ── Quản lý lương (phiếu lương theo tháng + thưởng KPI) ───────────────────
+  { to: '/factory/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   // ── Kho thành phẩm xưởng ──────────────────────────────────────────────────
   // { to: '/factory/finished-goods', labelKey: 'finished_goods', icon: Package },
 ];
@@ -137,6 +151,7 @@ export const superFactoryWorkerNavRaw = [
   { to: '/super-factory/history', labelKey: 'work_order_history', icon: ClipboardList },
   { to: '/super-factory/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  { to: '/super-factory/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   // { to: '/super-factory/finished-goods', labelKey: 'finished_goods', icon: Package },
 ];
 
@@ -147,6 +162,25 @@ export const factoryAccountantNavRaw = [
   { to: '/factory-accountant/transfers', labelKey: 'semi_finished_transfers', icon: FileText },
   { to: '/factory-accountant/finished-goods', labelKey: 'finished_goods', icon: Package },
   { to: '/factory-accountant/loss-reports', labelKey: 'packaging_loss_reports', icon: ClipboardCheck },
+  { to: '/factory-accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
+];
+
+// ── TÀI XẾ: chỉ 1 trang duy nhất là danh sách đơn đang giao ───────────────────
+export const driverNavRaw = [
+  { to: '/driver/orders', labelKey: 'delivering', icon: Truck },
+  // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
+  { to: '/driver/my-payroll', labelKey: 'my_payroll', icon: Wallet },
+];
+
+// ── BẢO VỆ (công ty): hiện chỉ có trang lương ────────────────────────────────
+export const securityNavRaw = [
+  { to: '/my-payroll', labelKey: 'my_payroll', icon: Wallet },
+];
+
+// ── NHÂN SỰ XƯỞNG role MỚI (bảo vệ xưởng, trợ lý kho, NV sản xuất, quản lý
+// xưởng): hiện CHỈ có 1 trang "Quản lý lương". ───────────────────────────────
+export const factoryPayrollNavRaw = [
+  { to: '/my-payroll', labelKey: 'my_payroll', icon: Wallet },
 ];
 
 /** Helper: build translated nav items from raw config + t function */
@@ -173,6 +207,9 @@ export const operatorNav = operatorNavRaw.map(({ to, labelKey, icon }) => ({ to,
 export const factoryWorkerNav = factoryWorkerNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 export const superFactoryWorkerNav = superFactoryWorkerNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 export const factoryAccountantNav = factoryAccountantNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
+export const driverNav = driverNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
+export const securityNav = securityNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
+export const factoryPayrollNav = factoryPayrollNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 
 // Default path cho từng role
 export const ROLE_DEFAULT_PATH = {
@@ -190,4 +227,10 @@ export const ROLE_DEFAULT_PATH = {
   SELLER: '/seller/dashboard',
   SUPER_SELLER: '/seller/dashboard',
   HR: '/hr/manage',
+  DRIVER:                    '/driver/orders',
+  SECURITY:                  '/my-payroll',
+  FACTORY_SECURITY:          '/my-payroll',
+  FACTORY_STAFF:             '/my-payroll',
+  FACTORY_PRODUCTION_WORKER: '/my-payroll',
+  FACTORY_MANAGER:           '/my-payroll',
 };

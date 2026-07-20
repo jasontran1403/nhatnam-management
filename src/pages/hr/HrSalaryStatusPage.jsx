@@ -2,8 +2,9 @@
 // HR / SUPER_ACCOUNTANT xem trạng thái các phiếu lương đã gửi + import/export
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { DollarSign, Clock, Check, X, Upload, Download } from 'lucide-react';
+import { DollarSign, Clock, Check, X, Upload, Download, CalendarClock, AlertCircle } from 'lucide-react';
 import { hrSalaryApi } from '../../api/hrApi';
+import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import {
   PageHeader, SectionCard, Table, Thead, Th, Td, Tr,
   EmptyState, LoadingSpinner, formatCurrency, formatDateTime,
@@ -13,6 +14,137 @@ import { Badge } from '../../components/ui/Badge';
 import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/common/Toast';
+
+// ── Import BẢNG CHẤM CÔNG ───────────────────────────────────────────────────
+// Đọc file "BẢNG CHI TIẾT CHẤM CÔNG" xuất từ máy chấm công, khớp với các nhân
+// viên đang có role thuộc xưởng (FACTORY_*) rồi lưu ngày công + giờ vào/ra.
+function ImportAttendanceModal({ open, onClose, onDone }) {
+  const now = new Date();
+  // Mặc định chọn THÁNG TRƯỚC — tháng hiện tại chưa hết nên không cho chọn
+  const options = [];
+  for (let i = 1; i <= 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push({ month: d.getMonth() + 1, year: d.getFullYear() });
+  }
+
+  const [sel, setSel] = useState(options[0]);
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState(null);
+  const fileRef = useRef(null);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!open) { setResult(null); setErr(null); setSel(options[0]); }
+  }, [open]); // eslint-disable-line
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setErr(null);
+    try {
+      const res = await factoryPayrollApi.uploadSheet(file, sel.month, sel.year);
+      setResult(res);
+      toast(`Tháng ${sel.month}/${sel.year}: khớp ${res?.matched ?? 0} nhân viên xưởng`, 'success');
+      onDone?.();
+    } catch (e) {
+      setErr(e?.response?.data?.message || e?.message || 'Lỗi import bảng chấm công');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Import bảng chấm công" size="sm">
+      <div className="space-y-4 py-2">
+        <div>
+          <label className="block text-xs font-semibold text-[#8E8878] mb-1.5">Tháng chấm công</label>
+          <select
+            value={`${sel.month}-${sel.year}`}
+            onChange={e => {
+              const [m, y] = e.target.value.split('-').map(Number);
+              setSel({ month: m, year: y });
+            }}
+            className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm bg-white">
+            {options.map(o => (
+              <option key={`${o.month}-${o.year}`} value={`${o.month}-${o.year}`}>
+                Tháng {o.month}/{o.year}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-[#8E8878] mt-1.5">
+            Chỉ tải được cho các tháng đã kết thúc.
+          </p>
+        </div>
+
+        <div className="text-[11px] text-[#8E8878] bg-[#FAF7F2] rounded-xl px-3.5 py-3 space-y-1.5">
+          <p className="font-bold text-[#1C1C1E] text-xs">File "BẢNG CHI TIẾT CHẤM CÔNG"</p>
+          <p>• Dùng đúng file Excel xuất từ máy chấm công — mỗi nhân viên một block
+            có dòng <strong>Mã nhân viên / Tên nhân viên</strong> và bảng chi tiết
+            từng ngày kèm giờ <strong>Vào / Ra</strong>.</p>
+          <p>• Chỉ lấy nhân viên đang có role thuộc <strong>xưởng (FACTORY_*)</strong>,
+            khớp theo mã chấm công đã lưu hoặc theo họ tên.</p>
+          <p className="text-amber-700">⚠ Tải lại cùng tháng sẽ <strong>ghi đè</strong> dữ liệu cũ
+            và tính lại thưởng KPI của tháng đó.</p>
+        </div>
+
+        {err && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+            <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-600 font-medium">{err}</p>
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'NV trong file', value: result.blocksInFile ?? 0, color: 'text-[#1C1C1E]' },
+                { label: 'NV xưởng',      value: result.factoryEmployees ?? 0, color: 'text-[#C9A84C]' },
+                { label: 'Đã khớp',       value: result.matched ?? 0, color: 'text-emerald-600' },
+              ].map(s => (
+                <div key={s.label} className="bg-[#FAF7F2] rounded-xl px-3 py-2.5 text-center">
+                  <p className="text-[10px] text-[#8E8878] font-semibold">{s.label}</p>
+                  <p className={`text-xl font-bold mt-0.5 ${s.color}`}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+            {result.unmatchedRows?.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <p className="text-[11px] text-amber-800 font-semibold mb-1">
+                  {result.unmatchedRows.length} nhân viên xưởng không có trong file:
+                </p>
+                <p className="text-[11px] text-amber-700 leading-snug">
+                  {result.unmatchedRows.map(r => r.fullName).join(', ')}
+                </p>
+              </div>
+            )}
+            <p className="text-[11px] text-[#8E8878]">
+              Xem báo cáo đầy đủ ở trang <strong>Bảng chấm công</strong>.
+            </p>
+          </div>
+        )}
+
+        {!uploading ? (
+          <label className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl
+            bg-[#C9A84C] text-white text-sm font-bold cursor-pointer
+            hover:bg-[#A07830] transition-colors">
+            <Upload size={15} /> Chọn file .xlsx
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+              onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
+          </label>
+        ) : (
+          <div className="flex items-center justify-center gap-2 py-3 text-sm text-[#8E8878]">
+            <div className="w-4 h-4 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            Đang xử lý...
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
 
 // ── Import Salaries Modal ───────────────────────────────────────────────────
 function ImportSalariesModal({ open, onClose, onDone }) {
@@ -120,6 +252,7 @@ export default function HrSalaryStatusPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [exporting, setExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
 
   const STATUS_CONFIG = {
     PENDING: { label: t('status', 'pending'), variant: 'warning', icon: Clock },
@@ -169,6 +302,10 @@ export default function HrSalaryStatusPage() {
         subtitle={t('batch', 'review_status')}
         action={
           <div className="flex gap-2">
+            <button onClick={() => setAttendanceOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-black/10 text-[#1C1C1E] hover:bg-[#FAF7F2] transition-colors">
+              <CalendarClock size={13} /> Import chấm công
+            </button>
             <button onClick={() => setImportOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-black/10 text-[#1C1C1E] hover:bg-[#FAF7F2] transition-colors">
               <Upload size={13} /> Import
@@ -242,6 +379,7 @@ export default function HrSalaryStatusPage() {
       </SectionCard>
 
       <ImportSalariesModal open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
+      <ImportAttendanceModal open={attendanceOpen} onClose={() => setAttendanceOpen(false)} onDone={load} />
     </div>
   );
 }

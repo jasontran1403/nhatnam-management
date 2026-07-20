@@ -5,6 +5,7 @@ import {
   Factory, Plus, Clock, CheckCircle2, AlertTriangle,
   Wrench, Settings2, ChevronRight, CalendarRange,
   ClipboardList, X, Loader2, Package, Search, ChevronDown, FileWarning, RotateCcw, Check, Wallet,
+  Scale,
 } from 'lucide-react';
 import { startOfDay } from 'date-fns';
 import useMinLoading from '../../hooks/useMinLoading';
@@ -1424,7 +1425,7 @@ export default function OwnerProductionDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {[
           { icon: CalendarRange, label: t('production','dash_kpi_active_plans'), value: d.totalActivePlans || 0, color: 'text-blue-600', iconBg: 'bg-blue-50' },
           { icon: ClipboardList, label: t('production','dash_kpi_total_wo'), value: d.totalWorkOrders || 0, color: 'text-[#1C1C1E]', iconBg: 'bg-[#FAF7F2]' },
@@ -1432,6 +1433,16 @@ export default function OwnerProductionDashboard() {
           { icon: Clock, label: t('production','dash_kpi_pending_plan'), value: d.pendingPlanOrders || 0, color: d.pendingPlanOrders > 0 ? 'text-amber-600' : 'text-[#8E8878]', iconBg: 'bg-amber-50' },
           { icon: CheckCircle2, label: t('production','dash_kpi_completed'), value: d.completedOrders || 0, color: 'text-emerald-600', iconBg: 'bg-emerald-50' },
           { icon: Settings2, label: t('production','dash_kpi_active_machines'), value: `${d.activeMachines || 0}/${d.totalMachines || 0}`, color: 'text-[#C9A84C]', iconBg: 'bg-[#C9A84C]/10' },
+          {
+            icon: Scale,
+            label: 'Tổng sản lượng hoàn thành',
+            value: `${fmtNum(d.totalCompletedOutput || 0)} kg`,
+            sub: d.completedOutputThisMonth != null
+              ? `Tháng này: ${fmtNum(d.completedOutputThisMonth)} kg`
+              : undefined,
+            color: 'text-teal-600',
+            iconBg: 'bg-teal-50',
+          },
         ].map(kpi => <KpiCard key={kpi.label} {...kpi} />)}
       </div>
 

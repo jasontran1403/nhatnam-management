@@ -33,6 +33,14 @@ const getRoleConfig = (t) => [
   { value: 'FACTORY_WORKER',   label: 'Nhân viên xưởng SX' },
   { value: 'FACTORY_ACCOUNTANT', label: 'Kế toán kho xưởng' },
   { value: 'HR',               label: 'Nhân viên nhân sự' },
+
+  // ── ROLE MỚI ──────────────────────────────────────────────────────────────
+  { value: 'DRIVER',                    label: 'Tài xế' },
+  { value: 'SECURITY',                  label: 'Bảo vệ' },
+  { value: 'FACTORY_MANAGER',           label: 'Quản lý xưởng' },
+  { value: 'FACTORY_PRODUCTION_WORKER', label: 'Nhân viên sản xuất' },
+  { value: 'FACTORY_STAFF',             label: 'Trợ lý kho (xưởng)' },
+  { value: 'FACTORY_SECURITY',          label: 'Bảo vệ xưởng' },
 ];
 
 const CONFLICT_GROUPS = [
@@ -41,6 +49,16 @@ const CONFLICT_GROUPS = [
   ['SELLER',     'SUPER_SELLER'],
   ['OWNER',      'ADMIN'],
   ['FACTORY_WORKER', 'SUPER_FACTORY_WORKER'],
+
+  // ── Vị trí XƯỞNG loại trừ nhau ────────────────────────────────────────────
+  // Mỗi người chỉ giữ 1 vị trí xưởng, nếu không việc chia thưởng KPI sẽ lấy
+  // trọng số cao nhất và có thể không đúng ý.
+  ['FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER'],
+  ['FACTORY_PRODUCTION_WORKER', 'FACTORY_STAFF'],
+  ['FACTORY_PRODUCTION_WORKER', 'FACTORY_SECURITY'],
+  ['FACTORY_STAFF',             'FACTORY_MANAGER'],
+  ['FACTORY_STAFF',             'FACTORY_SECURITY'],
+  ['FACTORY_MANAGER',           'FACTORY_SECURITY'],
 ];
 
 // ── Helpers (dùng ROLE_LABEL động) ───────────────────────────────────────────

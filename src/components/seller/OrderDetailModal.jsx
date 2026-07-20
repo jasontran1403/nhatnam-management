@@ -308,6 +308,9 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
   const ROLE_LABEL = {
     SELLER: 'Bán hàng', WAREHOUSE: 'Kho', ACCOUNTANT: 'Kế toán',
     ADMIN: 'Admin', OWNER: 'Owner',
+    SUPER_SELLER: 'Trưởng phòng KD', SUPER_WAREHOUSE: 'Quản lý kho',
+    SUPER_ACCOUNTANT: 'Kế toán trưởng',
+    DRIVER: 'Tài xế',
   };
 
   const handleActionSuccess = () => { onRefresh?.(); onClose(); };

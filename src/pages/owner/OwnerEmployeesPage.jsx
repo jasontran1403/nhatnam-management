@@ -381,10 +381,9 @@ function SalaryApprovalTab() {
                 )}
                 <Th>Nhân viên</Th>
                 <Th>Bộ phận</Th>
-                <Th>Phòng ban</Th>
-                <Th right>Lương trước thuế</Th>
+                <Th>Chức vụ</Th>
+                <Th right>Lương</Th>
                 <Th right>Phụ cấp</Th>
-                <Th right>Thưởng</Th>
                 <Th>Trạng thái</Th>
                 <Th>Ngày gửi</Th>
                 {statusFilter === 'PENDING' && <Th right>Thao tác</Th>}
@@ -406,10 +405,9 @@ function SalaryApprovalTab() {
                     <div className="text-xs text-[#8E8878]">{s.position || '—'}</div>
                   </Td>
                   <Td>{s.department || '—'}</Td>
-                  <Td>{s.division || '—'}</Td>
+                  <Td>{s.position || '—'}</Td>
                   <Td right>{s.baseSalary ? formatCurrency(s.baseSalary) : '—'}</Td>
                   <Td right>{s.allowance ? formatCurrency(s.allowance) : '—'}</Td>
-                  <Td right>{s.bonus ? formatCurrency(s.bonus) : '—'}</Td>
                   <Td>
                     <Badge variant={
                       s.status === 'APPROVED' ? 'success' :
