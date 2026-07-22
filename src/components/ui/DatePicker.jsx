@@ -6,7 +6,7 @@ import { vi } from 'date-fns/locale';
 import { format, startOfDay } from 'date-fns';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 
-export default function DatePicker({ value, onChange, placeholder = 'Chọn ngày', align = 'left', minDate }) {
+export default function DatePicker({ value, onChange, placeholder = 'Chọn ngày', align = 'left', minDate, maxDate }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(value ? new Date(value) : new Date());
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -75,6 +75,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Chọn ngà
         color="#C9A84C"
         weekStartsOn={1}
         minDate={minDate}
+        maxDate={maxDate}
       />
       <div className="flex items-center justify-between px-4 py-3 border-t border-[#F0EBE3] bg-[#FAF7F2]">
         <span className="text-xs text-[#C9A84C]">{format(selected, 'dd/MM/yyyy')}</span>

@@ -15,6 +15,7 @@ import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
+import DebtReportCustomerModal from '../../components/accountant/DebtReportCustomerModal';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   PrimaryButton, SecondaryButton, DangerButton,
@@ -760,6 +761,7 @@ export default function AdminCustomers() {
   const toast = useToast();
   const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
   const debouncedQ = useDebounce(filters.q, 600);
+  const [debtModalOpen, setDebtModalOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
@@ -826,16 +828,29 @@ export default function AdminCustomers() {
     }
   }, [debouncedQ, filters]);
 
-  // Export báo cáo công nợ (Aged Receivables) — PDF, theo đúng bộ lọc đang hiển thị
-  const handleExportAgedReceivables = useCallback(async () => {
+  // Nguồn dữ liệu cho modal chọn khách hàng (search + phân trang)
+  const fetchCustomersForReport = useCallback(async ({ q, page: p = 0, size = 20 }) => {
+    const res = await adminCustomerApi.list({ q: q || undefined, page: p, size, sort: 'id,desc' });
+    const content = res?.content || [];
+    const totalElements = res?.totalElements ?? res?.totalItems ?? content.length;
+    const totalPages = res?.totalPages ?? Math.ceil(totalElements / size);
+    return { content, totalPages, totalElements };
+  }, []);
+
+  // Export báo cáo công nợ (Aged Receivables) — PDF.
+  // customerIds = mảng ID → chỉ xuất đúng những khách chọn ở modal;
+  // null → xuất theo bộ lọc đang hiển thị (hành vi cũ).
+  const handleExportAgedReceivables = useCallback(async (customerIds = null) => {
     setExportingDebt(true);
     try {
-      const activeFilters = {
-        q: debouncedQ || undefined,
-        type: filters.type || undefined,
-        isActive: filters.isActive !== '' ? filters.isActive : undefined,
-        sellerId: filters.sellerId !== '' ? filters.sellerId : undefined,
-      };
+      const activeFilters = (customerIds && customerIds.length)
+        ? { customerIds }
+        : {
+          q: debouncedQ || undefined,
+          type: filters.type || undefined,
+          isActive: filters.isActive !== '' ? filters.isActive : undefined,
+          sellerId: filters.sellerId !== '' ? filters.sellerId : undefined,
+        };
       const res = await reportApi.exportAgedReceivables(undefined, activeFilters); // asOf = hôm nay
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -848,6 +863,7 @@ export default function AdminCustomers() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setDebtModalOpen(false);
     } catch (e) {
       console.error(e);
       toast(e?.response?.data?.message || 'Lỗi khi xuất báo cáo công nợ', 'error');
@@ -975,7 +991,7 @@ export default function AdminCustomers() {
             className="flex items-center gap-1.5 text-xs px-3 py-2">
             <UserPlus size={13} /> Tạo khách hàng
           </PrimaryButton>
-          <button onClick={handleExportAgedReceivables} disabled={exportingDebt}
+          <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
             {exportingDebt
               ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
@@ -1435,6 +1451,16 @@ export default function AdminCustomers() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onDone={load}
+      />
+
+      {/* Modal chọn khách hàng trước khi xuất báo cáo công nợ */}
+      <DebtReportCustomerModal
+        open={debtModalOpen}
+        onClose={() => setDebtModalOpen(false)}
+        fetchCustomers={fetchCustomersForReport}
+        onConfirm={(ids) => handleExportAgedReceivables(ids)}
+        onExportAll={() => handleExportAgedReceivables(null)}
+        exporting={exportingDebt}
       />
     </div>
   );

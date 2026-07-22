@@ -144,6 +144,18 @@ export const factoryPayrollApi = {
   clearAdjustments: (type, month, year) =>
     api.delete(`/api/factory-payroll/adjustments/${type}`, { params: { month, year } }).then(r),
 
+  /** Danh sách các KHOẢN thưởng đã có trong kỳ — mỗi khoản một nhãn riêng. */
+  /** Danh sách nhân sự của bộ phận — modal "Chi tiết bộ phận". */
+  departmentMembers: (department) =>
+    api.get(`/api/factory-payroll/departments/${department}/members`).then(r),
+
+  bonusBatches: (month, year) =>
+    api.get('/api/factory-payroll/adjustments/bonus/batches', { params: { month, year } }).then(r),
+
+  /** Xoá ĐÚNG MỘT khoản thưởng, các khoản khác của cùng tháng không bị đụng. */
+  clearBonusLabel: (month, year, label) =>
+    api.delete('/api/factory-payroll/adjustments/bonus', { params: { month, year, label } }).then(r),
+
   // ── File mẫu ───────────────────────────────────────────────────────────────
 
   /** kind: 'exception' | 'leave' | 'bonus' | 'allowance' */
@@ -172,8 +184,15 @@ export const factoryPayrollApi = {
   kpi: (month, year) =>
     api.get('/api/factory-payroll/kpi', { params: { month, year } }).then(r),
 
-  recomputeKpi: (month, year) =>
-    api.post('/api/factory-payroll/kpi/recompute', null, { params: { month, year } }).then(r),
+  /**
+   * Tính lại thưởng KPI xưởng.
+   * securityRate = mức thưởng cố định cho MỘT bảo vệ xưởng. Bỏ trống thì backend
+   * giữ nguyên mức đã dùng cho tháng đó (đừng gửi 0 nếu chỉ muốn giữ nguyên).
+   */
+  recomputeKpi: (month, year, securityRate) =>
+    api.post('/api/factory-payroll/kpi/recompute', null, {
+      params: { month, year, ...(securityRate != null ? { securityRate } : {}) },
+    }).then(r),
 };
 
 export default factoryPayrollApi;

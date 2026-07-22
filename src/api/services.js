@@ -27,11 +27,44 @@ export const uploadApi = {
 
 // ─── Reports (báo cáo công nợ / aged receivables) ─────────────────────────────
 export const reportApi = {
-  exportAgedReceivables: (asOf) =>
-    api.get('/api/accountant/reports/aged-receivables', {
-      params: asOf ? { asOf } : {},
+  // asOf: 'yyyy-MM-dd' (tuỳ chọn, bỏ trống = hôm nay).
+  // filters: { q, type, isActive, sellerId, customerIds }
+  //   - customerIds (mảng ID): CHỈ xuất đúng các khách được chọn ở modal,
+  //     backend sẽ bỏ qua các bộ lọc còn lại.
+  exportAgedReceivables: (asOf, filters = {}) => {
+    const params = {};
+    if (asOf) params.asOf = asOf;
+
+    if (Array.isArray(filters.customerIds) && filters.customerIds.length) {
+      // Gửi dạng "1,2,3" để Spring bind thẳng vào List<Long>.
+      params.customerIds = filters.customerIds.join(',');
+      return api.get('/api/accountant/reports/aged-receivables', { params, responseType: 'blob' });
+    }
+
+    if (filters.q) params.q = filters.q;
+    if (filters.type) params.type = filters.type;
+    if (filters.isActive !== undefined && filters.isActive !== '' && filters.isActive !== null)
+      params.isActive = filters.isActive;
+    if (filters.sellerId !== undefined && filters.sellerId !== '' && filters.sellerId !== null)
+      params.sellerId = filters.sellerId;
+
+    return api.get('/api/accountant/reports/aged-receivables', { params, responseType: 'blob' });
+  },
+};
+
+// ─── Reports (báo cáo công nợ — bản của SELLER/SUPER_SELLER) ─────────────────
+// Backend tự giới hạn trong phạm vi khách hàng mà tài khoản được phép xem.
+export const sellerReportApi = {
+  exportAgedReceivables: (asOf, filters = {}) => {
+    const params = {};
+    if (asOf) params.asOf = asOf;
+    if (Array.isArray(filters.customerIds) && filters.customerIds.length)
+      params.customerIds = filters.customerIds.join(',');
+    return api.get('/api/seller/reports/aged-receivables', {
+      params,
       responseType: 'blob',
-    }),
+    });
+  },
 };
 
 // ─── Warehouses (seller) ──────────────────────────────────────────────────────

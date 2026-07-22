@@ -192,8 +192,11 @@
     "pricing": "Pricing",
     "cashflow": "Cash Flow",
     "materials": "Materials",
+    "my_requests": "My Requests",
     "my_payroll": "Payroll",
-    "attendance_sheets": "Timesheets"
+    "attendance_sheets": "Timesheets",
+    "supply_orders": "Office Supply Orders",
+    "supply_warehouse": "Office Supply Stock"
   },
   "profile": {
     "my_profile": "My Profile",

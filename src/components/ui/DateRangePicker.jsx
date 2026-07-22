@@ -182,7 +182,7 @@ function MonthYearDropdown({ value, onSelect, onCancel, t }) {
 
 // ── Calendar dropdown ─────────────────────────────────────────────────────────
 // Lưu ý: bỏ hết class định vị (absolute/top/left/right) — vị trí do AnchoredPortal lo.
-function CalendarDropdown({ selection, onSelect, onApply, onCancel, t }) {
+function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, minDate, maxDate }) {
   return (
     <div
       className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden"
@@ -200,6 +200,8 @@ function CalendarDropdown({ selection, onSelect, onApply, onCancel, t }) {
         color="#C9A84C"
         weekStartsOn={1}
         moveRangeOnFirstSelection={false}
+        minDate={minDate}
+        maxDate={maxDate}
       />
       <div className="flex items-center justify-between px-4 py-3 border-t border-[#F0EBE3] bg-[#FAF7F2]">
         <p className="text-xs text-[#8E8878]">
@@ -340,7 +342,7 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
 }
 
 // ── SIMPLE MODE ───────────────────────────────────────────────────────────────
-function SimplePicker({ from, to, onChange, placeholder, align = 'left' }) {
+function SimplePicker({ from, to, onChange, placeholder, align = 'left', minDate, maxDate }) {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState(() => ({
@@ -421,6 +423,8 @@ function SimplePicker({ from, to, onChange, placeholder, align = 'left' }) {
           onApply={handleApply}
           onCancel={() => setOpen(false)}
           t={t}
+          minDate={minDate}
+          maxDate={maxDate}
         />
       </AnchoredPortal>
     </div>
@@ -437,6 +441,8 @@ export default function DateRangePicker(props) {
         onChange={props.onChange}
         placeholder={props.placeholder}
         align={props.align || 'left'}
+        minDate={props.minDate}
+        maxDate={props.maxDate}
       />
     );
   }

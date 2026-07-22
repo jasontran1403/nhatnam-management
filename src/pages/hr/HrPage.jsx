@@ -19,8 +19,10 @@ import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/common/Toast';
+import { useAuth } from '../../context/AuthContext';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
+import EmployeeRequestsPanel from '../../components/hr/EmployeeRequestsPanel';
 
 // ── Helper: format số kiểu Việt Nam khi gõ (chỉ số nguyên, có dấu chấm ngăn cách) ──
 const digitsOnly = (s) => String(s ?? '').replace(/[^\d]/g, '');
@@ -361,6 +363,8 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
  * Có thể lấy động từ GET /api/hr/org-structure nếu muốn khỏi khai báo 2 nơi.
  */
 const ORG = {
+  // Ban lãnh đạo — lương tính tách riêng, không gộp với bộ phận nào khác.
+  'Quản lý cấp cao': ['Chủ Tịch', 'Giám Đốc'],
   'Xưởng sản xuất': ['Trưởng xưởng', 'Quản lý xưởng', 'Kế toán xưởng',
                      'Công nhân sản xuất', 'Trợ lý xưởng', 'Nhân viên văn phòng', 'Bảo vệ'],
   'Kế Toán':        ['Kế toán trưởng', 'Chuyên viên kế toán'],
@@ -1442,6 +1446,38 @@ function PayrollTab() {
 }
 
 
+// ── Nhóm tab "Phiếu nghỉ" ─────────────────────────────────────────────────────
+// Hai nguồn phiếu khác hẳn nhau nên tách làm hai bảng thay vì trộn chung:
+//   · ĐƠN NHÂN VIÊN  — nhân viên tự gửi trên app, OWNER duyệt, có tác động
+//                      trực tiếp lên bảng chấm công khi tính lương.
+//   · PHIẾU HR TẠO   — bản ghi nghỉ phép do HR nhập tay (kèm bàn giao, SĐT
+//                      liên lạc), mang tính lưu hồ sơ, không qua bước duyệt.
+// Đơn nhân viên đặt trước vì đó là việc cần xử lý hằng ngày.
+function LeavesTabGroup() {
+  const { role } = useAuth();
+
+  // Trang /hr/manage mở cho cả HR và SUPER_ACCOUNTANT, nhưng API duyệt đơn chỉ
+  // nhận OWNER/ADMIN. Ẩn hẳn tab thay vì để họ bấm vào rồi nhận 403 — quyền
+  // thật vẫn nằm ở backend, đây chỉ là cho khớp giao diện.
+  const canReview = role === 'OWNER' || role === 'ADMIN';
+
+  const [sub, setSub] = useState(canReview ? 'requests' : 'hr');
+
+  const SUB_TABS = [
+    ...(canReview ? [{ id: 'requests', label: 'Đơn nhân viên', icon: FileText }] : []),
+    { id: 'hr', label: 'Phiếu HR tạo', icon: Calendar },
+  ];
+
+  // Chỉ còn một tab thì thanh tab là thừa.
+  return (
+    <div className="space-y-4">
+      {SUB_TABS.length > 1 && <TabBar tabs={SUB_TABS} active={sub} onChange={setSub} />}
+      {sub === 'requests' && canReview && <EmployeeRequestsPanel />}
+      {sub === 'hr' && <LeavesTab />}
+    </div>
+  );
+}
+
 export default function HrPage() {
   const { t } = useLang();
   const [tab, setTab] = useState('employees');
@@ -1468,7 +1504,7 @@ export default function HrPage() {
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'employees' && <EmployeesTab />}
       {tab === 'payroll' && <PayrollTab />}
-      {tab === 'leaves' && <LeavesTab />}
+      {tab === 'leaves' && <LeavesTabGroup />}
       {tab === 'ot' && <OtTab />}
       {showDriverReport && <DriverReportModal onClose={() => setShowDriverReport(false)} />}
     </div>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/common/Toast';
 import useDebounce from '../../utils/useDebounce.js';
 import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
@@ -156,6 +157,7 @@ function RolePicker({ selected, onChange, availableRoles, ROLE_LABEL }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminUsers() {
+  const toast = useToast();
   const { t } = useLang();
   const { user: currentUser } = useAuth();
 
@@ -178,6 +180,7 @@ export default function AdminUsers() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [pwdTarget, setPwdTarget]   = useState(null);
   const [newPwd, setNewPwd]         = useState('');
+  const [pwdErr, setPwdErr]         = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,7 +208,7 @@ export default function AdminUsers() {
       await adminUserApi.softDelete(deleteConfirm.id);
       setDeleteConfirm(null); load();
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Lỗi xoá nhân viên');
+      toast(e?.response?.data?.message || e.message || 'Lỗi xoá nhân viên', 'error');
     } finally { setSaving(false); }
   };
 
@@ -215,19 +218,31 @@ export default function AdminUsers() {
     try {
       await adminUserApi.setLocked(lockConfirm.id, !lockConfirm.isLockAccount);
       setLockConfirm(null); load();
-    } catch (e) { alert(e?.response?.data?.message || e.message); }
+    } catch (e) { toast(e?.response?.data?.message || e.message, 'error'); }
     finally { setSaving(false); }
   };
 
   const submitPwd = async () => {
-    if (!newPwd || newPwd.length < 6) { alert('Mật khẩu tối thiểu 6 ký tự'); return; }
-    setSaving(true);
+    if (!newPwd || newPwd.length < 6) {
+      setPwdErr('Mật khẩu tối thiểu 6 ký tự');
+      return;
+    }
+    setSaving(true); setPwdErr('');
+    const username = pwdTarget?.username;
     try {
       await adminUserApi.resetPassword(pwdTarget.id, newPwd);
       setPwdTarget(null); setNewPwd('');
-      alert('Đổi mật khẩu thành công');
-    } catch (e) { alert(e?.response?.data?.message || e.message); }
-    finally { setSaving(false); }
+      toast(`Đã đổi mật khẩu cho @${username}`, 'success');
+    } catch (e) {
+      const msg = e?.response?.data?.message || e.message || 'Đổi mật khẩu thất bại';
+      setPwdErr(msg);
+      toast(msg, 'error');
+    } finally { setSaving(false); }
+  };
+
+  const closePwdModal = () => {
+    if (saving) return;
+    setPwdTarget(null); setNewPwd(''); setPwdErr('');
   };
 
   const renderRoleBadges = (u) => {
@@ -473,17 +488,22 @@ export default function AdminUsers() {
       </Modal>
 
       {/* Reset password */}
-      <Modal open={!!pwdTarget} onClose={() => !saving && setPwdTarget(null)}
+      <Modal open={!!pwdTarget} onClose={closePwdModal}
         title="Đổi mật khẩu" size="sm"
         footer={
           <div className="flex justify-end gap-2">
-            <SecondaryButton onClick={() => setPwdTarget(null)} disabled={saving}>Hủy</SecondaryButton>
+            <SecondaryButton onClick={closePwdModal} disabled={saving}>Hủy</SecondaryButton>
             <PrimaryButton onClick={submitPwd} loading={saving}>Xác nhận</PrimaryButton>
           </div>
         }>
         <p className="text-sm text-[#1C1C1E] mb-3">User: <span className="font-semibold">@{pwdTarget?.username}</span></p>
         <Field label="Mật khẩu mới" required hint="Tối thiểu 6 ký tự">
-          <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} className={inputCls} />
+          <input type="password" value={newPwd}
+            onChange={e => { setNewPwd(e.target.value); setPwdErr(''); }}
+            onKeyDown={e => e.key === 'Enter' && !saving && submitPwd()}
+            className={`${inputCls} ${pwdErr ? 'border-red-400' : ''}`}
+            autoFocus />
+          {pwdErr && <p className="text-xs text-red-500 mt-1">{pwdErr}</p>}
         </Field>
       </Modal>
     </div>

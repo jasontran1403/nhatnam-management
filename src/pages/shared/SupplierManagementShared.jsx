@@ -8,8 +8,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Building2, ChevronLeft, ChevronDown, ChevronRight, Search, Phone, User, MapPin, Hash,
-  Wallet, Clock, ArrowUpDown, TrendingUp, TrendingDown, Minus, Package,
-  Receipt, X, BarChart3, Calendar, Layers, Plus, Pencil, Trash2, Tag, Check,
+  Wallet, Clock, ArrowUpDown, TrendingUp, Package,
+  Receipt, BarChart3, Calendar, Layers, Pencil, Trash2, Tag,
   Download, Upload,
 } from 'lucide-react';
 import {
@@ -18,6 +18,8 @@ import {
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
+// Danh mục khoản chi — bản có phân loại Dịch vụ / Đồ dùng tiêu hao (phiếu VPP)
+import ExpenseCategorySection from '../../components/supply/ExpenseCategorySection';
 import { ownerSupplierApi } from '../../api/materialRequestApi.js';
 import { useToast } from '../../components/common/Toast.jsx';
 import { VENDOR_TYPE_LABELS } from '../accountant/ExpenseCreateModal.jsx';
@@ -659,155 +661,11 @@ function SupplierInfoHeader({ info, isService }) {
 // Trước đây mỗi NCC có danh mục riêng → 10 nhãn × 200 NCC = 2.000 thao tác tạo,
 // và cùng một khoản chi ("Tiền điện") nằm ở 200 bản ghi khác nhau nên rất khó
 // tổng hợp chi phí theo mục. Giờ Owner tạo nhãn MỘT LẦN, mọi NCC đều chọn được.
-function ExpenseCategorySection({ canManage }) {
-  const [cats, setCats] = useState(null);
-  const [open, setOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [editing, setEditing] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-
-  const load = useCallback(async () => {
-    try {
-      const data = await ownerSupplierApi.listCategories(false);
-      setCats(data || []);
-    } catch { setCats([]); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const activeCats = (cats || []).filter(c => c.active);
-
-  const doCreate = async () => {
-    const name = newName.trim();
-    if (!name) return;
-    setBusy(true); setErr('');
-    try {
-      await ownerSupplierApi.createCategory({ name });
-      setNewName(''); setAdding(false);
-      await load();
-    } catch (e) { setErr(e?.response?.data?.message || 'Không tạo được nhãn'); }
-    finally { setBusy(false); }
-  };
-
-  const doRename = async (id) => {
-    const name = editing.name.trim();
-    if (!name) return;
-    setBusy(true); setErr('');
-    try {
-      await ownerSupplierApi.updateCategory(id, { name });
-      setEditing(null);
-      await load();
-    } catch (e) { setErr(e?.response?.data?.message || 'Không cập nhật được'); }
-    finally { setBusy(false); }
-  };
-
-  const toggleActive = async (c) => {
-    setBusy(true); setErr('');
-    try {
-      await ownerSupplierApi.updateCategory(c.id, { active: !c.active });
-      await load();
-    } catch (e) { setErr(e?.response?.data?.message || 'Không cập nhật được'); }
-    finally { setBusy(false); }
-  };
-
-  const doDelete = async (c) => {
-    if (!window.confirm(`Ẩn nhãn "${c.name}"? Nhãn sẽ không còn chọn được khi lập phiếu chi cho BẤT KỲ nhà cung cấp nào (phiếu cũ giữ nguyên).`)) return;
-    setBusy(true); setErr('');
-    try {
-      await ownerSupplierApi.deleteCategory(c.id);
-      await load();
-    } catch (e) { setErr(e?.response?.data?.message || 'Không xoá được'); }
-    finally { setBusy(false); }
-  };
-
-  return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3.5">
-        <div className="flex items-center gap-2">
-          <Tag size={16} className="text-[#C9A84C]" />
-          <span className="text-sm font-semibold text-[#1C1C1E]">Danh mục khoản chi</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30">
-            Dùng chung
-          </span>
-          {cats && <span className="text-xs text-[#8E8878]">({activeCats.length} nhãn)</span>}
-        </div>
-        <span className="text-xs text-[#8E8878]">{open ? 'Thu gọn' : 'Mở rộng'}</span>
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 border-t border-black/5 pt-3 space-y-3">
-          <p className="text-xs text-[#8E8878]">
-            {canManage
-              ? 'Danh mục DÙNG CHUNG cho tất cả nhà cung cấp — tạo nhãn một lần, mọi NCC đều chọn được. Kế toán chỉ được chọn từ danh sách này, không gõ tự do.'
-              : 'Danh mục khoản chi dùng chung cho mọi nhà cung cấp (do chủ quản lý). Kế toán chọn nhãn khi lập phiếu chi.'}
-          </p>
-
-          {err && <p className="text-xs text-red-600">{err}</p>}
-
-          {cats == null ? (
-            <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-10 bg-[#FAF7F2] rounded-xl animate-pulse" />)}</div>
-          ) : cats.length === 0 ? (
-            <p className="text-xs text-[#8E8878] py-2">Chưa có nhãn nào{canManage ? ' — hãy thêm nhãn đầu tiên.' : '.'}</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {cats.map(c => (
-                <div key={c.id}
-                  className={`inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full border text-sm ${c.active ? 'bg-[#FAF7F2] border-[#E8DDD0] text-[#1C1C1E]' : 'bg-gray-50 border-gray-200 text-gray-400 line-through'}`}>
-                  {editing?.id === c.id ? (
-                    <>
-                      <input autoFocus value={editing.name}
-                        onChange={e => setEditing({ ...editing, name: e.target.value })}
-                        onKeyDown={e => e.key === 'Enter' && doRename(c.id)}
-                        className="text-sm bg-white border border-[#C9A84C] rounded px-1.5 py-0.5 w-32 focus:outline-none" />
-                      <button disabled={busy} onClick={() => doRename(c.id)} className="text-emerald-600"><Check size={14} /></button>
-                      <button onClick={() => setEditing(null)} className="text-[#8E8878]"><X size={14} /></button>
-                    </>
-                  ) : (
-                    <>
-                      <span>{c.name}</span>
-                      {canManage && (
-                        <span className="flex items-center gap-1">
-                          <button onClick={() => setEditing({ id: c.id, name: c.name })} title="Sửa"
-                            className="text-[#8E8878] hover:text-[#C9A84C]"><Pencil size={12} /></button>
-                          <button onClick={() => toggleActive(c)} title={c.active ? 'Ẩn' : 'Bật lại'}
-                            className="text-[#8E8878] hover:text-amber-600 text-[11px] font-semibold">{c.active ? 'Ẩn' : 'Bật'}</button>
-                          <button onClick={() => doDelete(c)} title="Xoá (ẩn)"
-                            className="text-[#8E8878] hover:text-red-600"><Trash2 size={12} /></button>
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {canManage && (
-            adding ? (
-              <div className="flex items-center gap-2">
-                <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && doCreate()}
-                  placeholder="Tên nhãn khoản chi (VD: Tiền điện)..."
-                  className="flex-1 px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]" />
-                <button disabled={busy || !newName.trim()} onClick={doCreate}
-                  className="px-3 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold disabled:opacity-50">Lưu</button>
-                <button onClick={() => { setAdding(false); setNewName(''); setErr(''); }}
-                  className="px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm">Huỷ</button>
-              </div>
-            ) : (
-              <button onClick={() => setAdding(true)}
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#C9A84C] hover:underline">
-                <Plus size={14} /> Thêm nhãn khoản chi
-              </button>
-            )
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+// ── DANH MỤC KHOẢN CHI ───────────────────────────────────────────────────────
+// Component ExpenseCategorySection trước đây nằm ở đây (UI "pill" sửa tên tại chỗ).
+// Nay đã tách ra file riêng vì phải chứa thêm 4 trường: loại (Dịch vụ / Đồ dùng
+// tiêu hao), Đơn vị tính, Quy cách và autocomplete danh mục vật dụng.
+// Xem: components/supply/ExpenseCategorySection.jsx
 
 function Stat({ label, value, sub, accent, danger }) {
   return (

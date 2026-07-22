@@ -17,12 +17,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ClipboardCheck, Upload, RefreshCw, AlertCircle, CheckCircle2, Trash2,
   FileSpreadsheet, Calculator, Download, CalendarDays, ChevronDown, Gift, Wallet,
-  CalendarClock, UserCheck, Clock, Lock, Unlock, Users, Receipt, Truck, Route,
+  CalendarClock, UserCheck, Clock, Lock, Unlock, Users, Receipt, Truck, Route, ShieldCheck,
 } from 'lucide-react';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import {
   PageHeader, SectionCard, LoadingSpinner, SecondaryButton, PrimaryButton,
-  Table, Thead, Th, Td, Tr, formatDateTime, formatCurrency,
+  Table, Thead, Th, Td, Tr, EmptyState, formatDateTime, formatCurrency,
 } from '../../components/ui';
 import Modal from '../../components/ui/Modal';
 import AttendanceDayCalendar from '../../components/hr/AttendanceDayCalendar';
@@ -94,6 +94,110 @@ function MonthPicker({ periods, value, onChange, disabled }) {
 // TAB BỘ PHẬN
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Gõ tiền kiểu Việt Nam: chỉ giữ chữ số, chèn dấu chấm ngăn cách hàng nghìn.
+// Giữ ở dạng chuỗi trong state để người dùng xoá trắng được (số 0 sẽ dính lại).
+const formatVnInt = (v) => {
+  const d = String(v ?? '').replace(/[^\d]/g, '');
+  return d ? Number(d).toLocaleString('vi-VN') : '';
+};
+
+/**
+ * MODAL "CHI TIẾT BỘ PHẬN" — ai đang thuộc bộ phận này ngay lúc mở.
+ *
+ * Không gắn với kỳ lương nào: dùng để đối chiếu nhân sự TRƯỚC khi tải bảng chấm
+ * công lên, nên phải phản ánh hiện trạng chứ không phải ảnh chụp của tháng.
+ */
+function DepartmentMembersModal({ open, department, departmentLabel, onClose }) {
+  const toast = useToast();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !department) return;
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const d = await factoryPayrollApi.departmentMembers(department);
+        if (alive) setData(d);
+      } catch (e) {
+        if (alive) toast(e?.response?.data?.message || 'Không tải được danh sách nhân sự', 'error');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    // Cờ alive chặn setState sau khi modal đã đóng — đổi bộ phận liên tục sẽ
+    // khiến response cũ về sau response mới và ghi đè danh sách đúng.
+    return () => { alive = false; };
+  }, [open, department, toast]);
+
+  const members = data?.members ?? [];
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      title={`Chi tiết bộ phận — ${departmentLabel || ''}`}
+    >
+      {loading ? (
+        <LoadingSpinner label="Đang tải danh sách…" />
+      ) : members.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="Bộ phận chưa có nhân viên"
+          description="Gán bộ phận cho nhân viên ở trang Nhân sự để họ xuất hiện tại đây."
+        />
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-[#8E8878]">{data.total} nhân viên</p>
+          <Table>
+            <Thead>
+              <Tr className="bg-[#FAF7F2] text-[#8E8878]">
+                <Th>Nhân viên</Th>
+                <Th>Chức vụ</Th>
+                <Th>Chức danh trả lương</Th>
+              </Tr>
+            </Thead>
+            <tbody>
+              {members.map(m => (
+                <Tr key={m.userId}>
+                  <Td>
+                    <div className="font-medium text-[#1C1C1E]">{m.fullName}</div>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {!m.hasSalary && (
+                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-50
+                          border border-amber-200 rounded px-1.5 py-0.5">
+                          chưa có hồ sơ lương
+                        </span>
+                      )}
+                      {m.attendanceExempt && (
+                        <span className="text-[10px] font-semibold text-[#8E8878] bg-[#FAF7F2]
+                          border border-black/10 rounded px-1.5 py-0.5">
+                          không chấm công
+                        </span>
+                      )}
+                    </div>
+                  </Td>
+                  <Td className="text-[#1C1C1E]">
+                    {m.position || <span className="text-[#C4B9A8]">—</span>}
+                    {m.division && (
+                      <div className="text-[11px] text-[#8E8878]">{m.division}</div>
+                    )}
+                  </Td>
+                  {/* Lệch với cột Chức vụ nghĩa là người này đang được tính lương
+                      ở bộ phận khác với hồ sơ — đáng để OWNER để ý. */}
+                  <Td className="text-[#8E8878]">{m.roleLabel || '—'}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function DepartmentTabs({ statuses, value, onChange }) {
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
@@ -106,9 +210,14 @@ function DepartmentTabs({ statuses, value, onChange }) {
               ${active
                 ? 'bg-[#1C1C1E] text-white border-[#1C1C1E]'
                 : 'bg-white text-[#1C1C1E] border-black/10 hover:border-[#C9A84C]/50'}`}>
-            {s.department === 'DRIVER'
-              ? <Truck size={14} className={active ? 'text-[#C9A84C]' : 'text-[#8E8878]'} />
-              : <Users size={14} className={active ? 'text-[#C9A84C]' : 'text-[#8E8878]'} />}
+            {(() => {
+              // Bộ phận Quản lý (OWNER/ADMIN) và Tài xế có biểu tượng riêng để
+              // phân biệt nhanh với các bộ phận nhân viên thông thường.
+              const Icon = s.department === 'DRIVER' ? Truck
+                : s.department === 'MANAGEMENT' ? ShieldCheck
+                : Users;
+              return <Icon size={14} className={active ? 'text-[#C9A84C]' : 'text-[#8E8878]'} />;
+            })()}
             <span>{s.departmentLabel}</span>
             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md
               ${active ? 'bg-white/15 text-white/80' : 'bg-[#FAF7F2] text-[#8E8878]'}`}>
@@ -395,7 +504,8 @@ function AdjustmentResultModal({ result, title, onClose }) {
 // liệu của kỳ chứ không phải xoá file.
 
 function AdjustmentSlot({ icon: Icon, title, description, hint, count, rowLabel,
-                          onUpload, onClear, onTemplate, uploading, clearing }) {
+                          onUpload, onClear, onTemplate, uploading, clearing,
+                          batches, onDeleteBatch, deletingLabel }) {
   const fileRef = useRef(null);
   const has = (count ?? 0) > 0;
 
@@ -422,6 +532,35 @@ function AdjustmentSlot({ icon: Icon, title, description, hint, count, rowLabel,
 
       <div className="px-4 py-3.5 space-y-3">
         <p className="text-[11px] text-[#8E8878] leading-relaxed">{hint}</p>
+
+        {/* Liệt kê TỪNG KHOẢN đã tải lên. Một tháng có thể có nhiều khoản
+            thưởng khác nhau, mỗi khoản một file; chỉ hiện con số tổng thì
+            OWNER không biết đã tải những khoản nào và thiếu khoản nào. */}
+        {Array.isArray(batches) && batches.length > 0 && (
+          <div className="space-y-1.5">
+            {batches.map(b => (
+              <div key={b.label}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-white border border-black/10">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[#1C1C1E] truncate">{b.label}</p>
+                  <p className="text-[10px] text-[#8E8878]">
+                    {b.employeeCount} người · {formatCurrency(b.totalAmount)}
+                  </p>
+                </div>
+                {onDeleteBatch && (
+                  <button
+                    onClick={() => onDeleteBatch(b.label)}
+                    disabled={deletingLabel === b.label}
+                    title={`Xoá khoản "${b.label}"`}
+                    className="p-1.5 rounded-lg text-[#8E8878] hover:text-red-600 hover:bg-red-50
+                      transition-colors shrink-0 disabled:opacity-50">
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
           onChange={e => {
@@ -573,6 +712,70 @@ function EmployeeAttendanceModal({ employee, month, year, periodLabel, onClose }
 // 2 BẢNG SAU KHI HOÀN TẤT — Phiếu lương & Chi tiết ngày công
 // ══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * DẢI SỐ LIỆU TỔNG QUAN trên đầu bảng Phiếu lương.
+ *
+ * Ba trạng thái, quyết định bằng cờ từ server chứ không suy từ số liệu — quỹ
+ * thưởng bằng 0 là hợp lệ và khác hẳn với "chưa tính":
+ *   · Bộ phận có KPI + ĐÃ tính  → đủ 6 ô: sản lượng, đơn giá, quỹ thưởng,
+ *                                 quỹ dư đợt trước, tổng NET, tổng KPI
+ *   · Bộ phận có KPI + CHƯA tính → chỉ tổng NET, kèm nhắc bấm "Tính lại KPI"
+ *   · Bộ phận không có KPI       → chỉ tổng NET
+ */
+function PayrollSummary({ data }) {
+  const kpiReady = data.hasKpiBonus && data.kpiComputed;
+
+  const fmtTon = (v) =>
+    v == null ? '—' : `${Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 3 })} tấn`;
+
+  const Stat = ({ label, value, tone = 'text-[#1C1C1E]', hint }) => (
+    <div className="min-w-[120px]">
+      <p className="text-[10px] font-semibold text-[#8E8878] uppercase tracking-wider">{label}</p>
+      <p className={`text-sm font-bold mt-0.5 ${tone}`}>{value}</p>
+      {hint && <p className="text-[10px] text-[#C4B9A8] mt-0.5">{hint}</p>}
+    </div>
+  );
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap gap-x-7 gap-y-3">
+        {kpiReady && (
+          <>
+            <Stat
+              label="Tổng sản lượng tháng"
+              value={fmtTon(data.kpiTotalOutputTon)}
+              hint={data.kpiTotalOutputKg != null
+                ? `${Number(data.kpiTotalOutputKg).toLocaleString('vi-VN')} kg` : null}
+            />
+            <Stat label="Đơn giá thưởng" value={`${formatCurrency(data.kpiRatePerTon)} / tấn`} />
+            <Stat label="Tổng tiền thưởng" value={formatCurrency(data.kpiBonusPool)} tone="text-[#C9A84C]" />
+            <Stat
+              label="Tiền dư đợt trước"
+              value={formatCurrency(data.kpiCarryOverIn)}
+              hint={data.kpiCarryOverInDetail?.length
+                ? data.kpiCarryOverInDetail
+                    .map(c => `${c.label}: ${formatCurrency(c.amount)}`).join(' · ')
+                : null}
+            />
+          </>
+        )}
+
+        <Stat label="Tổng NET" value={formatCurrency(data.totalNetSalary)} tone="text-emerald-700" />
+
+        {kpiReady && (
+          <Stat label="Tổng KPI" value={formatCurrency(data.totalKpiBonus)} tone="text-[#C9A84C]" />
+        )}
+      </div>
+
+      {data.hasKpiBonus && !data.kpiComputed && (
+        <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 inline-block">
+          Chưa tính thưởng KPI cho kỳ này — bấm "Tính lại KPI" hoặc "Hoàn tất" để tính.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function PayrollTables({ data, loading }) {
   // Nhân viên đang mở modal chi tiết ngày công (null = đóng).
   const [detailOf, setDetailOf] = useState(null);
@@ -587,23 +790,14 @@ function PayrollTables({ data, loading }) {
     <>
       {/* ── BẢNG 1: PHIẾU LƯƠNG ─────────────────────────────────────────── */}
       <SectionCard>
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-black/5 flex-wrap">
-          <div className="flex items-center gap-2">
+        <div className="px-5 py-4 border-b border-black/5">
+          <div className="flex items-center gap-2 mb-3">
             <Receipt size={16} className="text-[#C9A84C]" />
             <h3 className="text-sm font-bold text-[#1C1C1E]">
               Phiếu lương — {data.departmentLabel} · {data.periodLabel}
             </h3>
           </div>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="text-[#8E8878]">
-              Tổng NET: <strong className="text-emerald-700">{formatCurrency(data.totalNetSalary)}</strong>
-            </span>
-            {data.hasKpiBonus && (
-              <span className="text-[#8E8878]">
-                Tổng KPI: <strong className="text-[#C9A84C]">{formatCurrency(data.totalKpiBonus)}</strong>
-              </span>
-            )}
-          </div>
+          <PayrollSummary data={data} />
         </div>
 
         <div className="overflow-x-auto">
@@ -650,16 +844,22 @@ function PayrollTables({ data, loading }) {
                   )}
                   {!isDriver && (
                     <Td right>
-                      <button
-                        type="button"
-                        onClick={() => setDetailOf(r)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
-                          border border-black/10 bg-white text-[11px] font-semibold text-[#5A5548]
-                          hover:border-[#C9A84C]/60 hover:text-[#1C1C1E] transition-colors"
-                      >
-                        <Clock size={13} className="text-[#C9A84C]" />
-                        Chi tiết ngày công
-                      </button>
+                      {/* Người hưởng khoán (bảo vệ xưởng) không có dữ liệu chấm
+                          công — nút "Chi tiết ngày công" sẽ mở ra lịch trống. */}
+                      {r.attendanceExempt ? (
+                        <span className="text-[11px] text-[#8E8878] italic">Không chấm công</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDetailOf(r)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
+                            border border-black/10 bg-white text-[11px] font-semibold text-[#5A5548]
+                            hover:border-[#C9A84C]/60 hover:text-[#1C1C1E] transition-colors"
+                        >
+                          <Clock size={13} className="text-[#C9A84C]" />
+                          Chi tiết ngày công
+                        </button>
+                      )}
                     </Td>
                   )}
                 </Tr>
@@ -747,6 +947,13 @@ export default function AttendanceSheetsPage() {
   const [payroll, setPayroll] = useState(null);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
   const [adjustments, setAdjustments] = useState(null);   // { bonus, allowance }
+  // Mỗi khoản thưởng là một nhãn riêng, tải lên từ một file riêng.
+  const [bonusBatches, setBonusBatches] = useState([]);   // [{ label, employeeCount, totalAmount }]
+  const [deletingLabel, setDeletingLabel] = useState(null);
+  // Mức thưởng cố định cho MỘT bảo vệ xưởng, nhập lúc bấm tính KPI.
+  // Chuỗi rỗng = chưa nhập → gửi null để backend giữ nguyên mức cũ của tháng.
+  const [securityRate, setSecurityRate] = useState('');
+  const [membersOpen, setMembersOpen] = useState(false);
   const [adjResult, setAdjResult] = useState(null);
   const [adjResultTitle, setAdjResultTitle] = useState('');
   const [kpi, setKpi] = useState(null);
@@ -785,11 +992,17 @@ export default function AttendanceSheetsPage() {
 
   // ── Số dòng thưởng/phụ cấp đã import + quỹ KPI của kỳ ─────────────────────
   const loadAdjustments = useCallback(async (p) => {
-    if (!p) { setAdjustments(null); return; }
+    if (!p) { setAdjustments(null); setBonusBatches([]); return; }
     try {
       setAdjustments(await factoryPayrollApi.adjustmentStatus(p.month, p.year));
     } catch {
       setAdjustments(null);
+    }
+    try {
+      const b = await factoryPayrollApi.bonusBatches(p.month, p.year);
+      setBonusBatches(Array.isArray(b) ? b : []);
+    } catch {
+      setBonusBatches([]);
     }
   }, []);
 
@@ -880,8 +1093,14 @@ export default function AttendanceSheetsPage() {
 
       const errs = res?.errors || [];
       const warns = res?.warnings || [];
+
+      // Với thưởng, con số đáng chú ý là "bỏ qua vì đã có" — đó là bằng chứng
+      // rằng tải lại file cũ không ghi đè tiền của người cũ.
+      const skipped = res?.skippedExisting ?? 0;
       toast(
-        `Đã import ${res?.saved ?? 0} khoản` + (errs.length ? ` · ${errs.length} dòng lỗi` : ''),
+        `Đã thêm ${res?.saved ?? 0} khoản`
+          + (skipped ? ` · bỏ qua ${skipped} người đã có` : '')
+          + (errs.length ? ` · ${errs.length} dòng lỗi` : ''),
         errs.length ? 'warning' : 'success'
       );
       // Lỗi/cảnh báo theo dòng hiện trong modal chung với các import khác
@@ -894,6 +1113,20 @@ export default function AttendanceSheetsPage() {
       toast(e?.response?.data?.message || 'Không import được file', 'error');
     } finally {
       setBusy(null);
+    }
+  };
+
+  const clearBonusLabel = async (label) => {
+    if (!selected) return;
+    setDeletingLabel(label);
+    try {
+      await factoryPayrollApi.clearBonusLabel(selected.month, selected.year, label);
+      toast(`Đã xoá khoản "${label}"`, 'success');
+      await loadAdjustments(selected);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không xoá được khoản thưởng', 'error');
+    } finally {
+      setDeletingLabel(null);
     }
   };
 
@@ -941,9 +1174,14 @@ export default function AttendanceSheetsPage() {
 
   const recompute = async () => {
     if (!selected) return;
+    const raw = String(securityRate).replace(/[^\d]/g, '');
+    if (securityRate !== '' && raw === '')
+      return toast('Mức thưởng bảo vệ không hợp lệ', 'error');
+
     setRecomputing(true);
     try {
-      await factoryPayrollApi.recomputeKpi(selected.month, selected.year);
+      await factoryPayrollApi.recomputeKpi(
+        selected.month, selected.year, raw === '' ? null : Number(raw));
       toast(`Đã tính lại thưởng KPI tháng ${selected.month}/${selected.year}`, 'success');
       await loadKpi(selected, department);
     } catch (e) {
@@ -1005,6 +1243,9 @@ export default function AttendanceSheetsPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <SecondaryButton onClick={() => setMembersOpen(true)}>
+                  <Users size={14} /> Chi tiết bộ phận
+                </SecondaryButton>
                 {status?.finalized ? (
                   <SecondaryButton onClick={doReopen} disabled={finalizing}>
                     <Unlock size={14} /> Mở lại tháng
@@ -1035,8 +1276,8 @@ export default function AttendanceSheetsPage() {
                   <strong className="text-[#1C1C1E]"> attendance/{period}/{department}/</strong></span>
               </div>
 
-              {/* 3 khối file */}
-              <div className="grid gap-4 lg:grid-cols-3">
+              {/* 2 khối file */}
+              <div className="grid gap-4 lg:grid-cols-2">
                 <FileSlot
                   icon={Clock}
                   title="Bảng chấm công"
@@ -1070,22 +1311,12 @@ export default function AttendanceSheetsPage() {
                   onTemplate={() => template('exception')}
                 />
 
-                <FileSlot
-                  icon={UserCheck}
-                  title="Đơn xin đi trễ / nghỉ phép"
-                  description="Đơn của từng cá nhân — chỉ đơn Đã duyệt mới được tính đủ công"
-                  hint="Mỗi dòng là 1 đơn, họ tên phải trùng với hồ sơ nhân sự của bộ phận."
-                  exists={status?.hasLeaveFile}
-                  fileName={status?.leaveFileName}
-                  uploadedAt={status?.leaveUploadedAt}
-                  rowCount={status?.leaveRows}
-                  rowLabel="đơn"
-                  uploading={busy === 'leave'}
-                  deleting={deleting === 'leave'}
-                  onUpload={f => upload('leave', f)}
-                  onDelete={() => remove('leave')}
-                  onTemplate={() => template('leave')}
-                />
+                {/* Khối upload "Đơn xin đi trễ / nghỉ phép" đã được gỡ bỏ.
+                    Đơn nay do nhân viên tự tạo trên app và OWNER duyệt ở tab
+                    Nhân sự → Phiếu nghỉ → Đơn nhân viên; hệ thống tự khớp đơn
+                    đã duyệt vào bảng chấm công khi tính công. Giữ lại ô upload
+                    sẽ tạo ra nguồn sự thật thứ hai, và file tải lên sau sẽ ghi
+                    đè kết quả duyệt trên app. */}
               </div>
 
               {/* ── THƯỞNG & PHỤ CẤP THEO THÁNG ─────────────────────────────
@@ -1095,10 +1326,15 @@ export default function AttendanceSheetsPage() {
                 <AdjustmentSlot
                   icon={Gift}
                   title="Thưởng theo tháng"
-                  description="Lì xì Tết, thưởng theo quy định — nhãn dùng chung cho cả file"
-                  hint="Tải mẫu → gõ nhãn thưởng ở ô B2 → điền số tiền từng người → tải lên."
+                  description="Nhiều khoản khác nhau — mỗi khoản một file, phân biệt bằng nhãn ở ô B2"
+                  hint={'Tải mẫu → gõ nhãn thưởng ở ô B2 → điền số tiền từng người → tải lên. '
+                    + 'Tải lại cùng nhãn CHỈ thêm người chưa có, không ghi đè số của người cũ — '
+                    + 'dùng khi vừa thêm nhân viên. Muốn sửa số đã nhập thì xoá khoản đó rồi tải lại.'}
                   count={adjustments?.bonus}
-                  rowLabel="khoản thưởng"
+                  rowLabel="dòng"
+                  batches={bonusBatches}
+                  onDeleteBatch={clearBonusLabel}
+                  deletingLabel={deletingLabel}
                   uploading={busy === 'bonus'}
                   clearing={deleting === 'bonus'}
                   onUpload={f => uploadAdjustment('bonus', f)}
@@ -1152,12 +1388,31 @@ export default function AttendanceSheetsPage() {
               <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-black/5">
                 <h3 className="text-sm font-bold text-[#1C1C1E]">Cách tính công</h3>
                 {department === 'FACTORY' && (
-                  <button onClick={recompute} disabled={recomputing}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#C9A84C]
-                      hover:underline disabled:opacity-50">
-                    <Calculator size={13} />
-                    {recomputing ? 'Đang tính...' : 'Tính lại thưởng KPI'}
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {/* Mức thưởng bảo vệ — placeholder là mức mặc định 300.000đ.
+                        Để trống thì backend giữ nguyên mức đã dùng cho tháng này,
+                        nên bấm tính lại sau khi import chấm công không làm mất
+                        con số OWNER đã chỉnh. */}
+                    <label className="flex items-center gap-1.5 text-[11px] text-[#8E8878]">
+                      Thưởng bảo vệ
+                      <input
+                        type="text" inputMode="numeric"
+                        value={securityRate}
+                        onChange={e => setSecurityRate(formatVnInt(e.target.value))}
+                        placeholder={kpi?.securityRate != null
+                          ? Number(kpi.securityRate).toLocaleString('vi-VN')
+                          : '300.000'}
+                        className="w-24 px-2 py-1 rounded-lg border border-black/10 text-xs
+                          text-right text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]" />
+                      đ/người
+                    </label>
+                    <button onClick={recompute} disabled={recomputing}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#C9A84C]
+                        hover:underline disabled:opacity-50">
+                      <Calculator size={13} />
+                      {recomputing ? 'Đang tính...' : 'Tính lại thưởng KPI'}
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="px-5 py-4 grid gap-2.5 sm:grid-cols-2 text-[11px] text-[#5A5548]">
@@ -1199,6 +1454,14 @@ export default function AttendanceSheetsPage() {
         <AdjustmentResultModal result={adjResult} title={adjResultTitle}
           onClose={() => setAdjResult(null)} />
       )}
+
+      {/* Danh sách nhân sự của bộ phận đang chọn */}
+      <DepartmentMembersModal
+        open={membersOpen}
+        department={department}
+        departmentLabel={status?.departmentLabel}
+        onClose={() => setMembersOpen(false)}
+      />
     </div>
   );
 }

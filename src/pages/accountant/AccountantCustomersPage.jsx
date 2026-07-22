@@ -6,6 +6,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, reportApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
+import DebtReportCustomerModal from '../../components/accountant/DebtReportCustomerModal';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Building2, User as UserIcon, Clock3, Download, Upload, FileText,
@@ -33,6 +34,7 @@ export default function AccountantCustomersPage() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [exportingDebt, setExportingDebt] = useState(false);
+  const [debtModalOpen, setDebtModalOpen] = useState(false);
 
   // Format số tiền
   const formatPrice = (n) => {
@@ -43,11 +45,25 @@ export default function AccountantCustomersPage() {
     return new Intl.NumberFormat('vi-VN').format(Math.round(num)) + ' đ';
   };
 
-  // Export báo cáo công nợ — theo đúng từ khoá đang tìm
-  const handleExportAgedReceivables = useCallback(async () => {
+  // Nguồn dữ liệu cho modal chọn khách hàng (search + phân trang)
+  const fetchCustomersForReport = useCallback(async ({ q, page: p = 0, size = 20 }) => {
+    const res = await accountantApi.getCustomers({ q: q || undefined, page: p, size });
+    const d = res.data?.data || {};
+    const content = d.content || [];
+    const totalElements = d.totalItems ?? d.totalElements ?? content.length;
+    const totalPages = d.totalPages ?? Math.ceil(totalElements / size);
+    return { content, totalPages, totalElements };
+  }, []);
+
+  // Export báo cáo công nợ.
+  // - customerIds là mảng ID → CHỈ xuất đúng những khách được chọn ở modal.
+  // - customerIds = null → xuất theo từ khoá đang tìm (hành vi cũ).
+  const handleExportAgedReceivables = useCallback(async (customerIds = null) => {
     setExportingDebt(true);
     try {
-      const activeFilters = { q: search.trim() || undefined };
+      const activeFilters = (customerIds && customerIds.length)
+        ? { customerIds }
+        : { q: search.trim() || undefined };
       const res = await reportApi.exportAgedReceivables(undefined, activeFilters);
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -60,6 +76,7 @@ export default function AccountantCustomersPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setDebtModalOpen(false);
     } catch (e) {
       console.error(e);
       toast(e?.response?.data?.message || 'Lỗi khi xuất báo cáo công nợ', 'error');
@@ -114,7 +131,7 @@ export default function AccountantCustomersPage() {
             <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">{t('customer', 'customer')}</h1>
             <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} {t('customer', 'customer').toLowerCase()}</p>
           </div>
-          <button onClick={handleExportAgedReceivables} disabled={exportingDebt}
+          <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
             {exportingDebt
               ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
@@ -315,6 +332,16 @@ export default function AccountantCustomersPage() {
           </div>
         )}
       </div>
+
+      {/* Modal chọn khách hàng trước khi xuất báo cáo công nợ */}
+      <DebtReportCustomerModal
+        open={debtModalOpen}
+        onClose={() => setDebtModalOpen(false)}
+        fetchCustomers={fetchCustomersForReport}
+        onConfirm={(ids) => handleExportAgedReceivables(ids)}
+        onExportAll={() => handleExportAgedReceivables(null)}
+        exporting={exportingDebt}
+      />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
+import DebtReportCustomerModal from '../../components/accountant/DebtReportCustomerModal';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   PrimaryButton, SecondaryButton, DangerButton,
@@ -594,13 +595,17 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
 export default function SuperAccountantCustomers() {
   const { t } = useLang();
   const toast = useToast();
-  const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
+  // isActive LUÔN = true: màn hình KH của SUPER_ACCOUNTANT chỉ hiển thị khách đang hoạt động,
+  // giống hệt màn hình của ACCOUNTANT (BE trả findByIsActiveTrue...). Khách đã khoá bán chỉ
+  // xem/mở lại được ở màn hình Khách hàng của OWNER/ADMIN.
+  const [filters, setFilters] = useState({ q: '', type: '', isActive: 'true', sellerId: '' });
   const debouncedQ = useDebounce(filters.q, 600);
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
   const [exporting, setExporting] = useState(false);
   const [exportingDebt, setExportingDebt] = useState(false);
+  const [debtModalOpen, setDebtModalOpen] = useState(false);
   // Sort công nợ chưa thanh toán: null → 'desc' (cao→thấp) → 'asc' (thấp→cao)
   const [debtSort, setDebtSort] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -646,7 +651,7 @@ export default function SuperAccountantCustomers() {
       const params = { page, size: 20, sort: 'id,desc' };
       if (debouncedQ) params.q = debouncedQ;
       if (filters.type) params.type = filters.type;
-      if (filters.isActive !== '') params.isActive = filters.isActive;
+      params.isActive = true;                       // chỉ khách đang hoạt động
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       if (debtSort) params.debtSort = debtSort;
       const res = await adminCustomerApi.list(params);
@@ -668,7 +673,7 @@ export default function SuperAccountantCustomers() {
       const params = {};
       if (debouncedQ) params.q = debouncedQ;
       if (filters.type) params.type = filters.type;
-      if (filters.isActive !== '') params.isActive = filters.isActive;
+      params.isActive = true;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       const res = await adminCustomerApi.exportAll(params);
       const blob = new Blob([res.data], {
@@ -692,16 +697,30 @@ export default function SuperAccountantCustomers() {
     }
   }, [debouncedQ, filters.type, filters.isActive, filters.sellerId, toast]);
 
+  // Nguồn dữ liệu cho modal chọn khách hàng (search + phân trang)
+  const fetchCustomersForReport = useCallback(async ({ q, page: p = 0, size = 20 }) => {
+    const res = await adminCustomerApi.list({
+      q: q || undefined, page: p, size, sort: 'id,desc',
+      isActive: true,                                // chỉ khách đang hoạt động
+    });
+    const content = res?.content || [];
+    const totalElements = res?.totalElements ?? res?.totalItems ?? content.length;
+    const totalPages = res?.totalPages ?? Math.ceil(totalElements / size);
+    return { content, totalPages, totalElements };
+  }, []);
+
   // Export báo cáo công nợ (Aged Receivables) — PDF, theo đúng bộ lọc đang hiển thị
-  const handleExportAgedReceivables = useCallback(async () => {
+  const handleExportAgedReceivables = useCallback(async (customerIds = null) => {
     setExportingDebt(true);
     try {
-      const activeFilters = {
-        q: debouncedQ || undefined,
-        type: filters.type || undefined,
-        isActive: filters.isActive !== '' ? filters.isActive : undefined,
-        sellerId: filters.sellerId !== '' ? filters.sellerId : undefined,
-      };
+      const activeFilters = (customerIds && customerIds.length)
+        ? { customerIds }                       // chọn tay ở modal → chỉ xuất đúng các KH này
+        : {
+          q: debouncedQ || undefined,
+          type: filters.type || undefined,
+          isActive: true,
+          sellerId: filters.sellerId !== '' ? filters.sellerId : undefined,
+        };
       const res = await reportApi.exportAgedReceivables(undefined, activeFilters); // asOf = hôm nay
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -714,6 +733,7 @@ export default function SuperAccountantCustomers() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setDebtModalOpen(false);
     } catch (e) {
       console.error(e);
       toast(e?.response?.data?.message || 'Lỗi khi xuất báo cáo công nợ', 'error');
@@ -787,7 +807,7 @@ export default function SuperAccountantCustomers() {
       <div className="flex items-center justify-between">
         <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
         <div className="flex items-center gap-2">
-          <button onClick={handleExportAgedReceivables} disabled={exportingDebt}
+          <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
             {exportingDebt
               ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
@@ -830,13 +850,6 @@ export default function SuperAccountantCustomers() {
             <option value="">Tất cả loại</option>
             <option value="COMPANY">Công ty</option>
             <option value="RETAIL">Cá nhân</option>
-          </select>
-          <select value={filters.isActive}
-            onChange={e => { setFilters({ ...filters, isActive: e.target.value }); setPage(0); }}
-            className={`${inputCls} sm:w-40`}>
-            <option value="">Tất cả trạng thái</option>
-            <option value="true">Đang hoạt động</option>
-            <option value="false">Đã khóa bán</option>
           </select>
         </div>
 
@@ -1153,6 +1166,16 @@ export default function SuperAccountantCustomers() {
         customer={editCustomer}
         onClose={() => { setCreateOpen(false); setEditCustomer(null); }}
         onSaved={() => { setCreateOpen(false); setEditCustomer(null); load(); }}
+      />
+
+      {/* Modal chọn khách hàng trước khi xuất báo cáo công nợ */}
+      <DebtReportCustomerModal
+        open={debtModalOpen}
+        onClose={() => setDebtModalOpen(false)}
+        fetchCustomers={fetchCustomersForReport}
+        onConfirm={(ids) => handleExportAgedReceivables(ids)}
+        onExportAll={() => handleExportAgedReceivables(null)}
+        exporting={exportingDebt}
       />
     </div>
   );

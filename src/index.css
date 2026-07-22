@@ -15,6 +15,10 @@ svg *:focus {
   outline: none;
 }
 
+::-webkit-scrollbar {
+    display: none;
+}
+
 @layer components {
   .input-elegant {
     background-color: #fff;

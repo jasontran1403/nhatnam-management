@@ -8,8 +8,10 @@ import {
   Users, Search, X, RefreshCw, Building2, User as UserIcon,
   Phone, Mail, Edit2, AlertCircle, Check, Upload, Download,
   FileSpreadsheet, Plus, Trash2, MapPin, Star, Hash,
-  ChevronDown, ChevronRight, Tag,
+  ChevronDown, ChevronRight, Tag, FileText,
 } from 'lucide-react';
+import DebtReportCustomerModal from '../../components/accountant/DebtReportCustomerModal';
+import { sellerReportApi } from '../../api/services';
 
 const inputCls = 'w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]';
 
@@ -843,6 +845,8 @@ export default function SellerCustomersPage() {
   const [editTarget, setEditTarget] = useState(null);
   const [importing, setImporting] = useState(false);
   const [exportingTemplate, setExportingTemplate] = useState(false);
+  const [exportingDebt, setExportingDebt] = useState(false);
+  const [debtModalOpen, setDebtModalOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   const load = useCallback(async (p = 0) => {
@@ -900,6 +904,47 @@ export default function SellerCustomersPage() {
     } catch { toast('Không thể xuất danh sách', 'error'); }
   };
 
+  // ── Báo cáo công nợ ────────────────────────────────────────────────────────
+  // Nguồn dữ liệu cho modal chọn khách. withDebt=true để hiện số công nợ trong list.
+  const fetchCustomersForReport = useCallback(async ({ q, page: p = 0, size = 20 }) => {
+    const params = new URLSearchParams();
+    if (q) params.set('search', q);
+    params.set('page', p);
+    params.set('size', size);
+    params.set('withDebt', 'true');
+    const res = await api.get(`/api/seller/customers/b2b?${params}`);
+    const body = res.data?.data || res.data;
+    const content = body?.content || [];
+    const totalElements = body?.totalItems ?? content.length;
+    const totalPages = body?.totalPages ?? Math.ceil(totalElements / size);
+    return { content, totalPages, totalElements };
+  }, []);
+
+  // customerIds = mảng ID chọn ở modal; null = toàn bộ khách trong phạm vi của mình.
+  const handleExportAgedReceivables = useCallback(async (customerIds = null) => {
+    setExportingDebt(true);
+    try {
+      const res = await sellerReportApi.exportAgedReceivables(undefined, { customerIds });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = res.headers?.['content-disposition'] || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : 'bao-cao-cong-no.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setDebtModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      toast(e?.response?.data?.message || 'Lỗi khi xuất báo cáo công nợ', 'error');
+    } finally {
+      setExportingDebt(false);
+    }
+  }, [toast]);
+
   const handleImportFile = async (e) => {
     const file = e.target.files?.[0]; if (!file) return; e.target.value = '';
     setImporting(true);
@@ -932,6 +977,13 @@ export default function SellerCustomersPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt} title="Báo cáo công nợ"
+              className="h-9 px-3 rounded-xl border border-[#E8DDD0] flex items-center gap-1.5 text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-colors disabled:opacity-60">
+              {exportingDebt
+                ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                : <FileText size={14} />}
+              <span className="hidden sm:inline">Báo cáo công nợ</span>
+            </button>
             <button onClick={handleDownloadTemplate} disabled={exportingTemplate} title="Tải template"
               className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
               <FileSpreadsheet size={15} />
@@ -1040,6 +1092,16 @@ export default function SellerCustomersPage() {
           if (updated) setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
           else load(page);
         }}
+      />
+
+      {/* Modal chọn khách hàng trước khi xuất báo cáo công nợ — dùng chung với kế toán */}
+      <DebtReportCustomerModal
+        open={debtModalOpen}
+        onClose={() => setDebtModalOpen(false)}
+        fetchCustomers={fetchCustomersForReport}
+        onConfirm={(ids) => handleExportAgedReceivables(ids)}
+        onExportAll={() => handleExportAgedReceivables(null)}
+        exporting={exportingDebt}
       />
     </div>
   );

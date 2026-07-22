@@ -103,9 +103,17 @@ export const adminUserApi = {
 export const reportApi = {
   // asOf: chuỗi 'yyyy-MM-dd' (tuỳ chọn). Bỏ trống = hôm nay (backend tự lấy).
   // filters (tuỳ chọn): { q, type, isActive, sellerId } — chỉ xuất KH khớp bộ lọc đang hiển thị.
+  // filters.customerIds (tuỳ chọn, mảng ID): CHỈ xuất đúng những khách được chọn ở modal.
+  //   Khi có customerIds, backend bỏ qua q/type/isActive/sellerId.
   exportAgedReceivables: (asOf, filters = {}) => {
     const params = {};
     if (asOf) params.asOf = asOf;
+    if (Array.isArray(filters.customerIds) && filters.customerIds.length) {
+      // Gửi dạng "1,2,3" để Spring bind thẳng vào List<Long> (axios mặc định
+      // serialize mảng thành customerIds[]=... → Spring không nhận).
+      params.customerIds = filters.customerIds.join(',');
+      return api.get('/api/accountant/reports/aged-receivables', { params, responseType: 'blob' });
+    }
     if (filters.q) params.q = filters.q;
     if (filters.type) params.type = filters.type;
     if (filters.isActive !== undefined && filters.isActive !== '' && filters.isActive !== null)

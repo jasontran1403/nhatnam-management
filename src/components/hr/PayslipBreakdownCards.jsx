@@ -35,6 +35,11 @@ export default function PayslipBreakdownCards({ row, showComponents = true, clas
   const allowances = row.allowances || [];
   const nonTax = row.nonTaxableAdditions || 0;
   const hourly = !!row.hourlyBased;
+
+  // Lương khoán theo hợp đồng bên thứ ba (bảo vệ xưởng): mọi số bảo hiểm/thuế
+  // đều bằng 0 CÓ CHỦ ĐÍCH. Render nguyên khối khấu trừ toàn "0đ" sẽ khiến người
+  // xem tưởng hồ sơ bảo hiểm bị bỏ trống, nên ẩn hẳn và nói rõ lý do.
+  const flat = !!row.flatContract;
   const hoursStr = (h) => (`${h}`.replace('.', ',')) + ' giờ';
 
   return (
@@ -82,35 +87,59 @@ export default function PayslipBreakdownCards({ row, showComponents = true, clas
           Của nhân viên (VNĐ)
         </p>
 
-        <Row label="Lương GROSS" val={fmt(row.grossSalary)} bold />
-        <Divider />
-        <Row label="Tổng bảo hiểm nhân viên đóng (10,5%)"
-          val={`- ${fmt(row.employeeInsuranceTotal)}`} red />
-        <Row sub label="Bảo hiểm xã hội (8%)" val={`- ${fmt(row.employeeSocialInsurance)}`} red />
-        <Row sub label="Bảo hiểm y tế (1,5%)" val={`- ${fmt(row.employeeHealthInsurance)}`} red />
-        <Row sub label="Bảo hiểm thất nghiệp (1%)"
-          val={`- ${fmt(row.employeeUnemploymentInsurance)}`} red />
-        <Divider />
-        <Row label="Thu nhập trước thuế" val={fmt(row.preTaxIncome)} />
-        {nonTax > 0 && (
-          <Row label="Khoản phụ cấp/thưởng miễn thuế" val={`- ${fmt(nonTax)}`} red />
+        {flat ? (
+          <>
+            <Row label="Lương khoán theo hợp đồng" val={fmt(row.standardBaseSalary)} />
+            {(row.effectiveBonus || 0) > 0 && (
+              <Row label="Thưởng thêm" val={fmt(row.effectiveBonus)} green />
+            )}
+            <Divider />
+            <Row label="LƯƠNG NET (thực nhận)" val={fmt(row.netSalary)} bold green />
+          </>
+        ) : (
+          <>
+            <Row label="Lương GROSS" val={fmt(row.grossSalary)} bold />
+            <Divider />
+            <Row label="Tổng bảo hiểm nhân viên đóng (10,5%)"
+              val={`- ${fmt(row.employeeInsuranceTotal)}`} red />
+            <Row sub label="Bảo hiểm xã hội (8%)" val={`- ${fmt(row.employeeSocialInsurance)}`} red />
+            <Row sub label="Bảo hiểm y tế (1,5%)" val={`- ${fmt(row.employeeHealthInsurance)}`} red />
+            <Row sub label="Bảo hiểm thất nghiệp (1%)"
+              val={`- ${fmt(row.employeeUnemploymentInsurance)}`} red />
+            <Divider />
+            <Row label="Thu nhập trước thuế" val={fmt(row.preTaxIncome)} />
+            {nonTax > 0 && (
+              <Row label="Khoản phụ cấp/thưởng miễn thuế" val={`- ${fmt(nonTax)}`} red />
+            )}
+            <Row label="Giảm trừ gia cảnh bản thân" val={`- ${fmt(row.personalDeduction)}`} red />
+            <Row label="Giảm trừ gia cảnh người phụ thuộc" val={`- ${fmt(row.dependentDeduction)}`} red />
+            <Divider />
+            <Row label="Thu nhập chịu thuế" val={fmt(row.taxableIncome)} bold />
+            <Row label="Thuế thu nhập cá nhân" val={`- ${fmt(row.personalIncomeTax)}`} red />
+            {(row.pitBrackets || []).map((b, i) => (
+              <Row key={i} sub label={`Bậc ${b.ratePercent}% trên ${fmt(b.incomeInBracket)}`}
+                val={`- ${fmt(b.taxInBracket)}`} red />
+            ))}
+            <Divider />
+            <Row label="LƯƠNG NET (thực nhận)" val={fmt(row.netSalary)} bold green />
+          </>
         )}
-        <Row label="Giảm trừ gia cảnh bản thân" val={`- ${fmt(row.personalDeduction)}`} red />
-        <Row label="Giảm trừ gia cảnh người phụ thuộc" val={`- ${fmt(row.dependentDeduction)}`} red />
-        <Divider />
-        <Row label="Thu nhập chịu thuế" val={fmt(row.taxableIncome)} bold />
-        <Row label="Thuế thu nhập cá nhân" val={`- ${fmt(row.personalIncomeTax)}`} red />
-        {(row.pitBrackets || []).map((b, i) => (
-          <Row key={i} sub label={`Bậc ${b.ratePercent}% trên ${fmt(b.incomeInBracket)}`}
-            val={`- ${fmt(b.taxInBracket)}`} red />
-        ))}
-        <Divider />
-        <Row label="LƯƠNG NET (thực nhận)" val={fmt(row.netSalary)} bold green />
       </div>
 
       <p className="text-[11px] text-[#A8A090] leading-relaxed">
-        Lương đóng bảo hiểm: {fmt(row.insuranceSalary)}. Bảo hiểm tính cố định trên mức này.
-        Lương NET = Lương cơ bản + các khoản phụ cấp + thưởng (KPI).
+        {flat ? (
+          <>
+            Lương khoán trọn tháng theo hợp đồng với đơn vị cung cấp dịch vụ bảo vệ,
+            không chia theo ngày công. Thuế TNCN và bảo hiểm do đơn vị đó chi trả nên
+            không khấu trừ ở đây; suất ăn cũng không tính phụ cấp cơm.
+            Thưởng KPI xưởng được hiển thị riêng.
+          </>
+        ) : (
+          <>
+            Lương đóng bảo hiểm: {fmt(row.insuranceSalary)}. Bảo hiểm tính cố định trên mức này.
+            Lương NET = Lương cơ bản + các khoản phụ cấp + thưởng (KPI).
+          </>
+        )}
       </p>
     </div>
   );

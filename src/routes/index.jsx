@@ -87,7 +87,13 @@ import OwnerCashflowPage from '../pages/owner/OwnerCashflowPage';
 import OwnerInventoryPage from '../pages/owner/OwnerInventoryPage';
 import AccountantVendorDebtPage from '../pages/accountant/AccountantVendorDebtPage';
 import IncomeListPage from '../pages/accountant/IncomeListPage';
-import SuperAccountantMaterialRequestPage from '../pages/super_accountant/SuperAccountantMaterialRequestPage';
+// ── Phiếu đặt Văn phòng phẩm / Đồ dùng ───────────────────────────────────────
+// (SuperAccountantMaterialRequestPage nay được render bên trong
+//  SuperAccountantOrdersPage ở tab "Nguyên liệu sản xuất")
+import SuperAccountantOrdersPage from '../pages/super_accountant/SuperAccountantOrdersPage';
+import SupplyOrderPage from '../pages/shared/SupplyOrderPage';
+import SupplyWarehousePage from '../pages/shared/SupplyWarehousePage';
+import OwnerSupplyWarehousePage from '../pages/owner/OwnerSupplyWarehousePage';
 import PricingCalculatorPage from '../pages/super_accountant/PricingCalculatorPage';
 import SellerMaterialRequestPage from '../pages/seller/SellerMaterialRequestPage';
 
@@ -118,6 +124,7 @@ import DriverOrderDetailPage from '../pages/driver/DriverOrderDetailPage';
 
 // Quản lý lương — dùng chung cho bảo vệ + toàn bộ nhân sự xưởng
 import MyPayrollPage from '../pages/shared/MyPayrollPage';
+import MyRequestsPage from '../pages/shared/MyRequestsPage';
 
 // Bảng chấm công (OWNER upload)
 import AttendanceSheetsPage from '../pages/owner/AttendanceSheetsPage';
@@ -174,8 +181,12 @@ export default function AppRoutes() {
         <Route path="orders-manage" element={<AccountantOrdersPage />} />
         <Route path="quotation" element={<QuotationPage />} />
         <Route path="material-requests" element={<SellerMaterialRequestPage />} />
+        {/* Phiếu đặt văn phòng phẩm — tách hẳn khỏi phiếu nguyên liệu */}
+        <Route path="supply-orders" element={<SupplyOrderPage />} />
+        <Route path="supply-warehouse" element={<SupplyWarehousePage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── OWNER */}
@@ -214,6 +225,8 @@ export default function AppRoutes() {
         <Route path="production/vendor-debts" element={<OwnerVendorDebtPage />} />
         <Route path="production/vendor-debts/:vendorId" element={<OwnerVendorDebtPage />} />
         {/* Quản lý nhà cung cấp — công nợ + lịch sử đặt hàng + phân tích giá (chỉ xem) */}
+        {/* Kho văn phòng phẩm — Owner xem cả 2 kho, gán kho, gộp vật dụng */}
+        <Route path="supply-warehouse" element={<OwnerSupplyWarehousePage />} />
         <Route path="production/suppliers" element={<OwnerSupplierManagementPage />} />
         <Route path="production/suppliers/:vendorId" element={<OwnerSupplierManagementPage />} />
         {/* Tồn kho nguyên liệu sản xuất — chỉ xem */}
@@ -271,12 +284,16 @@ export default function AppRoutes() {
         <Route path="driver-attendance" element={<DriverAttendancePage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── SUPER WAREHOUSE */}
       <Route path="/super-warehouse"
         element={<TranslatedLayout rawNav={superWarehouseNavRaw} allowedRoles={['SUPER_WAREHOUSE']} />}>
         <Route index element={<Navigate to="/super-warehouse/management" replace />} />
+        {/* Phiếu đặt văn phòng phẩm */}
+        <Route path="supply-orders" element={<SupplyOrderPage />} />
+        <Route path="supply-warehouse" element={<SupplyWarehousePage />} />
         <Route path="management" element={<ManagementPage />} />
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
@@ -284,6 +301,7 @@ export default function AppRoutes() {
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── ACCOUNTANT */}
@@ -301,6 +319,7 @@ export default function AppRoutes() {
         <Route path="expenses" element={<ExpenseListPage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── SUPER ACCOUNTANT */}
@@ -315,13 +334,15 @@ export default function AppRoutes() {
         <Route path="suppliers" element={<SupplierManagementPage />} />
         <Route path="vendor-debts" element={<AccountantVendorDebtPage />} />
         <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />
-        <Route path="material-requests" element={<SuperAccountantMaterialRequestPage />} />
+        {/* 2 tab: "Nguyên liệu sản xuất" (page cũ, giữ nguyên) + "Đồ dùng" */}
+        <Route path="material-requests" element={<SuperAccountantOrdersPage />} />
         <Route path="pricing" element={<PricingCalculatorPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
         <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── OPERATOR */}
@@ -348,6 +369,7 @@ export default function AppRoutes() {
         <Route path="finished-goods" element={<FactoryFinishedGoodsPage />} />
         {/* Quản lý lương — phiếu lương theo tháng + thưởng KPI */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── SUPER FACTORY WORKER ── */}
@@ -360,6 +382,9 @@ export default function AppRoutes() {
         <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
         {/* Đặt hàng (phiếu đặt hàng) — được tạo + xác nhận nhận hàng */}
         <Route path="material-requests" element={<FactoryMaterialRequestPage />} />
+        {/* Phiếu đặt văn phòng phẩm */}
+        <Route path="supply-orders" element={<SupplyOrderPage />} />
+        <Route path="supply-warehouse" element={<SupplyWarehousePage />} />
         {/* Quản lý tồn kho nguyên liệu */}
         <Route path="material-stock" element={<FactoryMaterialStockPage />} />
         {/* Quản lý biến thể sản xuất */}
@@ -376,6 +401,7 @@ export default function AppRoutes() {
         <Route path="finished-goods" element={<FactoryFinishedGoodsPage />} />
         {/* Quản lý lương — phiếu lương theo tháng + thưởng KPI */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── FACTORY ACCOUNTANT (Kế toán kho xưởng) ── */}
@@ -390,6 +416,7 @@ export default function AppRoutes() {
         <Route path="loss-reports" element={<PackagingLossReportsPage />} />
         {/* Quản lý lương — phiếu lương theo tháng + thưởng KPI */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── TÀI XẾ ── */}
@@ -400,6 +427,7 @@ export default function AppRoutes() {
         <Route path="orders/:id" element={<DriverOrderDetailPage />} />
         {/* Quản lý lương — lịch tháng + số km chạy mỗi ngày */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
       {/* ── QUẢN LÝ LƯƠNG — bảo vệ + các role xưởng MỚI ──
@@ -414,6 +442,20 @@ export default function AppRoutes() {
             'FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER',
           ]} />}>
         <Route index element={<MyPayrollPage />} />
+      </Route>
+
+      {/* ── PHIẾU CỦA TÔI — cùng tập role với /my-payroll ở trên.
+          Tách route riêng thay vì lồng vào /my-payroll để URL và mục sidebar
+          khớp nhau, tránh trang lương bị active khi đang ở trang phiếu. */}
+      <Route path="/my-requests"
+        element={<TranslatedLayout
+          rawNav={factoryPayrollNavRaw}
+          allowedRoles={[
+            'SECURITY',
+            'FACTORY_SECURITY', 'FACTORY_STAFF',
+            'FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER',
+          ]} />}>
+        <Route index element={<MyRequestsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
