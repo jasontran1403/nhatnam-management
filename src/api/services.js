@@ -174,6 +174,18 @@ export const orderApi = {
     api.get('/api/seller/orders/export-ingredients', { params, responseType: 'blob' }),
   exportDeliveryReport: (params) =>
     api.get('/api/seller/orders/export-delivery-report', { params, responseType: 'blob' }),
+
+  /**
+   * Báo cáo SẢN PHẨM theo đơn hàng — trả về file PDF (blob) để in.
+   * params: { from, to, categoryIds?: number[] }
+   * categoryIds bỏ trống hoặc chọn hết = xuất tất cả danh mục.
+   */
+  exportOrderProductReport: ({ from, to, categoryIds }) =>
+    api.get('/api/seller/orders/export-product-report', {
+      // Spring nhận "1,2,3" -> List<Long>, không phụ thuộc cách axios serialize mảng
+      params: { from, to, ...(categoryIds?.length ? { categoryIds: categoryIds.join(',') } : {}) },
+      responseType: 'blob',
+    }),
 };
 
 // ─── Draft Order API ──────────────────────────────────────────────────────────

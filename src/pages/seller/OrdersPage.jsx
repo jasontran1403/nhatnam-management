@@ -3,7 +3,7 @@ import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
-import { accountantApi, orderApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
+import { accountantApi, orderApi, categoryApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import SuperSellerCancelOrderModal from '../../components/seller/SuperSellerCancelOrderModal';
@@ -29,6 +29,22 @@ function formatDateShort(ts) {
   return new Date(ts).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 function parseVND(str) { return Number(String(str).replace(/[^0-9]/g, '')); }
+
+/**
+ * Mở blob PDF ở tab mới để xem trước / in ngay.
+ * (downloadBlob dùng chung đang hard-code MIME xlsx nên không dùng được cho PDF.)
+ * Nếu trình duyệt chặn popup thì fallback sang tải file về.
+ */
+function openPdfBlob(blobData, filename) {
+  const url = URL.createObjectURL(new Blob([blobData], { type: 'application/pdf' }));
+  const win = window.open(url, '_blank');
+  if (!win) {
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 
 function BtnSpinner({ size = 13, colorClass = 'border-current' }) {
   return <div style={{ width: size, height: size }} className={`border-2 ${colorClass} border-t-transparent rounded-full animate-spin flex-shrink-0`} />;
@@ -328,6 +344,10 @@ export default function OrdersPage() {
 
   const [exportDateRange, setExportDateRange] = useState({ from: null, to: null });
   const [showExportPicker, setShowExportPicker] = useState(false);
+  // Loại báo cáo trong modal export: ORDER = đơn hàng (Excel, như cũ) | PRODUCT = sản phẩm (PDF để in)
+  const [exportType, setExportType] = useState('ORDER');
+  const [exportCategories, setExportCategories] = useState([]);
+  const [exportCategoryIds, setExportCategoryIds] = useState([]);   // [] = tất cả
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState('INGREDIENT');
@@ -402,18 +422,51 @@ export default function OrdersPage() {
   useEffect(() => { fetchOrders(0); }, [fetchOrders]);
   useEffect(() => { const ti = setTimeout(() => setSearch(searchInput), 500); return () => clearTimeout(ti); }, [searchInput]);
 
+  // Nạp danh mục cho ô filter khi mở modal export
+  useEffect(() => {
+    if (!showExportPicker || exportCategories.length) return;
+    categoryApi.getAll()
+      .then(res => setExportCategories(res.data?.data ?? res.data ?? []))
+      .catch(() => setExportCategories([]));
+  }, [showExportPicker]);
+
+  const toggleExportCategory = (id) => {
+    setExportCategoryIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const allCategoriesSelected =
+    exportCategories.length > 0 && exportCategoryIds.length === exportCategories.length;
+  const toggleAllExportCategories = () => {
+    setExportCategoryIds(allCategoriesSelected ? [] : exportCategories.map(c => c.id));
+  };
+
   const handleExport = async () => {
     if (!exportDateRange.from || !exportDateRange.to) { setShowExportPicker(true); return; }
     setExporting(true);
     try {
-      const params = { excludeCancelled: true };
-      if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (exportDateRange.from) params.from = new Date(exportDateRange.from).setHours(0, 0, 0, 0);
-      if (exportDateRange.to) params.to = new Date(exportDateRange.to).setHours(23, 59, 59, 999);
-      const res = await accountantApi.exportOrders(params);
-      downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
-    } catch { toast('Không thể xuất file Excel', 'error'); }
-    finally { setExporting(false); setShowExportPicker(false); }
+      const from = new Date(exportDateRange.from).setHours(0, 0, 0, 0);
+      const to = new Date(exportDateRange.to).setHours(23, 59, 59, 999);
+
+      if (exportType === 'PRODUCT') {
+        // Báo cáo SẢN PHẨM → PDF. Chọn hết = không chọn gì = tất cả danh mục.
+        const categoryIds = allCategoriesSelected ? [] : exportCategoryIds;
+        const res = await orderApi.exportOrderProductReport({ from, to, categoryIds });
+        const stamp = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
+        openPdfBlob(res.data, `bao-cao-san-pham-${stamp}.pdf`);
+        toast('Xuất báo cáo sản phẩm thành công', 'success');
+      } else {
+        // Báo cáo ĐƠN HÀNG → giữ nguyên như cũ (Excel)
+        const params = { excludeCancelled: true, from, to };
+        if (statusFilter !== 'ALL') params.status = statusFilter;
+        const res = await accountantApi.exportOrders(params);
+        downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+      }
+      setShowExportPicker(false);
+    } catch (err) {
+      console.error(err);
+      toast(exportType === 'PRODUCT' ? 'Không thể xuất báo cáo sản phẩm' : 'Không thể xuất file Excel', 'error');
+    }
+    finally { setExporting(false); }
   };
 
   useEffect(() => {
@@ -815,18 +868,80 @@ export default function OrdersPage() {
       {showExportPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowExportPicker(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-[#1C1C1E]">Chọn khoảng thời gian xuất</h2>
+              <h2 className="font-bold text-[#1C1C1E]">Xuất báo cáo</h2>
               <button onClick={() => setShowExportPicker(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
             </div>
-            <p className="text-xs text-[#8E8878]">Đơn hủy sẽ tự động bị loại khỏi báo cáo.</p>
+
+            {/* Chọn loại báo cáo */}
+            <div>
+              <label className="block text-xs font-medium text-[#5C5C5C] mb-1.5">Loại báo cáo</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { key: 'ORDER', label: '🧾 Đơn hàng', active: 'bg-emerald-500 text-white border-emerald-500', hover: 'hover:border-emerald-300' },
+                  { key: 'PRODUCT', label: '📦 Sản phẩm', active: 'bg-[#C9A84C] text-white border-[#C9A84C]', hover: 'hover:border-[#C9A84C]/50' },
+                ].map(r => (
+                  <button key={r.key} onClick={() => setExportType(r.key)}
+                    className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${exportType === r.key ? r.active : `border-[#E8DDD0] text-[#5C5C5C] ${r.hover}`}`}>
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-[#8E8878] mt-1.5">
+                {exportType === 'ORDER'
+                  ? 'Báo cáo đơn hàng — file Excel như hiện tại.'
+                  : 'Báo cáo chi tiết sản phẩm theo từng đơn — file PDF khổ A4 để in.'}
+              </p>
+            </div>
+
+            <p className="text-xs text-[#8E8878]">
+              {exportType === 'PRODUCT'
+                ? 'Chỉ gồm đơn: Đang chuẩn bị, Đang giao hàng, Đã giao hàng, Hoàn thành.'
+                : 'Đơn hủy sẽ tự động bị loại khỏi báo cáo.'}
+            </p>
             <DateRangePicker from={exportDateRange.from} to={exportDateRange.to} onChange={r => setExportDateRange(r)} placeholder="Chọn khoảng ngày" />
+
+            {/* Filter danh mục — chỉ áp dụng cho báo cáo Sản phẩm */}
+            {exportType === 'PRODUCT' && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-[#5C5C5C]">Danh mục sản phẩm</label>
+                  {exportCategories.length > 0 && (
+                    <button onClick={toggleAllExportCategories}
+                      className="text-[11px] font-medium text-[#C9A84C] hover:underline">
+                      {allCategoriesSelected ? 'Bỏ chọn hết' : 'Chọn tất cả'}
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-[#E8DDD0] divide-y divide-[#F0EBE3]">
+                  {exportCategories.length === 0 ? (
+                    <p className="px-3 py-2.5 text-xs text-[#8E8878]">Đang tải danh mục…</p>
+                  ) : exportCategories.map(c => (
+                    <label key={c.id}
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-[#1C1C1E] cursor-pointer hover:bg-[#FAF7F2]">
+                      <input type="checkbox" checked={exportCategoryIds.includes(c.id)}
+                        onChange={() => toggleExportCategory(c.id)}
+                        className="w-4 h-4 accent-[#C9A84C] flex-shrink-0" />
+                      <span className="truncate">{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#8E8878] mt-1">
+                  {exportCategoryIds.length === 0 || allCategoriesSelected
+                    ? 'Không chọn hoặc chọn hết = xuất tất cả danh mục.'
+                    : `Đã chọn ${exportCategoryIds.length} danh mục — chỉ báo cáo sản phẩm thuộc các danh mục này.`}
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowExportPicker(false)} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
               <button onClick={handleExport} disabled={exporting || !exportDateRange.from || !exportDateRange.to}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center gap-2">
-                {exporting ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><Download size={14} /> Xuất Excel</>}
+                className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 ${exportType === 'PRODUCT' ? 'bg-[#C9A84C] hover:bg-[#B8963E]' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+                {exporting
+                  ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
+                  : <><Download size={14} /> {exportType === 'PRODUCT' ? 'Xuất PDF' : 'Xuất Excel'}</>}
               </button>
             </div>
           </div>
