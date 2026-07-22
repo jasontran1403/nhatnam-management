@@ -15,7 +15,7 @@ svg *:focus {
   outline: none;
 }
 
-::-webkit-scrollbar {
+nav::-webkit-scrollbar {
     display: none;
 }
 
