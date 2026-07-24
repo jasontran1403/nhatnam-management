@@ -221,9 +221,16 @@ export default function AccountantCustomersPage() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-xs text-[#1C1C1E] truncate">
-                                {c.customerType === 'COMPANY' ? (c.companyName || c.name) : (c.name || '—')}
-                              </p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-semibold text-xs text-[#1C1C1E] truncate">
+                                  {c.customerType === 'COMPANY' ? (c.companyName || c.name) : (c.name || '—')}
+                                </p>
+                                {c.isActive === false && (
+                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-red-50 text-red-600 border border-red-200 flex-shrink-0">
+                                    Đã khóa
+                                  </span>
+                                )}
+                              </div>
                               {c.customerCode && <p className="text-[10px] text-[#8E8878]">#{c.customerCode}</p>}
                             </div>
                           </div>
@@ -288,9 +295,19 @@ export default function AccountantCustomersPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-[#1C1C1E] truncate">
-                          {c.customerType === 'COMPANY' ? (c.companyName || c.name) : (c.name || '—')}
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-sm text-[#1C1C1E] truncate">
+                            {c.customerType === 'COMPANY' ? (c.companyName || c.name) : (c.name || '—')}
+                          </p>
+                          {/* TRẠNG THÁI KHOÁ — chỉ HIỂN THỊ. Kế toán viên cần biết
+                              để không ghi nhận đơn mới, nhưng quyền khoá/mở khoá
+                              thuộc SUPER_ACCOUNTANT/OWNER/ADMIN. */}
+                          {c.isActive === false && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 flex-shrink-0">
+                              Đã khóa
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-[#8E8878]">{c.phone}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border

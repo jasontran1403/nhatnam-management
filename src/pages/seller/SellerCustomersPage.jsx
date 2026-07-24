@@ -772,6 +772,14 @@ function CustomerRow({ c, onEdit }) {
           {c.invoiceDays > 0 && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">HĐ +{c.invoiceDays}d</span>
           )}
+          {/* TRẠNG THÁI KHOÁ — chỉ HIỂN THỊ, sale không có quyền khoá/mở khoá.
+              Khách bị khoá vẫn tra cứu được, nhưng phải thấy ngay để không lỡ
+              nhận đơn mới rồi mới biết. Quyền khoá thuộc SUPER_ACCOUNTANT/OWNER/ADMIN. */}
+          {c.isActive === false && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200">
+              Đã khóa
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3 mt-1 flex-wrap">
           {c.customerCode && <span className="text-[11px] text-[#8E8878]">#{c.customerCode}</span>}
