@@ -7,11 +7,12 @@ import {
   accountantSupplyApi, supplyOrderApi,
   SUPPLY_STATUS, RECEIVE_STATUS, GROUP_STATUS,
   fmtQty, fmtMoney, fmtMoney3, fmtDate, fmtDateTime,
-  dateInputToMs, allocateFees,
+  allocateFees,
 } from '../../api/supplyApi';
 import { useToast } from '../../components/common/Toast';
 import useDebounce from '../../utils/useDebounce.js';
 import Modal from '../../components/ui/Modal';
+import DatePicker from '../../components/ui/DatePicker';
 import Pagination from '../../components/ui/Pagination';
 import ImageUploader from '../../components/supply/ImageUploader';
 import {
@@ -88,7 +89,7 @@ function ConfirmOrderModal({ open, order, onClose, onDone }) {
       await accountantSupplyApi.confirm(order.id, {
         groups: Object.entries(grouped).map(([sid, itemIds]) => ({
           supplierId: Number(sid),
-          expectedDeliveryAt: dateInputToMs(meta[sid]?.eta),
+          expectedDeliveryAt: meta[sid]?.eta || null,
           contactName: meta[sid]?.contactName || null,
           contactPhone: meta[sid]?.contactPhone || null,
           itemIds,
@@ -176,8 +177,11 @@ function ConfirmOrderModal({ open, order, onClose, onDone }) {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Field label="Giao dự kiến">
-                      <input type="date" className={inputCls} value={meta[sid]?.eta ?? ''}
-                        onChange={e => setMeta(m => ({ ...m, [sid]: { ...m[sid], eta: e.target.value } }))} />
+                      {/* eta giữ EPOCH MS (DatePicker dùng ms), không còn chuỗi YYYY-MM-DD */}
+                      <DatePicker
+                        value={meta[sid]?.eta ?? null}
+                        onChange={v => setMeta(m => ({ ...m, [sid]: { ...m[sid], eta: v } }))}
+                        placeholder="Chọn ngày" minDate={new Date()} />
                     </Field>
                     <Field label="Người liên hệ">
                       <input className={inputCls} value={meta[sid]?.contactName ?? ''}
@@ -231,7 +235,7 @@ function ConfirmOrderModal({ open, order, onClose, onDone }) {
 function ExtendDeliveryModal({ open, order, onClose, onDone }) {
   const toast = useToast();
   const [groupId, setGroupId] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -239,7 +243,7 @@ function ExtendDeliveryModal({ open, order, onClose, onDone }) {
     if (!open || !order) return;
     const pending = (order.groups || []).filter(g => g.status !== 'SETTLED');
     setGroupId(pending.length === 1 ? String(pending[0].id) : '');
-    setDate(''); setReason('');
+    setDate(null); setReason('');
   }, [open, order]);
 
   const submit = async () => {
@@ -249,7 +253,7 @@ function ExtendDeliveryModal({ open, order, onClose, onDone }) {
     try {
       await accountantSupplyApi.extendDelivery(order.id, {
         groupId: Number(groupId),
-        newExpectedDeliveryAt: dateInputToMs(date),
+        newExpectedDeliveryAt: date || null,
         reason: reason || null,
       });
       toast('Đã gia hạn giao hàng', 'success');
@@ -278,7 +282,8 @@ function ExtendDeliveryModal({ open, order, onClose, onDone }) {
         </Field>
 
         <Field label="Ngày giao mới" required>
-          <input type="date" className={inputCls} value={date} onChange={e => setDate(e.target.value)} />
+          <DatePicker value={date} onChange={setDate}
+            placeholder="Chọn ngày giao mới" minDate={new Date()} />
         </Field>
 
         <Field label="Lý do gia hạn" hint="Người tạo phiếu sẽ nhận được thông báo">

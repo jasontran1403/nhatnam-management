@@ -17,6 +17,7 @@ import {
 } from '../../components/ui';
 import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
+import DatePicker from '../../components/ui/DatePicker';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -373,6 +374,32 @@ const ORG = {
   'Tài xế':         ['Tài xế giao nhận'],
 };
 
+/**
+ * Số năm thâm niên TRÒN tính tới HÔM NAY — chỉ để hiển thị tham khảo ở bảng nhân sự.
+ *
+ * <p>Con số CHÍNH THỨC dùng để trả phụ cấp là bản do BE chốt lúc Chủ bấm
+ * "Hoàn tất" phiếu lương ({@code SeniorityCalculator.java}), lấy mốc là ngày
+ * hoàn tất chấm công chứ không phải hôm nay. Hai số có thể lệch nhau nếu ngày kỷ
+ * niệm vào làm rơi vào khoảng giữa hai mốc — đây chỉ là chỗ xem nhanh.
+ *
+ * <p>Đếm theo lịch (so ngày/tháng) chứ không chia 365 ngày, để năm nhuận và
+ * người vào làm 29/02 không bị lệch.
+ */
+const seniorityYearsOf = (workStartDate) => {
+  if (!workStartDate) return 0;
+  const start = new Date(Number(workStartDate));
+  if (Number.isNaN(start.getTime())) return 0;
+
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+
+  // Chưa tới ngày kỷ niệm trong năm nay thì trừ đi 1.
+  const monthDiff = now.getMonth() - start.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < start.getDate())) years -= 1;
+
+  return years > 0 ? years : 0;
+};
+
 function InfoModal({ user, onClose, onSaved }) {
   const toast = useToast();
 
@@ -381,6 +408,8 @@ function InfoModal({ user, onClose, onSaved }) {
     department: ORG[user.department] ? user.department : '',
     division: user.division || '',
     position: '',
+    // Ngày vào làm — epoch ms (DatePicker nhận/trả ms). null = chưa nhập.
+    workStartDate: user.workStartDate ?? null,
   });
 
   // Đổi bộ phận thì chức vụ phải nằm trong bộ phận mới, nếu không thì xoá trắng
@@ -401,7 +430,11 @@ function InfoModal({ user, onClose, onSaved }) {
     }
     setSaving(true);
     try {
-      await hrEmployeeApi.updateInfo(user.id, form);
+      await hrEmployeeApi.updateInfo(user.id, {
+        ...form,
+        // BE nhận epoch millis; gửi 0 khi để trống = xoá ngày vào làm.
+        workStartDate: form.workStartDate || 0,
+      });
       toast('Đã cập nhật thông tin', 'success');
       onSaved();
       onClose();
@@ -428,6 +461,23 @@ function InfoModal({ user, onClose, onSaved }) {
             {positions.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </Field>
+
+        <Field label="Ngày vào làm việc"
+          hint="Căn cứ tính thâm niên & phụ cấp thâm niên. Để trống nếu chưa rõ.">
+          <DatePicker
+            value={form.workStartDate}
+            onChange={v => setForm(f => ({ ...f, workStartDate: v }))}
+            placeholder="Chọn ngày vào làm"
+            maxDate={new Date()} />
+        </Field>
+
+        {form.workStartDate && (
+          <p className="text-xs text-[#8E8878] leading-relaxed">
+            Thâm niên được CHỐT khi Chủ bấm “Hoàn tất” phiếu lương của tháng, tính
+            theo số năm tròn từ ngày này tới ngày hoàn tất chấm công. Đủ 1 năm được
+            2% lương cơ bản, mỗi năm sau +1%, tối đa 10%.
+          </p>
+        )}
 
         <p className="text-xs text-[#8E8878] leading-relaxed">
           Role hưởng lương được đặt tự động theo chức vụ. Nhân viên kiêm nhiệm vẫn
@@ -632,7 +682,12 @@ function ImportEmployeesModal({ onClose, onDone }) {
       const res = await hrSalaryApi.importAll(file);
       const body = res?.data || {};
       const d = body.data ?? body;
-      setResult({ updated: d.updated ?? 0, skipped: d.skipped ?? 0, errors: d.errors || [] });
+      setResult({
+        updated: d.updated ?? 0,
+        skipped: d.skipped ?? 0,
+        errors: d.errors || [],
+        backfilled: d.workStartDateBackfilled ?? 0,
+      });
       setStep('result');
       if ((d.updated ?? 0) > 0) onDone();
     } catch (e) {
@@ -659,6 +714,10 @@ function ImportEmployeesModal({ onClose, onDone }) {
             <p className="text-xs text-[#8E8878]">Hệ thống cập nhật đúng nhân viên theo cột <strong>ID</strong> — không dùng thứ tự dòng.</p>
             <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
               ⚠ Chỉ import được file vừa Export, và số lượng nhân viên phải khớp với hiện tại.
+            </p>
+            <p className="text-xs text-[#8E8878]">
+              Cột <strong>Ngày vào làm</strong> để trống thì hệ thống lấy <strong>ngày import</strong> làm mốc
+              tính thâm niên (chỉ với nhân viên chưa có ngày nào).
             </p>
             {uploadError && (
               <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-left">
@@ -687,6 +746,18 @@ function ImportEmployeesModal({ onClose, onDone }) {
               <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
             </div>
           </div>
+          {result?.backfilled > 0 && (
+            /* Ghi dữ liệu mà HR không chủ động yêu cầu → phải nói ra, kèm số
+               lượng, để họ biết đường vào sửa lại ai có ngày vào làm thật khác. */
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <p className="text-xs text-amber-700">
+                Đã tự điền <strong>ngày hôm nay</strong> làm ngày vào làm cho{' '}
+                <strong>{result.backfilled}</strong> nhân viên còn để trống.
+                Ai có ngày vào làm thật khác thì sửa lại ở nút “Bộ phận / Chức vụ”,
+                vì con số này quyết định phụ cấp thâm niên.
+              </p>
+            </div>
+          )}
           {result?.errors?.length > 0 && (
             <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-40 overflow-y-auto">
               <p className="text-xs font-semibold text-red-600 mb-1.5">Chi tiết lỗi:</p>
@@ -803,6 +874,7 @@ function EmployeesTab() {
                 <Th>Bộ phận</Th>
                 {/* <Th>Phòng ban</Th> */}
                 <Th>Chức vụ</Th>
+                <Th>Ngày vào làm</Th>
                 {/* <Th>Role</Th> */}
                 <Th right>Lương hiện tại</Th>
                 <Th right>Thao tác</Th>
@@ -822,6 +894,18 @@ function EmployeesTab() {
                   <Td><span className="text-sm">{u.department || '—'}</span></Td>
                   {/* <Td><span className="text-sm">{u.division || '—'}</span></Td> */}
                   <Td><span className="text-sm">{u.position || '—'}</span></Td>
+                  <Td>
+                    {u.workStartDate ? (
+                      <div>
+                        <span className="text-sm">{formatDate(u.workStartDate)}</span>
+                        <div className="text-xs text-[#8E8878]">
+                          {seniorityYearsOf(u.workStartDate)} năm
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-[#8E8878]">—</span>
+                    )}
+                  </Td>
                   {/* <Td><Badge variant="default">{u.role}</Badge></Td> */}
                   <Td right>
                     {cs ? (

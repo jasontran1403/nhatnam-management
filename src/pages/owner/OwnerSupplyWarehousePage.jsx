@@ -35,15 +35,22 @@ function AssignmentSection({ warehouses }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const toggle = async (row, warehouseId) => {
-    const has = row.warehouseIds.includes(warehouseId);
-    const next = has
-      ? row.warehouseIds.filter(id => id !== warehouseId)
-      : [...row.warehouseIds, warehouseId];
+  /**
+   * MỖI NHÂN VIÊN CHỈ MỘT KHO.
+   *
+   * <p>Dùng radio thay checkbox: chọn kho mới thì kho cũ tự bỏ, nên payload luôn
+   * là mảng 0 hoặc 1 phần tử. API vẫn giữ dạng mảng để không phải đổi hợp đồng
+   * (và để mở lại nhiều kho sau này nếu cần) — ràng buộc "một kho" nằm ở UI.
+   */
+  const pick = async (row, warehouseId) => {
+    // Bấm lại đúng kho đang chọn ⇒ BỎ GÁN (radio không tự bỏ được).
+    const next = row.warehouseIds.includes(warehouseId) ? [] : [warehouseId];
     setBusyId(row.userId);
     try {
       await ownerSupplyApi.assign({ userId: row.userId, warehouseIds: next });
-      toast(`Đã cập nhật kho cho ${row.fullName}`, 'success');
+      toast(next.length
+        ? `Đã gán kho cho ${row.fullName}`
+        : `Đã bỏ gán kho của ${row.fullName}`, 'success');
       load();
     } catch (e) {
       toast(e?.response?.data?.message || 'Không cập nhật được', 'error');
@@ -62,8 +69,8 @@ function AssignmentSection({ warehouses }) {
       <div className="px-4 py-3 border-b border-black/5">
         <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
           <Info size={13} className="mt-0.5 flex-shrink-0" />
-          Kho được gán quyết định 2 việc: nhân viên chọn được kho nào khi <b className="mx-1">tạo phiếu</b>,
-          và rút được hàng ở kho nào. Nhân viên chỉ có 1 kho thì hệ thống tự chọn sẵn.
+          Mỗi nhân viên chỉ được gán <b className="mx-1">MỘT kho</b>. Kho này quyết định 2 việc:
+          nhân viên tạo phiếu cho kho nào, và rút được hàng ở kho nào — hệ thống tự chọn sẵn khi lập phiếu.
         </p>
       </div>
 
@@ -79,27 +86,37 @@ function AssignmentSection({ warehouses }) {
                   <th className="px-4 py-2.5 text-left">Nhân viên</th>
                   <th className="px-4 py-2.5 text-left">Vai trò</th>
                   {warehouses.map(w => (
-                    <th key={w.id} className="px-4 py-2.5 text-center">{w.name}</th>
+                    <th key={w.id} className="px-4 py-2.5 text-center whitespace-nowrap">{w.name}</th>
                   ))}
+                  <th className="px-4 py-2.5 text-center whitespace-nowrap">Không gán</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.userId} className="border-t border-black/5">
+                  <tr key={r.userId} className="border-t border-black/5 hover:bg-[#FAF7F2]/40">
                     <td className="px-4 py-2.5">
                       <div className="text-[#1C1C1E]">{r.fullName}</div>
                       <div className="text-xs text-[#8E8878]">{r.username}</div>
                     </td>
-                    <td className="px-4 py-2.5 text-[#8E8878] text-xs">{r.role}</td>
+                    <td className="px-4 py-2.5 text-[#8E8878] text-xs whitespace-nowrap">{r.role}</td>
                     {warehouses.map(w => (
                       <td key={w.id} className="px-4 py-2.5 text-center">
-                        <input type="checkbox"
+                        <input type="radio"
+                          name={`wh-${r.userId}`}
                           disabled={busyId === r.userId}
                           checked={r.warehouseIds.includes(w.id)}
-                          onChange={() => toggle(r, w.id)}
-                          className="rounded border-black/20 text-[#C9A84C] focus:ring-[#C9A84C] w-4 h-4 cursor-pointer" />
+                          onChange={() => pick(r, w.id)}
+                          className="border-black/20 text-[#C9A84C] focus:ring-[#C9A84C] w-4 h-4 cursor-pointer disabled:opacity-40" />
                       </td>
                     ))}
+                    <td className="px-4 py-2.5 text-center">
+                      <input type="radio"
+                        name={`wh-${r.userId}`}
+                        disabled={busyId === r.userId}
+                        checked={r.warehouseIds.length === 0}
+                        onChange={() => pick(r, null)}
+                        className="border-black/20 text-[#8E8878] focus:ring-[#8E8878] w-4 h-4 cursor-pointer disabled:opacity-40" />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -247,10 +264,16 @@ export default function OwnerSupplyWarehousePage() {
       .catch(() => setWarehouses([]));
   }, []);
 
-  if (warehouses == null) return <LoadingSpinner label="Đang tải kho…" />;
+  if (warehouses == null) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <LoadingSpinner label="Đang tải kho…" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader
         icon={Archive}
         title="Kho văn phòng phẩm"
@@ -258,23 +281,40 @@ export default function OwnerSupplyWarehousePage() {
       />
 
       {warehouses.length === 0 ? (
-        <EmptyState icon={Archive} title="Chưa có kho nào"
-          description="Hệ thống sẽ tự tạo 2 kho Phổ Quang và Quận 9 khi khởi động." />
+        <SectionCard>
+          <EmptyState icon={Archive} title="Chưa có kho nào"
+            description="Hệ thống sẽ tự tạo 2 kho Phổ Quang và Quận 9 khi khởi động." />
+        </SectionCard>
       ) : (
         <>
-          {/* Mỗi kho một bộ số liệu riêng — không có chỗ nào cộng gộp 2 kho */}
-          <TabBar
-            tabs={warehouses.map(w => ({ id: w.id, label: w.name }))}
-            active={activeId} onChange={setActiveId}
-          />
+          {/* Hai TabBar gom vào một thẻ và ĐẶT NHÃN rõ ràng. Trước đây chúng xếp
+              chồng trần trên nền, trông như hai hàng nút rời rạc mà không cho
+              biết cái nào chọn KHO, cái nào chọn KIỂU XEM.
+              Mỗi kho một bộ số liệu riêng — không có chỗ nào cộng gộp 2 kho. */}
+          <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-3
+                          flex flex-col lg:flex-row lg:items-center gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-[11px] font-semibold text-[#8E8878] uppercase tracking-wider flex-shrink-0">
+                Kho
+              </span>
+              <div className="min-w-0 overflow-x-auto">
+                <TabBar
+                  tabs={warehouses.map(w => ({ id: w.id, label: w.name }))}
+                  active={activeId} onChange={setActiveId}
+                />
+              </div>
+            </div>
 
-          <TabBar
-            tabs={[
-              { id: 'STOCK', label: 'Tồn hiện tại', icon: Package },
-              { id: 'HISTORY', label: 'Lịch sử nhập / rút', icon: Archive },
-            ]}
-            active={tab} onChange={setTab}
-          />
+            <div className="lg:ml-auto min-w-0 overflow-x-auto">
+              <TabBar
+                tabs={[
+                  { id: 'STOCK', label: 'Tồn hiện tại', icon: Package },
+                  { id: 'HISTORY', label: 'Lịch sử nhập / rút', icon: Archive },
+                ]}
+                active={tab} onChange={setTab}
+              />
+            </div>
+          </div>
 
           {tab === 'STOCK'
             ? <StockTable warehouseId={activeId} />

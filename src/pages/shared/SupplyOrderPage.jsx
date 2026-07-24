@@ -2,16 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ShoppingBag, Plus, Trash2, Search, Package, PackageCheck, Warehouse,
-  ChevronDown, Save, Send, AlertTriangle, Info, Pencil,
+  ChevronDown, Save, Send, AlertTriangle, Info, Pencil, Lock,
 } from 'lucide-react';
 import {
-  supplyOrderApi, supplyWarehouseApi,
+  supplyOrderApi, supplyWarehouseApi, supplyItemApi,
   SUPPLY_STATUS, RECEIVE_STATUS, GROUP_STATUS,
-  fmtQty, fmtMoney, fmtDate, fmtDateTime, msToDateInput, dateInputToMs,
+  fmtQty, fmtMoney, fmtDate, fmtDateTime,
 } from '../../api/supplyApi';
 import { useToast } from '../../components/common/Toast';
 import useDebounce from '../../utils/useDebounce.js';
 import Modal from '../../components/ui/Modal';
+import DatePicker from '../../components/ui/DatePicker';
 import Pagination from '../../components/ui/Pagination';
 import {
   PageHeader, SectionCard, PrimaryButton, SecondaryButton, Field,
@@ -39,7 +40,15 @@ const PAGE_SIZE = 12;
 /* ══════════════════════════════════════════════════════════════════════════
    Search dropdown dùng portal — tránh bị modal cắt mất panel
    ══════════════════════════════════════════════════════════════════════════ */
-function SearchDropdown({ value, label, placeholder, fetcher, onPick, disabled }) {
+/**
+ * @param {(q:string)=>void} [onQuickCreate]  Bật chế độ "tìm không thấy thì tạo
+ *   nhanh". Nhận từ khoá đang gõ để form tạo điền sẵn tên, người dùng khỏi gõ lại.
+ * @param {string} [quickCreateHint]  Chữ nhỏ mô tả hành động tạo nhanh.
+ */
+function SearchDropdown({
+  value, label, placeholder, fetcher, onPick, disabled,
+  onQuickCreate, quickCreateHint,
+}) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const dq = useDebounce(q, 300);
@@ -115,7 +124,24 @@ function SearchDropdown({ value, label, placeholder, fetcher, onPick, disabled }
             {loading ? (
               <p className="px-3 py-4 text-sm text-[#8E8878] text-center">Đang tải…</p>
             ) : options.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-[#8E8878] text-center">Không có kết quả</p>
+              /* KHÔNG TÌM THẤY → mời tạo nhanh ngay tại chỗ.
+                 Trước đây tới đây là cụt đường: người lập phiếu phải bỏ dở đi
+                 nhờ Owner thêm nhãn rồi quay lại làm phiếu từ đầu. */
+              onQuickCreate ? (
+                <button type="button"
+                  onClick={() => { onQuickCreate(q.trim()); setOpen(false); }}
+                  className="w-full text-left px-3 py-4 hover:bg-[#FAF7F2]">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-[#C9A84C]">
+                    <Plus size={14} className="flex-shrink-0" />
+                    {q.trim() ? <>Tạo nhanh “{q.trim()}”</> : 'Tạo mới'}
+                  </div>
+                  <div className="text-xs text-[#8E8878] mt-1">
+                    {quickCreateHint || 'Không tìm thấy kết quả nào phù hợp.'}
+                  </div>
+                </button>
+              ) : (
+                <p className="px-3 py-4 text-sm text-[#8E8878] text-center">Không có kết quả</p>
+              )
             ) : options.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { onPick(o); setOpen(false); }}
@@ -125,6 +151,18 @@ function SearchDropdown({ value, label, placeholder, fetcher, onPick, disabled }
               </button>
             ))}
           </div>
+
+          {/* Vẫn cho tạo nhanh KỂ CẢ khi có kết quả: gõ "Bút" ra "Bút bi xanh"
+              không có nghĩa là người dùng muốn chọn nó thay vì tạo "Bút lông". */}
+          {onQuickCreate && !loading && options.length > 0 && (
+            <button type="button"
+              onClick={() => { onQuickCreate(q.trim()); setOpen(false); }}
+              className="w-full flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold
+                         text-[#C9A84C] hover:bg-[#FAF7F2] border-t border-black/5">
+              <Plus size={13} className="flex-shrink-0" />
+              {q.trim() ? <>Không có trong danh sách — tạo nhanh “{q.trim()}”</> : 'Tạo nhãn mới'}
+            </button>
+          )}
         </div>, document.body)}
     </>
   );
@@ -140,19 +178,259 @@ function StatusPill({ status }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   TẠO NHANH DANH MỤC KHOẢN CHI
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const KIND_LABEL = {
+  SERVICE: 'Dịch vụ',
+  CONSUMABLE: 'Đồ dùng tiêu hao',
+};
+
+/**
+ * Autocomplete vật dụng đã có trong kho — BIỆN PHÁP CHÍNH CHỐNG PHÂN MẢNH TỒN KHO.
+ *
+ * <p>Chọn một gợi ý ⇒ tên + quy cách + ĐVT được điền sẵn và KHOÁ LẠI, để
+ * "Nước rửa chén / 4L/chai / Chai" không bị nhập thành 3 bản ghi khác nhau chỉ
+ * vì gõ lệch ("4 lít/chai", "4l/ chai"). Muốn gõ tay thì bấm "Tạo mới".
+ *
+ * <p>Bản sao có chủ đích của component cùng tên trong
+ * {@code components/supply/ExpenseCategorySection.jsx} (form của Owner) — file
+ * đó không export nó ra ngoài.
+ */
+function SupplyItemAutocomplete({ value, onPick, onManual, locked }) {
+  const [q, setQ] = useState(value || '');
+  const dq = useDebounce(q, 300);
+  const [options, setOptions] = useState([]);
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef(null);
+
+  useEffect(() => { setQ(value || ''); }, [value]);
+
+  useEffect(() => {
+    if (!open || locked) return;
+    let alive = true;
+    supplyItemApi.suggest(dq)
+      .then(d => { if (alive) setOptions(d || []); })
+      .catch(() => { if (alive) setOptions([]); });
+    return () => { alive = false; };
+  }, [dq, open, locked]);
+
+  useEffect(() => {
+    const onDown = (e) => { if (!boxRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  return (
+    <div ref={boxRef} className="relative">
+      <div className="relative">
+        <input
+          className={`${inputCls} ${locked ? 'bg-[#FAF7F2] pr-9' : ''}`}
+          value={q}
+          readOnly={locked}
+          placeholder="VD: Nước rửa chén"
+          onFocus={() => !locked && setOpen(true)}
+          onChange={e => { setQ(e.target.value); onManual(e.target.value); setOpen(true); }}
+        />
+        {locked && (
+          <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+        )}
+      </div>
+
+      {open && !locked && (
+        <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-black/10 shadow-lg max-h-56 overflow-y-auto">
+          {options.length === 0 ? (
+            <p className="px-3 py-3 text-xs text-[#8E8878] text-center">
+              Chưa có vật dụng nào khớp — cứ gõ tiếp để tạo mới.
+            </p>
+          ) : options.map(o => (
+            <button key={o.id} type="button"
+              onClick={() => { onPick(o); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] border-b border-black/5 last:border-0">
+              <div className="text-[#1C1C1E]">{o.name}</div>
+              <div className="text-xs text-[#8E8878]">
+                {o.specification || '(không có quy cách)'} · {o.unit}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * MODAL TẠO NHANH NHÃN KHOẢN CHI — bản dành cho người lập phiếu.
+ *
+ * <p>Giữ ĐÚNG các ràng buộc của form Owner, vì nhãn tạo ra vào chung một pool:
+ *   · Dịch vụ      → không có ĐVT / quy cách, không nhập kho.
+ *   · Đồ dùng tiêu hao → BẮT BUỘC ĐVT + quy cách, có autocomplete chống trùng.
+ *
+ * @param {string} initialName  Từ khoá người dùng vừa gõ ở ô tìm kiếm — điền sẵn
+ *                              vào ô Tên để khỏi phải gõ lại.
+ * @param {(cat)=>void} onCreated  Nhận category vừa tạo để form chọn luôn vào dòng.
+ */
+function QuickCategoryModal({ open, initialName, onClose, onCreated }) {
+  const [form, setForm] = useState({
+    name: '', description: '', categoryKind: 'SERVICE',
+    unit: '', specification: '', supplyItemId: null,
+  });
+  const [locked, setLocked] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setErr('');
+    setLocked(false);
+    setForm({
+      name: initialName || '',
+      description: '', categoryKind: 'SERVICE',
+      unit: '', specification: '', supplyItemId: null,
+    });
+  }, [open, initialName]);
+
+  const isConsumable = form.categoryKind === 'CONSUMABLE';
+
+  const pickExisting = (o) => {
+    setForm(f => ({
+      ...f, name: o.name, specification: o.specification || '', unit: o.unit, supplyItemId: o.id,
+    }));
+    setLocked(true);
+  };
+
+  const unlock = () => {
+    setLocked(false);
+    setForm(f => ({ ...f, supplyItemId: null }));
+  };
+
+  const submit = async () => {
+    if (!form.name.trim()) { setErr('Tên nhãn khoản chi là bắt buộc'); return; }
+    if (isConsumable) {
+      if (!form.unit.trim()) { setErr('Đồ dùng tiêu hao bắt buộc nhập Đơn vị tính'); return; }
+      if (!form.specification.trim()) { setErr('Đồ dùng tiêu hao bắt buộc nhập Quy cách'); return; }
+    }
+    setBusy(true); setErr('');
+    try {
+      const created = await supplyOrderApi.createCategory({
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        categoryKind: form.categoryKind,
+        unit: isConsumable ? form.unit.trim() : null,
+        specification: isConsumable ? form.specification.trim() : null,
+        supplyItemId: isConsumable ? form.supplyItemId : null,
+      });
+      onCreated(created);
+      onClose();
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Không tạo được nhãn khoản chi');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Tạo nhanh danh mục khoản chi" size="md">
+      <div className="space-y-4">
+        <Field label="Loại khoản chi" required>
+          <div className="flex gap-2">
+            {['SERVICE', 'CONSUMABLE'].map(k => (
+              <button key={k} type="button"
+                onClick={() => setForm(f => ({ ...f, categoryKind: k }))}
+                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors
+                  ${form.categoryKind === k
+                    ? 'bg-[#C9A84C]/10 border-[#C9A84C] text-[#1C1C1E]'
+                    : 'bg-white border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+                {KIND_LABEL[k]}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
+          <Info size={13} className="mt-0.5 flex-shrink-0" />
+          {isConsumable
+            ? 'Đồ dùng tiêu hao sẽ được NHẬP KHO khi bạn xác nhận nhận hàng. Tồn kho gộp theo tên + quy cách + ĐVT, không phụ thuộc nhà cung cấp.'
+            : 'Dịch vụ không nhập kho — chỉ ghi nhận chi phí. Đơn vị tính và quy cách để trống được.'}
+        </p>
+
+        <Field label="Tên nhãn khoản chi" required
+          hint={isConsumable && !locked
+            ? 'Gõ để tìm vật dụng đã có — chọn gợi ý sẽ tự điền quy cách + ĐVT'
+            : undefined}>
+          {isConsumable ? (
+            <SupplyItemAutocomplete
+              value={form.name}
+              locked={locked}
+              onPick={pickExisting}
+              onManual={(v) => setForm(f => ({ ...f, name: v, supplyItemId: null }))}
+            />
+          ) : (
+            <input className={inputCls} value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="VD: Tiền điện" />
+          )}
+        </Field>
+
+        {isConsumable && (
+          <>
+            {locked && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#FAF7F2] border border-black/5">
+                <span className="text-xs text-[#8E8878]">
+                  Đang dùng vật dụng có sẵn — tên, quy cách, ĐVT đã khoá để không tách tồn kho.
+                </span>
+                <button type="button" onClick={unlock}
+                  className="text-xs font-semibold text-[#C9A84C] hover:text-[#B69842] whitespace-nowrap ml-2">
+                  Tạo mới
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Quy cách" required>
+                <input className={`${inputCls} ${locked ? 'bg-[#FAF7F2]' : ''}`}
+                  readOnly={locked} value={form.specification}
+                  onChange={e => setForm(f => ({ ...f, specification: e.target.value }))}
+                  placeholder="VD: 4L/chai" />
+              </Field>
+              <Field label="Đơn vị tính" required>
+                <input className={`${inputCls} ${locked ? 'bg-[#FAF7F2]' : ''}`}
+                  readOnly={locked} value={form.unit}
+                  onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
+                  placeholder="VD: Chai" />
+              </Field>
+            </div>
+          </>
+        )}
+
+        <Field label="Ghi chú">
+          <input className={inputCls} value={form.description}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+        </Field>
+
+        {err && <p className="text-xs text-red-600">{err}</p>}
+
+        <div className="flex items-center justify-end gap-2">
+          <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
+          <PrimaryButton onClick={submit} loading={busy}>Tạo &amp; chọn</PrimaryButton>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    FORM LẬP / SỬA PHIẾU (Bước 1)
    ══════════════════════════════════════════════════════════════════════════ */
 function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
   const toast = useToast();
   const [warehouseId, setWarehouseId] = useState('');
-  const [requiredBy, setRequiredBy] = useState('');
+  const [requiredBy, setRequiredBy] = useState(null);   // epoch ms — DatePicker dùng ms
   const [rows, setRows] = useState([]);
   const [categories, setCategories] = useState([]);
   const [busy, setBusy] = useState(false);
 
   const emptyRow = () => ({
     key: Math.random().toString(36).slice(2),
-    supplierId: null, supplierName: '',
+    // Không còn supplierId — NCC do kế toán trưởng chọn ở bước xác nhận.
     expenseCategoryId: null, quantity: '', note: '',
   });
 
@@ -162,17 +440,15 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
 
     if (editing) {
       setWarehouseId(String(editing.supplyWarehouseId ?? ''));
-      setRequiredBy(msToDateInput(editing.requiredBy));
+      setRequiredBy(editing.requiredBy ?? null);
       setRows(editing.items.map(i => ({
         key: `it-${i.id}`,
-        supplierId: i.supplierId ?? null,
-        supplierName: i.supplierName ?? '',
         expenseCategoryId: i.expenseCategoryId ?? null,
         quantity: i.orderedQuantity != null ? String(i.orderedQuantity) : '',
         note: i.note ?? '',
       })));
     } else {
-      setRequiredBy('');
+      setRequiredBy(null);
       setRows([emptyRow()]);
       // Chỉ được gán 1 kho → tự chọn, người dùng khỏi phải thao tác thừa
       setWarehouseId(warehouses.length === 1 ? String(warehouses[0].id) : '');
@@ -187,6 +463,46 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
     categories.forEach(c => { m[c.id] = c; });
     return m;
   }, [categories]);
+
+  /* ── Tìm kiếm danh mục ────────────────────────────────────────────────────
+     Lọc NGAY TRÊN CLIENT từ list đã nạp sẵn: danh mục cỡ vài trăm nhãn, gọi API
+     mỗi lần gõ chỉ tổ chớp nháy mà không nhanh hơn. Bỏ dấu tiếng Việt để gõ
+     "quet nha" vẫn ra "Chổi quét nhà". */
+  const searchCategories = useCallback((q) => {
+    const norm = (s) => (s || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+      .toLowerCase().trim();
+
+    const nq = norm(q);
+    const matched = !nq
+      ? categories
+      : categories.filter(c => norm(c.name).includes(nq));
+
+    return Promise.resolve(matched.map(c => ({
+      ...c,
+      _label: c.name,
+      _sub: c.categoryKind === 'SERVICE'
+        ? 'Dịch vụ — không nhập kho'
+        : [c.specification, c.unit].filter(Boolean).join(' · ') || 'Đồ dùng tiêu hao',
+    })));
+  }, [categories]);
+
+  /* ── Tạo nhanh danh mục ───────────────────────────────────────────────────
+     Nhớ lại dòng nào đang mở modal để gán thẳng nhãn vừa tạo vào đúng dòng đó. */
+  const [quickCreate, setQuickCreate] = useState(null); // { rowKey, name } | null
+
+  const openQuickCreate = (rowKey, name) => setQuickCreate({ rowKey, name });
+
+  const onCategoryCreated = (created) => {
+    if (!created) return;
+    // Đưa vào list ngay, khỏi phải gọi lại API chỉ để thấy nhãn mình vừa tạo.
+    setCategories(cs => [...cs, created].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'vi')));
+    if (quickCreate?.rowKey) {
+      patchRow(quickCreate.rowKey, { expenseCategoryId: created.id });
+    }
+  };
 
   const validate = () => {
     if (!warehouseId) return 'Vui lòng chọn kho nhận hàng';
@@ -205,12 +521,11 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
     setBusy(true);
     const body = {
       supplyWarehouseId: Number(warehouseId),
-      requiredBy: dateInputToMs(requiredBy),
+      requiredBy: requiredBy || null,
       draft,
       items: rows
         .filter(r => r.expenseCategoryId && num(r.quantity) > 0)
         .map((r, i) => ({
-          supplierId: r.supplierId,
           expenseCategoryId: r.expenseCategoryId,
           quantity: num(r.quantity),
           note: r.note || null,
@@ -243,8 +558,8 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
             </select>
           </Field>
           <Field label="Cần hàng trước ngày" hint="Không bắt buộc">
-            <input type="date" className={inputCls} value={requiredBy}
-              onChange={e => setRequiredBy(e.target.value)} />
+            <DatePicker value={requiredBy} onChange={setRequiredBy}
+              placeholder="Chọn ngày" minDate={new Date()} />
           </Field>
         </div>
 
@@ -271,31 +586,24 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Được chọn TẤT CẢ NCC — không giới hạn NCC nguyên liệu */}
-                    <Field label="Nhà cung cấp">
-                      <SearchDropdown
-                        value={r.supplierId}
-                        label={r.supplierName}
-                        placeholder="— Chọn nhà cung cấp —"
-                        fetcher={(q) => supplyOrderApi.suppliers(q).then(list =>
-                          list.map(s => ({ ...s, _label: s.name, _sub: s.contactPhone || s.contactPerson || '' })))}
-                        onPick={(s) => patchRow(r.key, { supplierId: s.id, supplierName: s.name })}
-                      />
-                    </Field>
+                  {/* NHÀ CUNG CẤP đã BỎ khỏi form này — kế toán trưởng mới là
+                      người chọn NCC cho từng mặt hàng ở bước xác nhận đặt hàng
+                      (họ nắm giá và công nợ). Người lập phiếu chỉ nêu CẦN GÌ.
 
-                    <Field label="Danh mục khoản chi" required>
-                      <select className={selectCls} value={r.expenseCategoryId ?? ''}
-                        onChange={e => patchRow(r.key, { expenseCategoryId: e.target.value ? Number(e.target.value) : null })}>
-                        <option value="">— Chọn danh mục —</option>
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}{c.categoryKind === 'SERVICE' ? ' (Dịch vụ)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
+                      Ô TÌM KIẾM thay cho select: danh mục dùng chung toàn công ty
+                      nên list rất dài, cuộn tay tìm là không khả thi. Tìm không
+                      thấy thì tạo nhanh ngay tại chỗ. */}
+                  <Field label="Danh mục khoản chi" required>
+                    <SearchDropdown
+                      value={r.expenseCategoryId}
+                      label={cat ? cat.name : ''}
+                      placeholder="— Tìm / chọn danh mục —"
+                      fetcher={(q) => searchCategories(q)}
+                      onPick={(c) => patchRow(r.key, { expenseCategoryId: c.id })}
+                      onQuickCreate={(q) => openQuickCreate(r.key, q)}
+                      quickCreateHint="Tạo nhãn mới dùng chung cho cả công ty."
+                    />
+                  </Field>
 
                   {/* Quy cách + ĐVT hiển thị READ-ONLY, lấy từ danh mục.
                       Dịch vụ không có 2 giá trị này → người dùng chỉ nhập số lượng. */}
@@ -342,6 +650,13 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
           </PrimaryButton>
         </div>
       </div>
+
+      <QuickCategoryModal
+        open={!!quickCreate}
+        initialName={quickCreate?.name || ''}
+        onClose={() => setQuickCreate(null)}
+        onCreated={onCategoryCreated}
+      />
     </Modal>
   );
 }
@@ -631,8 +946,12 @@ export default function SupplyOrderPage() {
   }, [status, dSearch, page]);
 
   useEffect(() => {
+    // KHÔNG lọc thêm theo `w.assigned` ở đây: BE đã trả về ĐÚNG danh sách kho
+    // user được thao tác rồi. Lọc lại lần nữa từng làm hỏng 2 trường hợp —
+    // tài khoản Owner-like (BE trả cả 2 kho nhưng cờ assigned = false) và bất kỳ
+    // ai mà cờ assigned chưa kịp đúng — đều ra màn hình "chưa được gán kho".
     supplyWarehouseApi.myWarehouses()
-      .then(list => setWarehouses((list || []).filter(w => w.assigned)))
+      .then(list => setWarehouses(list || []))
       .catch(() => setWarehouses([]));
   }, []);
 
@@ -657,7 +976,7 @@ export default function SupplyOrderPage() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader
         icon={ShoppingBag}
         title="Phiếu đặt văn phòng phẩm"
@@ -680,9 +999,15 @@ export default function SupplyOrderPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <TabBar tabs={tabs} active={status} onChange={setStatus} />
-        <div className="relative flex-1 min-w-[200px]">
+      {/* Bộ lọc gom vào một thẻ trắng: trước đây TabBar và ô tìm kiếm nằm trần
+          trên nền, cao thấp khác nhau nên nhìn rời rạc. Ô tìm kiếm cũng bị kéo
+          giãn hết chiều ngang màn hình — nay giới hạn bề rộng lại. */}
+      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-3
+                      flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="min-w-0 overflow-x-auto">
+          <TabBar tabs={tabs} active={status} onChange={setStatus} />
+        </div>
+        <div className="relative w-full lg:w-72 lg:ml-auto flex-shrink-0">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm mã phiếu, tên mặt hàng…" className={`${inputCls} pl-9`} />
@@ -691,8 +1016,10 @@ export default function SupplyOrderPage() {
 
       {orders == null ? <LoadingSpinner label="Đang tải phiếu…" />
         : orders.length === 0 ? (
-          <EmptyState icon={Package} title="Chưa có phiếu nào"
-            description="Bấm “Tạo phiếu” để đặt văn phòng phẩm / đồ dùng." />
+          <SectionCard>
+            <EmptyState icon={Package} title="Chưa có phiếu nào"
+              description="Bấm “Tạo phiếu” để đặt văn phòng phẩm / đồ dùng." />
+          </SectionCard>
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

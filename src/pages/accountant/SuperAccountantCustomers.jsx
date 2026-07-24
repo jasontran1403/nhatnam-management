@@ -651,7 +651,9 @@ export default function SuperAccountantCustomers() {
       const params = { page, size: 20, sort: 'id,desc' };
       if (debouncedQ) params.q = debouncedQ;
       if (filters.type) params.type = filters.type;
-      params.isActive = true;                       // chỉ khách đang hoạt động
+      // KHÔNG lọc isActive: kế toán phải thấy CẢ khách đã khoá để tra cứu và thu
+      // hồi công nợ — khoá là ngừng bán hàng, không phải xoá khỏi sổ. Khách đã
+      // XOÁ vẫn bị loại ở BE (searchAdmin lọc sẵn deletedAt IS NULL).
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       if (debtSort) params.debtSort = debtSort;
       const res = await adminCustomerApi.list(params);
@@ -673,7 +675,7 @@ export default function SuperAccountantCustomers() {
       const params = {};
       if (debouncedQ) params.q = debouncedQ;
       if (filters.type) params.type = filters.type;
-      params.isActive = true;
+      // Export phải khớp đúng những gì đang hiện trên bảng → cũng không lọc isActive.
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       const res = await adminCustomerApi.exportAll(params);
       const blob = new Blob([res.data], {

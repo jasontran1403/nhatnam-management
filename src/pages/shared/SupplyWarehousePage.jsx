@@ -338,20 +338,27 @@ export default function SupplyWarehousePage() {
   useEffect(() => {
     supplyWarehouseApi.myWarehouses()
       .then(list => {
-        const assigned = (list || []).filter(w => w.assigned);
-        setWarehouses(assigned);
-        if (assigned.length) setActiveId(assigned[0].id);   // 1 kho → tự chọn
+        // BE đã trả về ĐÚNG các kho được thao tác (assigned luôn true), không lọc lại.
+        const mine = list || [];
+        setWarehouses(mine);
+        if (mine.length) setActiveId(mine[0].id);   // 1 kho → tự chọn
       })
       .catch(() => setWarehouses([]));
   }, []);
 
   const active = warehouses?.find(w => w.id === activeId) || null;
 
-  if (warehouses == null) return <LoadingSpinner label="Đang tải kho…" />;
+  if (warehouses == null) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <LoadingSpinner label="Đang tải kho…" />
+      </div>
+    );
+  }
 
   if (warehouses.length === 0) {
     return (
-      <div className="space-y-5">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-5">
         <PageHeader icon={Archive} title="Kho văn phòng phẩm" />
         <div className="flex items-start gap-2 p-4 rounded-xl bg-amber-50 border border-amber-200">
           <AlertTriangle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
@@ -365,7 +372,7 @@ export default function SupplyWarehousePage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader
         icon={Archive}
         title="Kho văn phòng phẩm"
@@ -377,21 +384,34 @@ export default function SupplyWarehousePage() {
         }
       />
 
-      {/* Số liệu TÁCH RIÊNG theo kho — đổi kho là đổi toàn bộ bảng bên dưới */}
-      {warehouses.length > 1 && (
-        <TabBar
-          tabs={warehouses.map(w => ({ id: w.id, label: w.name }))}
-          active={activeId} onChange={setActiveId}
-        />
-      )}
+      {/* Gom bộ chọn vào MỘT thẻ cho khỏi rời rạc.
+          Số liệu TÁCH RIÊNG theo kho — đổi kho là đổi toàn bộ bảng bên dưới. */}
+      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-3
+                      flex flex-col lg:flex-row lg:items-center gap-3">
+        {warehouses.length > 1 && (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-[11px] font-semibold text-[#8E8878] uppercase tracking-wider flex-shrink-0">
+              Kho
+            </span>
+            <div className="min-w-0 overflow-x-auto">
+              <TabBar
+                tabs={warehouses.map(w => ({ id: w.id, label: w.name }))}
+                active={activeId} onChange={setActiveId}
+              />
+            </div>
+          </div>
+        )}
 
-      <TabBar
-        tabs={[
-          { id: 'STOCK', label: 'Tồn hiện tại', icon: Package },
-          { id: 'HISTORY', label: 'Lịch sử', icon: Archive },
-        ]}
-        active={tab} onChange={setTab}
-      />
+        <div className="lg:ml-auto min-w-0 overflow-x-auto">
+          <TabBar
+            tabs={[
+              { id: 'STOCK', label: 'Tồn hiện tại', icon: Package },
+              { id: 'HISTORY', label: 'Lịch sử', icon: Archive },
+            ]}
+            active={tab} onChange={setTab}
+          />
+        </div>
+      </div>
 
       {tab === 'STOCK'
         ? <StockTable warehouseId={activeId} refreshKey={refreshKey} />

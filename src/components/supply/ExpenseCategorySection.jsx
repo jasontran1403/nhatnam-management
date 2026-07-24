@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Tag, Plus, Pencil, Trash2, Lock, Info } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Tag, Plus, Pencil, Trash2, Lock, Info, Search, X } from 'lucide-react';
 import { ownerSupplierApi } from '../../api/materialRequestApi';
 import { supplyItemApi } from '../../api/supplyApi';
 import useDebounce from '../../utils/useDebounce.js';
@@ -256,6 +256,7 @@ export default function ExpenseCategorySection({ canManage }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [err, setErr] = useState('');
+  const [q, setQ] = useState('');
 
   const load = useCallback(async () => {
     try { setCats(await ownerSupplierApi.listCategories(false) || []); }
@@ -265,6 +266,24 @@ export default function ExpenseCategorySection({ canManage }) {
   useEffect(() => { load(); }, [load]);
 
   const activeCats = (cats || []).filter(c => c.active);
+
+  /* Lọc ngay trên client — danh mục đã nạp sẵn toàn bộ, gọi lại API mỗi lần gõ
+     chỉ tổ chớp nháy. Bỏ dấu tiếng Việt để gõ "quet nha" vẫn ra "Chổi quét nhà",
+     và tìm cả trong Quy cách / ĐVT / Ghi chú chứ không riêng tên nhãn. */
+  const filtered = useMemo(() => {
+    const norm = (s) => (s || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+      .toLowerCase().trim();
+
+    const nq = norm(q);
+    if (!nq) return cats || [];
+    return (cats || []).filter(c =>
+      norm(c.name).includes(nq)
+      || norm(c.specification).includes(nq)
+      || norm(c.unit).includes(nq)
+      || norm(c.description).includes(nq));
+  }, [cats, q]);
 
   const toggleActive = async (c) => {
     setErr('');
@@ -303,10 +322,32 @@ export default function ExpenseCategorySection({ canManage }) {
 
           {err && <p className="text-xs text-red-600">{err}</p>}
 
+          {/* Ô tìm kiếm — chỉ hiện khi danh mục đủ dài để cần tìm */}
+          {cats != null && cats.length > 0 && (
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <input
+                value={q} onChange={e => setQ(e.target.value)}
+                placeholder="Tìm nhãn, quy cách, ĐVT…"
+                className={`${inputCls} pl-9 pr-9`} />
+              {q && (
+                <button type="button" onClick={() => setQ('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"
+                  title="Xoá tìm kiếm">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )}
+
           {cats == null ? (
             <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-10 bg-[#FAF7F2] rounded-xl animate-pulse" />)}</div>
           ) : cats.length === 0 ? (
             <p className="text-xs text-[#8E8878] py-2">Chưa có nhãn nào{canManage ? ' — hãy thêm nhãn đầu tiên.' : '.'}</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-xs text-[#8E8878] py-3 text-center">
+              Không có nhãn nào khớp “{q}”.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -320,7 +361,7 @@ export default function ExpenseCategorySection({ canManage }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {cats.map(c => (
+                  {filtered.map(c => (
                     <tr key={c.id} className={`border-t border-black/5 ${c.active ? '' : 'opacity-50'}`}>
                       <td className="px-3 py-2">
                         <span className={c.active ? 'text-[#1C1C1E]' : 'line-through text-gray-400'}>{c.name}</span>

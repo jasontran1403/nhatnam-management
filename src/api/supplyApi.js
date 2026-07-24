@@ -40,6 +40,19 @@ export const supplyOrderApi = {
   categories: (supplierId) =>
     api.get('/api/supply-orders/expense-categories', { params: { supplierId } }).then(unwrap),
 
+  /**
+   * TẠO NHANH nhãn khoản chi ngay trên form lập phiếu.
+   *
+   * Nhãn vào thẳng POOL DÙNG CHUNG (giống hệt nhãn do Owner tạo ở trang Quản lý
+   * NCC), nên đừng coi đây là "nhãn tạm" — Owner vẫn sửa/ẩn được sau đó.
+   *
+   * body: { name, description, categoryKind: 'SERVICE'|'CONSUMABLE', unit, specification, supplyItemId }
+   * Với CONSUMABLE, BE bắt buộc có unit + specification rồi tự gán supplyItemId
+   * để không tách dòng tồn kho.
+   */
+  createCategory: (body) =>
+    api.post('/api/supply-orders/expense-categories', body).then(unwrap),
+
   // body: { supplyWarehouseId, requiredBy, draft, items:[{supplierId, expenseCategoryId, quantity, note, sortOrder}] }
   create: (body) => api.post('/api/supply-orders', body).then(unwrap),
 
