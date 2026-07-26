@@ -1,5 +1,7 @@
 // src/pages/accountant/IncomeDetailModal.jsx
-import { X, TrendingUp, Banknote, CreditCard, ShoppingCart, User } from 'lucide-react';
+import { X, TrendingUp, Banknote, CreditCard, ShoppingCart, User, History } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { incomeApi } from '../../api/services';
 
 function formatVND(n) {
   if (!n && n !== 0) return '0 đ';
@@ -17,8 +19,24 @@ function imgSrc(url) {
   return url.startsWith('http') ? url : `${BASE_URL}/api/auth${url}`;
 }
 
-export default function IncomeDetailModal({ voucher: v, onClose }) {
+import { useAuth } from '../../context/AuthContext';
+
+export default function IncomeDetailModal({ voucher: v, onClose, onEdit }) {
+  const { user, role } = useAuth();
+  // Sửa được nếu là NGƯỜI TẠO, hoặc supervisor (khớp đúng luật ở backend).
+  // Mọi kế toán đều sửa được mọi phiếu (khớp với BE). Chỉ chặn phiếu đã từ chối.
+  const canEdit = v.status !== 'REJECTED' &&
+    ['ACCOUNTANT', 'SUPER_ACCOUNTANT', 'ADMIN', 'OWNER'].includes(role);
   const isBankTransfer = v.paymentType === 'BANK_TRANSFER';
+
+  // Nhật ký tạo/sửa phiếu — hiện sau dòng tổng cộng.
+  const [logs, setLogs] = useState([]);
+  useEffect(() => {
+    if (!v?.id) return;
+    incomeApi.getLogs(v.id)
+      .then(res => setLogs(res.data?.data || res.data || []))
+      .catch(() => setLogs([]));
+  }, [v?.id]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -116,6 +134,32 @@ export default function IncomeDetailModal({ voucher: v, onClose }) {
             </div>
           </div>
 
+          {/* Nhật ký tạo / chỉnh sửa */}
+          {logs.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#1C1C1E] mb-2">
+                <History size={14} className="text-[#C9A84C]" />
+                Nhật ký phiếu thu ({logs.length})
+              </div>
+              <div className="space-y-2">
+                {logs.map((lg, i) => (
+                  <div key={lg.id || i} className="bg-[#FAF7F2] rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${lg.action === 'CREATE' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                        {lg.actionLabel}
+                      </span>
+                      <span className="text-[11px] text-[#8E8878]">{formatDate(lg.createdAt)}</span>
+                    </div>
+                    <p className="text-xs text-[#5C4E3D] mt-1">{lg.note}</p>
+                    <p className="text-[11px] text-[#8E8878] mt-1">
+                      Bởi {lg.actorName}{lg.actorRole ? ` · ${roleLabel(lg.actorRole)}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Images */}
           {v.imageUrls?.length > 0 && (
             <div>
@@ -132,6 +176,12 @@ export default function IncomeDetailModal({ voucher: v, onClose }) {
         </div>
 
         <div className="p-5 border-t border-black/5">
+          {onEdit && canEdit && (
+            <button onClick={() => onEdit(v)}
+              className="w-full py-3 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B69842] transition mb-2">
+              Sửa phiếu thu
+            </button>
+          )}
           <button onClick={onClose} className="w-full py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
             Đóng
           </button>
@@ -140,6 +190,12 @@ export default function IncomeDetailModal({ voucher: v, onClose }) {
     </div>
   );
 }
+
+const ROLE_LABELS = {
+  ACCOUNTANT: 'Kế toán', SUPER_ACCOUNTANT: 'Kế toán trưởng',
+  ADMIN: 'Quản trị', OWNER: 'Chủ tịch', SUPERADMIN: 'Quản trị hệ thống',
+};
+function roleLabel(r) { return ROLE_LABELS[r] || r; }
 
 function InfoRow({ label, value, full, mono }) {
   return (

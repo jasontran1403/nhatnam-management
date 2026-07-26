@@ -205,6 +205,19 @@ export const factoryPayrollNavRaw = [
   { to: '/my-requests', labelKey: 'my_requests', icon: FileText },
 ];
 
+// ── FACTORY_STAFF (Trợ lý xưởng): DÙNG CHUNG các trang của FACTORY_WORKER —
+// lịch sử lệnh SX, máy móc & bảo trì, phiếu đặt hàng NVL, kho bán thành phẩm —
+// cộng lương & phiếu của tôi. Các trang là cùng component với Nhân viên xưởng,
+// chỉ khác nhãn trang đầu ("Lịch sử lệnh sản xuất" theo yêu cầu). ─────────────
+export const factoryStaffNavRaw = [
+  { to: '/factory-staff/history', labelKey: 'work_order_history', icon: ClipboardList },
+  { to: '/factory-staff/machines', labelKey: 'machine_manage', icon: Wrench },
+  { to: '/factory-staff/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
+  { to: '/factory-staff/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  { to: '/factory-staff/my-payroll', labelKey: 'my_payroll', icon: Wallet },
+  { to: '/factory-staff/my-requests', labelKey: 'my_requests', icon: FileText },
+];
+
 /** Helper: build translated nav items from raw config + t function */
 export function buildNav(rawNav, t, userRole) {
   return rawNav
@@ -244,6 +257,7 @@ export const ROLE_DEFAULT_PATH = {
   OPERATOR: '/operator/products',
   SHIPPER: '/shipper/dashboard',
   FACTORY_WORKER: '/factory/orders',
+  FACTORY_STAFF: '/factory-staff/history',
   SUPER_FACTORY_WORKER: '/super-factory/production',
   FACTORY_ACCOUNTANT: '/factory-accountant/transfers',
   SELLER: '/seller/dashboard',
@@ -252,7 +266,6 @@ export const ROLE_DEFAULT_PATH = {
   DRIVER:                    '/driver/orders',
   SECURITY:                  '/my-payroll',
   FACTORY_SECURITY:          '/my-payroll',
-  FACTORY_STAFF:             '/my-payroll',
   FACTORY_PRODUCTION_WORKER: '/my-payroll',
   FACTORY_MANAGER:           '/my-payroll',
 };

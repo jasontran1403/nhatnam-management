@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { authApi } from '../api/services';
 
 const AuthContext = createContext(null);
@@ -68,6 +68,54 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updated));
     setUser(updated);
   }, [user]);
+
+  /* ════════════════════════════════════════════════════════════════════════
+     NẠP LẠI PHIÊN KHI MỞ / F5 TRANG
+     ════════════════════════════════════════════════════════════════════════
+     Trước đây user object chỉ được ghi vào localStorage LÚC ĐĂNG NHẬP rồi
+     không bao giờ đọc lại. OWNER gán thêm role hay đổi role thì nhân viên phải
+     đăng xuất đăng nhập lại mới thấy — vì menu và route guard đọc từ bản cache
+     cũ đó, dù backend đã cấp quyền mới ngay lập tức.
+
+     Gọi /api/auth/me một lần lúc mount là đủ để F5 có role mới.
+
+     KHÔNG chặn render trong lúc chờ: mạng chậm mà treo cả app thì tệ hơn nhiều
+     so với việc menu cũ hiển thị thêm nửa giây rồi tự cập nhật. */
+  const refreshedRef = useRef(false);
+
+  useEffect(() => {
+    if (refreshedRef.current) return;      // StrictMode gọi effect 2 lần
+    if (!token) return;
+    refreshedRef.current = true;
+
+    let alive = true;
+    authApi.me()
+      .then(res => {
+        if (!alive) return;
+        const body = res.data;
+        const fresh = body?.data;
+        if (!body?.success || !fresh) return;   // lỗi nghiệp vụ → giữ nguyên phiên
+
+        // accessToken null = token cũ vẫn dùng tốt. Chỉ có token mới khi role
+        // đang chọn đã bị thu hồi và BE phải cấp lại.
+        if (fresh.accessToken) {
+          localStorage.setItem('token', fresh.accessToken);
+          setToken(fresh.accessToken);
+        }
+        setUser(prev => {
+          const merged = { ...prev, ...fresh, accessToken: fresh.accessToken || prev?.accessToken };
+          localStorage.setItem('user', JSON.stringify(merged));
+          return merged;
+        });
+      })
+      .catch(() => {
+        /* Lỗi mạng thì im lặng bỏ qua — KHÔNG đăng xuất. Rớt mạng lúc mở app mà
+           bị đá ra đăng nhập lại là hành vi tệ hơn hẳn việc dùng tạm role cũ.
+           Token hỏng/hết hạn đã có interceptor của axios lo. */
+      });
+
+    return () => { alive = false; };
+  }, [token]);
 
   const isAuthenticated = !!token && !!user;
   const role = user?.role || user?.roles?.[0] || '';

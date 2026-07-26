@@ -9,7 +9,7 @@ import {
   adminNavRaw, ownerNavRaw, hrNavRaw, sellerNavRaw, warehouseNavRaw,
   superWarehouseNavRaw, accountantNavRaw, superAccountantNavRaw,
   operatorNavRaw, factoryWorkerNavRaw, superFactoryWorkerNavRaw, factoryAccountantNavRaw,
-  driverNavRaw, securityNavRaw, factoryPayrollNavRaw,
+  driverNavRaw, securityNavRaw, factoryPayrollNavRaw, factoryStaffNavRaw,
   buildNav, ROLE_DEFAULT_PATH,
 } from '../components/layout/navConfigs';
 
@@ -28,7 +28,6 @@ import AdminBatchApproval from '../pages/admin/AdminBatchApproval';
 import AdminWarehouseStock from '../pages/admin/AdminWarehouseStock';
 import ExpenseVoucherPage from '../pages/admin/ExpenseVoucherPage';
 import AdminSupplierManagementPage from '../pages/admin/AdminSupplierManagementPage';
-import IncomeVoucherPage from '../pages/admin/IncomeVoucherPage';
 import SaleKpiPage from '../pages/admin/SaleKpiPage';
 import OwnerAnalyticsPage from '../pages/owner/OwnerAnalyticsPage';
 import OwnerProductionPage from '../pages/owner/OwnerProductionPage';
@@ -204,7 +203,7 @@ export default function AppRoutes() {
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
         <Route path="ingredients" element={<AdminIngredients />} />
         <Route path="expenses" element={<ExpenseVoucherPage />} />
-        <Route path="incomes" element={<IncomeVoucherPage />} />
+        <Route path="incomes" element={<IncomeListPage adminMode />} />
         <Route path="cashflow" element={<OwnerCashflowPage />} />
         <Route path="inventory" element={<OwnerInventoryPage />} />
         <Route path="debt-orders" element={<DebtOrdersPage />} />
@@ -262,7 +261,7 @@ export default function AppRoutes() {
         <Route path="suppliers" element={<AdminSupplierManagementPage />} />
         <Route path="suppliers/:vendorId" element={<AdminSupplierManagementPage />} />
         <Route path="expenses" element={<ExpenseVoucherPage />} />
-        <Route path="incomes" element={<IncomeVoucherPage />} />
+        <Route path="incomes" element={<IncomeListPage adminMode />} />
         <Route path="cashflow" element={<OwnerCashflowPage />} />
         <Route path="inventory" element={<OwnerInventoryPage />} />
         <Route path="debt-orders" element={<DebtOrdersPage />} />
@@ -430,6 +429,21 @@ export default function AppRoutes() {
         <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
 
+      {/* ── TRỢ LÝ XƯỞNG (FACTORY_STAFF) ──
+          Dùng CHUNG các trang của Nhân viên xưởng (cùng component), chỉ khác
+          nhãn trang đầu. BE đã cho FACTORY_STAFF gọi /api/factory/** và
+          /api/owner/production/**. */}
+      <Route path="/factory-staff"
+        element={<TranslatedLayout rawNav={factoryStaffNavRaw} allowedRoles={['FACTORY_STAFF']} />}>
+        <Route index element={<Navigate to="/factory-staff/history" replace />} />
+        <Route path="history" element={<FactoryOrdersPage />} />
+        <Route path="machines" element={<FactoryMachinePage />} />
+        <Route path="material-requests" element={<FactoryMaterialRequestPage />} />
+        <Route path="semi-finished-goods" element={<FactorySemiFinishedGoodsPage />} />
+        <Route path="my-payroll" element={<MyPayrollPage />} />
+        <Route path="my-requests" element={<MyRequestsPage />} />
+      </Route>
+
       {/* ── QUẢN LÝ LƯƠNG — bảo vệ + các role xưởng MỚI ──
           Các role xưởng CŨ dùng route my-payroll nằm trong block riêng của họ
           để giữ nguyên sidebar quen thuộc. */}
@@ -438,7 +452,7 @@ export default function AppRoutes() {
           rawNav={factoryPayrollNavRaw}
           allowedRoles={[
             'SECURITY',
-            'FACTORY_SECURITY', 'FACTORY_STAFF',
+            'FACTORY_SECURITY',
             'FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER',
           ]} />}>
         <Route index element={<MyPayrollPage />} />
@@ -452,7 +466,7 @@ export default function AppRoutes() {
           rawNav={factoryPayrollNavRaw}
           allowedRoles={[
             'SECURITY',
-            'FACTORY_SECURITY', 'FACTORY_STAFF',
+            'FACTORY_SECURITY',
             'FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER',
           ]} />}>
         <Route index element={<MyRequestsPage />} />

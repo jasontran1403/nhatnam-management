@@ -66,6 +66,18 @@ export const employeeRequestApi = {
     api.post(`/api/employee-requests/${id}/decide`,
       { action: 'APPROVE', paid, note }).then(r),
 
+  /**
+   * Duyệt phiếu NGHỈ PHÉP có chia rõ ngày phép / ngày không lương.
+   * VD: xin nghỉ 3 ngày, quỹ còn 1 → approveLeave(id, 1, 2, 'Hết phép năm').
+   * Tổng paid + unpaid không được vượt số ngày của phiếu.
+   */
+  approveLeave: (id, paidLeaveDays, unpaidLeaveDays, note) =>
+    api.post(`/api/employee-requests/${id}/decide`, {
+      action: 'APPROVE',
+      paid: paidLeaveDays > 0,
+      paidLeaveDays, unpaidLeaveDays, note,
+    }).then(r),
+
   deduct: (id, deductedDays, note) =>
     api.post(`/api/employee-requests/${id}/decide`,
       { action: 'DEDUCT', deductedDays, note }).then(r),
@@ -73,6 +85,24 @@ export const employeeRequestApi = {
   reject: (id, note) =>
     api.post(`/api/employee-requests/${id}/decide`,
       { action: 'REJECT', note }).then(r),
+
+  // ── Quỹ ngày phép ──────────────────────────────────────────────────────────
+
+  /** Số dư phép của chính mình: { entitledDays, usedDays, remainingDays, ... } */
+  myLeaveBalance: (year) =>
+    api.get('/api/employee-requests/my-leave-balance', { params: { year } }).then(r),
+
+  /** Lịch sử nghỉ phép của chính mình. */
+  myLeaveHistory: (year) =>
+    api.get('/api/employee-requests/my-leave-history', { params: { year } }).then(r),
+
+  /** Số dư phép của 1 nhân viên — chỉ role có quyền duyệt gọi được. */
+  leaveBalance: (userId, year) =>
+    api.get(`/api/employee-requests/${userId}/leave-balance`, { params: { year } }).then(r),
+
+  /** Lịch sử nghỉ phép của 1 nhân viên. */
+  leaveHistory: (userId, year) =>
+    api.get(`/api/employee-requests/${userId}/leave-history`, { params: { year } }).then(r),
 };
 
 export default employeeRequestApi;

@@ -169,6 +169,12 @@ export const adminKpiApi = {
 // ─── Feature 4: KPI Phòng Sale ────────────────────────────────────────────────
 export const adminSaleKpiApi = {
   get: (params) => api.get('/api/admin/sale-kpi', { params }),
+
+  /**
+   * Top 10 danh mục theo doanh số, kèm sẵn danh sách sản phẩm của từng danh mục
+   * để modal chi tiết mở ra là có ngay, không phải gọi thêm lượt nữa.
+   */
+  categories: (params) => api.get('/api/admin/sale-kpi/categories', { params }),
 };
 
 // ─── Warehouse Stock Detail ──────────────────────────────────────────────────

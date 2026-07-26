@@ -143,7 +143,9 @@ function PartialConfirmModal({ info, onConfirm, onCancel }) {
 }
 
 // ── Main modal ────────────────────────────────────────────────────────────────
-export default function IncomeCreateModal({ onClose, onCreated }) {
+export default function IncomeCreateModal({ onClose, onCreated, editVoucher = null }) {
+  // Chế độ SỬA: prefill từ phiếu cũ và gọi update thay vì create.
+  const isEdit = !!editVoucher;
   const toast = useToast();
   const fileRef = useRef();
   const searchDebounce = useRef(null);
@@ -224,6 +226,56 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
+  // ── Nạp dữ liệu phiếu cũ khi SỬA ──────────────────────────────────────────
+  //   Đơn liên kết cũ đang ở trạng thái "đã thu" nên remainingAmount = 0. Nhưng
+  //   khi sửa, BE sẽ GỠ phiếu này trước rồi áp lại — nên với modal, các đơn cũ
+  //   phải hiện như thể CHƯA có phiếu này: cộng ngược finalAmount vào remaining.
+  //   Không làm vậy thì tổng "cần thu" bằng 0 và không sửa được gì.
+  useEffect(() => {
+    if (!editVoucher) return;
+    setReceiptNumber(editVoucher.receiptNumber || '');
+    setPayerName(editVoucher.payerName || '');
+    setReason(editVoucher.reason || '');
+    setPaymentType(editVoucher.paymentType || 'CASH');
+    setBankName(editVoucher.bankName || '');
+    setBankRef(editVoucher.bankRef || '');
+    if (editVoucher.items?.length) {
+      setItems(editVoucher.items.map((it, i) => ({
+        id: i + 1, itemName: it.itemName || `Khoản thu ${i + 1}`,
+        amount: String(it.amount ?? ''), note: it.note || '',
+      })));
+    }
+    if (editVoucher.imageUrls?.length) {
+      setImages(editVoucher.imageUrls.map((url, i) => ({ id: i + 1, uploadedUrl: url, preview: url })));
+    }
+
+    const codes = editVoucher.linkedOrderCodes || [];
+    const allocs = editVoucher.orderAllocations || {};   // { orderCode: amount }
+    if (codes.length) {
+      Promise.all(codes.map(code =>
+        api.get(`/api/accountant/orders/by-code/${encodeURIComponent(code)}`)
+          .then(r => r.data?.data || r.data).catch(() => null)))
+        .then(list => {
+          const orders = list.filter(Boolean).map(o => {
+            // remaining "như CHƯA có phiếu này" = remaining hiện tại + ĐÚNG số
+            // phiếu này đã ghi cho đơn. BE luôn trả orderAllocations (phiếu cũ
+            // được tái tạo từ thứ tự đơn + tổng tiền + final làm tròn), nên không
+            // còn phải đoán bằng paidAmount.
+            const fin = Math.round(o.finalAmount ?? 0);
+            const curRem = Math.round(o.remainingAmount ?? 0);
+            const mine = allocs[o.orderCode] != null ? Math.round(Number(allocs[o.orderCode])) : 0;
+            const restored = Math.min(fin, curRem + mine);
+            // Giữ số THẬT trong DB (trước khi restore) để chốt stale khi update:
+            // BE so expected với remaining thật, không phải số đã cộng ngược.
+            return { ...o, remainingAmount: restored, _realRemaining: curRem };
+          });
+          setSelectedOrders(orders);
+          setCollectedAmount(String(Math.round(editVoucher.collectedAmount ?? orders.reduce(
+            (s, o) => s + (o.remainingAmount || 0), 0))));
+        });
+    }
+  }, [editVoucher]);
+
   // Gợi ý số phiếu thu kế tiếp (placeholder) — chỉ dùng làm gợi ý, user vẫn có thể tự nhập số khác
   useEffect(() => {
     incomeApi.nextReceiptNumber()
@@ -234,8 +286,13 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
       .catch(() => {});
   }, []);
 
-  // Reset collected khi thay đổi danh sách đơn
+  // Reset collected khi NGƯỜI DÙNG thay đổi danh sách đơn.
+  //   Bỏ qua lần prefill đầu của chế độ sửa — lần đó số tiền cũ vừa được nạp,
+  //   xoá đi thì mở form sửa ra sẽ trống số tiền. Sau prefill, mọi lần thêm/bỏ
+  //   đơn đều reset như thường (buộc nhập lại, khớp yêu cầu khi sửa).
+  const prefillDone = useRef(!isEdit);   // create: true ngay; edit: chờ nạp xong
   useEffect(() => {
+    if (isEdit && !prefillDone.current) { prefillDone.current = true; return; }
     setCollectedAmount('');
     setCollectedError('');
     setPartialInfo(null);
@@ -399,7 +456,30 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
           .map(i => ({ itemName: i.itemName.trim(), amount: parseVND(i.amount), note: i.note.trim() || null }));
       }
 
-      const res = await incomeApi.create({
+      const res = await (isEdit
+        ? incomeApi.update(editVoucher.id, {
+          payerName: payerName.trim() || null,
+          reason: reason.trim(),
+          paymentType,
+          bankName: paymentType === 'BANK_TRANSFER' ? bankName.trim() : undefined,
+          bankRef: paymentType === 'BANK_TRANSFER' ? bankRef.trim() : undefined,
+          linkedOrderCodes: hasOrders ? selectedOrders.map(o => o.orderCode) : undefined,
+          collectedAmount: collected,
+          // Chốt chống ghi đè: gửi số CÒN LẠI THẬT trong DB mà màn hình dựa vào.
+          // Đơn cũ dùng _realRemaining (số DB trước khi cộng ngược phần phiếu này);
+          // đơn mới thêm chưa có _realRemaining nên lấy remainingAmount.
+          expectedOrderAmounts: hasOrders
+            ? selectedOrders.map(o => ({
+                orderCode: o.orderCode,
+                expectedRemainingAmount: Math.round(o._realRemaining ?? o.remainingAmount ?? o.finalAmount ?? 0),
+              }))
+            : undefined,
+          lastOrderHandling: lastOrderHandling || undefined,
+          items: submitItems,
+          imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
+          receiptNumber: (receiptNumber.trim() || suggestedReceiptNumber),
+        })
+        : incomeApi.create({
         payerName: payerName.trim() || null,
         reason: reason.trim(),
         paymentType,
@@ -419,7 +499,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
         items: submitItems,
         imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
         receiptNumber: (receiptNumber.trim() || suggestedReceiptNumber),
-      });
+      }));
 
       const data = res.data;
       if (data.message !== 'OK') {
@@ -428,7 +508,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
         return;
       }
 
-      toast('Phiếu thu đã được tạo thành công', 'success');
+      toast(isEdit ? 'Đã lưu thay đổi phiếu thu' : 'Phiếu thu đã được tạo thành công', 'success');
       onCreated();
     } catch (e) {
       // 409 Conflict = số tiền đã bị thay đổi bởi người khác
@@ -503,7 +583,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
             <div className="flex items-center gap-3">
               <TrendingUp size={20} className="text-[#C9A84C]" />
               <div>
-                <h2 className="text-lg font-bold text-[#1C1C1E]">Tạo phiếu thu</h2>
+                <h2 className="text-lg font-bold text-[#1C1C1E]">{isEdit ? 'Sửa phiếu thu' : 'Tạo phiếu thu'}</h2>
                 <p className="text-xs text-[#8E8878]">Có hiệu lực ngay, không cần duyệt</p>
               </div>
             </div>
@@ -941,7 +1021,7 @@ export default function IncomeCreateModal({ onClose, onCreated }) {
               {submitting
                 ? <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 : <Send size={16} />}
-              {submitting ? 'Đang tạo...' : 'Tạo phiếu thu'}
+              {submitting ? (isEdit ? 'Đang lưu...' : 'Đang tạo...') : (isEdit ? 'Lưu thay đổi' : 'Tạo phiếu thu')}
             </button>
           </div>
         </div>

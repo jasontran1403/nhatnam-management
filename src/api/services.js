@@ -14,6 +14,12 @@ export const authApi = {
   login: (data) => api.post('/api/auth/login', data),
   switchRole: (role) => api.post('/api/auth/switch-role', { role }),
   setDefaultRole: (role) => api.put('/api/auth/default-role', { role }),
+
+  /**
+   * Nạp lại phiên: roles/kho mới nhất từ DB.
+   * accessToken trong response có thể null = token hiện tại vẫn dùng được.
+   */
+  me: () => api.get('/api/auth/me'),
 };
 
 // ─── Upload ──────────────────────────────────────────────────────────────────
@@ -303,6 +309,8 @@ export const expenseApi = {
 // ─── Income Vouchers ─────────────────────────────────────────────────────────
 export const incomeApi = {
   create: (data) => api.post('/api/income-vouchers', data),
+  update: (id, data) => api.put(`/api/income-vouchers/${id}`, data),
+  getLogs: (id) => api.get(`/api/income-vouchers/${id}/logs`),
   listMy: (params) => api.get('/api/income-vouchers/my', { params }),
   listAll: (params) => api.get('/api/income-vouchers', { params }),
   listByDate: (from, to, params) => api.get('/api/income-vouchers/by-date', { params: { from, to, ...params } }),

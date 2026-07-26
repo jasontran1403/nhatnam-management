@@ -12,11 +12,12 @@ import {
   Loader2, Trash2, ChevronRight, MinusCircle,
 } from 'lucide-react';
 
+import LeaveBalanceCard from '../../components/hr/LeaveBalance';
 import { employeeRequestApi, msToIsoDate, isoDateToMs } from '../../api/employeeRequestApi';
 import { useToast } from '../../components/common/Toast';
+import Modal from '../../components/ui/Modal';
 import DatePicker from '../../components/ui/DatePicker';
 import DateRangePicker from '../../components/ui/DateRangePicker';
-import TimePicker from '../../components/ui/TimePicker';
 import {
   PageHeader, SectionCard, SectionHeader, LoadingSpinner, EmptyState,
   PrimaryButton, SecondaryButton, Field, inputCls, TabBar,
@@ -57,9 +58,12 @@ function CreateForm({ config, onCreated }) {
   const [range, setRange] = useState({ from: null, to: null });
   const [single, setSingle] = useState(null);
   const [minutes, setMinutes] = useState('');
-  const [partial, setPartial] = useState(false);
-  const [fromTime, setFromTime] = useState(null);
-  const [toTime, setToTime] = useState(null);
+  // Buổi nghỉ theo từng ngày: { 'YYYY-MM-DD': { morning, afternoon } }.
+  // Mặc định tick cả 2 buổi; user bỏ tick để thành nửa ngày, bỏ cả 2 để loại
+  // hẳn ngày đó ra khỏi phiếu (nghỉ ngắt quãng).
+  const [sessions, setSessions] = useState({});
+  // Ngày đang chờ xác nhận loại khỏi khoảng (chỉ với ngày ĐẦU / CUỐI).
+  const [dropConfirm, setDropConfirm] = useState(null);
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -75,10 +79,81 @@ function CreateForm({ config, onCreated }) {
     setRange({ from: null, to: null });
     setSingle(null);
     setMinutes('');
-    setPartial(false);
-    setFromTime(null);
-    setToTime(null);
+    setSessions({});
+    setDropConfirm(null);
   }, [typeValue]);
+
+  // Danh sách ngày trong khoảng đã chọn — chỉ dùng cho phiếu nghỉ phép.
+  const dayList = useMemo(() => {
+    if (!type?.allowPartialDay) return [];
+    const a = range.from, b = range.to ?? range.from;
+    if (!a) return [];
+    const out = [];
+    for (let t = a; t <= b; t += 86400000) out.push(msToIsoDate(t));
+    return out;
+  }, [type, range.from, range.to]);
+
+  // Ngày mới xuất hiện thì mặc định nghỉ CẢ NGÀY; ngày bị bỏ khỏi khoảng thì
+  // xoá luôn trạng thái, tránh gửi lên buổi của ngày không còn được chọn.
+  useEffect(() => {
+    setSessions(prev => {
+      const next = {};
+      dayList.forEach(d => { next[d] = prev[d] ?? { morning: true, afternoon: true }; });
+      return next;
+    });
+  }, [dayList.join(',')]);
+
+  /**
+   * Bỏ tick một buổi.
+   *
+   * <p>Bỏ nốt buổi CUỐI CÙNG của ngày ĐẦU hoặc ngày CUỐI khoảng thì hỏi trước:
+   * ngày đó không còn nghỉ buổi nào nữa, mà nó lại đang định nghĩa biên của
+   * khoảng — để nguyên sẽ ra khoảng "24 → 31" trong khi 24 không hề nghỉ.
+   * Ngày ở GIỮA thì không hỏi, cứ để trống là thành nghỉ ngắt quãng.
+   */
+  const toggleSession = (date, key, checked) => {
+    const cur = sessions[date] || {};
+    const next = { ...cur, [key]: checked };
+    const becomesEmpty = !next.morning && !next.afternoon;
+    const isEdge = date === dayList[0] || date === dayList[dayList.length - 1];
+
+    if (becomesEmpty && isEdge && dayList.length > 1) {
+      setDropConfirm(date);      // chờ xác nhận, CHƯA đổi gì
+      return;
+    }
+    setSessions(p => ({ ...p, [date]: next }));
+  };
+
+  /**
+   * Xác nhận loại ngày biên → co khoảng ngày lại.
+   *
+   * <p>Cắt luôn cả những ngày rỗng nằm kề biên mới: bỏ ngày 24 mà ngày 25 trước
+   * đó đã bị bỏ trống cả hai buổi thì biên mới phải là 26, không phải 25 —
+   * nếu không khoảng ngày lại mở đầu bằng một ngày không nghỉ.
+   */
+  const confirmDrop = () => {
+    const date = dropConfirm;
+    if (!date) return;
+
+    const kept = dayList.filter(d => d !== date)
+      .filter(d => sessions[d]?.morning || sessions[d]?.afternoon);
+
+    if (kept.length === 0) {
+      // Không còn ngày nào → xoá trắng lựa chọn thay vì để khoảng rỗng.
+      setRange({ from: null, to: null });
+      setSessions({});
+      setDropConfirm(null);
+      return;
+    }
+
+    setRange({ from: isoDateToMs(kept[0]), to: isoDateToMs(kept[kept.length - 1]) });
+    setSessions(prev => {
+      const next = {};
+      kept.forEach(d => { next[d] = prev[d]; });
+      return next;
+    });
+    setDropConfirm(null);
+  };
 
   const minMs = type?.minDate ? isoDateToMs(type.minDate) : undefined;
   const maxMs = type?.maxDate ? isoDateToMs(type.maxDate) : undefined;
@@ -97,8 +172,6 @@ function CreateForm({ config, onCreated }) {
     setSingle(null);
     setMinutes('');
     setPartial(false);
-    setFromTime(null);
-    setToTime(null);
     setReason('');
   };
 
@@ -121,11 +194,15 @@ function CreateForm({ config, onCreated }) {
     if (type.minutesBased && (!minutes || Number(minutes) <= 0))
       return toast(`Phiếu ${type.label.toLowerCase()} phải khai số phút`, 'error');
 
-    if (partial && (!fromTime || !toTime))
-      return toast('Chưa chọn khung giờ nghỉ', 'error');
-
-    if (partial && fromDate !== toDate)
-      return toast('Nghỉ theo giờ chỉ áp dụng cho một ngày', 'error');
+    // Phiếu nghỉ phép: gom các buổi được tick. Ngày bỏ trắng cả 2 buổi coi như
+    // không nghỉ → không gửi lên, đó chính là cách khai nghỉ ngắt quãng.
+    let days = null;
+    if (type.allowPartialDay) {
+      days = dayList
+        .map(d => ({ date: d, ...(sessions[d] || {}) }))
+        .filter(d => d.morning || d.afternoon);
+      if (!days.length) return toast('Chưa chọn buổi nghỉ nào', 'error');
+    }
 
     setSaving(true);
     try {
@@ -133,8 +210,7 @@ function CreateForm({ config, onCreated }) {
         type: type.value,
         fromDate,
         toDate,
-        fromTime: partial ? fromTime : null,
-        toTime: partial ? toTime : null,
+        days,
         minutes: type.minutesBased ? Number(minutes) : null,
         reason: reason.trim(),
       });
@@ -204,33 +280,94 @@ function CreateForm({ config, onCreated }) {
           </Field>
         )}
 
-        {/* ── Nghỉ ít hơn 1 ngày ─────────────────────────────────────────── */}
-        {type?.allowPartialDay && (
-          <div className="rounded-xl border border-black/10 bg-[#FAF7F2] p-4 space-y-3">
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={partial}
-                onChange={e => setPartial(e.target.checked)}
-                className="w-4 h-4 accent-[#C9A84C] cursor-pointer" />
-              <span className="text-sm font-medium text-[#1C1C1E]">Nghỉ ít hơn 1 ngày</span>
-            </label>
+        {/* ── Chọn buổi nghỉ từng ngày ────────────────────────────────────
+            Mặc định tick cả 2 buổi. Bỏ một buổi = nghỉ nửa ngày (0,5 ngày phép);
+            bỏ cả 2 = ngày đó KHÔNG nghỉ, nhờ vậy một phiếu khai được lịch nghỉ
+            ngắt quãng thay vì phải xé thành nhiều phiếu. */}
+        {type?.allowPartialDay && dayList.length > 0 && (
+          <Field label="Buổi nghỉ từng ngày" required
+            hint="Bỏ tick để nghỉ nửa ngày. Bỏ cả hai buổi thì ngày đó không nghỉ.">
+            <div className="rounded-xl border border-black/10 divide-y divide-black/5 overflow-hidden">
+              {dayList.map(d => {
+                const ss = sessions[d] || {};
+                const off = !ss.morning && !ss.afternoon;
+                const set = (k, v) => toggleSession(d, k, v);
+                const [yy, mm, dd] = d.split('-');
+                return (
+                  <div key={d}
+                    className={`flex items-center gap-3 px-3 py-2.5 ${off ? 'bg-[#FAF7F2]' : 'bg-white'}`}>
+                    <span className={`text-sm font-medium w-24 flex-shrink-0
+                      ${off ? 'text-[#C4B9A8] line-through' : 'text-[#1C1C1E]'}`}>
+                      {dd}/{mm}/{yy}
+                    </span>
 
-            {partial && (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <TimePicker value={fromTime} onChange={setFromTime}
-                    placeholder="Từ giờ" defaultTime="13:00" />
-                  <span className="text-[#C4B9A8] text-sm">→</span>
-                  <TimePicker value={toTime} onChange={setToTime}
-                    placeholder="Đến giờ" defaultTime="17:00" />
-                </div>
-                <p className="text-xs text-[#8E8878] leading-relaxed">
-                  Chỉ được miễn có mặt trong đúng khung giờ này. Phần còn lại của ca vẫn
-                  tính đi trễ / về sớm như thường — cần thêm phiếu riêng nếu hôm đó cũng
-                  đi trễ.
+                    {[['morning', 'Sáng'], ['afternoon', 'Chiều']].map(([k, label]) => (
+                      <label key={k} className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input type="checkbox" checked={!!ss[k]}
+                          onChange={e => set(k, e.target.checked)}
+                          className="w-4 h-4 accent-[#C9A84C] cursor-pointer" />
+                        <span className={`text-sm ${ss[k] ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}`}>
+                          {label}
+                        </span>
+                      </label>
+                    ))}
+
+                    <span className="ml-auto text-xs text-[#8E8878]">
+                      {off ? 'không nghỉ'
+                           : (ss.morning && ss.afternoon) ? '1 ngày' : '0,5 ngày'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Ngày BIÊN bị bỏ hết buổi → hỏi trước khi co khoảng ngày, vì thao
+                tác này đổi luôn ô "Khoảng ngày xin phép" phía trên. */}
+            <Modal open={!!dropConfirm} onClose={() => setDropConfirm(null)}
+              title="Bỏ ngày này khỏi lịch nghỉ?" size="sm">
+              <div className="space-y-4">
+                <p className="text-sm text-[#1C1C1E]">
+                  Ngày <b>{dropConfirm ? dropConfirm.split('-').reverse().join('/') : ''}</b> sẽ
+                  không còn buổi nghỉ nào. Vì đây là ngày ở đầu/cuối khoảng, khoảng ngày
+                  xin phép sẽ được rút lại.
                 </p>
-              </>
-            )}
-          </div>
+                {(() => {
+                  if (!dropConfirm) return null;
+                  const kept = dayList.filter(d => d !== dropConfirm)
+                    .filter(d => sessions[d]?.morning || sessions[d]?.afternoon);
+                  const f = (x) => x.split('-').reverse().join('/');
+                  return (
+                    <div className="rounded-xl bg-[#FAF7F2] px-3 py-2.5 text-sm">
+                      <span className="text-[#8E8878]">Khoảng ngày mới: </span>
+                      <b className="text-[#1C1C1E]">
+                        {kept.length === 0 ? '(không còn ngày nào)'
+                          : kept.length === 1 ? f(kept[0])
+                          : `${f(kept[0])} → ${f(kept[kept.length - 1])}`}
+                      </b>
+                    </div>
+                  );
+                })()}
+                <div className="flex items-center justify-end gap-2">
+                  <SecondaryButton onClick={() => setDropConfirm(null)}>Giữ lại</SecondaryButton>
+                  <PrimaryButton onClick={confirmDrop}>Bỏ ngày này</PrimaryButton>
+                </div>
+              </div>
+            </Modal>
+
+            <div className="flex items-center justify-between mt-2 px-1">
+              <span className="text-xs text-[#8E8878]">
+                {dayList.filter(d => sessions[d]?.morning || sessions[d]?.afternoon).length} ngày được chọn
+              </span>
+              <span className="text-sm font-semibold text-[#C9A84C]">
+                Tổng {String(
+                  dayList.reduce((sum, d) => {
+                    const ss = sessions[d] || {};
+                    return sum + (ss.morning ? 0.5 : 0) + (ss.afternoon ? 0.5 : 0);
+                  }, 0)
+                ).replace('.', ',')} ngày phép
+              </span>
+            </div>
+          </Field>
         )}
 
         {/* ── Lý do ──────────────────────────────────────────────────────── */}
@@ -379,6 +516,10 @@ export default function MyRequestsPage() {
         title="Phiếu của tôi"
         subtitle="Xin nghỉ, công tác, đi trễ, về sớm, quên chấm công"
       />
+
+      {/* Số dư phép đặt NGAY TRÊN form: biết còn mấy ngày trước khi điền, đỡ
+          phải gửi phiếu rồi mới biết hết phép. */}
+      <LeaveBalanceCard />
 
       <TabBar
         active={tab} onChange={setTab}

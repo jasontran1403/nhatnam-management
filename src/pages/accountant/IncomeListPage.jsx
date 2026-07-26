@@ -32,12 +32,14 @@ function todayStr() {
 // Số item/trang DÙNG CHUNG cho mọi role (xem src/constants/pagination.js)
 const PAGE_SIZE = VOUCHER_PAGE_SIZE;
 
-export default function IncomeListPage() {
+export default function IncomeListPage({ adminMode = false }) {
   const toast = useToast();
   const searchDebounce = useRef(null);
   const searchTextRef = useRef('');
 
-  const [selectedDate, setSelectedDate] = useState(todayStr());
+  // OWNER/ADMIN (adminMode): mặc định KHÔNG chọn ngày → fetch TẤT CẢ phiếu.
+  // ACCOUNTANT/SUPER_ACCOUNTANT: mặc định lọc theo hôm nay (giữ nguyên).
+  const [selectedDate, setSelectedDate] = useState(adminMode ? null : todayStr());
   const [dateRange, setDateRange] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [vouchers, setVouchers] = useState([]);
@@ -48,12 +50,25 @@ export default function IncomeListPage() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [detailVoucher, setDetailVoucher] = useState(null);
+  const [editVoucher, setEditVoucher] = useState(null);
+
+  // Bấm Sửa: nạp ĐẦY ĐỦ phiếu (items + đơn liên kết) rồi mở lại form ở chế độ sửa.
+  const handleEdit = async (v) => {
+    try {
+      const res = await incomeApi.getById(v.id);
+      const full = res.data?.data || res.data || v;
+      setDetailVoucher(null);
+      setEditVoucher(full);
+    } catch {
+      toast('Không tải được chi tiết phiếu thu', 'error');
+    }
+  };
   const [showExport, setShowExport] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportPaymentType, setExportPaymentType] = useState('ALL'); // ALL | CASH | BANK_TRANSFER
 
   const handleExport = async () => {
-    const range = dateRange || dayRange(selectedDate);
+    const range = dateRange || dayRange(selectedDate || todayStr());
     setExporting(true);
     try {
       const res = await incomeApi.exportReport(range.from, range.to, exportPaymentType);
@@ -72,6 +87,25 @@ export default function IncomeListPage() {
     try {
       const q = searchTextRef.current.trim();
 
+      // adminMode + chưa chọn ngày (selectedDate null, dateRange null) → fetch TẤT CẢ.
+      const noDateChosen = adminMode && !selectedDate && !dateRange;
+
+      if (noDateChosen) {
+        const [res, sumRes] = await Promise.all([
+          q ? incomeApi.search(q, undefined, undefined, { page: p, size: PAGE_SIZE })
+            : incomeApi.listAll({ page: p, size: PAGE_SIZE }),
+          incomeApi.summary(q || undefined, undefined, undefined),
+        ]);
+        const data = res.data?.data || res.data || {};
+        setVouchers(data.content || []);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
+        setPage(p);
+        const sum = sumRes.data?.data || sumRes.data || {};
+        setTotalAmount(Number(sum.totalAmount) || 0);
+        return;
+      }
+
       // Quy tắc lọc ngày khi tìm kiếm:
       //  - dateRange === null  → đang ở mặc định "hôm nay" (user CHƯA chỉnh filter).
       //      · Không search  → lọc theo hôm nay.
@@ -82,7 +116,7 @@ export default function IncomeListPage() {
       const userPickedRange = dateRange !== null;
       const ignoreDateForSearch = !!q && !userPickedRange;
 
-      const range = dateRange || dayRange(selectedDate);
+      const range = dateRange || dayRange(selectedDate || todayStr());
       const from = ignoreDateForSearch ? undefined : range.from;
       const to = ignoreDateForSearch ? undefined : range.to;
 
@@ -103,7 +137,7 @@ export default function IncomeListPage() {
       setTotalAmount(Number(sum.totalAmount) || 0);
     } catch { toast('Lỗi tải danh sách', 'error'); }
     finally { setLoading(false); }
-  }, [selectedDate, dateRange]);
+  }, [selectedDate, dateRange, adminMode]);
 
   useEffect(() => { load(0); }, [selectedDate, dateRange]);
 
@@ -124,7 +158,8 @@ export default function IncomeListPage() {
     setDateRange(!r.from && !r.to ? null : r);
   };
 
-  const currentRange = dateRange || dayRange(selectedDate);
+  // adminMode chưa chọn ngày → picker để trống (from/to undefined).
+  const currentRange = dateRange || (selectedDate ? dayRange(selectedDate) : { from: undefined, to: undefined });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
@@ -163,7 +198,7 @@ export default function IncomeListPage() {
           <DateRangePicker from={currentRange.from} to={currentRange.to} onChange={handleDateRangeChange} placeholder="Chọn ngày" align="right" />
         </div>
         {dateRange && (
-          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-[#E8DDD0] text-[#8E8878] hover:bg-[#FAF7F2] transition flex-shrink-0" title="Về hôm nay">
+          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-[#E8DDD0] text-[#8E8878] hover:bg-[#FAF7F2] transition flex-shrink-0" title={adminMode ? 'Xem tất cả' : 'Về hôm nay'}>
             <X size={14} />
           </button>
         )}
@@ -208,7 +243,15 @@ export default function IncomeListPage() {
       </button>
 
       {showCreate && <IncomeCreateModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(0); }} />}
-      {detailVoucher && <IncomeDetailModal voucher={detailVoucher} onClose={() => setDetailVoucher(null)} />}
+      {detailVoucher && (
+        <IncomeDetailModal voucher={detailVoucher}
+          onClose={() => setDetailVoucher(null)} onEdit={handleEdit} />
+      )}
+      {editVoucher && (
+        <IncomeCreateModal editVoucher={editVoucher}
+          onClose={() => setEditVoucher(null)}
+          onCreated={() => { setEditVoucher(null); load(0); }} />
+      )}
 
       {/* ── Export Modal ── */}
       {showExport && (
@@ -332,6 +375,11 @@ function IncomeCard({ v, onClick }) {
       </div>
       {isBankTransfer && v.bankName && <p className="text-xs text-blue-500 mt-1">{v.bankName} · {v.bankRef}</p>}
       <p className="text-xs text-[#8E8878] mt-0.5">Bởi {v.createdByName}</p>
+      {v.lastEditedAt && (
+        <p className="text-[11px] text-amber-600 mt-0.5 italic">
+          Lần chỉnh sửa gần nhất bởi {v.lastEditedByName} vào lúc {formatDate(v.lastEditedAt)}
+        </p>
+      )}
     </div>
   );
 }

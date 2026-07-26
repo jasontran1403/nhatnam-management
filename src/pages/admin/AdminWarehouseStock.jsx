@@ -1,5 +1,6 @@
 // src/pages/admin/AdminWarehouseStock.jsx
 import { useLang } from '../../context/LangContext';
+import Modal from '../../components/ui/Modal';
 import { useEffect, useState, useMemo } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -7,7 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { adminWarehouseApi, adminWarehouseStockApi } from '../../api/adminApi';
 import {
   ArrowLeft, Package, DollarSign, Search, X,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Layers, Calendar,
 } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState,
@@ -15,16 +16,139 @@ import {
 } from '../../components/ui';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Màu tình trạng lô — ưu tiên gắt nhất đã được BE quyết, FE chỉ tô.
+//   EXPIRED_OR_CRITICAL: đỏ cam · NEAR_EXPIRY: vàng · NEWLY_STOCKED: xanh dương nhạt
+const FRESHNESS = {
+  EXPIRED_OR_CRITICAL: {
+    row: 'bg-orange-50 hover:bg-orange-100/70',
+    dot: 'bg-orange-500',
+    label: 'Có lô đã/sắp hết hạn (dưới 7 ngày)',
+  },
+  NEAR_EXPIRY: {
+    row: 'bg-amber-50 hover:bg-amber-100/70',
+    dot: 'bg-amber-400',
+    label: 'Có lô gần hết hạn (trong 1 tháng)',
+  },
+  NEWLY_STOCKED: {
+    row: 'bg-sky-50 hover:bg-sky-100/70',
+    dot: 'bg-sky-400',
+    label: 'Có lô mới nhập (dưới 1 tháng)',
+  },
+};
+
 function imgUrl(p) {
   if (!p) return null;
   return p.startsWith('http') ? p : `${BASE_URL}/api/auth${p}`;
 }
 
 // ── Single ingredient row ─────────────────────────────────────────────────────
-function IngredientRow({ item }) {
+function fmtDate(iso) {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function fmtDateTime(ms) {
+  if (!ms) return null;
+  const dt = new Date(Number(ms));
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(dt.getHours())}:${p(dt.getMinutes())} ${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+}
+
+// Số ngày tới hạn (âm = đã hết hạn). Dùng để tô màu từng lô trong modal.
+function daysUntil(iso) {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).split('-').map(Number);
+  const exp = new Date(y, m - 1, d);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((exp - today) / 86400000);
+}
+
+function LotDetailModal({ open, onClose, item }) {
+  if (!item) return null;
+  const lots = item.lots || [];
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-[#F0EBE3] last:border-0
-      hover:bg-[#FAF7F2] transition-colors">
+    <Modal open={open} onClose={onClose}
+      title={`Chi tiết lô — ${item.ingredientName}`} size="lg">
+      {lots.length === 0 ? (
+        <p className="text-sm text-[#8E8878] text-center py-8">
+          Nguyên liệu này chưa có lô nào còn hàng.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-[11px] uppercase tracking-wider text-[#8E8878] border-b border-black/5">
+                <th className="px-3 py-2 text-left">Thời gian nhập</th>
+                <th className="px-3 py-2 text-right">Số lượng tồn</th>
+                <th className="px-3 py-2 text-right">Giá vốn</th>
+                <th className="px-3 py-2 text-left">Hạn sử dụng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lots.map((lot, i) => {
+                const d = daysUntil(lot.expiryDate);
+                // Cùng ngưỡng với badge: <7 đỏ cam, ≤30 vàng, còn lại thường.
+                const expCls = d == null ? 'text-[#8E8878]'
+                  : d < 7 ? 'text-orange-600 font-semibold'
+                  : d <= 30 ? 'text-amber-600 font-medium'
+                  : 'text-[#1C1C1E]';
+                const importedText = fmtDateTime(lot.importedAt);
+                const expText = lot.expiryDate
+                  ? `${fmtDate(lot.expiryDate)}${d != null ? (d < 0 ? ' (đã hết hạn)' : ` (còn ${d} ngày)`) : ''}`
+                  : (lot.tracked === false ? '—' : 'Không có hạn');
+                return (
+                  <tr key={i} className="border-b border-black/5 last:border-0">
+                    <td className="px-3 py-2.5 text-[#1C1C1E] whitespace-nowrap">
+                      {importedText || <span className="text-[#8E8878] italic">Không rõ</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-medium text-[#1C1C1E]">
+                      {formatNumber(lot.quantity)}
+                      <span className="text-xs text-[#8E8878] font-normal ml-1">{item.unit}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-[#C9A84C] font-medium whitespace-nowrap">
+                      {lot.lotCost != null ? formatCurrency(lot.lotCost) : '—'}
+                    </td>
+                    <td className={`px-3 py-2.5 whitespace-nowrap ${expCls}`}>{expText}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-black/10 font-semibold">
+                <td className="px-3 py-2.5 text-right text-[#8E8878]">Tổng</td>
+                <td className="px-3 py-2.5 text-right text-[#1C1C1E]">
+                  {formatNumber(lots.reduce((sum, l) => sum + Number(l.quantity || 0), 0))}
+                  <span className="text-xs text-[#8E8878] font-normal ml-1">{item.unit}</span>
+                </td>
+                <td className="px-3 py-2.5 text-right text-[#C9A84C]">
+                  {formatCurrency(lots.reduce((sum, l) => sum + Number(l.lotCost || 0), 0))}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+          <p className="text-[11px] text-[#8E8878] mt-2">
+            Sắp theo hạn sử dụng gần nhất trước; lô không có hạn xếp cuối.
+            {lots.some(l => l.tracked === false) && ' Dòng "Không rõ" là phần tồn chưa gắn lô (nhập trước khi theo dõi lô hoặc điều chỉnh tồn tay).'}
+          </p>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function IngredientRow({ item }) {
+  const fresh = FRESHNESS[item.freshnessBadge];   // undefined = bình thường (trắng)
+  const [lotOpen, setLotOpen] = useState(false);
+  const lotCount = (item.lots || []).length;
+  return (
+    <div title={fresh?.label}
+      className={`flex items-center gap-3 px-4 py-3 border-b border-[#F0EBE3] last:border-0 transition-colors
+        ${fresh ? fresh.row : 'hover:bg-[#FAF7F2]'}`}>
+      {fresh
+        ? <span className={`w-1.5 h-8 rounded-full flex-shrink-0 ${fresh.dot}`} />
+        : null}
       {item.imageUrl
         ? <img src={imgUrl(item.imageUrl)} alt={item.ingredientName}
             className="w-8 h-8 rounded-lg object-cover border border-[#E8DDD0] flex-shrink-0" />
@@ -46,6 +170,15 @@ function IngredientRow({ item }) {
           {Number(item.totalCostValue) > 0 ? formatCurrency(item.totalCostValue) : '—'}
         </p>
       </div>
+      <button type="button" onClick={() => setLotOpen(true)}
+        className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold
+          text-[#C9A84C] hover:text-[#B69842] px-2 py-1 rounded-lg hover:bg-[#C9A84C]/10 transition-colors"
+        title="Xem chi tiết lô">
+        <Layers size={13} />
+        <span className="hidden sm:inline">Chi tiết</span>
+        {lotCount > 0 && <span className="text-[10px] text-[#8E8878]">({lotCount})</span>}
+      </button>
+      <LotDetailModal open={lotOpen} onClose={() => setLotOpen(false)} item={item} />
     </div>
   );
 }
@@ -223,6 +356,21 @@ export default function AdminWarehouseStock() {
           <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Tổng giá vốn tồn kho</p>
           <p className="text-2xl font-bold text-amber-700">{formatCurrency(grandTotal)}</p>
         </div>
+      </div>
+
+      {/* Chú thích màu tình trạng lô */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#8E8878]">
+        <span className="font-medium text-[#5C4E3D]">Tình trạng lô:</span>
+        {[
+          ['bg-orange-500', 'Đã/sắp hết hạn (dưới 7 ngày)'],
+          ['bg-amber-400', 'Gần hết hạn (trong 1 tháng)'],
+          ['bg-sky-400', 'Mới nhập (dưới 1 tháng)'],
+        ].map(([dot, label]) => (
+          <span key={label} className="inline-flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />
+            {label}
+          </span>
+        ))}
       </div>
 
       {/* Search */}

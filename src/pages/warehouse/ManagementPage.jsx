@@ -12,6 +12,7 @@ import { useWarehouse } from '../../context/WarehouseContext';
 import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import { ChevronRight, ChevronDown, Layers, ClipboardList } from 'lucide-react';
 import InventoryCheckExportModal from '../../components/warehouse/InventoryCheckExportModal.jsx';
+import Modal from '../../components/ui/Modal';
 
 const TODAY = new Date();
 TODAY.setHours(0, 0, 0, 0);
@@ -23,136 +24,113 @@ function daysUntil(dateStr) {
   return Math.round((d - TODAY) / 86400000);
 }
 
-// ── ExpiryCell — FIX 1: popup luôn hiển thị vào trong màn hình ──────────────
-function ExpiryCell({ expiryList }) {
-  const { t } = useLang();
-  const [open, setOpen] = useState(false);
-  const btnRef = useRef(null);
-  const popRef = useRef(null);
+// ── LotBadge + modal chi tiết lô ─────────────────────────────────────────────
+//   Thay dropdown cũ (bị card overflow:hidden cắt mất) bằng nút màu mở MODAL.
+//   Màu badge do BE tính (freshnessBadge), giống trang kho OWNER/ADMIN.
+const FRESHNESS = {
+  EXPIRED_OR_CRITICAL: { bar: '#ea580c', label: 'Có lô đã/sắp hết hạn (dưới 7 ngày)' },
+  NEAR_EXPIRY:         { bar: '#f59e0b', label: 'Có lô gần hết hạn (trong 1 tháng)' },
+  NEWLY_STOCKED:       { bar: '#38bdf8', label: 'Có lô mới nhập (dưới 1 tháng)' },
+};
 
-  const dated = (expiryList || [])
-    .filter(e => e.expiryDate && Number(e.quantity) > 0)
-    .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+function fmtDate(iso) {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).split('-');
+  return `${d}/${m}/${y}`;
+}
 
-  // Đóng khi click ngoài
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (btnRef.current && !btnRef.current.contains(e.target) &&
-        popRef.current && !popRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+function fmtDateTime(ms) {
+  if (!ms) return null;
+  const dt = new Date(Number(ms));
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(dt.getHours())}:${p(dt.getMinutes())} ${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+}
 
-  // FIX 1: Tính vị trí popup sau khi render để biết có tràn phải không
-  const [popStyle, setPopStyle] = useState({ left: 0 });
-  useEffect(() => {
-    if (!open || !btnRef.current || !popRef.current) return;
-    const btnRect = btnRef.current.getBoundingClientRect();
-    const popWidth = popRef.current.offsetWidth || 260;
-    const vw = window.innerWidth;
-    // Nếu mở sang phải bị tràn → mở sang trái
-    if (btnRect.left + popWidth > vw - 12) {
-      setPopStyle({ right: 0, left: 'auto' });
-    } else {
-      setPopStyle({ left: 0, right: 'auto' });
-    }
-  }, [open]);
-
-  if (dated.length === 0) {
-    return <span style={{ color: 'var(--wh-muted)', fontSize: 12 }}>—</span>;
-  }
-
-  const soonCount = dated.filter(e => {
-    const d = daysUntil(e.expiryDate);
-    return d !== null && d <= 30;
-  }).length;
-
+function LotDetailModal({ open, onClose, item }) {
+  if (!item) return null;
+  const lots = item.expiryList || [];
+  const fmtMoney = (v) => Number(v || 0).toLocaleString('vi-VN') + 'đ';
+  const totalQty  = lots.reduce((s, l) => s + Number(l.quantity || 0), 0);
+  const totalCost = lots.reduce((s, l) => s + Number(l.lotCost || 0), 0);
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      <button
-        ref={btnRef}
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-        }}
-      >
-        {soonCount > 0 && (
-          <span style={{
-            background: 'rgba(234,88,12,.12)', color: 'var(--wh-warn)',
-            border: '1px solid rgba(234,88,12,.25)',
-            borderRadius: 99, padding: '2px 8px',
-            fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
-          }}>
-            {t('warehouse', 'lot_expiring_soon').replace('{n}', soonCount)}
-          </span>
-        )}
-        <span style={{
-          background: 'rgba(201,168,76,.1)', color: 'var(--wh-accent)',
-          border: '1px solid rgba(201,168,76,.2)',
-          borderRadius: 99, padding: '2px 8px',
-          fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
-        }}>
-          {t('warehouse', 'lots_label').replace('{n}', dated.length)} ▾
-        </span>
-      </button>
-
-      {open && (
-        <div
-          ref={popRef}
-          style={{
-            position: 'absolute', top: '100%', zIndex: 50, marginTop: 6,
-            background: '#fff', border: '1px solid var(--wh-border)',
-            borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,.12)',
-            minWidth: 240, maxWidth: 'min(300px, 90vw)',
-            padding: '8px 0', whiteSpace: 'nowrap',
-            ...popStyle,
-          }}
-        >
-          <div style={{
-            padding: '6px 14px 8px', borderBottom: '1px solid var(--wh-border)',
-            fontSize: 11, fontWeight: 700, color: 'var(--wh-muted)',
-            textTransform: 'uppercase', letterSpacing: '.5px',
-          }}>
-            {t('warehouse', 'lot_list')}
-          </div>
-          {dated.map((e, i) => {
-            const days = daysUntil(e.expiryDate);
-            const isExpired = days !== null && days < 0;
-            const isSoon = days !== null && days >= 0 && days <= 30;
-            const color = isExpired ? '#dc2626' : isSoon ? 'var(--wh-warn)' : 'var(--wh-text)';
-            const bgColor = isExpired ? 'rgba(220,38,38,.04)' : isSoon ? 'rgba(234,88,12,.04)' : 'transparent';
-            return (
-              <div key={e.id ?? i} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '7px 14px', background: bgColor,
-                borderBottom: i < dated.length - 1 ? '1px solid var(--wh-border)' : 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color }}>
-                    {String(e.expiryDate)}
-                  </span>
-                  {isExpired && (
-                    <span style={{ fontSize: 10, background: 'rgba(220,38,38,.1)', color: '#dc2626', borderRadius: 4, padding: '1px 5px' }}>Hết hạn</span>
-                  )}
-                  {isSoon && !isExpired && (
-                    <span style={{ fontSize: 10, background: 'rgba(234,88,12,.1)', color: 'var(--wh-warn)', borderRadius: 4, padding: '1px 5px' }}>
-                      {days === 0 ? t('common', 'today') : `${days} ${t('common', 'date').toLowerCase()}`}
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--wh-accent)', marginLeft: 16 }}>
-                  {Number(e.quantity).toLocaleString('vi-VN')}
-                </span>
-              </div>
-            );
-          })}
+    <Modal open={open} onClose={onClose} title={`Chi tiết lô — ${item.ingredientName}`} size="lg">
+      {lots.length === 0 ? (
+        <p style={{ fontSize: 13, color: '#8E8878', textAlign: 'center', padding: '32px 0' }}>
+          Nguyên liệu này chưa có lô nào còn hàng.
+        </p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.5px', color: '#8E8878', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
+                <th style={{ padding: '8px 12px', textAlign: 'left' }}>Thời gian nhập</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right' }}>Số lượng tồn</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left' }}>Hạn sử dụng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lots.map((lot, i) => {
+                const d = daysUntil(lot.expiryDate);
+                const expColor = d == null ? '#8E8878' : d < 7 ? '#ea580c' : d <= 30 ? '#d97706' : '#1C1C1E';
+                const imported = fmtDateTime(lot.importedAt);
+                const expText = lot.expiryDate
+                  ? `${fmtDate(lot.expiryDate)}${d != null ? (d < 0 ? ' (đã hết hạn)' : ` (còn ${d} ngày)`) : ''}`
+                  : (lot.tracked === false ? '—' : 'Không có hạn');
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(0,0,0,.05)' }}>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#1C1C1E' }}>
+                      {imported || <span style={{ color: '#8E8878', fontStyle: 'italic' }}>Không rõ</span>}
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>
+                      {Number(lot.quantity).toLocaleString('vi-VN')}
+                      <span style={{ fontSize: 11, color: '#8E8878', fontWeight: 400, marginLeft: 4 }}>{item.unit}</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: expColor, fontWeight: d != null && d <= 30 ? 600 : 400 }}>{expText}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ borderTop: '1px solid rgba(0,0,0,.1)', fontWeight: 600 }}>
+                <td style={{ padding: '10px 12px', textAlign: 'right', color: '#8E8878' }}>Tổng</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                  {totalQty.toLocaleString('vi-VN')}
+                  <span style={{ fontSize: 11, color: '#8E8878', fontWeight: 400, marginLeft: 4 }}>{item.unit}</span>
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+          <p style={{ fontSize: 11, color: '#8E8878', marginTop: 8 }}>
+            Sắp theo hạn sử dụng gần nhất trước; lô không có hạn xếp cuối.
+            {lots.some(l => l.tracked === false) && ' Dòng "Không rõ" là phần tồn chưa gắn lô.'}
+          </p>
         </div>
       )}
+    </Modal>
+  );
+}
+
+function ExpiryCell({ item }) {
+  const [open, setOpen] = useState(false);
+  const fresh = FRESHNESS[item.freshnessBadge];
+  const lotCount = (item.expiryList || []).length;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+      {fresh && (
+        <span title={fresh.label} style={{
+          width: 10, height: 10, borderRadius: '50%', background: fresh.bar, flexShrink: 0,
+        }} />
+      )}
+      <button onClick={() => setOpen(true)} style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        background: 'none', border: 'none', cursor: 'pointer',
+        color: 'var(--wh-accent)', fontSize: 12, fontWeight: 600, padding: '2px 4px',
+      }} title="Xem chi tiết lô">
+        <Layers size={13} /> Chi tiết
+        {lotCount > 0 && <span style={{ fontSize: 10, color: 'var(--wh-muted)' }}>({lotCount})</span>}
+      </button>
+      <LotDetailModal open={open} onClose={() => setOpen(false)} item={item} />
     </div>
   );
 }
@@ -277,14 +255,24 @@ function SubCategorySection({ sub, allIngredients, search }) {
 
 function IngredientRow({ s, indent = false, subIndent = false }) {
   const isLow = Number(s.stockQuantity) < 5;
+  // Nền hàng theo tình trạng lô — cùng bảng màu với chấm trong ExpiryCell.
+  const ROW_BG = {
+    EXPIRED_OR_CRITICAL: { bg: 'rgba(234,88,12,.07)',  bar: '#ea580c' },
+    NEAR_EXPIRY:         { bg: 'rgba(245,158,11,.08)', bar: '#f59e0b' },
+    NEWLY_STOCKED:       { bg: 'rgba(56,189,248,.08)', bar: '#38bdf8' },
+  };
+  const fresh = ROW_BG[s.freshnessBadge];
+  const basePadLeft = subIndent ? 52 : indent ? 36 : 14;
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'minmax(0,1fr) auto auto auto',
       alignItems: 'center', gap: 12,
-      padding: `9px 14px 9px ${subIndent ? 52 : indent ? 36 : 14}px`,
+      padding: `9px 14px 9px ${basePadLeft}px`,
       borderBottom: '1px solid var(--wh-border)',
-      background: 'white',
+      background: fresh ? fresh.bg : 'white',
+      // Dải màu bên trái cho dễ nhận, không phá layout grid.
+      boxShadow: fresh ? `inset 3px 0 0 ${fresh.bar}` : 'none',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
         <div style={{
@@ -311,7 +299,7 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
         {isLow && '⚠️ '}{Number(s.stockQuantity).toLocaleString('vi-VN')}
       </span>
       <div style={{ minWidth: 80 }}>
-        <ExpiryCell expiryList={s.expiryList} />
+        <ExpiryCell item={s} />
       </div>
     </div>
   );
@@ -516,8 +504,15 @@ export default function ManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredStocks.map(s => (
-                <tr key={s.ingredientId}>
+              {filteredStocks.map(s => {
+                const ROW_BG = {
+                  EXPIRED_OR_CRITICAL: 'rgba(234,88,12,.07)',
+                  NEAR_EXPIRY:         'rgba(245,158,11,.08)',
+                  NEWLY_STOCKED:       'rgba(56,189,248,.08)',
+                };
+                const bg = ROW_BG[s.freshnessBadge];
+                return (
+                <tr key={s.ingredientId} style={bg ? { background: bg } : undefined}>
                   <td>
                     <div className="wh-ing-info">
                       {s.imageUrl
@@ -535,9 +530,10 @@ export default function ManagementPage() {
                       {Number(s.stockQuantity).toLocaleString('vi-VN')}
                     </span>
                   </td>
-                  <td><ExpiryCell expiryList={s.expiryList} /></td>
+                  <td><ExpiryCell item={s} /></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
