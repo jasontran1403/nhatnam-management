@@ -310,7 +310,8 @@ export default function AppRoutes() {
         <Route path="dashboard" element={<AccountantDashboardPage />} />
         <Route path="orders" element={<AccountantOrdersPage />} />
         <Route path="debt-orders" element={<DebtOrdersPage />} />
-        <Route path="customers" element={<AccountantCustomersPage />} />
+        {/* Dùng chung page với SUPER_ACCOUNTANT để đồng bộ layout + có lock/unlock */}
+        <Route path="customers" element={<SuperAccountantCustomers />} />
         <Route path="suppliers" element={<SupplierManagementPage />} />
         <Route path="vendor-debts" element={<AccountantVendorDebtPage />} />
         <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />

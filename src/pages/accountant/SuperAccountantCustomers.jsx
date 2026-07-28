@@ -595,10 +595,10 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
 export default function SuperAccountantCustomers() {
   const { t } = useLang();
   const toast = useToast();
-  // isActive LUÔN = true: màn hình KH của SUPER_ACCOUNTANT chỉ hiển thị khách đang hoạt động,
-  // giống hệt màn hình của ACCOUNTANT (BE trả findByIsActiveTrue...). Khách đã khoá bán chỉ
-  // xem/mở lại được ở màn hình Khách hàng của OWNER/ADMIN.
-  const [filters, setFilters] = useState({ q: '', type: '', isActive: 'true', sellerId: '' });
+  // isActive: '' = tất cả, 'true' = đang hoạt động, 'false' = đang khóa.
+  // Mặc định '' để thấy CẢ khách đã khóa (kế toán cần tra cứu & thu hồi công nợ);
+  // người dùng có thể lọc lại bằng dropdown trạng thái.
+  const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
   const debouncedQ = useDebounce(filters.q, 600);
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
@@ -651,9 +651,9 @@ export default function SuperAccountantCustomers() {
       const params = { page, size: 20, sort: 'id,desc' };
       if (debouncedQ) params.q = debouncedQ;
       if (filters.type) params.type = filters.type;
-      // KHÔNG lọc isActive: kế toán phải thấy CẢ khách đã khoá để tra cứu và thu
-      // hồi công nợ — khoá là ngừng bán hàng, không phải xoá khỏi sổ. Khách đã
-      // XOÁ vẫn bị loại ở BE (searchAdmin lọc sẵn deletedAt IS NULL).
+      // Lọc theo trạng thái khóa bán/hoạt động (dropdown). '' = tất cả.
+      if (filters.isActive === 'true') params.isActive = true;
+      else if (filters.isActive === 'false') params.isActive = false;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       if (debtSort) params.debtSort = debtSort;
       const res = await adminCustomerApi.list(params);
@@ -675,7 +675,9 @@ export default function SuperAccountantCustomers() {
       const params = {};
       if (debouncedQ) params.q = debouncedQ;
       if (filters.type) params.type = filters.type;
-      // Export phải khớp đúng những gì đang hiện trên bảng → cũng không lọc isActive.
+      // Export khớp đúng bảng đang hiển thị → gửi cùng bộ lọc trạng thái.
+      if (filters.isActive === 'true') params.isActive = true;
+      else if (filters.isActive === 'false') params.isActive = false;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
       const res = await adminCustomerApi.exportAll(params);
       const blob = new Blob([res.data], {
@@ -852,6 +854,13 @@ export default function SuperAccountantCustomers() {
             <option value="">Tất cả loại</option>
             <option value="COMPANY">Công ty</option>
             <option value="RETAIL">Cá nhân</option>
+          </select>
+          <select value={filters.isActive}
+            onChange={e => { setFilters({ ...filters, isActive: e.target.value }); setPage(0); }}
+            className={`${inputCls} sm:w-44`}>
+            <option value="">Tất cả trạng thái</option>
+            <option value="true">Đang hoạt động</option>
+            <option value="false">Đang khóa</option>
           </select>
         </div>
 
