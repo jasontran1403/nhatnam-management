@@ -30,6 +30,7 @@ import { downloadBlob } from '../../api/services';
 export default function InventoryCheckExportModal({
   stocks = [],
   categories = [],
+  subCategories = [],
   ingredientMeta = [],
   warehouseId,
   warehouseName,
@@ -46,12 +47,52 @@ export default function InventoryCheckExportModal({
     return m;
   }, [ingredientMeta]);
 
-  const enriched = useMemo(() =>
-    stocks.map(s => ({
-      ...s,
-      categoryId: metaMap[s.ingredientId]?.categoryId ?? null,
-    })),
-    [stocks, metaMap]
+  // Lookup tên danh mục cha / con theo id
+  const catNameMap = useMemo(() => {
+    const m = {};
+    categories.forEach(c => { m[String(c.id)] = c.name; });
+    return m;
+  }, [categories]);
+
+  const subCatNameMap = useMemo(() => {
+    const m = {};
+    subCategories.forEach(sc => { m[String(sc.id)] = sc.name; });
+    return m;
+  }, [subCategories]);
+
+  // Chỉ giữ nguyên liệu CÒN được gán cho kho đang chọn.
+  //   Nguồn sự thật là bảng gán kho (ingredient_warehouse) → phản ánh qua
+  //   ingredientMeta.warehouseIds. Sau khi bỏ nguyên liệu khỏi kho, dòng tồn
+  //   (IngredientStock) vẫn còn nên getStock trả về; ta lọc lại theo assignment
+  //   để phiếu kiểm kho không liệt kê nguyên liệu đã gỡ khỏi kho.
+  const isAssignedToWarehouse = (ingredientId) => {
+    const meta = metaMap[ingredientId];
+    if (!meta) return false; // không còn trong danh mục nguyên liệu active → không xuất
+    const wids = meta.warehouseIds || [];
+    return wids.some(w => String(w) === String(warehouseId));
+  };
+
+  const enriched = useMemo(() => {
+    // Nếu chưa tải được metadata nguyên liệu hoặc chưa biết kho, không lọc để
+    // tránh ẩn nhầm toàn bộ (fallback an toàn).
+    const canFilter = ingredientMeta.length > 0 && warehouseId != null;
+    return stocks
+      .filter(s => !canFilter || isAssignedToWarehouse(s.ingredientId))
+      .map(s => {
+        const meta = metaMap[s.ingredientId] || {};
+        const categoryId = meta.categoryId ?? null;
+        const subCategoryId = meta.subCategoryId ?? null;
+        return {
+          ...s,
+          categoryId,
+          subCategoryId,
+          categoryName: categoryId != null ? (catNameMap[String(categoryId)] ?? null) : null,
+          subCategoryName: subCategoryId != null ? (subCatNameMap[String(subCategoryId)] ?? null) : null,
+        };
+      });
+  },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stocks, metaMap, catNameMap, subCatNameMap, ingredientMeta, warehouseId]
   );
 
   // Danh mục thực sự có nguyên liệu trong kho hiện tại
@@ -101,11 +142,15 @@ export default function InventoryCheckExportModal({
           return selectedCatIds.has(key);
         });
 
-    // Sắp xếp: theo categoryId → tên
+    // Sắp xếp: danh mục cha → danh mục con (chưa gán để cuối) → tên nguyên liệu
     return [...filtered].sort((a, b) => {
       const catA = a.categoryId ?? 9999999;
       const catB = b.categoryId ?? 9999999;
       if (catA !== catB) return catA - catB;
+      // Trong cùng danh mục cha: nguyên liệu có danh mục con lên trước
+      const subA = a.subCategoryId ?? 9999999;
+      const subB = b.subCategoryId ?? 9999999;
+      if (subA !== subB) return subA - subB;
       return (a.ingredientName || '').localeCompare(b.ingredientName || '', 'vi');
     });
   }, [enriched, selectedCatIds]);
@@ -138,10 +183,15 @@ export default function InventoryCheckExportModal({
         warehouseName,
         checkDate: new Date().toISOString().slice(0, 10),
         items: itemsToExport.map(s => ({
+          ingredientId: s.ingredientId ?? null,
           ingredientName: s.ingredientName,
           spec: s.spec || null,           // quy cách nếu có trong StockResponse
           unit: s.unit || null,
           stockQuantity: Number(s.stockQuantity ?? 0),
+          categoryId: s.categoryId ?? null,
+          categoryName: s.categoryName ?? null,
+          subCategoryId: s.subCategoryId ?? null,
+          subCategoryName: s.subCategoryName ?? null,
           expiryList: (s.expiryList || [])
             .filter(e => e.expiryDate || e.quantity)
             .map(e => ({
