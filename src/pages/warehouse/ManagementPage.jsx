@@ -561,6 +561,7 @@ export default function ManagementPage() {
         <InventoryCheckExportModal
           stocks={stocks}
           categories={categories}
+          subCategories={subCategories}
           ingredientMeta={ingredientMeta}
           warehouseId={warehouseId}
           warehouseName={warehouseInfo?.name}

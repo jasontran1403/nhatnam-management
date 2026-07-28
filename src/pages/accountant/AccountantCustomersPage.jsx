@@ -10,6 +10,7 @@ import DebtReportCustomerModal from '../../components/accountant/DebtReportCusto
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Building2, User as UserIcon, Clock3, Download, Upload, FileText,
+  ArrowUp, Filter,
 } from 'lucide-react';
 
 // ── Debt urgency ──────────────────────────────────────────────────────────────
@@ -33,6 +34,8 @@ export default function AccountantCustomersPage() {
   const [loading, setLoading] = useMinLoading();
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');   // '' | 'ACTIVE' | 'LOCKED'
+  const [sortDebt, setSortDebt] = useState(false);          // true = công nợ tăng dần
   const [exportingDebt, setExportingDebt] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
 
@@ -95,6 +98,8 @@ export default function AccountantCustomersPage() {
     try {
       const params = { page: p, size: PAGE_SIZE };
       if (search.trim()) params.q = search.trim();
+      if (statusFilter) params.status = statusFilter;   // ACTIVE | LOCKED
+      if (sortDebt) params.sort = 'debtAsc';            // sort giữ nguyên filter trạng thái
       const res = await accountantApi.getCustomers(params);
       const data = res.data?.data;
       setCustomers(data?.content || []);
@@ -103,7 +108,7 @@ export default function AccountantCustomersPage() {
     } catch {
       toast(t('common', 'error_retry'), 'error');
     } finally { setLoading(false); }
-  }, [search]);
+  }, [search, statusFilter, sortDebt]);
 
   useEffect(() => { fetchCustomers(0); }, [fetchCustomers]);
 
@@ -159,6 +164,38 @@ export default function AccountantCustomersPage() {
             value={searchInput} onChange={e => setSearchInput(e.target.value)}
             className="w-full border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white
               focus:outline-none focus:border-[#C9A84C]" />
+        </div>
+
+        {/* Bộ lọc trạng thái + sắp xếp công nợ */}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {/* Dropdown trạng thái: Đang hoạt động / Đang khóa */}
+          <div className="relative">
+            <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="appearance-none border border-[#E8DDD0] rounded-xl pl-8 pr-8 py-2 text-xs bg-white
+                text-[#5C5C5C] cursor-pointer focus:outline-none focus:border-[#C9A84C]"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="LOCKED">Đang khóa</option>
+            </select>
+            <ChevronRight size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-[#8E8878] pointer-events-none" />
+          </div>
+
+          {/* Nút sắp xếp theo công nợ tăng dần */}
+          <button
+            onClick={() => setSortDebt(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs transition-all
+              ${sortDebt
+                ? 'border-[#C9A84C] bg-[#FBF6E9] text-[#8A6D1F] font-semibold'
+                : 'border-[#E8DDD0] bg-white text-[#5C5C5C] hover:border-[#C9A84C]'}`}
+            title="Sắp xếp công nợ từ nhỏ đến lớn"
+          >
+            <ArrowUp size={13} />
+            Công nợ tăng dần
+          </button>
         </div>
       </div>
 
