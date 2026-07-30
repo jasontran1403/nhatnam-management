@@ -33,6 +33,7 @@ import OwnerAnalyticsPage from '../pages/owner/OwnerAnalyticsPage';
 import OwnerProductionPage from '../pages/owner/OwnerProductionPage';
 import OwnerEmployeesPage from '../pages/owner/OwnerEmployeesPage';
 import DebtOrdersPage from '../pages/shared/DebtOrdersPage';
+import CameraManagementPage from '../pages/shared/CameraManagementPage';
 
 // Production v2 — Owner
 import OwnerProductionDashboard from '../pages/owner/OwnerProductionDashboard';
@@ -81,6 +82,7 @@ import AccountantDashboardPage from '../pages/accountant/AccountantDashboardPage
 import AccountantCustomersPage from '../pages/accountant/AccountantCustomersPage';
 import SupplierManagementPage from '../pages/accountant/SupplierManagementPage';
 import AccountantWarehouseReceiptsPage from '../pages/accountant/AccountantWarehouseReceiptsPage';
+import AccountantLotPricingPage from '../pages/accountant/AccountantLotPricingPage';
 import ExpenseListPage from '../pages/accountant/ExpenseListPage';
 import OwnerCashflowPage from '../pages/owner/OwnerCashflowPage';
 import OwnerInventoryPage from '../pages/owner/OwnerInventoryPage';
@@ -210,6 +212,8 @@ export default function AppRoutes() {
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
         <Route path="certificates" element={<CertificatePage />} />
+        {/* Quản lý camera */}
+        <Route path="cameras" element={<CameraManagementPage />} />
         {/* Bảng chấm công — upload file Excel theo tháng */}
         <Route path="attendance" element={<AttendanceSheetsPage />} />
 
@@ -267,6 +271,8 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
+        {/* Quản lý camera */}
+        <Route path="cameras" element={<CameraManagementPage />} />
         <Route path="production" element={<OwnerProductionDashboard />} />
         <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
         <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
@@ -338,6 +344,8 @@ export default function AppRoutes() {
         <Route path="material-requests" element={<SuperAccountantOrdersPage />} />
         <Route path="pricing" element={<PricingCalculatorPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
+        {/* Panel điều chỉnh lô — nhập giá vốn cho lô mới do kho tạo */}
+        <Route path="lot-pricing" element={<AccountantLotPricingPage />} />
         <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}

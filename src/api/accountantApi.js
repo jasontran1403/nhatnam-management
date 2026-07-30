@@ -117,3 +117,21 @@ export const pricingApi = {
   createCostLabel: (name) =>
     api.post('/api/accountant/pricing/cost-labels', { name }).then(unwrap),
 };
+// ─── Điều chỉnh lô — nhập giá vốn cho lô mới tạo từ phiếu điều chỉnh kho ──────
+export const lotPricingApi = {
+  /** Các lô đang chờ nhập giá vốn */
+  getPending: () => api.get('/api/accountant/lot-pricing/pending'),
+
+  /** 100 lô đã định giá gần nhất */
+  getHistory: () => api.get('/api/accountant/lot-pricing/history'),
+
+  /** Số lô đang chờ (dùng cho badge) */
+  getCount: () => api.get('/api/accountant/lot-pricing/count'),
+
+  /**
+   * Nhập giá vốn cho 1 lô.
+   * @param {{ unitPrice?: number, totalPrice?: number }} data
+   *   Gửi 1 trong 2: đơn giá/đvt hoặc giá tổng cả lô (server chia cho số lượng).
+   */
+  setPrice: (id, data) => api.post(`/api/accountant/lot-pricing/${id}/set-price`, data),
+};

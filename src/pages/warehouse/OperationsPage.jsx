@@ -1,7 +1,7 @@
 // src/pages/warehouse/OperationsPage.jsx
 // ADDED: WarehouseSelector — chọn kho để thao tác (nhập/xuất/chuyển/điều chỉnh)
 import { useLang } from '../../context/LangContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CardSkeleton, Sk } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi } from '../../api/warehouseApi';
@@ -10,6 +10,7 @@ import { useWarehouse } from '../../context/WarehouseContext';
 import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import ImageUploader from '../../components/warehouse/ImageUploader';
 import IngredientSelector from '../../components/warehouse/IngredientSelector';
+import LotAdjustCard from '../../components/warehouse/LotAdjustCard';
 
 export default function OperationsPage() {
   const { t } = useLang();
@@ -67,17 +68,19 @@ function useMyWarehouse() {
     });
   }, [activeWarehouseId]);
 
-  useEffect(() => {
-    if (!myWarehouse?.id) return;
-    warehouseApi.getStock(myWarehouse.id).then(res => setStocks(res.data || []));
+  const reloadStocks = useCallback(() => {
+    if (!myWarehouse?.id) return Promise.resolve();
+    return warehouseApi.getStock(myWarehouse.id).then(res => setStocks(res.data || []));
   }, [myWarehouse?.id]);
 
-  return { myWarehouse, allWarehouses, stocks };
+  useEffect(() => { reloadStocks(); }, [reloadStocks]);
+
+  return { myWarehouse, allWarehouses, stocks, reloadStocks };
 }
 
 function emptyRow(mode) {
   if (mode === 'import') return { ingredientId: '', quantity: '', expiryDate: '' };
-  if (mode === 'adjust') return { ingredientId: '', physicalQty: '' };
+  if (mode === 'adjust') return { ingredientId: '', lots: [] };
   return { ingredientId: '', quantity: '' };
 }
 
@@ -504,9 +507,16 @@ function TransferForm() {
   );
 }
 
-// ── ĐIỀU CHỈNH ───────────────────────────────────────────────────────────────
+// ── ĐIỀU CHỈNH TỒN KHO (THEO LÔ) ─────────────────────────────────────────────
+//
+// Kho quản lý theo LÔ (mỗi lô có giá vốn + hạn sử dụng riêng), nên phiếu điều
+// chỉnh KHÔNG còn sửa trên tổng số nữa: user sửa số lượng / HSD trên TỪNG LÔ,
+// tổng tồn được tính lại = tổng số lượng các lô.
+//
+// User cũng có thể TẠO LÔ MỚI (nhập số lượng + HSD). Lô mới được tạo ngay với
+// giá vốn tạm = 1 và gửi sang KẾ TOÁN TRƯỞNG để nhập giá vốn thật.
 function AdjustForm() {
-  const { myWarehouse, stocks } = useMyWarehouse();
+  const { myWarehouse, stocks, reloadStocks } = useMyWarehouse();
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
@@ -515,22 +525,57 @@ function AdjustForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
+  const updateRow = (i, v) => setRows(rows.map((r, idx) => (idx === i ? v : r)));
   const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
     setError(''); setSuccess('');
     if (!myWarehouse?.id) return setError('Không xác định được kho.');
-    const validRows = rows.filter(r => r.ingredientId && r.physicalQty !== '' && r.physicalQty !== undefined);
-    if (!validRows.length) return setError('Vui lòng thêm ít nhất 1 nguyên liệu cần điều chỉnh.');
+
+    const validRows = rows.filter(r => r.ingredientId && (r.lots || []).length > 0);
+    if (!validRows.length)
+      return setError('Vui lòng chọn nguyên liệu và điều chỉnh ít nhất 1 lô.');
+
+    // ── Validate từng lô ──
+    for (const r of validRows) {
+      const ingName = stocks.find(s => s.ingredientId === r.ingredientId)?.ingredientName || 'nguyên liệu';
+      for (const lot of r.lots) {
+        const qty = Number(lot.quantity);
+        if (lot.quantity === '' || lot.quantity == null || Number.isNaN(qty))
+          return setError(`Vui lòng nhập số lượng cho tất cả các lô của "${ingName}".`);
+        if (qty < 0)
+          return setError(`Số lượng lô của "${ingName}" không được âm.`);
+        if (lot.isNew && qty <= 0)
+          return setError(`Lô mới của "${ingName}" phải có số lượng lớn hơn 0.`);
+        if (lot.isNew && !lot.expiryDate)
+          return setError(`Vui lòng nhập hạn sử dụng cho lô mới của "${ingName}".`);
+      }
+    }
+
+    const newLotCount = validRows.reduce(
+      (n, r) => n + r.lots.filter(l => l.isNew).length, 0);
+
     setLoading(true);
     try {
       const res = await warehouseApi.adjust({
         warehouseId: myWarehouse.id, reason, note, imageUrls: images,
-        items: validRows.map(r => ({ ingredientId: r.ingredientId, physicalQty: Number(r.physicalQty) })),
+        items: validRows.map(r => ({
+          ingredientId: r.ingredientId,
+          lots: r.lots.map(l => ({
+            lotId: l.isNew ? null : l.lotId,
+            quantity: Number(l.quantity),
+            expiryDate: l.expiryDate || null,
+          })),
+        })),
       });
-      setSuccess(`Điều chỉnh thành công! Mã phiếu: ${res.data.receiptCode}`);
+      setSuccess(
+        `Điều chỉnh thành công! Mã phiếu: ${res.data.receiptCode}` +
+        (newLotCount > 0
+          ? ` — Đã gửi ${newLotCount} lô mới cho Kế toán trưởng nhập giá vốn.`
+          : '')
+      );
       setRows([emptyRow('adjust')]); setReason(''); setNote(''); setImages([]);
+      reloadStocks();
     } catch (e) {
       setError(e?.response?.data?.message || e?.message || 'Có lỗi xảy ra');
     } finally { setLoading(false); }
@@ -539,6 +584,16 @@ function AdjustForm() {
   return (
     <FormShell title="🔧 Phiếu điều chỉnh tồn kho" warehouseName={myWarehouse?.name}
       onSubmit={handleSubmit} loading={loading} error={error} success={success}>
+      <div style={{
+        background: 'rgba(201,168,76,.08)', border: '1px solid rgba(201,168,76,.3)',
+        borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+        fontSize: 12, color: '#92681a', lineHeight: 1.5,
+      }}>
+        ℹ️ Kho quản lý theo <strong>lô</strong> — mỗi lô có giá vốn và hạn sử dụng riêng.
+        Hãy sửa số lượng / HSD trên từng lô; tổng tồn sẽ được tính lại bằng tổng các lô.
+        Lô mới tạo ở đây sẽ được gửi cho <strong>Kế toán trưởng</strong> nhập giá vốn.
+      </div>
+
       <div className="wh-form-row">
         <div>
           <label className="wh-label">Lý do điều chỉnh</label>
@@ -557,20 +612,24 @@ function AdjustForm() {
         <label className="wh-label">Ảnh chứng từ / biên bản</label>
         <ImageUploader value={images} onChange={setImages} />
       </div>
+
       <hr className="wh-sep" />
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>Danh sách kiểm kê</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 8, marginBottom: 6, paddingLeft: 12, fontSize: 12, color: 'var(--wh-muted)' }}>
-        <span>Nguyên liệu</span><span>Tồn hệ thống</span><span>Thực tế kiểm</span><span>Chênh lệch</span><span></span>
-      </div>
-      <div className="wh-ing-rows">
-        {rows.map((row, i) => (
-          <IngredientSelector key={i} stocks={stocks} value={row}
-            selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
-            onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} mode="adjust"
-            canRemove={rows.length > 1} />
-        ))}
-      </div>
-      <button className="wh-btn wh-btn-secondary wh-btn-sm" onClick={() => setRows([...rows, emptyRow('adjust')])}
+      <div style={{ marginBottom: 10, fontWeight: 600, fontSize: 13 }}>Danh sách kiểm kê theo lô</div>
+
+      {rows.map((row, i) => (
+        <LotAdjustCard
+          key={i}
+          stocks={stocks}
+          value={row}
+          selectedIngredientIds={rows.map(r => r.ingredientId).filter(Boolean)}
+          onChange={v => updateRow(i, v)}
+          onRemove={() => removeRow(i)}
+          canRemove={rows.length > 1}
+        />
+      ))}
+
+      <button className="wh-btn wh-btn-secondary wh-btn-sm"
+        onClick={() => setRows([...rows, emptyRow('adjust')])}
         style={{ marginBottom: 14 }}>
         + Thêm nguyên liệu
       </button>

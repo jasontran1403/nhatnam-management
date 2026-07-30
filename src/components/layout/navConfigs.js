@@ -8,7 +8,7 @@ import {
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
   Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet, Calculator, Building2,
-  ClipboardSignature, Boxes,
+  ClipboardSignature, Boxes, Video,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -25,6 +25,7 @@ export const adminNavRaw = [
   { to: '/admin/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
   { to: '/admin/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/admin/production', labelKey: 'production', icon: Factory },
+  { to: '/admin/cameras', labelKey: 'cameras', icon: Video },
 ];
 
 export const ownerNavRaw = [
@@ -48,6 +49,7 @@ export const ownerNavRaw = [
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
   { to: '/owner/attendance', labelKey: 'attendance_sheets', icon: ClipboardSignature },
   { to: '/owner/production', labelKey: 'production', icon: Factory },
+  { to: '/owner/cameras', labelKey: 'cameras', icon: Video },
 ];
 
 export const hrNavRaw = [
@@ -117,6 +119,7 @@ export const superAccountantNavRaw = [
   { to: '/super-accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/super-accountant/warehouse-receipts', labelKey: 'warehouse_receipts', icon: FileText },
+  { to: '/super-accountant/lot-pricing', labelKey: 'lot_pricing', icon: Layers },
   // ── Phiếu đặt hàng nguyên liệu xưởng ────────────────────────────────────
   { to: '/super-accountant/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
   { to: '/super-accountant/pricing', labelKey: 'pricing', icon: Calculator },

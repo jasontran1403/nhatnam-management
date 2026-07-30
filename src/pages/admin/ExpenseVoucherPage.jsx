@@ -1,13 +1,17 @@
 // src/pages/admin/ExpenseVoucherPage.jsx
 import { useLang } from '../../context/LangContext';
+import { useAuth } from '../../context/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { adminExpenseApi } from '../../api/adminApi';
 import { expenseApi } from '../../api/services';
 import { VENDOR_TYPE_LABELS } from '../accountant/ExpenseCreateModal';
+import ExpenseItemsEditor from '../../components/expense/ExpenseItemsEditor';
+import ExpenseBulkActionModal, { canApproveVoucher } from '../../components/expense/ExpenseBulkActionModal';
+import ExpenseVoucherLogList from '../../components/expense/ExpenseVoucherLogList';
 import { useToast } from '../../components/common/Toast';
-import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet, Search, Landmark, ShieldCheck, Settings2, Save } from 'lucide-react';
+import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet, Search, Landmark, ShieldCheck, Settings2, Save, RotateCcw, ListChecks } from 'lucide-react';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   formatCurrency, formatDateTime,
@@ -129,8 +133,9 @@ function SummaryCard({ icon: Icon, label, value, accent }) {
   );
 }
 
-function VoucherRow({ v, onOpenLightbox, statusMap, onChanged }) {
+function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggleSelect }) {
   const { t } = useLang();
+  const { role } = useAuth();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -140,6 +145,23 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged }) {
   const isBank = v.paymentType === 'BANK_TRANSFER';
   const isVendorDebt = v.voucherType === 'VENDOR_DEBT_PAYMENT';
   const canApprove = v.status === 'PENDING' && !isVendorDebt;
+  // Chỉ tick chọn được phiếu mà vai trò hiện tại thực sự duyệt được
+  const selectable = canApproveVoucher(v, role);
+  // Owner/Admin chuyển phiếu đã duyệt / đã từ chối về lại chờ duyệt
+  const canReopen = !isVendorDebt && (v.status === 'APPROVED' || v.status === 'REJECTED');
+  const [reopening, setReopening] = useState(false);
+  const [reopenNote, setReopenNote] = useState('');
+
+  const doReopen = async () => {
+    setBusy(true);
+    try {
+      await adminExpenseApi.reopen(v.id, reopenNote.trim() || null);
+      toast('Đã chuyển phiếu về trạng thái chờ duyệt', 'success');
+      setReopening(false); setReopenNote('');
+      onChanged && onChanged();
+    } catch (err) { toast(err?.response?.data?.message || 'Không thể mở lại phiếu', 'error'); }
+    finally { setBusy(false); }
+  };
 
   const doApprove = async (e) => {
     e.stopPropagation(); setBusy(true);
@@ -160,6 +182,16 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged }) {
     <>
       <tr className="border-b border-[#F0EBE3] hover:bg-[#FAF7F2] cursor-pointer"
         onClick={() => setOpen(o => !o)}>
+        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected}
+            disabled={!selectable}
+            onChange={() => onToggleSelect(v)}
+            title={selectable ? 'Chọn phiếu để duyệt/từ chối hàng loạt' : 'Chỉ chọn được phiếu đang chờ duyệt'}
+            className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+          />
+        </td>
         <td className="px-3 py-3 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{v.paymentNumber || v.voucherCode}</td>
         <td className="px-3 py-3 max-w-[180px]">
           <p className="font-medium text-[#1C1C1E] text-sm truncate">{v.reason}</p>
@@ -201,18 +233,12 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged }) {
 
       {open && (
         <tr className="bg-[#FAF7F2]">
-          <td colSpan={8} className="px-6 py-4">
+          <td colSpan={9} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">Các khoản chi</p>
-                <div className="space-y-1">
-                  {(v.items || []).map((item, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="text-[#5C4E3D]">{item.itemName}</span>
-                      <span className="font-semibold text-[#1C1C1E]">{formatCurrency(item.amount)}</span>
-                    </div>
-                  ))}
-                </div>
+              {/* Các khoản chi — Owner/Admin sửa được nhãn + số tiền
+                  (phiếu chờ duyệt & đã duyệt; phiếu đã huỷ thì không) */}
+              <div onClick={(e) => e.stopPropagation()}>
+                <ExpenseItemsEditor voucher={v} onChanged={onChanged} compact />
               </div>
 
               {(v.imageUrls || []).length > 0 && (
@@ -280,6 +306,44 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged }) {
                   )}
                 </div>
               )}
+
+              {/* Chuyển phiếu đã duyệt / đã từ chối về lại CHỜ DUYỆT (OWNER/ADMIN) */}
+              {canReopen && (
+                <div className="md:col-span-2 border-t border-[#E8DDD0] pt-3">
+                  {!reopening ? (
+                    <div className="flex justify-end">
+                      <button onClick={() => setReopening(true)} disabled={busy}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition disabled:opacity-50">
+                        <RotateCcw size={14} /> Chuyển về chờ duyệt
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs text-amber-800">
+                        Phiếu sẽ quay lại trạng thái <b>Chờ duyệt</b>, xoá thông tin người duyệt/lý do
+                        từ chối cũ và tính lại cấp duyệt theo tổng tiền hiện tại.
+                        Thao tác này được ghi vào nhật ký kèm vai trò của bạn.
+                      </p>
+                      <textarea value={reopenNote} onChange={e => setReopenNote(e.target.value)} rows={2}
+                        placeholder="Ghi chú lý do mở lại (tuỳ chọn)..."
+                        className="w-full px-3 py-2 rounded-lg border border-amber-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 bg-white" />
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={() => { setReopening(false); setReopenNote(''); }} disabled={busy}
+                          className="px-4 py-2 rounded-lg border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-white transition disabled:opacity-50">Huỷ</button>
+                        <button onClick={doReopen} disabled={busy}
+                          className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 transition disabled:opacity-50">
+                          {busy ? 'Đang xử lý...' : 'Xác nhận mở lại'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Nhật ký thao tác — tải khi mở rộng dòng */}
+              <div className="md:col-span-2 border-t border-[#E8DDD0] pt-3">
+                <ExpenseVoucherLogList voucherId={v.id} refreshKey={v.updatedAt} />
+              </div>
             </div>
           </td>
         </tr>
@@ -289,7 +353,7 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged }) {
 }
 
 // ── Panel cấu hình duyệt (OWNER/ADMIN): ngưỡng tiền + danh mục SA được duyệt ──
-function ApprovalConfigPanel() {
+function ApprovalConfigPanel({ onApplied }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -318,9 +382,24 @@ function ApprovalConfigPanel() {
   const save = async () => {
     setSaving(true);
     try {
-      await expenseApi.updateApprovalConfig({ thresholdAmount: parseVND(threshold), allowedCategories: cats });
-      toast('Đã lưu cấu hình duyệt', 'success');
+      const res = await expenseApi.updateApprovalConfig({ thresholdAmount: parseVND(threshold), allowedCategories: cats });
+      const d = res.data?.data || res.data || {};
+
+      // Backend đã áp cấu hình mới cho các phiếu ĐANG CHỜ DUYỆT — báo lại số phiếu
+      // bị đổi cấp duyệt để người dùng biết thay đổi vừa rồi tác động tới đâu.
+      const toSa = d.rescopedToSuperAccountant || 0;
+      const toOwner = d.rescopedToOwner || 0;
+      if (toSa || toOwner) {
+        const parts = [];
+        if (toSa) parts.push(`${toSa} phiếu chờ duyệt chuyển sang Kế toán trưởng duyệt được`);
+        if (toOwner) parts.push(`${toOwner} phiếu chuyển về cần Chủ/Quản trị duyệt`);
+        toast(`Đã lưu cấu hình duyệt · ${parts.join(', ')}`, 'success');
+      } else {
+        toast('Đã lưu cấu hình duyệt', 'success');
+      }
+
       load();
+      onApplied && onApplied();   // reload danh sách phiếu để nhãn cấp duyệt cập nhật ngay
     } catch (e) { toast(e?.response?.data?.message || 'Lỗi khi lưu', 'error'); }
     finally { setSaving(false); }
   };
@@ -397,6 +476,30 @@ export default function ExpenseVoucherPage() {
     REJECTED: { label: t('status', 'rejected_short'), cls: 'bg-red-50 text-red-600 border-red-200', icon: XCircle },
   };
 
+  const { role } = useAuth();
+
+  // ── LỰA CHỌN NHIỀU PHIẾU (giữ xuyên suốt các trang) ────────────────────────
+  // Lưu Map(id → voucher) chứ không chỉ id: nhờ vậy modal vẫn hiển thị được thông tin
+  // phiếu đã tick ở TRANG KHÁC, dù trang hiện tại không còn phiếu đó trong `vouchers`.
+  const [selectedMap, setSelectedMap] = useState(new Map());
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+
+  const selectedList = Array.from(selectedMap.values());
+
+  const toggleSelect = (v) => setSelectedMap(prev => {
+    const next = new Map(prev);
+    if (next.has(v.id)) next.delete(v.id); else next.set(v.id, v);
+    return next;
+  });
+  const removeSelected = (id) => setSelectedMap(prev => {
+    const next = new Map(prev); next.delete(id); return next;
+  });
+  const clearSelected = () => setSelectedMap(new Map());
+  /** Bỏ chọn các phiếu đã xử lý THÀNH CÔNG, giữ lại phiếu lỗi để người dùng xem/thử lại. */
+  const removeManySelected = (ids) => setSelectedMap(prev => {
+    const next = new Map(prev); ids.forEach(id => next.delete(id)); return next;
+  });
+
   // Lightbox state
   const [lightboxImages, setLightboxImages] = useState([]);
   const [lightboxIndex, setLightboxIndex] = useState(null);
@@ -444,12 +547,25 @@ export default function ExpenseVoucherPage() {
 
   const totalAmount = vouchers.reduce((s, v) => s + Number(v.totalAmount || 0), 0);
 
+  // "Chọn tất cả" chỉ áp dụng cho phiếu CHỜ DUYỆT của TRANG HIỆN TẠI —
+  // tick thêm vào lựa chọn sẵn có, không xoá phiếu đã chọn ở trang khác.
+  const selectableOnPage = vouchers.filter(v => canApproveVoucher(v, role));
+  const allPageSelected = selectableOnPage.length > 0
+    && selectableOnPage.every(v => selectedMap.has(v.id));
+  const togglePageAll = () => setSelectedMap(prev => {
+    const next = new Map(prev);
+    if (allPageSelected) selectableOnPage.forEach(v => next.delete(v.id));
+    else selectableOnPage.forEach(v => next.set(v.id, v));
+    return next;
+  });
+  const selectedTotal = selectedList.reduce((s, v) => s + Number(v.totalAmount || 0), 0);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <PageHeader icon={Receipt} title="Phiếu chi phí"
         subtitle="Duyệt phiếu chi & cấu hình hạn mức, danh mục cho Kế toán trưởng" />
 
-      <ApprovalConfigPanel />
+      <ApprovalConfigPanel onApplied={() => load(page)} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SummaryCard icon={DollarSign} label="Tổng số tiền phiếu chi" value={formatCurrency(totalAmount)} accent="gold" />
@@ -504,9 +620,19 @@ export default function ExpenseVoucherPage() {
         ? <EmptyState icon={Receipt} title="Không có phiếu chi nào" />
         : (
           <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">
-            <table className="w-full text-sm min-w-[800px]">
+            <table className="w-full text-sm min-w-[880px]">
               <thead>
                 <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      disabled={selectableOnPage.length === 0}
+                      onChange={togglePageAll}
+                      title="Chọn tất cả phiếu chờ duyệt của trang này"
+                      className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </th>
                   {['Số phiếu', 'Lý do / Đơn vị', 'Người lập', 'Người yêu cầu', t('order', 'total_amount'), t('common', 'status'), 'Ngày tạo', ''].map(h => (
                     <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
                   ))}
@@ -517,6 +643,8 @@ export default function ExpenseVoucherPage() {
                   <VoucherRow key={v.id} v={v}
                     onOpenLightbox={openLightbox}
                     statusMap={STATUS_MAP}
+                    selected={selectedMap.has(v.id)}
+                    onToggleSelect={toggleSelect}
                     onChanged={() => load(page)} />
                 ))}
               </tbody>
@@ -536,6 +664,44 @@ export default function ExpenseVoucherPage() {
             </button>
           ))}
         </div>
+      )}
+
+      {/* ── Thanh hành động hàng loạt — hiện khi đã chọn ít nhất 1 phiếu ─────── */}
+      {selectedList.length > 0 && (
+        <div className="sticky bottom-4 z-40 mx-auto max-w-3xl">
+          <div className="bg-[#1A2B1A] text-white rounded-2xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-3">
+            <ListChecks size={18} className="text-[#C9A84C] flex-shrink-0" />
+            <div className="flex-1 min-w-[140px]">
+              <p className="text-sm font-bold">Đã chọn {selectedList.length} phiếu</p>
+              <p className="text-xs text-white/60">Tổng {formatCurrency(selectedTotal)}</p>
+            </div>
+            <button onClick={() => setBulkModalOpen(true)}
+              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold transition">
+              Xem danh sách
+            </button>
+            <button onClick={clearSelected}
+              className="px-3 py-2 rounded-xl border border-white/20 hover:bg-white/10 text-xs font-semibold transition">
+              Bỏ chọn hết
+            </button>
+            <button onClick={() => setBulkModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#B8923E] text-xs font-bold transition">
+              Duyệt / Từ chối
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bulkModalOpen && (
+        <ExpenseBulkActionModal
+          vouchers={selectedList}
+          onRemove={removeSelected}
+          onClose={() => setBulkModalOpen(false)}
+          onDone={(res) => {
+            const okIds = (res?.results || []).filter(r => r.success).map(r => r.id);
+            if (okIds.length) removeManySelected(okIds); else clearSelected();
+            load(page);
+          }}
+        />
       )}
 
       {/* Lightbox */}

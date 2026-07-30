@@ -1,10 +1,11 @@
 // src/pages/accountant/ExpenseDetailModal.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Receipt, Building2, User, Clock, CheckCircle, XCircle, Wallet, Landmark, ShieldCheck, Pencil } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/Toast';
 import { expenseApi } from '../../api/services';
 import { VENDOR_TYPE_LABELS } from './ExpenseCreateModal';
+import ExpenseItemsEditor from '../../components/expense/ExpenseItemsEditor';
 
 function formatVND(n) {
   if (!n && n !== 0) return '0 đ';
@@ -28,9 +29,25 @@ function imgSrc(url) {
   return url.startsWith('http') ? url : `${BASE_URL}/api/auth${url}`;
 }
 
-export default function ExpenseDetailModal({ voucher: v, onClose, onChanged }) {
+export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
   const { role } = useAuth();
   const toast = useToast();
+
+  // Bản sao cục bộ của phiếu — sau khi sửa (lý do / khoản chi) ta tải lại phiếu
+  // từ server để modal hiển thị dữ liệu mới ngay, không phải đóng/mở lại.
+  const [v, setV] = useState(voucher);
+  useEffect(() => { setV(voucher); }, [voucher]);
+
+  /** Tải lại phiếu từ server rồi báo cho danh sách bên ngoài reload. */
+  const refresh = async () => {
+    try {
+      const res = await expenseApi.getById(voucher.id);
+      const fresh = res.data?.data || res.data;
+      if (fresh) setV(fresh);
+    } catch { /* giữ nguyên dữ liệu cũ nếu lỗi */ }
+    onChanged && onChanged();
+  };
+
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -59,7 +76,7 @@ export default function ExpenseDetailModal({ voucher: v, onClose, onChanged }) {
       await expenseApi.updateReason(v.id, editedReason.trim());
       toast('Đã cập nhật lý do phiếu chi', 'success');
       setEditingReason(false);
-      onChanged && onChanged();
+      await refresh();
     } catch (e) {
       toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
     } finally { setSavingReason(false); }
@@ -150,7 +167,7 @@ export default function ExpenseDetailModal({ voucher: v, onClose, onChanged }) {
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-[#1C1C1E] flex-1">{v.reason || '—'}</p>
                   {canEditReason && (
-                    <button onClick={() => setEditingReason(true)}
+                    <button onClick={() => { setEditedReason(v.reason || ''); setEditingReason(true); }}
                       className="p-1 rounded-lg hover:bg-[#E8DDD0] text-[#8E8878] hover:text-[#C9A84C] transition-colors"
                       title="Sửa lý do">
                       <Pencil size={13} />
@@ -183,26 +200,9 @@ export default function ExpenseDetailModal({ voucher: v, onClose, onChanged }) {
             </div>
           )}
 
-          {/* Items */}
+          {/* Items — có thể sửa trực tiếp (xem quy tắc quyền trong ExpenseItemsEditor) */}
           {v.items?.length > 0 ? (
-            <div>
-              <p className="text-sm font-semibold text-[#1C1C1E] mb-2">Các khoản chi</p>
-              <div className="space-y-2">
-                {v.items.map((item, i) => (
-                  <div key={item.id || i} className="flex items-start justify-between bg-[#FAF7F2] rounded-xl px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-[#1C1C1E]">{item.itemName}</p>
-                      {item.note && <p className="text-xs text-[#8E8878] mt-0.5">{item.note}</p>}
-                    </div>
-                    <p className="text-sm font-bold text-[#1C1C1E] flex-shrink-0 ml-3">{formatVND(item.amount)}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/5">
-                <span className="text-sm font-semibold text-[#8E8878]">Tổng cộng</span>
-                <span className="text-base font-bold text-[#C9A84C]">{formatVND(v.totalAmount)}</span>
-              </div>
-            </div>
+            <ExpenseItemsEditor voucher={v} onChanged={refresh} />
           ) : (
             <div className="flex justify-between items-center bg-[#FAF7F2] rounded-xl px-4 py-3">
               <span className="text-sm font-semibold text-[#8E8878]">Tổng cộng</span>

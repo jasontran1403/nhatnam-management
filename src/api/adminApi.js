@@ -148,6 +148,24 @@ export const adminExpenseApi = {
   getById: (id) => api.get(`/api/expense-vouchers/${id}`).then(unwrap),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }).then(unwrap),
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }).then(unwrap),
+
+  /**
+   * Duyệt hàng loạt. `ids` có thể gom từ NHIỀU TRANG khác nhau — backend chỉ nhận id
+   * nên không phụ thuộc phân trang. Trả về { total, succeeded, failed, results[] }.
+   */
+  bulkApprove: (ids, note) =>
+    api.post('/api/expense-vouchers/bulk-approve', { ids, note }).then(unwrap),
+
+  /** Từ chối hàng loạt — dùng chung một lý do cho mọi phiếu được chọn. */
+  bulkReject: (ids, reason) =>
+    api.post('/api/expense-vouchers/bulk-reject', { ids, reason }).then(unwrap),
+
+  /** Chuyển phiếu đã duyệt / đã từ chối về lại CHỜ DUYỆT (chỉ OWNER/ADMIN). */
+  reopen: (id, note) =>
+    api.post(`/api/expense-vouchers/${id}/reopen`, { note }).then(unwrap),
+
+  /** Nhật ký thao tác của phiếu (duyệt / từ chối / mở lại / sửa khoản chi). */
+  logs: (id) => api.get(`/api/expense-vouchers/${id}/logs`).then(unwrap),
 };
 
 export const adminIncomeApi = {

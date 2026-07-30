@@ -176,6 +176,8 @@
     "factory_batches": "Enter Production Batch",
     "batch_history": "Batch History",
     "warehouse_receipts": "Warehouse Receipts",
+    "cameras": "Camera Management",
+    "lot_pricing": "Lot Pricing",
     "quotation": "Quotation",
     "delivering": "Orders",
     "machine_manage": "Machines & Maintenance",

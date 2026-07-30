@@ -60,6 +60,10 @@ export const warehouseApi = {
     }),
   getReceiptDetail: (id) => api.get(`${BASE}/receipt/${id}`),
 
+  /** PDF phiếu đi đường (Giấy thông tin nguồn gốc động vật) — chỉ phiếu chuyển kho RA */
+  getTransportSlip: (receiptId) =>
+    api.get(`${BASE}/receipt/${receiptId}/transport-slip`, { responseType: 'blob' }),
+
   // ── Orders — gửi warehouseId qua query param ─────────────────────────────
   getPreparingOrders: (warehouseId) =>
     api.get(`${BASE}/orders/preparing`, {

@@ -46,6 +46,30 @@ export default function HistoryPage() {
   const [dateTo, setDateTo] = useState('');
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [warehouseName, setWarehouseName] = useState('');
+  const [slipLoadingId, setSlipLoadingId] = useState(null);
+
+  // ── Phiếu đi đường (Giấy thông tin nguồn gốc động vật) ─────────────────────
+  // Chỉ áp dụng cho phiếu CHUYỂN RA (TRANSFER_OUT). Mở PDF ở tab mới để in luôn.
+  const openTransportSlip = async (receipt) => {
+    setSlipLoadingId(receipt.id);
+    try {
+      const res = await warehouseApi.getTransportSlip(receipt.id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const win = window.open(url, '_blank');
+      if (!win) {
+        // Trình duyệt chặn popup → tải file về thay vì mở tab
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `phieu-di-duong-${receipt.receiptCode}.pdf`;
+        a.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      alert('Không tạo được phiếu đi đường. Vui lòng thử lại.');
+    } finally {
+      setSlipLoadingId(null);
+    }
+  };
 
   // Resolve warehouseId khi mount hoặc khi activeWarehouseId thay đổi
   useEffect(() => {
@@ -212,6 +236,23 @@ export default function HistoryPage() {
                             </tbody>
                           </table>
                           {r.note && <p style={{ marginTop: 8, fontSize: 12, color: 'var(--wh-muted)', fontStyle: 'italic' }}>📝 {r.note}</p>}
+
+                          {/* Chỉ phiếu CHUYỂN RA mới in được phiếu đi đường */}
+                          {r.receiptType === 'TRANSFER_OUT' && (
+                            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--wh-border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              <button
+                                className="wh-btn wh-btn-primary wh-btn-sm"
+                                disabled={slipLoadingId === r.id}
+                                onClick={(e) => { e.stopPropagation(); openTransportSlip(r); }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                              >
+                                {slipLoadingId === r.id ? '⏳ Đang tạo...' : '🚚 Tạo phiếu đi đường (PDF)'}
+                              </button>
+                              <span style={{ fontSize: 11.5, color: 'var(--wh-muted)' }}>
+                                Giấy thông tin nguồn gốc động vật — mục đích sử dụng ghi HSD xa nhất của các lô chuyển đi
+                              </span>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}

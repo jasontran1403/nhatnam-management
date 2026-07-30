@@ -14,7 +14,7 @@ async function loadMeta() {
 }
 
 // ── Ingredient Picker Modal ───────────────────────────────────────────────────
-function IngredientPickerModal({ stocks, selectedIds, onSelect, onClose }) {
+export function IngredientPickerModal({ stocks, selectedIds, onSelect, onClose }) {
   const [search, setSearch]         = useState('');
   const [cats, setCats]             = useState([]);
   const [subs, setSubs]             = useState([]);

@@ -297,7 +297,23 @@ export const expenseApi = {
   vendorCategories: () => api.get('/api/expense-vouchers/expense-categories'),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
+  /**
+   * Duyệt hàng loạt. `ids` gom từ NHIỀU TRANG khác nhau — backend chỉ nhận id nên
+   * không phụ thuộc phân trang. SUPER_ACCOUNTANT gọi được, nhưng backend vẫn kiểm
+   * quyền trên từng phiếu (chỉ duyệt được phiếu thuộc tầm của mình).
+   */
+  bulkApprove: (ids, note) => api.post('/api/expense-vouchers/bulk-approve', { ids, note }),
+  /** Từ chối hàng loạt — dùng chung một lý do cho mọi phiếu được chọn. */
+  bulkReject: (ids, reason) => api.post('/api/expense-vouchers/bulk-reject', { ids, reason }),
   updateReason: (id, reason) => api.patch(`/api/expense-vouchers/${id}/reason`, { reason }),
+  /**
+   * Sửa DANH SÁCH khoản chi của phiếu — gửi TOÀN BỘ danh sách sau khi sửa.
+   * Backend tự suy ra: có id = cập nhật, id null = thêm mới, khoản cũ vắng mặt = xoá.
+   * Sau khi lưu, cấp duyệt (approverScope) được tính lại theo tổng tiền mới.
+   * @param {number} id  id phiếu chi
+   * @param {Array<{id:number|null, categoryId:number, amount:number, note?:string}>} items
+   */
+  updateItems: (id, items) => api.patch(`/api/expense-vouchers/${id}/items`, { items }),
   getApprovalConfig: () => api.get('/api/expense-vouchers/approval-config'),
   updateApprovalConfig: (data) => api.put('/api/expense-vouchers/approval-config', data),
   uploadImage: (file) => {

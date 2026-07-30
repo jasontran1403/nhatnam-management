@@ -8,8 +8,10 @@ import {
   X, Plus, CheckCircle, XCircle, Clock,
   Building2, Eye, TrendingDown, TrendingUp, Wallet,
   Landmark, ShieldCheck, Filter,
-  Download, Upload, Loader2, AlertTriangle, FileSpreadsheet
+  Download, Upload, Loader2, AlertTriangle, FileSpreadsheet, ListChecks
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import ExpenseBulkActionModal, { canApproveVoucher } from '../../components/expense/ExpenseBulkActionModal';
 import ExpenseCreateModal from './ExpenseCreateModal';
 import ExpenseDetailModal from './ExpenseDetailModal';
 
@@ -40,6 +42,7 @@ const PAGE_SIZE = 10;
 
 export default function ExpenseListPage() {
   const toast = useToast();
+  const { role } = useAuth();
   const searchDebounce = useRef(null);
   const searchTextRef = useRef('');
   const fileInputRef = useRef(null);
@@ -63,6 +66,31 @@ export default function ExpenseListPage() {
   const [showExport, setShowExport] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportPaymentType, setExportPaymentType] = useState('ALL'); // ALL | CASH | BANK_TRANSFER
+
+  // ── LỰA CHỌN NHIỀU PHIẾU ĐỂ DUYỆT/TỪ CHỐI 1 LẦN ───────────────────────────
+  // Giống trang OWNER/ADMIN: lưu Map(id → voucher) chứ không chỉ id, nhờ vậy phiếu
+  // tick ở TRANG KHÁC vẫn còn nguyên khi chuyển trang và vẫn hiện đủ trong modal.
+  // Chỉ tick được phiếu mà vai trò hiện tại thực sự duyệt được (xem canApproveVoucher):
+  // SUPER_ACCOUNTANT chỉ chọn được phiếu approverScope = SUPER_ACCOUNTANT.
+  const [selectedMap, setSelectedMap] = useState(new Map());
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+
+  const selectedList = Array.from(selectedMap.values());
+  const selectedTotal = selectedList.reduce((s, v) => s + Number(v.totalAmount || 0), 0);
+
+  const toggleSelect = (v) => setSelectedMap(prev => {
+    const next = new Map(prev);
+    if (next.has(v.id)) next.delete(v.id); else next.set(v.id, v);
+    return next;
+  });
+  const removeSelected = (id) => setSelectedMap(prev => {
+    const next = new Map(prev); next.delete(id); return next;
+  });
+  const clearSelected = () => setSelectedMap(new Map());
+  /** Bỏ chọn các phiếu đã xử lý THÀNH CÔNG, giữ lại phiếu lỗi để xem lý do. */
+  const removeManySelected = (ids) => setSelectedMap(prev => {
+    const next = new Map(prev); ids.forEach(id => next.delete(id)); return next;
+  });
 
   const calcTotal = (list) => list.reduce((s, v) => s + (Number(v.totalAmount) || 0), 0);
 
@@ -181,6 +209,19 @@ export default function ExpenseListPage() {
     (!approverFilter || v.approvedByName === approverFilter)
   );
 
+  // "Chọn tất cả" chỉ tác động lên phiếu duyệt được của TRANG HIỆN TẠI (sau bộ lọc);
+  // các phiếu đã tick ở trang khác giữ nguyên.
+  const selectableOnPage = displayed.filter(v => canApproveVoucher(v, role));
+  const canBulk = selectableOnPage.length > 0 || selectedList.length > 0;
+  const allPageSelected = selectableOnPage.length > 0
+    && selectableOnPage.every(v => selectedMap.has(v.id));
+  const togglePageAll = () => setSelectedMap(prev => {
+    const next = new Map(prev);
+    if (allPageSelected) selectableOnPage.forEach(v => next.delete(v.id));
+    else selectableOnPage.forEach(v => next.set(v.id, v));
+    return next;
+  });
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
       <div className="flex items-center gap-3">
@@ -289,16 +330,44 @@ export default function ExpenseListPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Chọn tất cả phiếu duyệt được của trang này */}
+          {canBulk && (
+            <label className="flex items-center gap-2 px-1 pb-1 text-xs text-[#8E8878] cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={allPageSelected}
+                disabled={selectableOnPage.length === 0}
+                onChange={togglePageAll}
+                className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40 disabled:opacity-30"
+              />
+              Chọn tất cả phiếu duyệt được ở trang này ({selectableOnPage.length})
+            </label>
+          )}
+
           {displayed.map(v => {
             const s = STATUS_CFG[v.status] || STATUS_CFG.PENDING;
             const StatusIcon = s.icon;
             const isBank = v.paymentType === 'BANK_TRANSFER';
+            const selectable = canApproveVoucher(v, role);
+            const checked = selectedMap.has(v.id);
             return (
               <div key={v.id} onClick={() => setDetailVoucher(v)}
-                className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 hover:border-[#C9A84C]/40 hover:shadow-md transition cursor-pointer">
+                className={`bg-white rounded-2xl border shadow-sm p-4 hover:border-[#C9A84C]/40 hover:shadow-md transition cursor-pointer ${
+                  checked ? 'border-[#C9A84C] ring-1 ring-[#C9A84C]/30' : 'border-black/5'
+                }`}>
                 {/* Row 1: mã + badge + tiền */}
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {selectable && (
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleSelect(v)}
+                        title="Chọn phiếu để duyệt/từ chối hàng loạt"
+                        className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40 cursor-pointer"
+                      />
+                    )}
                     <span className="font-mono text-xs font-bold text-[#C9A84C]">Số phiếu chi {v.paymentNumber || v.voucherCode}</span>
                     <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${s.cls}`}>
                       <StatusIcon size={9} /> {s.label}
@@ -349,6 +418,44 @@ export default function ExpenseListPage() {
           ))}
           <button disabled={page >= totalPages - 1} onClick={() => load(page + 1)} className="p-2 rounded-lg border border-black/10 hover:bg-[#FAF7F2] disabled:opacity-30 transition"><ChevronRight size={16} /></button>
         </div>
+      )}
+
+      {/* ── Thanh hành động hàng loạt ─────────────────────────────────────── */}
+      {selectedList.length > 0 && (
+        <div className="sticky bottom-4 z-40 mx-auto max-w-2xl">
+          <div className="bg-[#1A2B1A] text-white rounded-2xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-3">
+            <ListChecks size={18} className="text-[#C9A84C] flex-shrink-0" />
+            <div className="flex-1 min-w-[130px]">
+              <p className="text-sm font-bold">Đã chọn {selectedList.length} phiếu</p>
+              <p className="text-xs text-white/60">Tổng {formatVND(selectedTotal)}</p>
+            </div>
+            <button onClick={() => setBulkModalOpen(true)}
+              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold transition">
+              Xem danh sách
+            </button>
+            <button onClick={clearSelected}
+              className="px-3 py-2 rounded-xl border border-white/20 hover:bg-white/10 text-xs font-semibold transition">
+              Bỏ chọn hết
+            </button>
+            <button onClick={() => setBulkModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#B8923E] text-xs font-bold transition">
+              Duyệt / Từ chối
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bulkModalOpen && (
+        <ExpenseBulkActionModal
+          vouchers={selectedList}
+          onRemove={removeSelected}
+          onClose={() => setBulkModalOpen(false)}
+          onDone={(res) => {
+            const okIds = (res?.results || []).filter(r => r.success).map(r => r.id);
+            if (okIds.length) removeManySelected(okIds); else clearSelected();
+            load(page);
+          }}
+        />
       )}
 
       <button
