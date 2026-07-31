@@ -22,6 +22,25 @@ export const driverAdminApi = {
   /** Gắn tài khoản với tài xế. userId = null để bỏ gắn. */
   link:           (driverId, userId) =>
     api.patch(`/api/admin/drivers/${driverId}/link`, { userId }).then(r),
+
+  /**
+   * Đánh dấu tài xế "KHÔNG XỬ LÝ" (systemDriver).
+   * true = lựa chọn giao hàng ảo (Grab, Giao tại kho, Khách tự lấy…): vẫn gán được
+   * cho đơn, nhưng KHÔNG hiện ở màn điểm danh ODO và báo cáo ODO, và không bị đòi
+   * tài khoản đăng nhập.
+   */
+  setSystem:      (driverId, systemDriver) =>
+    api.patch(`/api/admin/drivers/${driverId}/system`, { systemDriver }).then(r),
+
+  /**
+   * Tạo tài xế từ màn quản trị — set được systemDriver ngay lúc tạo.
+   * @param {{name:string, vehicleType?:'TRUCK'|'MOTORBIKE'|'BOTH', systemDriver?:boolean}} payload
+   */
+  create:         (payload)         => api.post('/api/admin/drivers', payload).then(r),
+
+  /** Sửa tài xế. Chỉ gửi trường cần đổi; trường không gửi giữ nguyên. */
+  update:         (driverId, patch) =>
+    api.patch(`/api/admin/drivers/${driverId}`, patch).then(r),
 };
 
 export default driverApi;

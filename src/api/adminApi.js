@@ -199,3 +199,18 @@ export const adminSaleKpiApi = {
 export const adminWarehouseStockApi = {
   getStock: (id) => api.get(`/api/admin/warehouses/${id}/stock`).then(unwrap),
 };
+
+// ─── Báo cáo ODO tài xế (OWNER/ADMIN) ────────────────────────────────────────
+export const adminDriverOdometerApi = {
+  /**
+   * Tổng hợp ODO theo khoảng ngày.
+   * @param {string} from "yyyy-MM-dd"
+   * @param {string} to   "yyyy-MM-dd"
+   */
+  report: (from, to, includeInactive = false) =>
+    api.get('/api/admin/driver-odometer', { params: { from, to, includeInactive } }).then(unwrap),
+
+  /** Chi tiết các đơn một tài xế đã giao trong khoảng ngày. */
+  orders: (driverId, from, to) =>
+    api.get(`/api/admin/driver-odometer/${driverId}/orders`, { params: { from, to } }).then(unwrap),
+};

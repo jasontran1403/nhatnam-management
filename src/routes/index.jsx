@@ -27,6 +27,7 @@ import AdminIngredients from '../pages/admin/AdminIngredients';
 import AdminBatchApproval from '../pages/admin/AdminBatchApproval';
 import AdminWarehouseStock from '../pages/admin/AdminWarehouseStock';
 import ExpenseVoucherPage from '../pages/admin/ExpenseVoucherPage';
+import DriverOdometerPage from '../pages/admin/DriverOdometerPage';
 import AdminSupplierManagementPage from '../pages/admin/AdminSupplierManagementPage';
 import SaleKpiPage from '../pages/admin/SaleKpiPage';
 import OwnerAnalyticsPage from '../pages/owner/OwnerAnalyticsPage';
@@ -205,6 +206,7 @@ export default function AppRoutes() {
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
         <Route path="ingredients" element={<AdminIngredients />} />
         <Route path="expenses" element={<ExpenseVoucherPage />} />
+        <Route path="drivers" element={<DriverOdometerPage />} />
         <Route path="incomes" element={<IncomeListPage adminMode />} />
         <Route path="cashflow" element={<OwnerCashflowPage />} />
         <Route path="inventory" element={<OwnerInventoryPage />} />
@@ -265,6 +267,7 @@ export default function AppRoutes() {
         <Route path="suppliers" element={<AdminSupplierManagementPage />} />
         <Route path="suppliers/:vendorId" element={<AdminSupplierManagementPage />} />
         <Route path="expenses" element={<ExpenseVoucherPage />} />
+        <Route path="drivers" element={<DriverOdometerPage />} />
         <Route path="incomes" element={<IncomeListPage adminMode />} />
         <Route path="cashflow" element={<OwnerCashflowPage />} />
         <Route path="inventory" element={<OwnerInventoryPage />} />
