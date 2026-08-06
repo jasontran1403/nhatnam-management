@@ -1155,11 +1155,13 @@ function PayrollTables({ data, loading }) {
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);   // ô tìm nổi trên mobile
 
-  if (loading) return <SectionCard><LoadingSpinner label="Đang tải bảng lương..." /></SectionCard>;
-  if (!data) return null;
-
-  const rows = data.rows || [];
-  const isDriver = !data.attendanceBased;
+  // ── MỌI HOOK PHẢI NẰM TRÊN CÁC `return` SỚM ───────────────────────────────
+  //   React nhận diện hook theo THỨ TỰ GỌI, không theo tên. Đặt useEffect phía
+  //   dưới `if (loading) return ...` thì lần render đang tải chỉ chạy 4 hook,
+  //   lần sau chạy 5 → "Rendered more hooks than during the previous render".
+  //   Vì vậy phần suy ra dữ liệu bên dưới phải chịu được data = null.
+  const rows = data?.rows || [];
+  const isDriver = !data?.attendanceBased;
 
   const q = normText(query);
   const matchIds = q
@@ -1167,19 +1169,25 @@ function PayrollTables({ data, loading }) {
     : [];
   const isMatch = (r) => matchIds.includes(r.userId);
 
+  // Chuỗi id thay cho mảng trong deps: mảng tạo mới mỗi lần render nên so sánh
+  // tham chiếu luôn khác nhau, effect sẽ chạy vô hạn và cuộn giật liên tục.
+  const matchKey = matchIds.join(',');
+
   // Cuộn tới người khớp ĐẦU TIÊN. Tìm cả id của thẻ mobile lẫn dòng bảng rồi
   // chọn phần tử đang thực sự hiển thị (offsetParent = null khi bị `hidden`),
   // nên cùng một đoạn code chạy đúng ở cả hai bố cục.
   useEffect(() => {
-    if (!matchIds.length) return;
-    const id = matchIds[0];
+    if (!matchKey) return;
+    const id = matchKey.split(',')[0];
     const el = [
       document.getElementById(`payroll-card-${id}`),
       document.getElementById(`payroll-row-${id}`),
     ].find(e => e && e.offsetParent !== null);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, matchIds.join(',')]);
+  }, [matchKey]);
+
+  if (loading) return <SectionCard><LoadingSpinner label="Đang tải bảng lương..." /></SectionCard>;
+  if (!data) return null;
 
   return (
     <>

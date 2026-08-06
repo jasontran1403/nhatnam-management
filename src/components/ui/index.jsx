@@ -199,7 +199,7 @@ export function Td({ children, className = '', right = false, ...rest }) {
   );
 }
 
-export function Tr({ children, onClick, className = '' }) {
+export function Tr({ children, onClick, className = '', ...rest }) {
   const isHeader =
     className.includes('bg-[#FAF7F2]') ||
     className.includes('bg-');
