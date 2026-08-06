@@ -930,7 +930,7 @@ function PayrollSummary({ data }) {
     v == null ? '—' : `${Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 3 })} tấn`;
 
   const Stat = ({ label, value, tone = 'text-[#1C1C1E]', hint }) => (
-    <div className="min-w-[120px]">
+    <div className="min-w-0 sm:min-w-[120px]">
       <p className="text-[10px] font-semibold text-[#8E8878] uppercase tracking-wider">{label}</p>
       <p className={`text-sm font-bold mt-0.5 ${tone}`}>{value}</p>
       {hint && <p className="text-[10px] text-[#C4B9A8] mt-0.5">{hint}</p>}
@@ -939,7 +939,14 @@ function PayrollSummary({ data }) {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex flex-wrap gap-x-7 gap-y-3">
+      {/* Điện thoại: lưới 2 cột, ô cột phải canh phải để hai mép thẳng hàng.
+          Trước đây dùng flex-wrap nên trên màn hẹp các ô rơi xuống lệch nhau,
+          cột phải vẫn canh trái và nhìn như bị lỗi tràn.
+          Từ sm trở lên quay về flex-wrap như cũ. */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3
+                      [&>div:nth-child(even)]:text-right
+                      sm:flex sm:flex-wrap sm:gap-x-7
+                      sm:[&>div:nth-child(even)]:text-left">
         {kpiReady && (
           <>
             <Stat
@@ -987,6 +994,135 @@ const fmtDays = (v) =>
 const shortfall = (r) =>
   r.standardBaseSalary != null && r.baseSalary != null && r.baseSalary < r.standardBaseSalary;
 
+// LƯƠNG KHOÁN TRỌN THÁNG — bảo vệ xưởng thuê từ đơn vị bên ngoài. Lương không
+// chia theo chấm công, không bảo hiểm/thuế/phụ cấp, nên gộp 2 cột lương và bỏ
+// nút "Chi tiết lương".
+//
+// Ưu tiên cờ attendanceExempt từ BE; so thêm payrollRole để bảng vẫn đúng với
+// bản ghi cũ chưa có cờ này.
+const flatPay = (r) => !!r.attendanceExempt || r.payrollRole === 'FACTORY_SECURITY';
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// THẺ PHIẾU LƯƠNG — BẢN ĐIỆN THOẠI
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// Bố cục 2 cột: nhãn/giá trị bên trái canh trái, bên phải canh phải — hai mép
+// thẳng hàng nên mắt quét dọc được, không bị so le như khi để flex-wrap.
+//
+//   ┌──────────────────────────────────────┐
+//   │ Tên nhân viên                        │
+//   │ Chức vụ                              │
+//   ├──────────────────┬───────────────────┤
+//   │ Lương cơ bản     │      Lương thực tế│
+//   ├──────────────────┼───────────────────┤
+//   │ Phụ cấp          │        Thưởng KPI │
+//   │ Thưởng           │                   │
+//   ├──────────────────┴───────────────────┤
+//   │ [Chi tiết lương]     [Ngày công]     │
+//   └──────────────────────────────────────┘
+
+function PayrollMobileCard({ row: r, isDriver, showKpi, onAttendance, onSalary }) {
+  const flat = flatPay(r);
+
+  // Bảo vệ khoán trọn tháng: không breakdown, không chấm công → không nút nào.
+  const showSalaryBtn = !flat && !!r.salaryDetail;
+  const showAttendanceBtn = !isDriver && !flat;
+
+  const Cell = ({ label, value, sub, tone = '', right = false }) => (
+    <div className={right ? 'text-right' : 'text-left'}>
+      <p className="text-[10px] font-semibold text-[#8E8878] uppercase tracking-wider">{label}</p>
+      <p className={`text-sm font-bold mt-0.5 ${tone || 'text-[#1C1C1E]'}`}>{value}</p>
+      {sub && <p className="text-[11px] text-[#8E8878] mt-0.5">{sub}</p>}
+    </div>
+  );
+
+  return (
+    <div className="px-4 py-4 space-y-3">
+      {/* Header */}
+      <div>
+        <p className="font-semibold text-[#1C1C1E] leading-snug">{r.userFullName}</p>
+        <p className="text-xs text-[#8E8878]">
+          {r.roleLabel || '—'}
+          {r.salaryStatus === 'NO_SALARY' && (
+            <span className="ml-1.5 text-amber-600 font-semibold">· chưa có hồ sơ lương</span>
+          )}
+        </p>
+      </div>
+
+      {/* Lương cơ bản | Lương thực tế */}
+      {flat ? (
+        <Cell
+          label="Lương khoán trọn tháng"
+          value={formatCurrency(r.baseSalary)}
+          sub="Hợp đồng thuê ngoài"
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <Cell label="Lương cơ bản" value={formatCurrency(r.standardBaseSalary ?? r.baseSalary)} />
+          <Cell
+            right
+            label="Lương thực tế"
+            value={formatCurrency(r.baseSalary)}
+            tone={shortfall(r) ? 'text-amber-700' : ''}
+            sub={r.standardDays != null
+              ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
+              : null}
+          />
+        </div>
+      )}
+
+      {/* Phụ cấp + Thưởng (trái, 2 dòng) | Thưởng KPI (phải) */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Cell label="Phụ cấp" value={formatCurrency(r.allowance)} />
+          <Cell label="Thưởng" value={formatCurrency(r.bonus)} />
+        </div>
+
+        {showKpi && (
+          <Cell
+            right
+            label="Thưởng KPI"
+            value={formatCurrency(r.kpiBonus)}
+            tone="text-[#C9A84C]"
+          />
+        )}
+      </div>
+
+      {/* Hai nút chia đôi trái / phải */}
+      {(showSalaryBtn || showAttendanceBtn) && (
+        <div className="flex items-center gap-2 pt-1">
+          {showSalaryBtn && (
+            <button
+              type="button"
+              onClick={onSalary}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl
+                border border-black/10 bg-white text-[11px] font-semibold text-[#5A5548]
+                active:bg-[#FAF7F2] transition-colors"
+            >
+              <Receipt size={13} className="text-[#C9A84C]" />
+              Chi tiết lương
+            </button>
+          )}
+
+          {showAttendanceBtn && (
+            <button
+              type="button"
+              onClick={onAttendance}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl
+                border border-black/10 bg-white text-[11px] font-semibold text-[#5A5548]
+                active:bg-[#FAF7F2] transition-colors"
+            >
+              <Clock size={13} className="text-[#C9A84C]" />
+              Chi tiết ngày công
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PayrollTables({ data, loading }) {
   // Nhân viên đang mở modal chi tiết ngày công (null = đóng).
   const [detailOf, setDetailOf] = useState(null);
@@ -1013,7 +1149,10 @@ function PayrollTables({ data, loading }) {
           <PayrollSummary data={data} />
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Bảng đầy đủ — chỉ từ md trở lên. Màn hẹp dùng danh sách thẻ bên dưới:
+            7 cột nhét vào 380px thì chữ nhỏ tới mức không đọc nổi, còn cuộn
+            ngang thì mất luôn cột tên nên không biết đang xem của ai. */}
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <Thead>
               <Tr>
@@ -1042,24 +1181,34 @@ function PayrollTables({ data, loading }) {
                       )}
                     </div>
                   </Td>
-                  {/* Lương cơ bản NGUYÊN MỨC — chưa chia theo chấm công.
-                      standardBaseSalary chỉ có ở bản ghi mới; bản ghi cũ rơi về
-                      baseSalary để bảng không hiện ô trống. */}
-                  <Td right>{formatCurrency(r.standardBaseSalary ?? r.baseSalary)}</Td>
+                  {/* NGƯỜI KHOÁN TRỌN THÁNG (bảo vệ xưởng — hợp đồng thuê ngoài):
+                      gộp 2 cột làm một. Lương thực tế luôn bằng lương cơ bản vì
+                      không chia theo chấm công, tách ra chỉ lặp lại một con số. */}
+                  {flatPay(r) ? (
+                    <Td right colSpan={2}>
+                      <div>{formatCurrency(r.baseSalary)}</div>
+                      <div className="text-[11px] text-[#8E8878]">Khoán trọn tháng</div>
+                    </Td>
+                  ) : (
+                    <>
+                      {/* Lương cơ bản NGUYÊN MỨC — chưa chia theo chấm công.
+                          standardBaseSalary chỉ có ở bản ghi mới; bản ghi cũ rơi
+                          về baseSalary để bảng không hiện ô trống. */}
+                      <Td right>{formatCurrency(r.standardBaseSalary ?? r.baseSalary)}</Td>
 
-                  {/* Lương thực tế + số ngày công đã ăn vào lương ở dòng dưới */}
-                  <Td right>
-                    <div className={shortfall(r) ? 'text-amber-700 font-semibold' : ''}>
-                      {formatCurrency(r.baseSalary)}
-                    </div>
-                    <div className="text-[11px] text-[#8E8878]">
-                      {r.attendanceExempt
-                        ? 'Khoán trọn tháng'
-                        : r.standardDays != null
-                          ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
-                          : '—'}
-                    </div>
-                  </Td>
+                      {/* Lương thực tế + số ngày công ở dòng dưới */}
+                      <Td right>
+                        <div className={shortfall(r) ? 'text-amber-700 font-semibold' : ''}>
+                          {formatCurrency(r.baseSalary)}
+                        </div>
+                        <div className="text-[11px] text-[#8E8878]">
+                          {r.standardDays != null
+                            ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
+                            : '—'}
+                        </div>
+                      </Td>
+                    </>
+                  )}
 
                   <Td right>{formatCurrency(r.allowance)}</Td>
                   <Td right>{formatCurrency(r.bonus)}</Td>
@@ -1085,19 +1234,28 @@ function PayrollTables({ data, loading }) {
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => setSalaryOf(r)}
-                        disabled={!r.salaryDetail}
-                        title={r.salaryDetail ? 'Xem breakdown lương' : 'Chưa có hồ sơ lương'}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
-                          border border-black/10 bg-white text-[11px] font-semibold text-[#5A5548]
-                          hover:border-[#C9A84C]/60 hover:text-[#1C1C1E] transition-colors
-                          disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <Receipt size={13} className="text-[#C9A84C]" />
-                        Chi tiết lương
-                      </button>
+                      {/* Người khoán trọn tháng không có breakdown để xem: không
+                          bảo hiểm, không thuế, không phụ cấp — modal sẽ chỉ lặp
+                          lại đúng con số đã hiện ở cột lương. */}
+                      {!flatPay(r) && (
+                        <button
+                          type="button"
+                          onClick={() => setSalaryOf(r)}
+                          disabled={!r.salaryDetail}
+                          title={r.salaryDetail ? 'Xem breakdown lương' : 'Chưa có hồ sơ lương'}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
+                            border border-black/10 bg-white text-[11px] font-semibold text-[#5A5548]
+                            hover:border-[#C9A84C]/60 hover:text-[#1C1C1E] transition-colors
+                            disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Receipt size={13} className="text-[#C9A84C]" />
+                          Chi tiết lương
+                        </button>
+                      )}
+
+                      {flatPay(r) && (
+                        <span className="text-[11px] text-[#C4B9A8] italic">Hợp đồng thuê ngoài</span>
+                      )}
                     </div>
                   </Td>
                 </Tr>
@@ -1108,6 +1266,25 @@ function PayrollTables({ data, loading }) {
               )}
             </tbody>
           </Table>
+        </div>
+
+        {/* ── ĐIỆN THOẠI: mỗi nhân viên một thẻ ───────────────────────────── */}
+        <div className="md:hidden divide-y divide-black/5">
+          {rows.map(r => (
+            <PayrollMobileCard
+              key={r.userId}
+              row={r}
+              isDriver={isDriver}
+              showKpi={!!data.hasKpiBonus}
+              onAttendance={() => setDetailOf(r)}
+              onSalary={() => setSalaryOf(r)}
+            />
+          ))}
+          {rows.length === 0 && (
+            <p className="text-center text-sm text-[#8E8878] py-10">
+              Bộ phận này chưa có nhân viên nào
+            </p>
+          )}
         </div>
       </SectionCard>
 
