@@ -289,7 +289,11 @@ function LotRow({ lot, unit, onChange, onRemove }) {
           />
         </div>
         <div>
-          <label className="wh-label" style={{ marginBottom: 4 }}>Hạn sử dụng</label>
+          {/* HSD không bắt buộc — ghi rõ trên nhãn để người nhập khỏi đi tìm
+              một giá trị không tồn tại cho vật tư vốn không có hạn. */}
+          <label className="wh-label" style={{ marginBottom: 4 }}>
+            Hạn sử dụng <span style={{ color: '#8E8878', fontWeight: 400 }}>(không bắt buộc)</span>
+          </label>
           <input
             className="wh-input" type="date"
             value={lot.expiryDate || ''}

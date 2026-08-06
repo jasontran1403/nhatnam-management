@@ -547,8 +547,9 @@ function AdjustForm() {
           return setError(`Số lượng lô của "${ingName}" không được âm.`);
         if (lot.isNew && qty <= 0)
           return setError(`Lô mới của "${ingName}" phải có số lượng lớn hơn 0.`);
-        if (lot.isNew && !lot.expiryDate)
-          return setError(`Vui lòng nhập hạn sử dụng cho lô mới của "${ingName}".`);
+        // HSD KHÔNG bắt buộc: nhiều mặt hàng không có hạn (dây buộc, bao bì,
+        // vật tư tính theo mét/bó). Backend vốn đã nhận expiryDate = null và
+        // FIFO xếp lô không HSD xuống cuối, nên chỉ có chốt chặn ở đây là thừa.
       }
     }
 
