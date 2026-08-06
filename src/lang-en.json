@@ -197,6 +197,7 @@
     "my_requests": "My Requests",
     "my_payroll": "Payroll",
     "attendance_sheets": "Timesheets",
+    "payroll_passcode": "Payroll lock",
     "supply_orders": "Office Supply Orders",
     "supply_warehouse": "Office Supply Stock"
   },

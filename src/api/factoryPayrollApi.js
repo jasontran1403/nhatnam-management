@@ -193,6 +193,23 @@ export const factoryPayrollApi = {
     api.post('/api/factory-payroll/kpi/recompute', null, {
       params: { month, year, ...(securityRate != null ? { securityRate } : {}) },
     }).then(r),
+
+  // ── Quỹ dư KPI khai báo tay ───────────────────────────────────────────────
+  //
+  // Dùng khi tháng trước đã chia thưởng NGOÀI app và còn dư: hệ thống không có
+  // bản ghi nào của tháng đó để kế thừa sổ dư, nên phải khai báo tay.
+  // Khai báo xong PHẢI bấm "Tính lại thưởng KPI" thì quỹ mới được cộng vào.
+
+  carryOverSeeds: (month, year) =>
+    api.get('/api/factory-payroll/kpi/carry-over-seeds', {
+      params: (month != null && year != null) ? { month, year } : {},
+    }).then(r),
+
+  addCarryOverSeed: (payload) =>
+    api.post('/api/factory-payroll/kpi/carry-over-seeds', payload).then(r),
+
+  deleteCarryOverSeed: (id) =>
+    api.delete(`/api/factory-payroll/kpi/carry-over-seeds/${id}`).then(r),
 };
 
 export default factoryPayrollApi;

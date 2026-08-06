@@ -8,7 +8,7 @@ import {
   FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
   Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet, Calculator, Building2,
-  ClipboardSignature, Boxes, Video,
+  ClipboardSignature, Boxes, Video, ShieldAlert,
 } from 'lucide-react';
 
 export const adminNavRaw = [
@@ -50,6 +50,7 @@ export const ownerNavRaw = [
   { to: '/owner/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
   { to: '/owner/attendance', labelKey: 'attendance_sheets', icon: ClipboardSignature },
+  { to: '/owner/payroll-passcode', labelKey: 'payroll_passcode', icon: ShieldAlert },
   { to: '/owner/production', labelKey: 'production', icon: Factory },
   { to: '/owner/cameras', labelKey: 'cameras', icon: Video },
 ];
@@ -57,6 +58,8 @@ export const ownerNavRaw = [
 export const hrNavRaw = [
   { to: '/hr/manage', labelKey: 'hr_manage', icon: UserCog },
   { to: '/hr/salaries', labelKey: 'salaries', icon: Receipt },
+  // Mở khoá cho nhân viên nhập sai mật khẩu xem lương 3 lần
+  { to: '/hr/payroll-passcode', labelKey: 'payroll_passcode', icon: ShieldAlert },
 ];
 
 export const sellerNavRaw = [

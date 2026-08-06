@@ -509,3 +509,28 @@ nav::-webkit-scrollbar {
     opacity: 1;
   }
 }
+/* ── Màn hình nhập mật khẩu xem lương (passcode 6 số) ──────────────────────── */
+/* Rung ngang khi nhập sai — tín hiệu tức thì, không cần đọc chữ mới biết sai. */
+@keyframes passcode-shake {
+  0%, 100% { transform: translateX(0); }
+  15%      { transform: translateX(-8px); }
+  30%      { transform: translateX(8px); }
+  45%      { transform: translateX(-6px); }
+  60%      { transform: translateX(6px); }
+  75%      { transform: translateX(-3px); }
+  90%      { transform: translateX(3px); }
+}
+
+.passcode-shake {
+  animation: passcode-shake .45s cubic-bezier(.36, .07, .19, .97);
+}
+
+/* Con trỏ nhấp nháy giả trong ô đang focus (input để trong suốt nên phải tự vẽ) */
+@keyframes passcode-caret {
+  0%, 45%   { opacity: 1; }
+  55%, 100% { opacity: 0; }
+}
+
+.passcode-caret {
+  animation: passcode-caret 1.05s steps(1) infinite;
+}

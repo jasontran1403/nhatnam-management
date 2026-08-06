@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Wallet, ChevronDown, Calendar, Award, Factory, AlertCircle, Loader2, X,
-  Truck, Route, Package, MapPin,
+  Truck, Route, Package, MapPin, Lock,
 } from 'lucide-react';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +20,8 @@ import PayslipBreakdownCards from '../../components/hr/PayslipBreakdownCards';
 import AttendanceDayCalendar, {
   DayDetailPlaceholder, WEEKDAY_LABEL,
 } from '../../components/hr/AttendanceDayCalendar';
+import PayrollLockPage from './PayrollLockPage';
+import { payrollPasscodeApi, parsePasscodeError } from '../../api/payrollPasscodeApi';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TIỆN ÍCH
@@ -571,7 +573,7 @@ function PayslipCard({ slip }) {
 // TRANG CHÍNH
 // ══════════════════════════════════════════════════════════════════════════════
 
-export default function MyPayrollPage() {
+function MyPayrollContent({ onNeedPasscode }) {
   const { user } = useAuth();
 
   const [periods, setPeriods] = useState([]);
@@ -605,11 +607,15 @@ export default function MyPayrollPage() {
     try {
       setSlip(await factoryPayrollApi.myPayslip(p.month, p.year));
     } catch (e) {
+      // "Vé" xem lương hết hạn giữa chừng (hoặc bị khoá) → quay lại màn hình
+      // passcode thay vì hiện một dòng lỗi đỏ khó hiểu.
+      const info = parsePasscodeError(e);
+      if (info.required || info.locked) { onNeedPasscode?.(); return; }
       setError(e?.response?.data?.message || 'Không tải được phiếu lương');
     } finally {
       setLoadingSlip(false);
     }
-  }, []);
+  }, [onNeedPasscode]);
 
   useEffect(() => { loadSlip(selected); }, [selected, loadSlip]);
 
@@ -628,12 +634,27 @@ export default function MyPayrollPage() {
           }
         />
 
-        <PeriodPicker
-          periods={periods}
-          value={selected}
-          onChange={setSelected}
-          loading={loadingPeriods}
-        />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <PeriodPicker
+            periods={periods}
+            value={selected}
+            onChange={setSelected}
+            loading={loadingPeriods}
+          />
+
+          {/* Khoá lại ngay — hữu ích khi phải rời máy mà chưa đóng trang */}
+          <button
+            type="button"
+            onClick={onNeedPasscode}
+            title="Khoá lại màn hình lương"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-white
+                       border border-black/10 shadow-sm text-[#8E8878]
+                       hover:border-[#C9A84C]/50 hover:text-[#C9A84C] transition-colors"
+          >
+            <Lock size={15} />
+            <span className="hidden sm:inline text-xs font-semibold">Khoá lại</span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -742,4 +763,35 @@ export default function MyPayrollPage() {
         )}
     </div>
   );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CỔNG PASSCODE
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// Bọc toàn bộ trang lương bằng màn hình nhập mật khẩu 6 số.
+//
+// Trạng thái `unlocked` cố ý để trong state của component (KHÔNG dùng
+// localStorage/sessionStorage): rời trang là component unmount, quay lại thì
+// state khởi tạo lại từ false ⇒ luôn phải nhập passcode. Backend cũng chỉ cấp
+// "vé" 15 phút nên không thể lách bằng cách gọi API trực tiếp.
+export default function MyPayrollPage() {
+  const [unlocked, setUnlocked] = useState(false);
+
+  // Đổi key ⇒ ép PayrollLockPage mount lại (xoá ô nhập, hỏi lại trạng thái khoá)
+  const [gateKey, setGateKey] = useState(0);
+
+  const handleUnlocked = useCallback(() => setUnlocked(true), []);
+
+  const handleNeedPasscode = useCallback(() => {
+    setUnlocked(false);
+    setGateKey(k => k + 1);
+    // Huỷ luôn "vé" phía server — bấm "Khoá lại" phải khoá thật, không chỉ ẩn UI
+    payrollPasscodeApi.lock().catch(() => {});
+  }, []);
+
+  if (!unlocked)
+    return <PayrollLockPage key={gateKey} onUnlocked={handleUnlocked} />;
+
+  return <MyPayrollContent onNeedPasscode={handleNeedPasscode} />;
 }

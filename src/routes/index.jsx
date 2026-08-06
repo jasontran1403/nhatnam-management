@@ -60,6 +60,7 @@ import OwnerBatchReviewPage from '../pages/owner/OwnerBatchReviewPage';
 // HR
 import HrPage from '../pages/hr/HrPage';
 import HrSalaryStatusPage from '../pages/hr/HrSalaryStatusPage';
+import PayrollPasscodeAdminPage from '../pages/hr/PayrollPasscodeAdminPage';
 
 // Seller
 import SellerDashboardPage from '../pages/seller/SellerDashboardPage';
@@ -169,6 +170,8 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="/hr/manage" replace />} />
         <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
+        {/* Mở khoá cho nhân viên nhập sai mật khẩu xem lương 3 lần */}
+        <Route path="payroll-passcode" element={<PayrollPasscodeAdminPage />} />
       </Route>
 
       {/* ── SELLER */}
@@ -218,6 +221,8 @@ export default function AppRoutes() {
         <Route path="cameras" element={<CameraManagementPage />} />
         {/* Bảng chấm công — upload file Excel theo tháng */}
         <Route path="attendance" element={<AttendanceSheetsPage />} />
+        {/* Mở khoá xem lương */}
+        <Route path="payroll-passcode" element={<PayrollPasscodeAdminPage />} />
 
         {/* Production v2 — Dashboard chính + detail lệnh */}
         <Route path="production" element={<OwnerProductionDashboard />} />

@@ -1,11 +1,13 @@
 // src/components/common/ProfileButton.jsx
 import { useState } from 'react';
-import { UserCircle, X, Eye, EyeOff, Loader2, Check, Mail, Phone, Lock, RefreshCw, Star, ChevronRight } from 'lucide-react';
+import { UserCircle, X, Eye, EyeOff, Loader2, Check, Mail, Phone, Lock, RefreshCw, Star, ChevronRight, Wallet, ShieldAlert, KeyRound, AlertCircle } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from './Toast';
 import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
 import { useNavigate } from 'react-router-dom';
+import PasscodeInput from './PasscodeInput';
+import { payrollPasscodeApi, parsePasscodeError } from '../../api/payrollPasscodeApi';
 
 function inputCls(hasErr) {
     return `w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none transition
@@ -99,6 +101,16 @@ export default function ProfileButton({ compact = false }) {
     const [savingPwd, setSavingPwd] = useState(false);
     const [showPwd, setShowPwd] = useState({ current: false, new: false, confirm: false });
 
+    // ── Mật khẩu XEM LƯƠNG (passcode 6 số) ────────────────────────────────
+    // Tách hẳn khỏi pwdForm ở trên: đây là passcode 6 số chắn màn hình lương,
+    // không phải mật khẩu đăng nhập. Đổi passcode KHÔNG bắt đăng nhập lại.
+    const [pcForm, setPcForm] = useState({ current: '', next: '', confirm: '' });
+    const [pcErr, setPcErr] = useState('');
+    const [pcOk, setPcOk] = useState(false);
+    const [savingPc, setSavingPc] = useState(false);
+    const [pcStatus, setPcStatus] = useState(null);
+    const [loadingPcStatus, setLoadingPcStatus] = useState(false);
+
     const [switchingRole, setSwitchingRole] = useState(null);
     const [settingDefault, setSettingDefault] = useState(null);
 
@@ -120,17 +132,60 @@ export default function ProfileButton({ compact = false }) {
         finally { setLoadingProfile(false); }
     };
 
+    const loadPasscodeStatus = async () => {
+        setLoadingPcStatus(true);
+        try {
+            setPcStatus(await payrollPasscodeApi.status());
+        } catch (e) {
+            const info = parsePasscodeError(e);
+            setPcStatus({ locked: info.locked });
+        } finally { setLoadingPcStatus(false); }
+    };
+
+    const resetPasscodeForm = () => {
+        setPcForm({ current: '', next: '', confirm: '' });
+        setPcErr(''); setPcOk(false);
+    };
+
+    const handleChangePasscode = async () => {
+        setPcErr(''); setPcOk(false);
+
+        // Chặn sớm ở client cho các lỗi hiển nhiên — đỡ tốn 1 lần thử của
+        // hạn mức 3 lần sai bên server.
+        if (pcForm.current.length !== 6) { setPcErr('Vui lòng nhập đủ 6 số mật khẩu hiện tại'); return; }
+        if (pcForm.next.length !== 6) { setPcErr('Mật khẩu mới phải gồm đúng 6 chữ số'); return; }
+        if (pcForm.next !== pcForm.confirm) { setPcErr('Hai lần nhập mật khẩu mới không khớp'); return; }
+        if (pcForm.next === pcForm.current) { setPcErr('Mật khẩu mới phải khác mật khẩu hiện tại'); return; }
+
+        setSavingPc(true);
+        try {
+            await payrollPasscodeApi.change(pcForm.current, pcForm.next, pcForm.confirm);
+            toast('Đã đổi mật khẩu xem lương', 'success');
+            resetPasscodeForm();
+            setPcOk(true);
+            loadPasscodeStatus();
+        } catch (e) {
+            const info = parsePasscodeError(e);
+            setPcErr(info.message);
+            if (info.locked) loadPasscodeStatus();
+            setPcForm(p => ({ ...p, current: '' }));
+        } finally { setSavingPc(false); }
+    };
+
     const handleOpen = () => {
         setOpen(true);
         setView('menu');
         setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setPwdErr({}); setInfoErr({});
+        resetPasscodeForm();
+        setPcStatus(null);
     };
 
     const handleOpenProfile = () => {
         setView('profile');
         setTab('info');
         loadProfile();
+        loadPasscodeStatus();
     };
 
     const handleSaveInfo = async () => {
@@ -212,6 +267,8 @@ export default function ProfileButton({ compact = false }) {
     const tabs = [
         { key: 'info', label: t('profile', 'info_tab'), icon: UserCircle },
         { key: 'password', label: t('profile', 'password_tab'), icon: Lock },
+        // Panel thứ 3: mật khẩu 6 số chắn màn hình "Quản lý lương"
+        { key: 'payroll', label: 'Xem lương', icon: Wallet },
     ];
 
     return (
@@ -433,6 +490,106 @@ export default function ProfileButton({ compact = false }) {
                                             {savingPwd ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</> : <><Lock size={16} /> {t('auth', 'change_password')}</>}
                                         </button>
                                         <p className="text-xs text-[#8E8878] text-center">{t('auth', 'change_password_success_relogin')}</p>
+                                    </div>
+                                )}
+
+                                {/* ── Tab: Mật khẩu XEM LƯƠNG (passcode 6 số) ── */}
+                                {tab === 'payroll' && (
+                                    <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
+                                        {loadingPcStatus ? (
+                                            <div className="flex justify-center py-8">
+                                                <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
+                                            </div>
+                                        ) : pcStatus?.locked ? (
+                                            /* Đang bị khoá → KHÔNG cho tự đổi, tránh dò passcode qua đường vòng */
+                                            <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3.5">
+                                                <ShieldAlert size={16} className="text-red-500 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-sm font-bold text-red-700">Đã khoá xem lương</p>
+                                                    <p className="text-xs text-red-600/90 mt-1 leading-relaxed">
+                                                        Bạn đã nhập sai quá 3 lần nên không thể xem lương và không thể tự
+                                                        đổi mật khẩu. Vui lòng liên hệ quản trị viên (Nhân sự) để được mở khoá.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-start gap-2.5 bg-[#FAF7F2] border border-black/5 rounded-2xl px-4 py-3">
+                                                    <Wallet size={15} className="text-[#C9A84C] shrink-0 mt-0.5" />
+                                                    <p className="text-xs text-[#8E8878] leading-relaxed">
+                                                        Mật khẩu 6 số dùng riêng cho màn hình <b className="text-[#1C1C1E]">Quản lý lương</b>,
+                                                        không phải mật khẩu đăng nhập.
+                                                    </p>
+                                                </div>
+
+                                                {pcStatus?.usingDefault && (
+                                                    <div className="flex items-start gap-2.5 bg-[#FDF8ED] border border-[#C9A84C]/30 rounded-2xl px-4 py-3">
+                                                        <KeyRound size={15} className="text-[#C9A84C] shrink-0 mt-0.5" />
+                                                        <p className="text-xs text-[#8B6F2E] leading-relaxed">
+                                                            Bạn đang dùng mật khẩu mặc định <b>000000</b>. Nên đổi ngay để bảo mật.
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-4 pt-1">
+                                                    <PasscodeInput
+                                                        label="Mật khẩu xem lương hiện tại"
+                                                        size="md"
+                                                        autoFocus={false}
+                                                        value={pcForm.current}
+                                                        onChange={v => { setPcForm(p => ({ ...p, current: v })); setPcErr(''); }}
+                                                        error={!!pcErr}
+                                                        disabled={savingPc}
+                                                    />
+
+                                                    <PasscodeInput
+                                                        label="Mật khẩu mới"
+                                                        size="md"
+                                                        autoFocus={false}
+                                                        value={pcForm.next}
+                                                        onChange={v => { setPcForm(p => ({ ...p, next: v })); setPcErr(''); }}
+                                                        disabled={savingPc}
+                                                    />
+
+                                                    <PasscodeInput
+                                                        label="Nhập lại mật khẩu mới"
+                                                        size="md"
+                                                        autoFocus={false}
+                                                        value={pcForm.confirm}
+                                                        onChange={v => { setPcForm(p => ({ ...p, confirm: v })); setPcErr(''); }}
+                                                        error={!!pcForm.confirm && pcForm.confirm.length === 6 && pcForm.confirm !== pcForm.next}
+                                                        disabled={savingPc}
+                                                    />
+                                                </div>
+
+                                                {pcErr && (
+                                                    <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3.5 py-2.5">
+                                                        <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                                                        <p className="text-xs font-semibold text-red-600 leading-snug">{pcErr}</p>
+                                                    </div>
+                                                )}
+
+                                                {pcOk && (
+                                                    <div className="flex items-start gap-2 bg-green-50 border border-green-100 rounded-xl px-3.5 py-2.5">
+                                                        <Check size={15} className="text-green-600 shrink-0 mt-0.5" />
+                                                        <p className="text-xs font-semibold text-green-700 leading-snug">
+                                                            Đã đổi mật khẩu xem lương. Lần tới vào trang lương hãy dùng mật khẩu mới.
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                <button onClick={handleChangePasscode} disabled={savingPc}
+                                                    className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                                    {savingPc
+                                                        ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</>
+                                                        : <><Wallet size={16} /> Đổi mật khẩu xem lương</>}
+                                                </button>
+
+                                                <p className="text-xs text-[#8E8878] text-center leading-relaxed">
+                                                    Nhập sai mật khẩu xem lương 3 lần sẽ bị khoá và phải liên hệ quản trị viên.
+                                                </p>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </>

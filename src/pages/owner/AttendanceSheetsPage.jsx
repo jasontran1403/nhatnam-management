@@ -18,6 +18,7 @@ import {
   ClipboardCheck, Upload, RefreshCw, AlertCircle, CheckCircle2, Trash2,
   FileSpreadsheet, Calculator, Download, CalendarDays, ChevronDown, Gift, Wallet,
   CalendarClock, UserCheck, Clock, Lock, Unlock, Users, Receipt, Truck, Route, ShieldCheck,
+  PiggyBank, Plus, X,
 } from 'lucide-react';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import {
@@ -637,6 +638,205 @@ function KpiSummary({ kpi }) {
             {c.sub && <p className="text-[10px] text-[#8E8878] mt-1 leading-snug">{c.sub}</p>}
           </div>
         ))}
+      </div>
+    </SectionCard>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// QUỸ DƯ KHAI BÁO TAY
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// Quỹ thưởng chia không hết thì phần lẻ tự chuyển sang tháng sau — nhưng cơ chế
+// đó chỉ chạy khi CẢ HAI tháng đều được tính trong app.
+//
+// Lúc mới đưa app vào dùng: tháng trước phòng sản xuất đã chia tay và còn dư,
+// tháng đó không hề có trong hệ thống ⇒ không có sổ dư nào để kế thừa ⇒ tiền dư
+// biến mất. Panel này là chỗ khai báo tay khoản đó.
+//
+// Cố ý KHÔNG tự gọi recompute sau khi thêm/xoá: người nhập thường thêm vài dòng
+// liên tiếp, recompute mỗi lần vừa chậm vừa dễ ghi đè số đang xem. Nút "Tính lại
+// thưởng KPI" ở dưới trang mới là chỗ áp dụng.
+
+function CarryOverSeedPanel({ month, year, periodLabel, onChanged }) {
+  const toast = useToast();
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Mặc định nguồn = tháng liền trước tháng đang xem (trường hợp phổ biến nhất)
+  const prev = month === 1 ? { m: 12, y: year - 1 } : { m: month - 1, y: year };
+  const [form, setForm] = useState({
+    sourceMonth: prev.m, sourceYear: prev.y, amount: '', note: '',
+  });
+
+  const load = useCallback(async () => {
+    if (!month || !year) return;
+    setLoading(true);
+    try {
+      const list = await factoryPayrollApi.carryOverSeeds(month, year);
+      setRows(Array.isArray(list) ? list : []);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không tải được quỹ dư khai báo tay', 'error');
+    } finally { setLoading(false); }
+  }, [month, year, toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const p = month === 1 ? { m: 12, y: year - 1 } : { m: month - 1, y: year };
+    setForm(f => ({ ...f, sourceMonth: p.m, sourceYear: p.y }));
+  }, [month, year]);
+
+  const total = rows.reduce((s, r) => s + (r.amount || 0), 0);
+
+  const submit = async () => {
+    const amt = Number(String(form.amount).replace(/[^\d]/g, ''));
+    if (!amt || amt <= 0) return toast('Nhập số tiền dư lớn hơn 0', 'error');
+
+    setSaving(true);
+    try {
+      await factoryPayrollApi.addCarryOverSeed({
+        applyMonth: month, applyYear: year,
+        sourceMonth: Number(form.sourceMonth), sourceYear: Number(form.sourceYear),
+        amount: amt, note: form.note?.trim() || null,
+      });
+      toast('Đã lưu. Bấm "Tính lại thưởng KPI" để cộng vào quỹ.', 'success');
+      setForm(f => ({ ...f, amount: '', note: '' }));
+      setAdding(false);
+      await load();
+      onChanged?.();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không lưu được', 'error');
+    } finally { setSaving(false); }
+  };
+
+  const remove = async (row) => {
+    try {
+      await factoryPayrollApi.deleteCarryOverSeed(row.id);
+      toast('Đã xoá. Bấm "Tính lại thưởng KPI" để cập nhật quỹ.', 'success');
+      await load();
+      onChanged?.();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không xoá được', 'error');
+    }
+  };
+
+  return (
+    <SectionCard>
+      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-black/5">
+        <div className="flex items-center gap-2 min-w-0">
+          <PiggyBank size={16} className="text-[#C9A84C] shrink-0" />
+          <h3 className="text-sm font-bold text-[#1C1C1E] truncate">
+            Quỹ dư khai báo tay {periodLabel ? `— ${periodLabel}` : ''}
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setAdding(v => !v)}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/10
+                     text-xs font-semibold text-[#1C1C1E] hover:border-[#C9A84C]/50 hover:text-[#C9A84C] transition"
+        >
+          {adding ? <><X size={14} /> Đóng</> : <><Plus size={14} /> Thêm khoản dư</>}
+        </button>
+      </div>
+
+      <div className="p-5 space-y-4">
+        <p className="text-xs text-[#8E8878] leading-relaxed">
+          Dùng khi tháng trước đã chia thưởng <b>ngoài app</b> và còn dư — hệ thống
+          không có bản ghi nào của tháng đó để kế thừa quỹ dư. Khoản khai báo ở đây
+          sẽ được cộng vào quỹ chia của kỳ đang chọn.
+          {' '}<b className="text-[#1C1C1E]">Chỉ khai báo cho một tháng duy nhất</b>;
+          phần chưa tiêu hết sẽ tự chuyển tiếp cho các tháng sau như bình thường.
+        </p>
+
+        {adding && (
+          <div className="rounded-2xl border border-[#C9A84C]/30 bg-[#FDF8ED] p-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-[#8E8878] mb-1">
+                  Tháng phát sinh
+                </label>
+                <div className="flex gap-2">
+                  <input type="number" min={1} max={12} value={form.sourceMonth}
+                    onChange={e => setForm(f => ({ ...f, sourceMonth: e.target.value }))}
+                    className="w-16 px-2.5 py-2 rounded-xl border border-black/10 text-sm
+                               focus:outline-none focus:border-[#C9A84C]" />
+                  <input type="number" value={form.sourceYear}
+                    onChange={e => setForm(f => ({ ...f, sourceYear: e.target.value }))}
+                    className="w-24 px-2.5 py-2 rounded-xl border border-black/10 text-sm
+                               focus:outline-none focus:border-[#C9A84C]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[#8E8878] mb-1">
+                  Số tiền dư (VNĐ)
+                </label>
+                <input type="text" inputMode="numeric" value={form.amount}
+                  placeholder="VD 513000"
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-black/10 text-sm
+                             focus:outline-none focus:border-[#C9A84C]" />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[#8E8878] mb-1">
+                  Ghi chú
+                </label>
+                <input type="text" value={form.note}
+                  placeholder="Chốt tay theo phiếu thưởng"
+                  onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-black/10 text-sm
+                             focus:outline-none focus:border-[#C9A84C]" />
+              </div>
+            </div>
+
+            <button onClick={submit} disabled={saving}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm
+                         font-semibold hover:bg-[#B8923E] transition disabled:opacity-50">
+              {saving ? 'Đang lưu...' : 'Lưu khoản dư'}
+            </button>
+          </div>
+        )}
+
+        {loading ? (
+          <LoadingSpinner label="Đang tải..." />
+        ) : !rows.length ? (
+          <p className="text-xs text-[#C4B9A8] py-2">
+            Chưa khai báo khoản dư nào cho kỳ này.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {rows.map(r => (
+              <div key={r.id}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#FAF7F2] border border-black/5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-[#1C1C1E]">
+                    {formatCurrency(r.amount)}
+                    <span className="text-xs font-medium text-[#8E8878]"> · nguồn {r.sourceLabel}</span>
+                  </p>
+                  <p className="text-[11px] text-[#8E8878] mt-0.5 truncate">
+                    {r.note || 'Không có ghi chú'}
+                    {r.createdBy ? ` — ${r.createdBy}` : ''}
+                  </p>
+                </div>
+                <button onClick={() => remove(r)} title="Xoá khoản này"
+                  className="shrink-0 p-2 rounded-lg text-[#C4B9A8] hover:text-red-500 hover:bg-red-50 transition">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+
+            <div className="flex justify-between items-center px-4 pt-2">
+              <span className="text-xs font-semibold text-[#8E8878]">Tổng khai báo tay</span>
+              <span className="text-sm font-bold text-[#C9A84C]">{formatCurrency(total)}</span>
+            </div>
+          </div>
+        )}
       </div>
     </SectionCard>
   );
@@ -1378,6 +1578,16 @@ export default function AttendanceSheetsPage() {
 
           {/* Tổng hợp quỹ thưởng KPI — chỉ Xưởng và chỉ khi đã tính */}
           {department === 'FACTORY' && <KpiSummary kpi={kpi} />}
+
+          {/* Khai báo quỹ dư của tháng chia ngoài app */}
+          {department === 'FACTORY' && selected && (
+            <CarryOverSeedPanel
+              month={selected.month}
+              year={selected.year}
+              periodLabel={selected.label}
+              onChanged={() => loadKpi(selected, department)}
+            />
+          )}
 
           {/* 2 bảng sau khi HOÀN TẤT */}
           {status?.finalized && <PayrollTables data={payroll} loading={loadingPayroll} />}
