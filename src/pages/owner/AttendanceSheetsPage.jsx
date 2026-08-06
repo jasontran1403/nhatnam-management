@@ -18,7 +18,7 @@ import {
   ClipboardCheck, Upload, RefreshCw, AlertCircle, CheckCircle2, Trash2,
   FileSpreadsheet, Calculator, Download, CalendarDays, ChevronDown, Gift, Wallet,
   CalendarClock, UserCheck, Clock, Lock, Unlock, Users, Receipt, Truck, Route, ShieldCheck,
-  PiggyBank, Plus, X,
+  PiggyBank, Plus, X, Search,
 } from 'lucide-react';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import {
@@ -984,6 +984,19 @@ function PayrollSummary({ data }) {
   );
 }
 
+
+// Bỏ dấu tiếng Việt để "nga" tìm được "Nguyễn Thị Hồng Nga" và "hong nga" cũng
+// khớp. Chuẩn hoá NFD tách dấu thành ký tự tổ hợp rồi xoá; riêng đ/Đ không có
+// dạng tổ hợp nên phải thay tay.
+const normText = (v) =>
+  String(v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+
 // Số công: bỏ đuôi ,00 cho gọn (27,00 → 27 · 25,28 giữ nguyên)
 const fmtDays = (v) =>
   v == null ? '—' : Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
@@ -1022,7 +1035,7 @@ const flatPay = (r) => !!r.attendanceExempt || r.payrollRole === 'FACTORY_SECURI
 //   │ [Chi tiết lương]     [Ngày công]     │
 //   └──────────────────────────────────────┘
 
-function PayrollMobileCard({ row: r, isDriver, showKpi, onAttendance, onSalary }) {
+function PayrollMobileCard({ row: r, isDriver, showKpi, highlight = false, onAttendance, onSalary }) {
   const flat = flatPay(r);
 
   // Bảo vệ khoán trọn tháng: không breakdown, không chấm công → không nút nào.
@@ -1038,9 +1051,15 @@ function PayrollMobileCard({ row: r, isDriver, showKpi, onAttendance, onSalary }
   );
 
   return (
-    <div className="px-4 py-4 space-y-3">
-      {/* Header */}
-      <div>
+    <div
+      id={`payroll-card-${r.userId}`}
+      className={`rounded-2xl border px-4 py-4 space-y-3 transition-colors
+        ${highlight
+          ? 'border-[#C9A84C] bg-[#C9A84C]/10 shadow-sm'
+          : 'border-black/10 bg-white'}`}
+    >
+      {/* Header — gạch dưới để tách hẳn khỏi phần số liệu */}
+      <div className="pb-2.5 border-b border-black/5">
         <p className="font-semibold text-[#1C1C1E] leading-snug">{r.userFullName}</p>
         <p className="text-xs text-[#8E8878]">
           {r.roleLabel || '—'}
@@ -1129,24 +1148,83 @@ function PayrollTables({ data, loading }) {
   // Nhân viên đang mở modal breakdown lương (null = đóng).
   const [salaryOf, setSalaryOf] = useState(null);
 
+  // ── TÌM NHÂN VIÊN THEO TÊN ────────────────────────────────────────────────
+  //   Cố ý KHÔNG lọc bớt dòng: bảng lương là chứng từ, ẩn bớt người đi thì tổng
+  //   ở đầu bảng không còn khớp với những gì đang nhìn thấy. Thay vào đó tô sáng
+  //   người khớp và cuộn tới họ — vẫn thấy nguyên danh sách để đối chiếu.
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);   // ô tìm nổi trên mobile
+
   if (loading) return <SectionCard><LoadingSpinner label="Đang tải bảng lương..." /></SectionCard>;
   if (!data) return null;
 
   const rows = data.rows || [];
   const isDriver = !data.attendanceBased;
 
+  const q = normText(query);
+  const matchIds = q
+    ? rows.filter(r => normText(r.userFullName).includes(q)).map(r => r.userId)
+    : [];
+  const isMatch = (r) => matchIds.includes(r.userId);
+
+  // Cuộn tới người khớp ĐẦU TIÊN. Tìm cả id của thẻ mobile lẫn dòng bảng rồi
+  // chọn phần tử đang thực sự hiển thị (offsetParent = null khi bị `hidden`),
+  // nên cùng một đoạn code chạy đúng ở cả hai bố cục.
+  useEffect(() => {
+    if (!matchIds.length) return;
+    const id = matchIds[0];
+    const el = [
+      document.getElementById(`payroll-card-${id}`),
+      document.getElementById(`payroll-row-${id}`),
+    ].find(e => e && e.offsetParent !== null);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, matchIds.join(',')]);
+
   return (
     <>
       {/* ── BẢNG 1: PHIẾU LƯƠNG ─────────────────────────────────────────── */}
       <SectionCard>
         <div className="px-5 py-4 border-b border-black/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Receipt size={16} className="text-[#C9A84C]" />
-            <h3 className="text-sm font-bold text-[#1C1C1E]">
-              Phiếu lương — {data.departmentLabel} · {data.periodLabel}
-            </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Receipt size={16} className="text-[#C9A84C] shrink-0" />
+              <h3 className="text-sm font-bold text-[#1C1C1E]">
+                Phiếu lương — {data.departmentLabel} · {data.periodLabel}
+              </h3>
+            </div>
+
+            {/* Ô tìm cố định — ẩn trên mobile, nơi đó dùng nút nổi bên dưới */}
+            <div className="hidden md:block relative shrink-0">
+              <Search size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C4B9A8] pointer-events-none" />
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Tìm theo tên nhân viên..."
+                className="w-56 lg:w-64 pl-8 pr-8 py-2 rounded-xl border border-black/10 text-xs
+                           focus:outline-none focus:border-[#C9A84C] transition-colors"
+              />
+              {query && (
+                <button onClick={() => setQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md
+                             text-[#C4B9A8] hover:text-[#1C1C1E]">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           </div>
+
           <PayrollSummary data={data} />
+
+          {query && (
+            <p className="text-[11px] text-[#8E8878] mt-2.5">
+              {matchIds.length
+                ? `Tìm thấy ${matchIds.length} nhân viên khớp "${query}"`
+                : `Không có nhân viên nào khớp "${query}"`}
+            </p>
+          )}
         </div>
 
         {/* Bảng đầy đủ — chỉ từ md trở lên. Màn hẹp dùng danh sách thẻ bên dưới:
@@ -1171,7 +1249,11 @@ function PayrollTables({ data, loading }) {
             </Thead>
             <tbody>
               {rows.map(r => (
-                <Tr key={r.userId}>
+                <Tr
+                  key={r.userId}
+                  id={`payroll-row-${r.userId}`}
+                  className={isMatch(r) ? 'bg-[#C9A84C]/12' : ''}
+                >
                   <Td>
                     <div className="font-medium">{r.userFullName}</div>
                     <div className="text-xs text-[#8E8878]">
@@ -1269,13 +1351,14 @@ function PayrollTables({ data, loading }) {
         </div>
 
         {/* ── ĐIỆN THOẠI: mỗi nhân viên một thẻ ───────────────────────────── */}
-        <div className="md:hidden divide-y divide-black/5">
+        <div className="md:hidden p-3 space-y-3">
           {rows.map(r => (
             <PayrollMobileCard
               key={r.userId}
               row={r}
               isDriver={isDriver}
               showKpi={!!data.hasKpiBonus}
+              highlight={isMatch(r)}
               onAttendance={() => setDetailOf(r)}
               onSalary={() => setSalaryOf(r)}
             />
@@ -1343,6 +1426,51 @@ function PayrollTables({ data, loading }) {
       {/* Modal breakdown lương — dùng lại đúng component của trang Nhân sự để
           hai màn hình không bao giờ hiện hai cách tính khác nhau. */}
       <SalaryDetailModal row={salaryOf} onClose={() => setSalaryOf(null)} />
+
+      {/* ── NÚT TÌM NỔI — CHỈ TRÊN ĐIỆN THOẠI ─────────────────────────────────
+          Danh sách thẻ dài hàng chục màn hình, ô tìm đặt ở đầu bảng sẽ trôi mất
+          ngay khi cuộn xuống. Nút nổi bám màn hình nên tìm được ở bất kỳ đâu.
+          Ẩn khi đang mở modal để không đè lên nội dung modal. */}
+      {!detailOf && !salaryOf && (
+        <div className="md:hidden fixed bottom-5 right-4 z-40 flex items-center gap-2">
+          {searchOpen && (
+            <div className="relative">
+              <input
+                autoFocus
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Tên nhân viên..."
+                className="w-52 pl-3 pr-8 py-3 rounded-2xl border border-black/10 bg-white
+                           text-sm shadow-lg focus:outline-none focus:border-[#C9A84C]"
+              />
+              {query && (
+                <button onClick={() => setQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#C4B9A8]">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              // Đóng thì xoá luôn từ khoá — để lại highlight trong khi ô tìm đã
+              // biến mất sẽ khiến người dùng không hiểu vì sao dòng bị tô vàng.
+              if (searchOpen) setQuery('');
+              setSearchOpen(v => !v);
+            }}
+            aria-label={searchOpen ? 'Đóng tìm kiếm' : 'Tìm nhân viên'}
+            className="shrink-0 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830]
+                       text-white shadow-lg shadow-[#C9A84C]/30 flex items-center justify-center
+                       active:scale-95 transition-transform"
+            style={{ width: '3.25rem', height: '3.25rem' }}
+          >
+            {searchOpen ? <X size={20} /> : <Search size={20} />}
+          </button>
+        </div>
+      )}
     </>
   );
 }

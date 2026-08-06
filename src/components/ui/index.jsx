@@ -189,9 +189,11 @@ export function Th({ children, className = '', right = false }) {
   );
 }
 
-export function Td({ children, className = '', right = false }) {
+// `...rest` để truyền được colSpan / rowSpan / title xuống thẻ <td> thật.
+// Thiếu nó thì mọi ô gộp cột đều âm thầm bị bỏ qua và bảng lệch cột.
+export function Td({ children, className = '', right = false, ...rest }) {
   return (
-    <td className={`px-4 py-3 ${right ? 'text-right' : ''} ${className}`}>
+    <td className={`px-4 py-3 ${right ? 'text-right' : ''} ${className}`} {...rest}>
       {children}
     </td>
   );
@@ -205,6 +207,7 @@ export function Tr({ children, onClick, className = '' }) {
   return (
     <tr
       onClick={onClick}
+      {...rest}
       className={`
         ${!isHeader ? 'border-t border-black/5' : ''}
         transition-colors
