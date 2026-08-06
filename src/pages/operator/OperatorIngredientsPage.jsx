@@ -12,7 +12,16 @@ import {
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
-const UNITS = ['kg', 'gram', 'lít', 'ml', 'cái', 'hộp', 'túi', 'chai'];
+// Danh sách đơn vị tính khi tạo/sửa nguyên liệu.
+//
+//   Viết THƯỜNG toàn bộ để khớp với dữ liệu đang có trong bảng ingredient của
+//   trang này. Trang Kho và trang Bán hàng dùng danh sách viết Hoa ('Kg', 'Bó')
+//   — hai kiểu vẫn tồn tại song song vì đơn vị lưu nguyên chuỗi vào DB, đổi
+//   kiểu chữ ở đây sẽ làm nguyên liệu cũ không khớp option nào và ô chọn hiện
+//   trống khi mở form sửa.
+//
+//   'bó' và 'mét' bổ sung 08/2026 — hai trang kia đã có sẵn.
+const UNITS = ['kg', 'gram', 'lít', 'ml', 'cái', 'hộp', 'túi', 'chai', 'bó', 'mét'];
 
 // ── ConfirmDeleteModal ────────────────────────────────────────────────────────
 function ConfirmDeleteModal({ open, onClose, onConfirm, itemName, deleting }) {

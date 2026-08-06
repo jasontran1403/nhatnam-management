@@ -1,7 +1,7 @@
 // src/api/materialRequestApi.js
 import api from './axios';
 
-const UNITS = ['Kg', 'Gr', 'Lít', 'Túi', 'Hộp', 'Bịch', 'Thùng', 'Chai', 'Lon', 'Can'];
+const UNITS = ['Kg', 'Gr', 'Lít', 'Túi', 'Hộp', 'Bịch', 'Thùng', 'Chai', 'Lon', 'Can', 'Bó', 'Mét'];
 export { UNITS };
 
 export const PAYMENT_METHODS = [

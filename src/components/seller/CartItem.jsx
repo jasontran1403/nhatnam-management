@@ -26,7 +26,9 @@ function calcNetPrice(price, vatRate, vatMode) {
   return price;
 }
 
-const DECIMAL_UNITS = ['kg', 'kgs', 'lít', 'lit', 'l', 'liter', 'litre'];
+// Đơn vị cho phép nhập số lẻ. 'mét'/'m' thêm 08/2026 — dây, màng bọc, ống
+// nhựa đều cắt được theo mét lẻ. 'bó' KHÔNG có ở đây: bó là đơn vị nguyên.
+const DECIMAL_UNITS = ['kg', 'kgs', 'lít', 'lit', 'l', 'liter', 'litre', 'mét', 'met', 'm'];
 function allowDecimal(unit, saleType) {
   if (saleType === 'BOX') return false;
   return DECIMAL_UNITS.includes((unit || '').toLowerCase().trim());

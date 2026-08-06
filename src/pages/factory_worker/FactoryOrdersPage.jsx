@@ -31,7 +31,7 @@ const PRESET_STEPS = [
   'Chuẩn bị nguyên liệu','Rửa thịt','Phay thịt','Xay thịt',
   'Nhồi thịt','Luộc','Xông khói','Đóng gói',
 ];
-const UNITS = ['Kg', 'Gr', 'Lít', 'Túi', 'Hộp', 'Bịch', 'Thùng', 'Chai', 'Lon', 'Can'];
+const UNITS = ['Kg', 'Gr', 'Lít', 'Túi', 'Hộp', 'Bịch', 'Thùng', 'Chai', 'Lon', 'Can', 'Bó', 'Mét'];
 
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 function ImageLightbox({ images, initialIdx = 0, onClose }) {

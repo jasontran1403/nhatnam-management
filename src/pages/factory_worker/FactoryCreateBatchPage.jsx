@@ -18,8 +18,9 @@ function todayVN() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Đơn vị cho phép số lẻ (kg, lít, l, lit)
-const DECIMAL_UNITS = ['kg', 'lít', 'lit', 'l', 'liter', 'litre'];
+// Đơn vị cho phép số lẻ. 'mét'/'m' thêm 08/2026 — cắt được theo mét lẻ.
+// 'bó' KHÔNG có ở đây: bó là đơn vị nguyên, không lấy nửa bó.
+const DECIMAL_UNITS = ['kg', 'lít', 'lit', 'l', 'liter', 'litre', 'mét', 'met', 'm'];
 
 function isDecimalAllowed(unit = '') {
   return DECIMAL_UNITS.includes(unit.toLowerCase().trim());

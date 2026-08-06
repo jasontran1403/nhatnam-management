@@ -4,7 +4,7 @@ import { X, Plus, Trash2, Camera, Image, Search, ChevronDown, CheckCircle2, Circ
 import { productApi, uploadApi, allIngredientApi } from '../../api/services';
 import { useToast } from '../common/Toast';
 
-const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Con'];
+const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Con', 'Mét'];
 const VAT_RATES = [0, 5, 8, 10];
 
 // ── Map giữa UI label và backend enum ────────────────────────────────────────

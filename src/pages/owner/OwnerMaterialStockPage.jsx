@@ -13,7 +13,7 @@ import { useToast } from '../../components/common/Toast.jsx';
 import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 
-const STORAGE_UNITS = ['Kg', 'Gr', 'Lít', 'Ml', 'Túi', 'Hộp', 'Bịch', 'Thùng', 'Chai', 'Lon', 'Can', 'Khay'];
+const STORAGE_UNITS = ['Kg', 'Gr', 'Lít', 'Ml', 'Túi', 'Hộp', 'Bịch', 'Thùng', 'Chai', 'Lon', 'Can', 'Khay', 'Bó', 'Mét'];
 const ORDER_UNITS = ['Chai', 'Can', 'Hộp', 'Túi', 'Khay', 'Kg', 'Gr', 'Lít', 'Ml', 'Thùng', 'Bịch', 'Lon'];
 
 // fmtQty/fmtDate removed — use useFmt()

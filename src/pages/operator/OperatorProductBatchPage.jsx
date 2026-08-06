@@ -15,7 +15,7 @@ import {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
-const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần'];
+const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Mét'];
 
 // ── SKU Generator ─────────────────────────────────────────────────────────────
 // Tạo SKU ngắn gọn, dễ nhớ cho ~500 sản phẩm thực phẩm
