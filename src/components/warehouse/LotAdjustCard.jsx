@@ -9,6 +9,7 @@
 // Lô mới tạo ở đây sẽ có giá vốn mặc định = 1 và được gửi sang KẾ TOÁN TRƯỞNG
 // để nhập giá vốn thật (giống luồng nhập kho).
 import { useState, useMemo } from 'react';
+import ExpiryDatePicker from './ExpiryDatePicker';
 import { ChevronDown, Plus, Trash2, Sparkles, CalendarClock } from 'lucide-react';
 import { getImageUrl } from '../../api/warehouseApi';
 import { IngredientPickerModal } from './IngredientSelector';
@@ -294,10 +295,9 @@ function LotRow({ lot, unit, onChange, onRemove }) {
           <label className="wh-label" style={{ marginBottom: 4 }}>
             Hạn sử dụng <span style={{ color: '#8E8878', fontWeight: 400 }}>(không bắt buộc)</span>
           </label>
-          <input
-            className="wh-input" type="date"
+          <ExpiryDatePicker
             value={lot.expiryDate || ''}
-            onChange={(e) => onChange({ expiryDate: e.target.value })}
+            onChange={iso => onChange({ expiryDate: iso })}
           />
         </div>
       </div>

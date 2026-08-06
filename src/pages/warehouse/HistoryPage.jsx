@@ -7,6 +7,9 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
+import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
+import DateRangePicker from '../../components/ui/DateRangePicker';
+import { isoToMs, msToIso } from '../../components/warehouse/ExpiryDatePicker';
 
 
 
@@ -125,14 +128,20 @@ export default function HistoryPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <h1 className="wh-page-title">Lịch sử kho</h1>
+      {/* Header — cùng bố cục với trang Quản lý kho và Nhập/Xuất: tiêu đề bên
+          trái, WarehouseSelector bên phải.
 
-      {/* FIX #4: Hiển thị tên kho, không cho chọn kho */}
-      {warehouseName && (
-        <div style={{ marginBottom: 12, padding: '8px 12px', background: 'var(--wh-surface)', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-          🏭 <strong>{warehouseName}</strong>
+          Nhãn tên kho ở dưới tiêu đề đã BỎ: WarehouseSelector đã hiện tên kho
+          đang chọn, để cả hai là lặp thông tin và dễ lệch nhau khi đổi kho. */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        marginBottom: 20, flexWrap: 'wrap', gap: 12,
+      }}>
+        <h1 className="wh-page-title" style={{ marginBottom: 0 }}>Lịch sử kho</h1>
+        <div style={{ flexShrink: 0 }}>
+          <WarehouseSelector />
         </div>
-      )}
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
         <div className="wh-tabs" style={{ marginBottom: 0 }}>
@@ -148,16 +157,21 @@ export default function HistoryPage() {
 
       {/* Date filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label style={{ fontSize: 12, color: 'var(--wh-muted)' }}>Từ</label>
-          <input type="date" className="wh-input" style={{ padding: '6px 10px', fontSize: 13 }}
-            value={dateFrom} onChange={e => { setDateFrom(e.target.value); load(0); }} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label style={{ fontSize: 12, color: 'var(--wh-muted)' }}>Đến</label>
-          <input type="date" className="wh-input" style={{ padding: '6px 10px', fontSize: 13 }}
-            value={dateTo} onChange={e => { setDateTo(e.target.value); load(0); }} />
-        </div>
+        {/* Một DateRangePicker thay cho hai ô "Từ" / "Đến" riêng lẻ — chọn được
+            cả khoảng trong một lần mở lịch, và không còn cảnh chọn xong ngày
+            đầu thì gọi load() ngay trong khi ngày cuối chưa chọn.
+
+            State vẫn giữ dạng chuỗi 'YYYY-MM-DD' vì đó là dạng backend nhận;
+            quy đổi sang timestamp cho picker qua isoToMs/msToIso. */}
+        <DateRangePicker
+          from={isoToMs(dateFrom)}
+          to={isoToMs(dateTo)}
+          onChange={({ from, to }) => {
+            setDateFrom(msToIso(from));
+            setDateTo(msToIso(to));
+          }}
+          placeholder="Chọn khoảng thời gian"
+        />
         <input
           className="wh-input"
           placeholder="🔍 Tìm nguyên liệu..."

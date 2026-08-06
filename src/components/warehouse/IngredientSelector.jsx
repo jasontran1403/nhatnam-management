@@ -1,6 +1,7 @@
 // src/components/warehouse/IngredientSelector.jsx
 // REDESIGN: Modal picker thay cho <select> — sắp xếp cate/subcate, tìm kiếm, chống trùng
 import { useState, useEffect, useMemo, useRef } from 'react';
+import ExpiryDatePicker from './ExpiryDatePicker';
 import { Search, X, ChevronDown, ChevronRight, Check, Layers, Package } from 'lucide-react';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 
@@ -438,11 +439,12 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
         {/* Hạn sử dụng — chỉ import */}
         {mode === 'import' && (
           <div>
-            <input
-              className="wh-input"
-              type="date"
+            {/* DatePicker của app thay cho <input type="date"> mặc định —
+                đồng bộ giao diện và không phụ thuộc lịch riêng của từng trình
+                duyệt. Không bắt buộc: có thể để trống. */}
+            <ExpiryDatePicker
               value={value.expiryDate || ''}
-              onChange={e => onChange({ ...value, expiryDate: e.target.value })}
+              onChange={iso => onChange({ ...value, expiryDate: iso })}
             />
           </div>
         )}
