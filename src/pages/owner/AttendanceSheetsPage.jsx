@@ -28,6 +28,7 @@ import {
 import Modal from '../../components/ui/Modal';
 import AttendanceDayCalendar from '../../components/hr/AttendanceDayCalendar';
 import { useToast } from '../../components/common/Toast';
+import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
 
 const fmtNum = (v, d = 2) =>
   v == null ? '—' : Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d });
@@ -976,9 +977,21 @@ function PayrollSummary({ data }) {
   );
 }
 
+// Số công: bỏ đuôi ,00 cho gọn (27,00 → 27 · 25,28 giữ nguyên)
+const fmtDays = (v) =>
+  v == null ? '—' : Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+
+// Tháng này có bị trừ lương vì thiếu công không — dùng để tô cảnh báo cột
+// "Lương thực tế". So bằng số tiền chứ không so ngày công: nhân viên được miễn
+// chấm công hoặc bản ghi cũ thiếu standardDays vẫn cho ra kết quả đúng.
+const shortfall = (r) =>
+  r.standardBaseSalary != null && r.baseSalary != null && r.baseSalary < r.standardBaseSalary;
+
 function PayrollTables({ data, loading }) {
   // Nhân viên đang mở modal chi tiết ngày công (null = đóng).
   const [detailOf, setDetailOf] = useState(null);
+  // Nhân viên đang mở modal breakdown lương (null = đóng).
+  const [salaryOf, setSalaryOf] = useState(null);
 
   if (loading) return <SectionCard><LoadingSpinner label="Đang tải bảng lương..." /></SectionCard>;
   if (!data) return null;
@@ -1004,17 +1017,17 @@ function PayrollTables({ data, loading }) {
           <Table>
             <Thead>
               <Tr>
+                {/* Bố cục 7 cột: bỏ GROSS / Bảo hiểm NLĐ / Thuế TNCN khỏi bảng
+                    vì doanh nghiệp trả toàn bộ các khoản đó — nhân viên không bị
+                    trừ đồng nào nên bày ra đây chỉ gây hiểu nhầm. Ai cần vẫn xem
+                    được đầy đủ trong modal "Chi tiết lương". */}
                 <Th>Nhân viên</Th>
                 <Th right>Lương cơ bản</Th>
+                <Th right>Lương thực tế</Th>
                 <Th right>Phụ cấp</Th>
                 <Th right>Thưởng</Th>
-                <Th right>GROSS</Th>
-                <Th right>Bảo hiểm NLĐ</Th>
-                <Th right>Thuế TNCN</Th>
-                <Th right>Lương NET</Th>
                 {data.hasKpiBonus && <Th right>Thưởng KPI</Th>}
-                {/* Tài xế không chấm công theo ngày nên không có cột này */}
-                {!isDriver && <Th right>Ngày công</Th>}
+                <Th right>Chi tiết</Th>
               </Tr>
             </Thead>
             <tbody>
@@ -1029,26 +1042,37 @@ function PayrollTables({ data, loading }) {
                       )}
                     </div>
                   </Td>
-                  <Td right>{formatCurrency(r.baseSalary)}</Td>
+                  {/* Lương cơ bản NGUYÊN MỨC — chưa chia theo chấm công.
+                      standardBaseSalary chỉ có ở bản ghi mới; bản ghi cũ rơi về
+                      baseSalary để bảng không hiện ô trống. */}
+                  <Td right>{formatCurrency(r.standardBaseSalary ?? r.baseSalary)}</Td>
+
+                  {/* Lương thực tế + số ngày công đã ăn vào lương ở dòng dưới */}
+                  <Td right>
+                    <div className={shortfall(r) ? 'text-amber-700 font-semibold' : ''}>
+                      {formatCurrency(r.baseSalary)}
+                    </div>
+                    <div className="text-[11px] text-[#8E8878]">
+                      {r.attendanceExempt
+                        ? 'Khoán trọn tháng'
+                        : r.standardDays != null
+                          ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
+                          : '—'}
+                    </div>
+                  </Td>
+
                   <Td right>{formatCurrency(r.allowance)}</Td>
                   <Td right>{formatCurrency(r.bonus)}</Td>
-                  <Td right>{formatCurrency(r.grossSalary)}</Td>
-                  <Td right>{formatCurrency(r.employeeInsuranceTotal)}</Td>
-                  <Td right>{formatCurrency(r.personalIncomeTax)}</Td>
-                  <Td right>
-                    <span className="font-semibold text-emerald-700">{formatCurrency(r.netSalary)}</span>
-                  </Td>
                   {data.hasKpiBonus && (
                     <Td right><span className="text-[#C9A84C] font-semibold">
                       {formatCurrency(r.kpiBonus)}</span></Td>
                   )}
-                  {!isDriver && (
-                    <Td right>
+
+                  <Td right>
+                    <div className="flex items-center justify-end gap-1.5">
                       {/* Người hưởng khoán (bảo vệ xưởng) không có dữ liệu chấm
-                          công — nút "Chi tiết ngày công" sẽ mở ra lịch trống. */}
-                      {r.attendanceExempt ? (
-                        <span className="text-[11px] text-[#8E8878] italic">Không chấm công</span>
-                      ) : (
+                          công — ẩn nút thay vì mở ra lịch trống. */}
+                      {!isDriver && !r.attendanceExempt && (
                         <button
                           type="button"
                           onClick={() => setDetailOf(r)}
@@ -1057,11 +1081,25 @@ function PayrollTables({ data, loading }) {
                             hover:border-[#C9A84C]/60 hover:text-[#1C1C1E] transition-colors"
                         >
                           <Clock size={13} className="text-[#C9A84C]" />
-                          Chi tiết ngày công
+                          Ngày công
                         </button>
                       )}
-                    </Td>
-                  )}
+
+                      <button
+                        type="button"
+                        onClick={() => setSalaryOf(r)}
+                        disabled={!r.salaryDetail}
+                        title={r.salaryDetail ? 'Xem breakdown lương' : 'Chưa có hồ sơ lương'}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
+                          border border-black/10 bg-white text-[11px] font-semibold text-[#5A5548]
+                          hover:border-[#C9A84C]/60 hover:text-[#1C1C1E] transition-colors
+                          disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <Receipt size={13} className="text-[#C9A84C]" />
+                        Chi tiết lương
+                      </button>
+                    </div>
+                  </Td>
                 </Tr>
               ))}
               {rows.length === 0 && (
@@ -1124,7 +1162,53 @@ function PayrollTables({ data, loading }) {
         periodLabel={data.periodLabel}
         onClose={() => setDetailOf(null)}
       />
+
+      {/* Modal breakdown lương — dùng lại đúng component của trang Nhân sự để
+          hai màn hình không bao giờ hiện hai cách tính khác nhau. */}
+      <SalaryDetailModal row={salaryOf} onClose={() => setSalaryOf(null)} />
     </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODAL "CHI TIẾT LƯƠNG"
+// ══════════════════════════════════════════════════════════════════════════════
+
+function SalaryDetailModal({ row, onClose }) {
+  if (!row) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg
+                      max-h-[88vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5 shrink-0">
+          <h3 className="font-bold text-[#1C1C1E] text-sm">
+            Chi tiết lương — {row.userFullName}
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2]">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 overflow-y-auto">
+          {row.salaryDetail
+            ? <SalaryBreakdownCards row={row.salaryDetail} />
+            : <p className="text-sm text-[#8E8878] text-center py-8">
+                Nhân viên chưa có hồ sơ lương được duyệt.
+              </p>}
+        </div>
+
+        <div className="px-5 py-4 border-t border-black/5 shrink-0">
+          <button onClick={onClose}
+            className="w-full py-2.5 rounded-xl bg-[#FAF7F2] text-sm font-semibold
+                       text-[#1C1C1E] hover:bg-[#F0EBE3] transition">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
