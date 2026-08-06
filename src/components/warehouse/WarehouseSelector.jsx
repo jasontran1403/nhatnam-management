@@ -5,7 +5,15 @@ import { ChevronDown, Warehouse, Check } from 'lucide-react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useLang } from '../../context/LangContext';
 
-export default function WarehouseSelector({ compact = false }) {
+/**
+ * @param {boolean} compact  nút gọn hơn (dùng trong thanh công cụ chật)
+ * @param {string}  align    'left' | 'right' — mép nào của menu dính vào nút.
+ *
+ *   Mặc định 'right' vì nút này gần như luôn nằm ở góc PHẢI header. Neo mép
+ *   trái (bản cũ) khiến menu bung sang phải và tràn ra ngoài khung, bị cắt mất
+ *   phần tên kho. Truyền 'left' khi đặt nút ở phía trái màn hình.
+ */
+export default function WarehouseSelector({ compact = false, align = 'right' }) {
   const { t } = useLang();
   const {
     assignedWarehouses,
@@ -50,8 +58,9 @@ export default function WarehouseSelector({ compact = false }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[180px] bg-white rounded-xl shadow-xl
-          border border-[#E8DDD0] py-1 overflow-hidden">
+        <div className={`absolute top-full mt-1 z-50 min-w-[180px] max-w-[70vw] bg-white
+          rounded-xl shadow-xl border border-[#E8DDD0] py-1 overflow-hidden
+          ${align === 'right' ? 'right-0' : 'left-0'}`}>
           <p className="text-[10px] uppercase font-semibold text-[#8E8878] tracking-wider px-3 py-1.5">
             {t('warehouse', 'select_warehouse')}
           </p>
