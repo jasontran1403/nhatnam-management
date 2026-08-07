@@ -99,7 +99,7 @@ function TopProductRow({ p, i, imgUrl, pct }) {
               {formatPrice(animRev)}
             </span>
             <span className="block text-xs text-muted tabular-nums mt-0.5 whitespace-nowrap">
-              {qtyText} {unit}
+              Số lượng: {qtyText}
             </span>
           </div>
         </div>
