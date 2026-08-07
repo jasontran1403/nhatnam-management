@@ -13,12 +13,13 @@
 // công nợ. Backend chặn ở mọi luồng tạo/sửa đơn; FE chỉ ẩn lựa chọn cho đỡ hụt.
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FileText, Upload, X, AlertTriangle, Loader2, Eye, ExternalLink, Trash2,
+  FileText, Upload, AlertTriangle, Eye, Trash2,
 } from 'lucide-react';
 import { customerContractApi, contractImageUrl } from '../../api/customerContractApi';
 import { useToast } from '../common/Toast';
 import Modal from '../ui/Modal';
 import { PrimaryButton, SecondaryButton, DangerButton, LoadingSpinner, EmptyState } from '../ui';
+import { FileThumb, FilePreviewOverlay, detectFileKind } from './FilePreview';
 
 const fmtTime = (ms) => {
   if (!ms) return '—';
@@ -27,8 +28,6 @@ const fmtTime = (ms) => {
     hour: '2-digit', minute: '2-digit',
   });
 };
-
-const isPdf = (url) => String(url || '').toLowerCase().endsWith('.pdf');
 
 // ══════════════════════════════════════════════════════════════════════════════
 // BADGE Ở CỘT TÊN HỢP ĐỒNG
@@ -76,6 +75,8 @@ export function ContractViewModal({ customer, onClose, onUpload }) {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  // Vị trí trang đang mở toàn màn hình; null = chưa mở.
+  const [previewIdx, setPreviewIdx] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,6 +90,19 @@ export function ContractViewModal({ customer, onClose, onUpload }) {
   useEffect(() => { load(); }, [load]);
 
   const images = data?.images || [];
+
+  // Chuẩn hoá một lần rồi dùng chung cho cả ô nhỏ lẫn khung xem lớn — hai chỗ
+  // phải đánh cùng thứ tự thì bấm ô thứ 3 mới mở đúng trang thứ 3.
+  const previewFiles = images.map((img, i) => {
+    const url = contractImageUrl(img.imageUrl);
+    const kind = detectFileKind(url);
+    return {
+      id: img.id,
+      url: url,
+      label: `Trang ${i + 1}`,
+      kind: kind,
+    };
+  });
 
   return (
     <Modal
@@ -122,30 +136,26 @@ export function ContractViewModal({ customer, onClose, onUpload }) {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {images.map((img, i) => {
-              const url = contractImageUrl(img.imageUrl);
-              return (
-                <a key={img.id} href={url} target="_blank" rel="noreferrer"
-                  className="block rounded-xl border border-hairline overflow-hidden
-                    hover:border-gold transition-colors bg-canvas">
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-hairline">
-                    <span className="text-xs font-semibold text-ink">Trang {i + 1}</span>
-                    <ExternalLink size={13} className="text-muted" />
-                  </div>
-                  {isPdf(img.imageUrl) ? (
-                    <div className="h-40 flex flex-col items-center justify-center gap-2 text-muted">
-                      <FileText size={28} />
-                      <span className="text-xs">Mở file PDF</span>
-                    </div>
-                  ) : (
-                    <img src={url} alt={`Trang ${i + 1}`}
-                      className="w-full max-h-72 object-contain bg-surface-2" />
-                  )}
-                </a>
-              );
-            })}
+            {previewFiles.map((f, i) => (
+              <FileThumb 
+                key={f.id} 
+                url={f.url} 
+                label={f.label}
+                kind={f.kind}
+                onOpen={() => setPreviewIdx(i)} 
+              />
+            ))}
           </div>
         </>
+      )}
+
+      {previewIdx != null && (
+        <FilePreviewOverlay
+          files={previewFiles}
+          index={previewIdx}
+          onIndex={setPreviewIdx}
+          onClose={() => setPreviewIdx(null)}
+        />
       )}
     </Modal>
   );
