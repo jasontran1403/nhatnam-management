@@ -13,9 +13,9 @@ const getMonths = (t) =>
   Array.from({ length: 12 }, (_, i) => t('production', 'month_short', { n: i + 1 }));
 
 const getStatusConfig = (t) => ({
-  DRAFT:    { label: t('production', 'amps_status_draft'),    cls: 'bg-gray-100 text-gray-600' },
-  APPROVED: { label: t('production', 'amps_status_approved'), cls: 'bg-blue-100 text-blue-700' },
-  RELEASED: { label: t('production', 'amps_status_released'), cls: 'bg-emerald-100 text-emerald-700' },
+  DRAFT:    { label: t('production', 'amps_status_draft'),    cls: 'bg-surface-2 text-ink-2' },
+  APPROVED: { label: t('production', 'amps_status_approved'), cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300' },
+  RELEASED: { label: t('production', 'amps_status_released'), cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
 });
 
 // ── Bar Chart — Monthly KPIs ─────────────────────────────────────────────────
@@ -24,8 +24,8 @@ function MonthlyBarChart({ kpis }) {
   const maxHrs = Math.max(...kpis.map(k => Number(k.plannedHours || 0)), 1);
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
-      <p className="text-sm font-semibold text-[#1C1C1E] mb-4">{t('production', 'amps_chart_hours')}</p>
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-5">
+      <p className="text-sm font-semibold text-ink mb-4">{t('production', 'amps_chart_hours')}</p>
       <div className="flex items-end gap-1.5 h-32">
         {kpis.map((k, i) => {
           const runtimeH = Math.round((Number(k.plannedHours || 0) / maxHrs) * 100);
@@ -34,13 +34,13 @@ function MonthlyBarChart({ kpis }) {
             <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
               <div className="w-full flex flex-col-reverse rounded-t overflow-hidden"
                    style={{ height: `${Math.max(runtimeH + maintH, 2)}%` }}>
-                <div className="bg-[#1A2B1A]" style={{ flex: runtimeH }}
+                <div className="bg-forest-deep" style={{ flex: runtimeH }}
                   title={t('production', 'amps_hours_production', { n: k.plannedHours })} />
-                <div className="bg-amber-300" style={{ flex: maintH }}
+                <div className="bg-amber-300 dark:bg-amber-500/35" style={{ flex: maintH }}
                   title={t('production', 'amps_hours_maintenance', { n: k.maintenanceHours })} />
               </div>
               {/* tooltip */}
-              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-[#1C1C1E] text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap z-10">
+              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-chrome text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap z-10">
                 {k.monthLabel}: {t('production', 'amps_tooltip_hours', {
                   prod: k.plannedHours, maint: k.maintenanceHours,
                 })}
@@ -51,12 +51,12 @@ function MonthlyBarChart({ kpis }) {
       </div>
       <div className="flex justify-between mt-2">
         {kpis.map((k, i) => (
-          <span key={i} className="flex-1 text-center text-[9px] text-[#8E8878]">{k.monthLabel}</span>
+          <span key={i} className="flex-1 text-center text-[9px] text-muted">{k.monthLabel}</span>
         ))}
       </div>
-      <div className="flex items-center gap-4 mt-3 text-xs text-[#8E8878]">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#1A2B1A]" />{t('production', 'amps_legend_production')}</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-300" />{t('production', 'amps_legend_maintenance')}</span>
+      <div className="flex items-center gap-4 mt-3 text-xs text-muted">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-forest-deep" />{t('production', 'amps_legend_production')}</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-300 dark:bg-amber-500/35" />{t('production', 'amps_legend_maintenance')}</span>
       </div>
     </div>
   );
@@ -73,21 +73,21 @@ function UtilizationChart({ kpis }) {
   }).join(' ');
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
-      <p className="text-sm font-semibold text-[#1C1C1E] mb-4">{t('production', 'amps_chart_utilization')}</p>
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-5">
+      <p className="text-sm font-semibold text-ink mb-4">{t('production', 'amps_chart_utilization')}</p>
       <svg viewBox="0 0 260 70" className="w-full h-20">
-        <polyline points={pts} fill="none" stroke="#C9A84C" strokeWidth="2" />
+        <polyline points={pts} fill="none" stroke="var(--c-gold)" strokeWidth="2" />
         {kpis.map((k, i) => {
           const x = (i / (kpis.length - 1)) * 260;
           const y = 60 - (Number(k.utilizationPct || 0) / max) * 56;
-          return <circle key={i} cx={x} cy={y} r="3" fill="#C9A84C" />;
+          return <circle key={i} cx={x} cy={y} r="3" fill="var(--c-gold)" />;
         })}
-        <line x1="0" y1="18" x2="260" y2="18" stroke="#e5e7eb" strokeDasharray="4 2" />
-        <text x="2" y="16" fontSize="8" fill="#8E8878">80%</text>
+        <line x1="0" y1="18" x2="260" y2="18" stroke="var(--c-line)" strokeDasharray="4 2" />
+        <text x="2" y="16" fontSize="8" fill="var(--c-muted)">80%</text>
       </svg>
       <div className="flex justify-between">
         {kpis.map((k, i) => (
-          <span key={i} className="flex-1 text-center text-[9px] text-[#8E8878]">{k.monthLabel}</span>
+          <span key={i} className="flex-1 text-center text-[9px] text-muted">{k.monthLabel}</span>
         ))}
       </div>
     </div>
@@ -136,8 +136,8 @@ function MpsModal({ products, machines, item, year, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-black/5 bg-[#1A2B1A] flex items-center justify-between sticky top-0">
+      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-hairline bg-forest-deep flex items-center justify-between sticky top-0">
           <h2 className="text-white font-semibold text-sm">
             {item ? t('production', 'amps_edit_title') : t('production', 'amps_create_title')}
           </h2>
@@ -198,8 +198,8 @@ function MpsModal({ products, machines, item, year, onClose, onSaved }) {
               onChange={e => set('notes', e.target.value)} />
           </Field>
         </div>
-        <div className="px-6 py-4 border-t border-black/5 bg-[#FAF7F2]/50 flex gap-3 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-[#8E8878]">{t('common', 'cancel')}</button>
+        <div className="px-6 py-4 border-t border-hairline bg-canvas/50 flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-muted">{t('common', 'cancel')}</button>
           <PrimaryButton onClick={submit} loading={saving}
             disabled={!form.factoryProductId || !form.plannedProductionQty}>
             {item ? t('common', 'save') : t('production', 'amps_add')}
@@ -258,12 +258,12 @@ export default function OwnerAnnualMpsPage() {
   const avgUtil  = Number(dashboard?.avgUtilizationPct || 0);
 
   const kpiCards = [
-    { icon: Clock,      label: t('production', 'amps_kpi_total_hours'),  value: `${fmtNum(totalHrs)}h`, color: 'text-[#1A2B1A]' },
-    { icon: BarChart3,  label: t('production', 'amps_kpi_avg_util'),     value: `${avgUtil.toFixed(1)}%`, color: avgUtil > 90 ? 'text-red-500' : avgUtil > 70 ? 'text-[#C9A84C]' : 'text-emerald-600' },
-    { icon: Package2,   label: t('production', 'amps_kpi_total_plans'),  value: plans.length, color: 'text-blue-600' },
+    { icon: Clock,      label: t('production', 'amps_kpi_total_hours'),  value: `${fmtNum(totalHrs)}h`, color: 'text-forest' },
+    { icon: BarChart3,  label: t('production', 'amps_kpi_avg_util'),     value: `${avgUtil.toFixed(1)}%`, color: avgUtil > 90 ? 'text-red-500' : avgUtil > 70 ? 'text-gold' : 'text-emerald-600 dark:text-emerald-300' },
+    { icon: Package2,   label: t('production', 'amps_kpi_total_plans'),  value: plans.length, color: 'text-blue-600 dark:text-blue-300' },
     { icon: TrendingUp, label: t('production', 'amps_kpi_total_output'),
       value: fmtNum(plans.reduce((s, p) => s + Number(p.plannedProductionQty || 0), 0)),
-      color: 'text-[#C9A84C]' },
+      color: 'text-gold' },
   ];
 
   const tableHeaders = [
@@ -280,11 +280,11 @@ export default function OwnerAnnualMpsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]"
+          <h1 className="text-2xl sm:text-3xl font-bold text-ink"
               style={{ fontFamily: 'var(--font-display)' }}>
             {t('production', 'mps_title')}
           </h1>
-          <p className="text-sm text-[#8E8878] mt-1">Annual Master Production Schedule — {year}</p>
+          <p className="text-sm text-muted mt-1">Annual Master Production Schedule — {year}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Year filter */}
@@ -300,18 +300,18 @@ export default function OwnerAnnualMpsPage() {
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           {/* View toggle */}
-          <div className="flex rounded-xl border border-black/10 overflow-hidden">
+          <div className="flex rounded-xl border border-hairline-2 overflow-hidden">
             {['dashboard','list'].map(v => (
               <button key={v} onClick={() => setView(v)}
                 className={`px-3 py-2 text-xs font-medium transition-colors ${
-                  view === v ? 'bg-[#1A2B1A] text-white' : 'bg-white text-[#8E8878] hover:text-[#1C1C1E]'
+                  view === v ? 'bg-forest-deep text-white' : 'bg-surface text-muted hover:text-ink'
                 }`}>
                 {v === 'dashboard' ? t('production', 'amps_view_overview') : t('production', 'amps_view_detail')}
               </button>
             ))}
           </div>
           <button onClick={() => setModal('create')}
-            className="flex items-center gap-2 bg-[#1A2B1A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#243824] transition-colors">
+            className="flex items-center gap-2 bg-forest-deep text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-forest-mid transition-colors">
             <Plus size={16} />{t('production', 'amps_add')}
           </button>
         </div>
@@ -320,10 +320,10 @@ export default function OwnerAnnualMpsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {kpiCards.map(kpi => (
-          <div key={kpi.label} className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+          <div key={kpi.label} className="bg-surface rounded-2xl border border-hairline p-4 shadow-sm">
             <kpi.icon size={18} className={kpi.color + ' mb-2'} />
             <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
-            <p className="text-xs text-[#8E8878] mt-0.5">{kpi.label}</p>
+            <p className="text-xs text-muted mt-0.5">{kpi.label}</p>
           </div>
         ))}
       </div>
@@ -335,14 +335,14 @@ export default function OwnerAnnualMpsPage() {
           <UtilizationChart kpis={kpis} />
 
           {/* Monthly KPI table */}
-          <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden lg:col-span-2">
-            <div className="px-5 py-4 border-b border-black/5 bg-[#FAF7F2]">
-              <p className="text-sm font-semibold text-[#1C1C1E]">{t('production', 'amps_monthly_detail')}</p>
+          <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden lg:col-span-2">
+            <div className="px-5 py-4 border-b border-hairline bg-canvas">
+              <p className="text-sm font-semibold text-ink">{t('production', 'amps_monthly_detail')}</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-[#8E8878] border-b border-black/5">
+                  <tr className="text-xs text-muted border-b border-hairline">
                     {tableHeaders.map((h, i) => (
                       <th key={h} className={`py-3 px-4 font-medium ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
                     ))}
@@ -350,18 +350,18 @@ export default function OwnerAnnualMpsPage() {
                 </thead>
                 <tbody>
                   {kpis.map((k, i) => (
-                    <tr key={i} className={`border-b border-black/5 last:border-0 ${
+                    <tr key={i} className={`border-b border-hairline last:border-0 ${
                       Number(k.plannedQty) > 0 ? '' : 'opacity-40'
                     }`}>
-                      <td className="py-3 px-4 font-medium text-[#1C1C1E]">{k.monthLabel}</td>
-                      <td className="py-3 px-4 text-right text-[#1C1C1E]">{fmtNum(k.plannedQty)}</td>
+                      <td className="py-3 px-4 font-medium text-ink">{k.monthLabel}</td>
+                      <td className="py-3 px-4 text-right text-ink">{fmtNum(k.plannedQty)}</td>
                       <td className="py-3 px-4 text-right">{fmtNum(k.plannedHours || 0)}h</td>
                       <td className="py-3 px-4 text-right">{fmtNum(k.machineHours || 0)}h</td>
-                      <td className="py-3 px-4 text-right text-amber-600">{Number(k.maintenanceHours || 0)}h</td>
+                      <td className="py-3 px-4 text-right text-amber-600 dark:text-amber-300">{Number(k.maintenanceHours || 0)}h</td>
                       <td className="py-3 px-4 text-right">
                         <span className={`font-semibold ${
                           Number(k.utilizationPct) > 90 ? 'text-red-500' :
-                          Number(k.utilizationPct) > 70 ? 'text-[#C9A84C]' : 'text-emerald-600'
+                          Number(k.utilizationPct) > 70 ? 'text-gold' : 'text-emerald-600 dark:text-emerald-300'
                         }`}>{Number(k.utilizationPct || 0).toFixed(1)}%</span>
                       </td>
                     </tr>
@@ -375,50 +375,50 @@ export default function OwnerAnnualMpsPage() {
         /* List view */
         <div className="space-y-2">
           {plans.length === 0 && (
-            <div className="bg-white rounded-2xl border border-black/5 p-10 text-center">
-              <Package2 size={28} className="mx-auto text-[#8E8878] mb-3" />
-              <p className="text-sm text-[#8E8878]">{t('production', 'amps_empty_year', { year })}</p>
+            <div className="bg-surface rounded-2xl border border-hairline p-10 text-center">
+              <Package2 size={28} className="mx-auto text-muted mb-3" />
+              <p className="text-sm text-muted">{t('production', 'amps_empty_year', { year })}</p>
             </div>
           )}
           {plans.map(plan => (
-            <div key={plan.id} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+            <div key={plan.id} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-[#1C1C1E]">{plan.factoryProductName}</span>
-                    <span className="text-xs text-[#8E8878]">
+                    <span className="font-semibold text-sm text-ink">{plan.factoryProductName}</span>
+                    <span className="text-xs text-muted">
                       {t('production', 'month_short', { n: plan.month })}/{plan.year}
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[plan.status]?.cls}`}>
                       {STATUS_CONFIG[plan.status]?.label}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-4 mt-2 text-xs text-[#8E8878]">
+                  <div className="flex flex-wrap gap-4 mt-2 text-xs text-muted">
                     <span>
-                      {t('production', 'amps_label_planned')}: <b className="text-[#1C1C1E]">{fmtNum(plan.plannedProductionQty)} {plan.factoryProductUnit}</b>
+                      {t('production', 'amps_label_planned')}: <b className="text-ink">{fmtNum(plan.plannedProductionQty)} {plan.factoryProductUnit}</b>
                     </span>
                     {plan.machineHoursRequired && (
-                      <span>{t('production', 'amps_label_machine_hours')}: <b className="text-[#1C1C1E]">{plan.machineHoursRequired}h</b></span>
+                      <span>{t('production', 'amps_label_machine_hours')}: <b className="text-ink">{plan.machineHoursRequired}h</b></span>
                     )}
                     {plan.utilizationPercent && (
                       <span>
-                        {t('production', 'amps_col_utilization')}: <b className={Number(plan.utilizationPercent) > 90 ? 'text-red-500' : 'text-[#1C1C1E]'}>{plan.utilizationPercent}%</b>
+                        {t('production', 'amps_col_utilization')}: <b className={Number(plan.utilizationPercent) > 90 ? 'text-red-500' : 'text-ink'}>{plan.utilizationPercent}%</b>
                       </span>
                     )}
                     {plan.machineName && (
-                      <span>{t('production', 'omaint_col_machine')}: <b className="text-[#1C1C1E]">{plan.machineName}</b></span>
+                      <span>{t('production', 'omaint_col_machine')}: <b className="text-ink">{plan.machineName}</b></span>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-1.5 flex-shrink-0">
                   <button onClick={() => setModal(plan)}
                     title={t('common', 'edit')}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 text-[#8E8878] hover:text-[#1C1C1E] transition-colors text-xs">
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-hairline text-muted hover:text-ink transition-colors text-xs">
                     ✏️
                   </button>
                   <button onClick={() => deletePlan(plan.id)}
                     title={t('common', 'delete')}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-[#8E8878] hover:text-red-500 transition-colors">
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:bg-red-500/10 text-muted hover:text-red-500 transition-colors">
                     <X size={14} />
                   </button>
                 </div>

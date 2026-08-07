@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import { accountantVendorExpenseApi, superAccountantVendorExpenseApi, fmtVND } from '../../api/materialRequestApi.js';
 import ExpenseDatePeriodPicker, { defaultExpenseWhen } from '../../components/ui/ExpenseDatePeriodPicker';
+import { formatVND } from '../../utils/format.js';
 
-function formatVND(n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ'; }
 function parseVND(s)  { return Number(String(s).replace(/[^0-9]/g, '')) || 0; }
 
 export const VENDOR_TYPE_LABELS = {
@@ -66,35 +66,35 @@ export function QuickCreateVendorModal({ initialName = '', onClose, onCreated })
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-black/5">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-hairline">
           <div className="flex items-center gap-2">
-            <Building2 size={18} className="text-[#C9A84C]" />
-            <h3 className="font-bold text-[#1C1C1E]">Tạo nhà cung cấp</h3>
+            <Building2 size={18} className="text-gold" />
+            <h3 className="font-bold text-ink">Tạo nhà cung cấp</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878]">
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-canvas text-muted">
             <X size={18} />
           </button>
         </div>
 
         <div className="p-5 space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Tên nhà cung cấp *</label>
+            <label className="block text-xs font-semibold text-ink mb-1">Tên nhà cung cấp *</label>
             <input
               autoFocus
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Nhập tên..."
-              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Loại</label>
+            <label className="block text-xs font-semibold text-ink mb-1">Loại</label>
             <select
               value={vendorType}
               onChange={e => setVendorType(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none bg-white"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none bg-surface"
             >
               {Object.entries(VENDOR_TYPE_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -103,62 +103,62 @@ export function QuickCreateVendorModal({ initialName = '', onClose, onCreated })
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1 flex items-center gap-1">
-              <User size={11} className="text-[#C9A84C]" /> Người liên hệ
+            <label className="block text-xs font-semibold text-ink mb-1 flex items-center gap-1">
+              <User size={11} className="text-gold" /> Người liên hệ
             </label>
             <input
               value={contactPerson}
               onChange={e => setContactPerson(e.target.value)}
               placeholder="Tên người liên hệ..."
-              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1 flex items-center gap-1">
-              <Phone size={11} className="text-[#C9A84C]" /> Số điện thoại
+            <label className="block text-xs font-semibold text-ink mb-1 flex items-center gap-1">
+              <Phone size={11} className="text-gold" /> Số điện thoại
             </label>
             <input
               value={contactPhone}
               onChange={e => setContactPhone(e.target.value)}
               placeholder="SĐT liên hệ..."
-              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1 flex items-center gap-1">
-              <MapPin size={11} className="text-[#C9A84C]" /> Địa chỉ
+            <label className="block text-xs font-semibold text-ink mb-1 flex items-center gap-1">
+              <MapPin size={11} className="text-gold" /> Địa chỉ
             </label>
             <input
               value={address}
               onChange={e => setAddress(e.target.value)}
               placeholder="Địa chỉ nhà cung cấp..."
-              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1E] mb-1 flex items-center gap-1">
-              <Hash size={11} className="text-[#C9A84C]" /> Mã số thuế
+            <label className="block text-xs font-semibold text-ink mb-1 flex items-center gap-1">
+              <Hash size={11} className="text-gold" /> Mã số thuế
             </label>
             <input
               value={taxCode}
               onChange={e => setTaxCode(e.target.value)}
               placeholder="Mã số thuế..."
-              className="w-full px-3 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+              className="w-full px-3 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
             />
           </div>
         </div>
 
-        <div className="p-5 border-t border-black/5 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+        <div className="p-5 border-t border-hairline flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
             Huỷ
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#B8923E] transition disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-strong transition disabled:opacity-50"
           >
             {saving ? 'Đang tạo...' : 'Tạo & Chọn'}
           </button>
@@ -272,37 +272,37 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
     <div className="overflow-y-auto flex-1 p-5 space-y-4">
       {/* Nhà cung cấp */}
       <div>
-        <label className="text-sm font-semibold text-[#1C1C1E] flex items-center gap-1.5 mb-1.5">
-          <Building2 size={14} className="text-[#C9A84C]" /> Nhà cung cấp <span className="text-red-500">*</span>
+        <label className="text-sm font-semibold text-ink flex items-center gap-1.5 mb-1.5">
+          <Building2 size={14} className="text-gold" /> Nhà cung cấp <span className="text-red-500">*</span>
         </label>
         <div className="relative" ref={dropRef}>
           <div
             onClick={() => setDropOpen(o => !o)}
-            className={`flex items-center justify-between px-4 py-2.5 rounded-xl border cursor-pointer transition ${!selectedVendor ? 'border-black/10 hover:border-[#C9A84C]' : 'border-[#C9A84C] bg-[#FAF7F2]'}`}
+            className={`flex items-center justify-between px-4 py-2.5 rounded-xl border cursor-pointer transition ${!selectedVendor ? 'border-hairline-2 hover:border-gold' : 'border-gold bg-canvas'}`}
           >
             {selectedVendor ? (
-              <p className="text-sm font-semibold text-[#1C1C1E]">{selectedVendor.name}</p>
+              <p className="text-sm font-semibold text-ink">{selectedVendor.name}</p>
             ) : (
-              <span className="text-sm text-[#8E8878]">{vendorLoading ? 'Đang tải...' : 'Chọn nhà cung cấp...'}</span>
+              <span className="text-sm text-muted">{vendorLoading ? 'Đang tải...' : 'Chọn nhà cung cấp...'}</span>
             )}
-            <ChevronDown size={16} className={`text-[#8E8878] transition-transform flex-shrink-0 ml-2 ${dropOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={16} className={`text-muted transition-transform flex-shrink-0 ml-2 ${dropOpen ? 'rotate-180' : ''}`} />
           </div>
           {dropOpen && (
-            <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden">
-              <div className="p-2 border-b border-black/5 relative">
-                <Search size={13} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-surface border border-hairline-2 rounded-xl shadow-xl overflow-hidden">
+              <div className="p-2 border-b border-hairline relative">
+                <Search size={13} className="absolute left-5 top-1/2 -translate-y-1/2 text-muted" />
                 <input autoFocus value={vendorSearch} onChange={e => setVendorSearch(e.target.value)}
                   placeholder="Tìm nhà cung cấp..."
-                  className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+                  className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-hairline-2 focus:outline-none focus:ring-2 focus:ring-gold/40" />
               </div>
               <div className="max-h-48 overflow-y-auto">
-                {filteredVendors.length === 0 && <p className="text-center py-4 text-xs text-[#8E8878]">Không tìm thấy</p>}
+                {filteredVendors.length === 0 && <p className="text-center py-4 text-xs text-muted">Không tìm thấy</p>}
                 {filteredVendors.map(v => (
                   <button key={v.id}
                     onClick={() => { setSelectedVendor(v); setDropOpen(false); setVendorSearch(''); }}
-                    className="w-full text-left px-4 py-2.5 hover:bg-[#FAF7F2] transition border-b border-black/5 last:border-0">
-                    <p className="text-sm font-medium text-[#1C1C1E]">{v.name}</p>
-                    {v.contactPhone && <p className="text-xs text-[#8E8878]">{v.contactPhone}</p>}
+                    className="w-full text-left px-4 py-2.5 hover:bg-canvas transition border-b border-hairline last:border-0">
+                    <p className="text-sm font-medium text-ink">{v.name}</p>
+                    {v.contactPhone && <p className="text-xs text-muted">{v.contactPhone}</p>}
                   </button>
                 ))}
               </div>
@@ -312,9 +312,9 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
       </div>
 
       {selectedVendor && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
-          <span className="text-sm text-amber-700 font-medium">Công nợ hiện tại</span>
-          <span className="text-lg font-bold text-amber-700">
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl p-3 flex items-center justify-between">
+          <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">Công nợ hiện tại</span>
+          <span className="text-lg font-bold text-amber-700 dark:text-amber-300">
             {loadingOutstanding ? '...' : fmtVND(outstanding)}
           </span>
         </div>
@@ -325,44 +325,44 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
           <div className="flex gap-2">
             <button
               onClick={() => setFullSettlement(true)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${fullSettlement ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-black/10'}`}>
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${fullSettlement ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-hairline-2'}`}>
               Thanh toán hết
             </button>
             <button
               onClick={() => setFullSettlement(false)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${!fullSettlement ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-black/10'}`}>
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${!fullSettlement ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-hairline-2'}`}>
               Thanh toán 1 phần
             </button>
           </div>
 
           {!fullSettlement && (
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Số tiền chi</label>
+              <label className="block text-sm font-semibold text-ink mb-1.5">Số tiền chi</label>
               <input
                 value={amount ? new Intl.NumberFormat('vi-VN').format(parseVND(amount)) : ''}
                 onChange={e => setAmount(String(parseVND(e.target.value)))}
                 placeholder="Nhập số tiền..."
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 text-right"
+                className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 text-right"
               />
-              <p className="text-xs text-[#8E8878] mt-1">
+              <p className="text-xs text-muted mt-1">
                 Sẽ trừ vào các phiếu đặt hàng có công nợ lâu nhất trước.
               </p>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Ghi chú (tuỳ chọn)</label>
+            <label className="block text-sm font-semibold text-ink mb-1.5">Ghi chú (tuỳ chọn)</label>
             <input value={note} onChange={e => setNote(e.target.value)} placeholder="Ghi chú..."
-              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+              className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40" />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+            <label className="block text-sm font-semibold text-ink mb-1.5">
               Ảnh chứng từ thanh toán <span className="text-red-500">*</span>
             </label>
             <div className="flex flex-wrap gap-2">
               {proofImages.map(img => (
-                <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-black/10">
+                <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-hairline-2">
                   <img src={img.url} alt="" className="w-full h-full object-cover" />
                   {img.uploading ? (
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -377,7 +377,7 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
                 </div>
               ))}
               <button onClick={() => proofFileRef.current?.click()}
-                className="w-16 h-16 rounded-xl border-2 border-dashed border-black/20 flex flex-col items-center justify-center gap-0.5 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition text-[#8E8878] hover:text-[#C9A84C]">
+                className="w-16 h-16 rounded-xl border-2 border-dashed border-hairline-3 flex flex-col items-center justify-center gap-0.5 hover:border-gold hover:bg-gold/5 transition text-muted hover:text-gold">
                 <Upload size={14} />
                 <span className="text-xs">Thêm</span>
               </button>
@@ -391,17 +391,17 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
       )}
 
       {selectedVendor && outstanding === 0 && (
-        <p className="text-sm text-[#8E8878] text-center py-4">Nhà cung cấp này hiện không có công nợ.</p>
+        <p className="text-sm text-muted text-center py-4">Nhà cung cấp này hiện không có công nợ.</p>
       )}
 
       <div className="flex gap-3 pt-2">
-        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
           Huỷ
         </button>
         <button
           onClick={handleSubmit}
           disabled={submitting || !selectedVendor || !outstanding || uploadedProofUrls.length === 0 || proofImages.some(img => img.uploading)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#C9A84C] text-white font-bold hover:bg-[#B8923E] transition disabled:opacity-50">
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gold text-white font-bold hover:bg-gold-strong transition disabled:opacity-50">
           {submitting
             ? <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             : <Wallet size={16} />}
@@ -505,11 +505,11 @@ function CategorySearchSelect({ categories, setCategories, value, onChange, inde
       <div
         ref={triggerRef}
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm cursor-pointer bg-white transition ${open ? 'border-[#C9A84C] ring-2 ring-[#C9A84C]/40' : 'border-black/10 hover:border-[#C9A84C]'}`}>
-        <span className={selected ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}>
+        className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm cursor-pointer bg-surface transition ${open ? 'border-gold ring-2 ring-gold/40' : 'border-hairline-2 hover:border-gold'}`}>
+        <span className={selected ? 'text-ink' : 'text-muted'}>
           {selected ? selected.name : `— Chọn nhãn khoản chi ${index + 1} —`}
         </span>
-        <ChevronDown size={15} className={`text-[#8E8878] flex-shrink-0 ml-2 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={15} className={`text-muted flex-shrink-0 ml-2 transition-transform ${open ? 'rotate-180' : ''}`} />
       </div>
 
       {open && menuPos && createPortal(
@@ -523,30 +523,30 @@ function CategorySearchSelect({ categories, setCategories, value, onChange, inde
             ...(menuPos.bottom != null ? { bottom: menuPos.bottom } : {}),
             zIndex: 70, // cao hơn modal (z-50) để luôn nổi lên trên
           }}
-          className="bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden">
-          <div className="p-2 border-b border-black/5 relative">
-            <Search size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          className="bg-surface border border-hairline-2 rounded-xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-hairline relative">
+            <Search size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
             <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Tìm hoặc nhập nhãn mới..."
-              className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+              className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-hairline-2 focus:outline-none focus:ring-2 focus:ring-gold/40" />
           </div>
           <div className="max-h-52 overflow-y-auto">
             {filtered.map(c => (
               <button key={c.id}
                 onClick={() => { onChange(String(c.id)); setOpen(false); setSearch(''); }}
-                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#FAF7F2] transition border-b border-black/5 last:border-0 ${String(c.id) === String(value) ? 'bg-[#FAF7F2] font-semibold text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-canvas transition border-b border-hairline last:border-0 ${String(c.id) === String(value) ? 'bg-canvas font-semibold text-gold' : 'text-ink'}`}>
                 {c.name}
               </button>
             ))}
             {filtered.length === 0 && !canCreate && (
-              <p className="text-center py-4 text-xs text-[#8E8878]">Không tìm thấy nhãn</p>
+              <p className="text-center py-4 text-xs text-muted">Không tìm thấy nhãn</p>
             )}
           </div>
           {canCreate && (
             <button onClick={handleCreate} disabled={creating}
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[#C9A84C] hover:bg-[#C9A84C]/5 border-t border-black/5 transition disabled:opacity-50">
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gold hover:bg-gold/5 border-t border-hairline transition disabled:opacity-50">
               {creating
-                ? <span className="w-3.5 h-3.5 border-2 border-[#C9A84C]/40 border-t-[#C9A84C] rounded-full animate-spin" />
+                ? <span className="w-3.5 h-3.5 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
                 : <Plus size={14} />}
               Tạo nhãn "<span className="font-bold">{capitalizeFirst(search)}</span>"
             </button>
@@ -725,32 +725,32 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
 
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-black/5 flex-shrink-0">
+          <div className="flex items-center justify-between p-5 border-b border-hairline flex-shrink-0">
             <div className="flex items-center gap-3">
-              <Receipt size={20} className="text-[#C9A84C]" />
+              <Receipt size={20} className="text-gold" />
               <div>
-                <h2 className="text-lg font-bold text-[#1C1C1E]">Tạo phiếu chi</h2>
-                <p className="text-xs text-[#8E8878]">Phiếu chi sẽ được duyệt theo hạn mức &amp; danh mục cấu hình</p>
+                <h2 className="text-lg font-bold text-ink">Tạo phiếu chi</h2>
+                <p className="text-xs text-muted">Phiếu chi sẽ được duyệt theo hạn mức &amp; danh mục cấu hình</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted transition">
               <X size={20} />
             </button>
           </div>
 
           {/* Tabs: Chi phí tự do / Trả công nợ NCC */}
-          <div className="flex gap-1 bg-[#FAF7F2] m-4 mb-0 rounded-xl p-1 flex-shrink-0">
+          <div className="flex gap-1 bg-canvas m-4 mb-0 rounded-xl p-1 flex-shrink-0">
             <button
               onClick={() => setMode('EXPENSE')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'EXPENSE' ? 'bg-white text-[#1C1C1E] shadow-sm' : 'text-[#8E8878]'}`}>
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'EXPENSE' ? 'bg-surface text-ink shadow-sm' : 'text-muted'}`}>
               <ReceiptText size={14} /> Chi phí
             </button>
             <button
               onClick={() => setMode('VENDOR_DEBT')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'VENDOR_DEBT' ? 'bg-white text-[#1C1C1E] shadow-sm' : 'text-[#8E8878]'}`}>
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'VENDOR_DEBT' ? 'bg-surface text-ink shadow-sm' : 'text-muted'}`}>
               <Wallet size={14} /> Trả công nợ NCC
             </button>
           </div>
@@ -766,8 +766,8 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
             {/* ── Nhà cung cấp (bắt buộc) ── */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-semibold text-[#1C1C1E] flex items-center gap-1.5">
-                  <Building2 size={14} className="text-[#C9A84C]" />
+                <label className="text-sm font-semibold text-ink flex items-center gap-1.5">
+                  <Building2 size={14} className="text-gold" />
                   Nhà cung cấp / Đơn vị <span className="text-red-500">*</span>
                 </label>
               </div>
@@ -777,37 +777,37 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                 <div
                   onClick={() => { setDropOpen(o => !o); }}
                   className={`flex items-center justify-between px-4 py-2.5 rounded-xl border cursor-pointer transition ${
-                    !selectedVendor ? 'border-black/10 hover:border-[#C9A84C]' : 'border-[#C9A84C] bg-[#FAF7F2]'
+                    !selectedVendor ? 'border-hairline-2 hover:border-gold' : 'border-gold bg-canvas'
                   }`}
                 >
                   {selectedVendor ? (
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#1C1C1E]">{selectedVendor.name}</p>
-                      <p className="text-xs text-[#8E8878]">
+                      <p className="text-sm font-semibold text-ink">{selectedVendor.name}</p>
+                      <p className="text-xs text-muted">
                         {VENDOR_TYPE_LABELS[selectedVendor.vendorType] || selectedVendor.vendorType}
                         {selectedVendor.contactPerson && ` · ${selectedVendor.contactPerson}`}
                         {selectedVendor.contactPhone && ` · ${selectedVendor.contactPhone}`}
                       </p>
                     </div>
                   ) : (
-                    <span className="text-sm text-[#8E8878]">
+                    <span className="text-sm text-muted">
                       {vendorLoading ? 'Đang tải...' : 'Chọn nhà cung cấp...'}
                     </span>
                   )}
-                  <ChevronDown size={16} className={`text-[#8E8878] transition-transform flex-shrink-0 ml-2 ${dropOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={16} className={`text-muted transition-transform flex-shrink-0 ml-2 ${dropOpen ? 'rotate-180' : ''}`} />
                 </div>
 
                 {dropOpen && (
-                  <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden">
+                  <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-surface border border-hairline-2 rounded-xl shadow-xl overflow-hidden">
                     {/* Search trong dropdown */}
-                    <div className="p-2 border-b border-black/5 relative">
-                      <Search size={13} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                    <div className="p-2 border-b border-hairline relative">
+                      <Search size={13} className="absolute left-5 top-1/2 -translate-y-1/2 text-muted" />
                       <input
                         autoFocus
                         value={vendorSearch}
                         onChange={e => setVendorSearch(e.target.value)}
                         placeholder="Tìm nhà cung cấp..."
-                        className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                        className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-hairline-2 focus:outline-none focus:ring-2 focus:ring-gold/40"
                       />
                     </div>
 
@@ -816,24 +816,24 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                       {selectedVendor && (
                         <button
                           onClick={() => { setSelectedVendor(null); setDropOpen(false); }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-[#8E8878] hover:bg-[#FAF7F2] transition"
+                          className="w-full text-left px-4 py-2.5 text-sm text-muted hover:bg-canvas transition"
                         >
                           — Bỏ chọn —
                         </button>
                       )}
 
                       {filteredVendors.length === 0 && !vendorSearch && !vendorLoading && (
-                        <p className="text-center py-4 text-xs text-[#8E8878]">Chưa có nhà cung cấp nào</p>
+                        <p className="text-center py-4 text-xs text-muted">Chưa có nhà cung cấp nào</p>
                       )}
 
                       {filteredVendors.map(v => (
                         <button
                           key={v.id}
                           onClick={() => { setSelectedVendor(v); setDropOpen(false); setVendorSearch(''); }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-[#FAF7F2] transition border-b border-black/5 last:border-0"
+                          className="w-full text-left px-4 py-2.5 hover:bg-canvas transition border-b border-hairline last:border-0"
                         >
-                          <p className="text-sm font-medium text-[#1C1C1E]">{v.name}</p>
-                          <p className="text-xs text-[#8E8878]">
+                          <p className="text-sm font-medium text-ink">{v.name}</p>
+                          <p className="text-xs text-muted">
                             {VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType}
                             {v.contactPerson && ` · ${v.contactPerson}`}
                             {v.contactPhone && ` · ${v.contactPhone}`}
@@ -843,10 +843,10 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                     </div>
 
                     {/* Nút tạo nhanh */}
-                    <div className="p-2 border-t border-black/5">
+                    <div className="p-2 border-t border-hairline">
                       <button
                         onClick={() => { setShowQuickCreate(true); setDropOpen(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#C9A84C] font-semibold hover:bg-[#FAF7F2] rounded-lg transition"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gold font-semibold hover:bg-canvas rounded-lg transition"
                       >
                         <Plus size={14} />
                         {noResults ? `Tạo "${vendorSearch}"` : 'Tạo nhà cung cấp mới'}
@@ -859,50 +859,50 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
 
             {/* ── Lý do ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+              <label className="block text-sm font-semibold text-ink mb-1.5">
                 Lý do chi <span className="text-red-500">*</span>
               </label>
               <input
                 value={reason} onChange={e => setReason(e.target.value)}
                 placeholder="Mô tả lý do chi tiết..."
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
               />
             </div>
 
             {/* ── Số phiếu chi ── */}
             <div>
-              <label className="text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                <Hash size={14} className="text-[#C9A84C]" /> Số phiếu chi
+              <label className="text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5">
+                <Hash size={14} className="text-gold" /> Số phiếu chi
               </label>
               <div className="relative">
                 <input
                   value={paymentNumber}
                   onChange={e => setPaymentNumber(e.target.value)}
                   placeholder={suggestedPaymentNumber ? `Gợi ý: ${suggestedPaymentNumber}` : 'Nhập số phiếu chi...'}
-                  className="w-full px-4 py-2.5 pr-24 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+                  className="w-full px-4 py-2.5 pr-24 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
                 />
                 {suggestedPaymentNumber && !paymentNumber && (
                   <button
                     type="button"
                     onClick={() => setPaymentNumber(suggestedPaymentNumber)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gold/10 text-gold hover:bg-gold/20 transition"
                   >
                     Dùng số này
                   </button>
                 )}
               </div>
               {suggestedPaymentNumber && (
-                <p className="text-xs text-[#8E8878] mt-1">
-                  Số kế tiếp gợi ý: <span className="font-mono font-semibold text-[#C9A84C]">{suggestedPaymentNumber}</span> — để trống sẽ tự dùng số này. Số chạy tới 15000 sẽ quay vòng về 1.
+                <p className="text-xs text-muted mt-1">
+                  Số kế tiếp gợi ý: <span className="font-mono font-semibold text-gold">{suggestedPaymentNumber}</span> — để trống sẽ tự dùng số này. Số chạy tới 15000 sẽ quay vòng về 1.
                 </p>
               )}
             </div>
 
             {/* ── Thời điểm chi — chọn NGÀY (mặc định hôm nay) hoặc KỲ (tháng) ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Thời điểm chi</label>
+              <label className="block text-sm font-semibold text-ink mb-1.5">Thời điểm chi</label>
               <ExpenseDatePeriodPicker value={when} onChange={setWhen} />
-              <p className="text-xs text-[#8E8878] mt-1">
+              <p className="text-xs text-muted mt-1">
                 Mặc định là <b>ngày hôm nay</b>. Chọn <b>Ngày</b> để ghi đúng ngày phát sinh (tiện tạo lại phiếu chi cũ);
                 hoặc chọn <b>Kỳ</b> để tính khoản chi vào cả tháng. Kỳ cho phép cả tháng hiện tại và tương lai.
               </p>
@@ -910,26 +910,26 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
 
             {/* ── Người yêu cầu ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Người yêu cầu</label>
+              <label className="block text-sm font-semibold text-ink mb-1.5">Người yêu cầu</label>
               <input
                 value={requestedByName} onChange={e => setRequestedByName(e.target.value)}
                 placeholder="Tên người yêu cầu (nếu khác người lập phiếu)..."
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
               />
             </div>
 
             {/* ── Hình thức thanh toán (Mục 4) ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+              <label className="block text-sm font-semibold text-ink mb-1.5">
                 Hình thức thanh toán <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setPaymentType('CASH')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${paymentType === 'CASH' ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-black/10'}`}>
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${paymentType === 'CASH' ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-hairline-2'}`}>
                   Tiền mặt
                 </button>
                 <button type="button" onClick={() => setPaymentType('BANK_TRANSFER')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${paymentType === 'BANK_TRANSFER' ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-black/10'}`}>
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${paymentType === 'BANK_TRANSFER' ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-hairline-2'}`}>
                   Chuyển khoản
                 </button>
               </div>
@@ -938,18 +938,18 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                   <div>
                     <select
                       value={bankName} onChange={e => setBankName(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white">
+                      className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface">
                       <option value="">-- Chọn ngân hàng * --</option>
                       {banks.map(b => <option key={b.id || b.name} value={b.name}>{b.name}</option>)}
                     </select>
                     {banks.length === 0 && (
-                      <p className="text-[11px] text-amber-600 mt-1">Chưa có ngân hàng — Chủ/Quản trị cần tạo ở trang Quản lý dòng tiền.</p>
+                      <p className="text-[11px] text-amber-600 dark:text-amber-300 mt-1">Chưa có ngân hàng — Chủ/Quản trị cần tạo ở trang Quản lý dòng tiền.</p>
                     )}
                   </div>
                   <input
                     value={bankRef} onChange={e => setBankRef(e.target.value)}
                     placeholder="Mã tham chiếu giao dịch *"
-                    className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+                    className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
                   />
                 </div>
               )}
@@ -958,28 +958,28 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
             {/* ── Khoản chi ── */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold text-[#1C1C1E]">
+                <label className="text-sm font-semibold text-ink">
                   Các khoản chi <span className="text-red-500">*</span>
                 </label>
                 <button onClick={addItem} disabled={!selectedVendor}
-                  className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline font-semibold disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
+                  className="flex items-center gap-1 text-xs text-gold hover:underline font-semibold disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
                   <Plus size={13} /> Thêm khoản
                 </button>
               </div>
 
               {!selectedVendor ? (
-                <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Chọn nhà cung cấp trước khi thêm khoản chi.</p>
+                <p className="text-xs text-muted bg-canvas rounded-xl p-3">Chọn nhà cung cấp trước khi thêm khoản chi.</p>
               ) : catLoading ? (
-                <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Đang tải danh mục khoản chi...</p>
+                <p className="text-xs text-muted bg-canvas rounded-xl p-3">Đang tải danh mục khoản chi...</p>
               ) : (
               <div className="space-y-2">
                 {categories.length === 0 && (
-                  <p className="text-xs text-[#8E8878] bg-[#FAF7F2] border border-black/5 rounded-xl p-3">
+                  <p className="text-xs text-muted bg-canvas border border-hairline rounded-xl p-3">
                     Chưa có nhãn khoản chi. Gõ tên nhãn vào ô bên dưới rồi bấm <b>Tạo nhãn</b> để thêm mới ngay.
                   </p>
                 )}
                 {items.map((item, idx) => (
-                  <div key={item.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
+                  <div key={item.id} className="bg-canvas rounded-xl p-3 space-y-2">
                     <div className="flex gap-2">
                       <CategorySearchSelect
                         categories={categories}
@@ -993,10 +993,10 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                         value={item.amount ? new Intl.NumberFormat('vi-VN').format(parseVND(item.amount)) : ''}
                         onChange={e => updateItem(item.id, 'amount', String(parseVND(e.target.value)))}
                         placeholder="Số tiền"
-                        className="w-32 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white text-right"
+                        className="w-32 px-3 py-2 rounded-lg border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface text-right"
                       />
                       {items.length > 1 && (
-                        <button onClick={() => removeItem(item.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
+                        <button onClick={() => removeItem(item.id)} className="p-2 rounded-lg hover:bg-red-50 dark:bg-red-500/10 text-red-400 transition flex-shrink-0">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -1004,23 +1004,23 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                     <input
                       value={item.note} onChange={e => updateItem(item.id, 'note', e.target.value)}
                       placeholder="Ghi chú (tuỳ chọn)..."
-                      className="w-full px-3 py-2 rounded-lg border border-black/10 text-xs focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white"
+                      className="w-full px-3 py-2 rounded-lg border border-hairline-2 text-xs focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface"
                     />
                   </div>
                 ))}
               </div>
               )}
-              <div className="text-right mt-2 text-sm font-bold text-[#1C1C1E]">
-                Tổng: <span className="text-[#C9A84C]">{formatVND(totalAmount)}</span>
+              <div className="text-right mt-2 text-sm font-bold text-ink">
+                Tổng: <span className="text-gold">{formatVND(totalAmount)}</span>
               </div>
             </div>
 
             {/* ── Ảnh ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Ảnh chứng từ</label>
+              <label className="block text-sm font-semibold text-ink mb-1.5">Ảnh chứng từ</label>
               <div className="flex flex-wrap gap-2">
                 {images.map(img => (
-                  <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-black/10">
+                  <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-hairline-2">
                     <img src={img.url} alt="" className="w-full h-full object-cover" />
                     {img.uploading ? (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -1035,7 +1035,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                   </div>
                 ))}
                 <button onClick={() => fileRef.current?.click()}
-                  className="w-16 h-16 rounded-xl border-2 border-dashed border-black/20 flex flex-col items-center justify-center gap-0.5 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition text-[#8E8878] hover:text-[#C9A84C]">
+                  className="w-16 h-16 rounded-xl border-2 border-dashed border-hairline-3 flex flex-col items-center justify-center gap-0.5 hover:border-gold hover:bg-gold/5 transition text-muted hover:text-gold">
                   <Upload size={14} />
                   <span className="text-xs">Thêm</span>
                 </button>
@@ -1045,13 +1045,13 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
           </div>
 
           {/* Footer */}
-          <div className="p-5 border-t border-black/5 flex-shrink-0 flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+          <div className="p-5 border-t border-hairline flex-shrink-0 flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
               Huỷ
             </button>
             <button
               onClick={handleSubmit} disabled={submitting}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#C9A84C] text-white font-bold hover:bg-[#B8923E] transition disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gold text-white font-bold hover:bg-gold-strong transition disabled:opacity-50"
             >
               {submitting
                 ? <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />

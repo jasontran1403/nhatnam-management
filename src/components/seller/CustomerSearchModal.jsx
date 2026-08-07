@@ -17,26 +17,26 @@ function sanitizeCode(raw) {
 function Field({ label, required, error, hint, ...props }) {
   return (
     <div>
-      <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">
+      <label className="text-[11px] text-muted mb-1 block font-medium">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-        {!required && <span className="text-[#C4B9A8] ml-1 font-normal">(tuỳ chọn)</span>}
+        {!required && <span className="text-faint ml-1 font-normal">(tuỳ chọn)</span>}
       </label>
       <input
-        className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none bg-white transition-colors
+        className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none bg-surface transition-colors
           ${error
-            ? 'border-red-400 bg-red-50/40 focus:border-red-400'
-            : 'border-[#E8DDD0] focus:border-[#C9A84C]'
+            ? 'border-red-400 bg-red-50/40 dark:bg-red-500/4 focus:border-red-400'
+            : 'border-line focus:border-gold'
           }`}
         {...props}
       />
       {error && <p className="text-[10px] text-red-400 mt-0.5">{error}</p>}
-      {hint && !error && <p className="text-[10px] text-[#C4B9A8] mt-0.5">{hint}</p>}
+      {hint && !error && <p className="text-[10px] text-faint mt-0.5">{hint}</p>}
     </div>
   );
 }
 
 function SectionLabel({ children }) {
-  return <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">{children}</p>;
+  return <p className="text-[10px] font-bold text-muted uppercase tracking-wider">{children}</p>;
 }
 
 // ── CustomerCode Input ────────────────────────────────────────────
@@ -64,7 +64,7 @@ function CustomerCodeInput({ value, onChange, error }) {
 
   return (
     <div>
-      <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">
+      <label className="text-[11px] text-muted mb-1 block font-medium">
         {t('customer', 'customer')}<span className="text-red-400 ml-0.5">*</span>
       </label>
       <div className="relative">
@@ -74,14 +74,14 @@ function CustomerCodeInput({ value, onChange, error }) {
           maxLength={30}
           className={`w-full px-3 py-2 pr-8 rounded-lg border text-xs focus:outline-none font-mono tracking-wider transition-colors
             ${error
-              ? 'border-red-400 bg-red-50/40'
+              ? 'border-red-400 bg-red-50/40 dark:bg-red-500/4'
               : available === true
                 ? 'border-emerald-400 focus:border-emerald-400'
-                : 'border-[#E8DDD0] focus:border-[#C9A84C]'
+                : 'border-line focus:border-gold'
             }`}
         />
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-          {checking && <Loader2 size={12} className="text-[#8E8878] animate-spin" />}
+          {checking && <Loader2 size={12} className="text-muted animate-spin" />}
           {!checking && available === true && <CheckCircle2 size={12} className="text-emerald-500" />}
           {!checking && available === false && <XCircle size={12} className="text-red-400" />}
         </div>
@@ -89,10 +89,10 @@ function CustomerCodeInput({ value, onChange, error }) {
       {error
         ? <p className="text-[10px] text-red-400 mt-0.5">{error}</p>
         : available === true
-          ? <p className="text-[10px] text-emerald-600 mt-0.5">Mã có thể sử dụng</p>
+          ? <p className="text-[10px] text-emerald-600 dark:text-emerald-300 mt-0.5">Mã có thể sử dụng</p>
           : available === false
             ? <p className="text-[10px] text-red-400 mt-0.5">Mã đã được sử dụng</p>
-            : <p className="text-[10px] text-[#C4B9A8] mt-0.5">Chữ hoa, số, dấu - hoặc _. Tối đa 30 ký tự.</p>
+            : <p className="text-[10px] text-faint mt-0.5">Chữ hoa, số, dấu - hoặc _. Tối đa 30 ký tự.</p>
       }
     </div>
   );
@@ -111,34 +111,34 @@ function ReceiverCard({ receiver, index, isOnly, errors, required, onCopyFromAbo
   return (
     <div className={`rounded-xl border p-3 space-y-2 transition-all
       ${receiver.isDefault
-        ? 'border-[#C9A84C]/60 bg-[#FDF8ED]'
-        : 'border-[#E8DDD0] bg-white'
+        ? 'border-gold/60 bg-gold-tint'
+        : 'border-line bg-surface'
       }`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-[#1C1C1E]">Người nhận #{index + 1}</span>
+          <span className="text-[11px] font-semibold text-ink">Người nhận #{index + 1}</span>
           {required && <span className="text-[9px] text-red-400">*</span>}
           {receiver.isDefault && (
-            <span className="text-[9px] bg-[#C9A84C]/20 text-[#C9A84C] rounded-full px-1.5 py-0.5 font-semibold">
+            <span className="text-[9px] bg-gold/20 text-gold rounded-full px-1.5 py-0.5 font-semibold">
               Mặc định
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button type="button" onClick={handleCopy}
-            className="flex items-center gap-1 px-1.5 py-1 rounded-md text-[#8E8878] hover:text-[#C9A84C] hover:bg-[#F0EBE3] transition-colors text-[10px] font-medium">
+            className="flex items-center gap-1 px-1.5 py-1 rounded-md text-muted hover:text-gold hover:bg-surface-2 transition-colors text-[10px] font-medium">
             {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
             {copied ? 'Đã copy' : 'Copy'}
           </button>
           {!receiver.isDefault && (
             <button type="button" onClick={onSetDefault}
-              className="p-1 rounded-md text-[#C4B9A8] hover:text-[#C9A84C] hover:bg-[#F0EBE3] transition-colors">
+              className="p-1 rounded-md text-faint hover:text-gold hover:bg-surface-2 transition-colors">
               <Star size={12} />
             </button>
           )}
           {!isOnly && (
             <button type="button" onClick={onRemove}
-              className="p-1 rounded-md text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 transition-colors">
+              className="p-1 rounded-md text-faint hover:text-red-400 hover:bg-red-50 dark:bg-red-500/10 transition-colors">
               <Trash2 size={12} />
             </button>
           )}
@@ -149,7 +149,7 @@ function ReceiverCard({ receiver, index, isOnly, errors, required, onCopyFromAbo
           value={receiver.receiverAddress}
           onChange={e => onChange('receiverAddress', e.target.value)}
           className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
-            ${errors?.receiverAddress ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
+            ${errors?.receiverAddress ? 'border-red-400 bg-red-50/40 dark:bg-red-500/4' : 'border-line focus:border-gold'}`} />
         {errors?.receiverAddress && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverAddress}</p>}
       </div>
       <div>
@@ -157,7 +157,7 @@ function ReceiverCard({ receiver, index, isOnly, errors, required, onCopyFromAbo
           value={receiver.receiverName}
           onChange={e => onChange('receiverName', e.target.value)}
           className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
-            ${errors?.receiverName ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
+            ${errors?.receiverName ? 'border-red-400 bg-red-50/40 dark:bg-red-500/4' : 'border-line focus:border-gold'}`} />
         {errors?.receiverName && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverName}</p>}
       </div>
       <div>
@@ -165,7 +165,7 @@ function ReceiverCard({ receiver, index, isOnly, errors, required, onCopyFromAbo
           value={receiver.receiverPhone}
           onChange={e => onChange('receiverPhone', e.target.value)}
           className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
-            ${errors?.receiverPhone ? 'border-red-400 bg-red-50/40' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
+            ${errors?.receiverPhone ? 'border-red-400 bg-red-50/40 dark:bg-red-500/4' : 'border-line focus:border-gold'}`} />
         {errors?.receiverPhone && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverPhone}</p>}
       </div>
     </div>
@@ -243,7 +243,7 @@ function PhoneCheckInput({ value, onChange, placeholder, className }) {
         <input type="text" placeholder={placeholder} value={value} onChange={handleChange}
           className={`${className} pr-8`} />
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-          {checking && <Loader2 size={11} className="text-[#8E8878] animate-spin" />}
+          {checking && <Loader2 size={11} className="text-muted animate-spin" />}
           {!checking && duplicate === false && <CheckCircle2 size={11} className="text-emerald-500" />}
           {!checking && duplicate === true && <XCircle size={11} className="text-red-400" />}
         </div>
@@ -254,7 +254,7 @@ function PhoneCheckInput({ value, onChange, placeholder, className }) {
         </p>
       )}
       {!checking && duplicate === false && value.trim().length >= 6 && (
-        <p className="text-[10px] text-emerald-600 mt-0.5">SĐT có thể sử dụng</p>
+        <p className="text-[10px] text-emerald-600 dark:text-emerald-300 mt-0.5">SĐT có thể sử dụng</p>
       )}
     </div>
   );
@@ -263,21 +263,21 @@ function PhoneCheckInput({ value, onChange, placeholder, className }) {
 // ── InlineForm ────────────────────────────────────────────────────
 function InlineForm({ form, onChange, onSave, onCancel, saving, phoneError }) {
   return (
-    <div className="border border-[#C9A84C]/40 rounded-xl p-3 space-y-2 bg-[#FDF8ED]">
+    <div className="border border-gold/40 rounded-xl p-3 space-y-2 bg-gold-tint">
       <input type="text" placeholder="Địa chỉ nhận hàng *" value={form.receiverAddress}
         onChange={e => onChange('receiverAddress', e.target.value)}
-        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
+        className="w-full px-3 py-2 rounded-lg border border-line text-xs focus:outline-none focus:border-gold" />
       <input type="text" placeholder="Tên người nhận (tuỳ chọn)" value={form.receiverName}
         onChange={e => onChange('receiverName', e.target.value)}
-        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
+        className="w-full px-3 py-2 rounded-lg border border-line text-xs focus:outline-none focus:border-gold" />
       <PhoneCheckInput value={form.receiverPhone} onChange={val => onChange('receiverPhone', val)}
         placeholder="Số điện thoại (tuỳ chọn)"
-        className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C]" />
+        className="w-full px-3 py-2 rounded-lg border border-line text-xs focus:outline-none focus:border-gold" />
       {phoneError && <p className="text-[10px] text-red-400 -mt-1">{phoneError}</p>}
       <div className="flex gap-2 pt-1">
-        <button onClick={onCancel} className="flex-1 py-1.5 rounded-lg border border-[#E8DDD0] text-[#8E8878] text-xs font-medium">Huỷ</button>
+        <button onClick={onCancel} className="flex-1 py-1.5 rounded-lg border border-line text-muted text-xs font-medium">Huỷ</button>
         <button onClick={onSave} disabled={saving}
-          className="flex-1 py-1.5 rounded-lg bg-[#C9A84C] text-white text-xs font-bold disabled:opacity-60">
+          className="flex-1 py-1.5 rounded-lg bg-gold text-white text-xs font-bold disabled:opacity-60">
           {saving ? 'Đang lưu...' : 'Lưu'}
         </button>
       </div>
@@ -472,8 +472,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
   return (
     <div className="flex flex-col min-h-0 flex-1">
       {/* Type toggle */}
-      <div className="px-4 py-3 border-b border-[#F0EBE3] shrink-0">
-        <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+      <div className="px-4 py-3 border-b border-line-soft shrink-0">
+        <div className="flex rounded-xl border border-line overflow-hidden text-xs">
           {[
             ['RETAIL', <User size={11} />, t('customer', 'individual')],
             ['COMPANY', <Building2 size={11} />, t('customer', 'company')],
@@ -481,8 +481,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
             <button key={type} type="button"
               onClick={() => { setCustomerType(type); setErrors({}); setReceiverErrors([{}]); setIsPrivate(false); }}
               className={`flex-1 py-2 font-medium transition-colors flex items-center justify-center gap-1.5
-                ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
-                ${customerType === type ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                ${i > 0 ? 'border-l border-line' : ''}
+                ${customerType === type ? 'bg-gold text-white' : 'text-muted hover:bg-surface-2'}`}>
               {icon}{label}
             </button>
           ))}
@@ -516,8 +516,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
 
             {/* Loại giá */}
             <div>
-              <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">Loại giá</label>
-              <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+              <label className="text-[11px] text-muted mb-1 block font-medium">Loại giá</label>
+              <div className="flex rounded-xl border border-line overflow-hidden text-xs">
                 {[
                   ['RETAIL_PRICE', 'Bán lẻ (giá gốc)'],
                   ['WHOLESALE_PRICE', 'Bán sỉ (khung giá)'],
@@ -525,8 +525,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
                   <button key={val} type="button"
                     onClick={() => setField('pricingType', val)}
                     className={`flex-1 py-2 font-medium transition-colors
-                      ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
-                      ${form.pricingType === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                      ${i > 0 ? 'border-l border-line' : ''}
+                      ${form.pricingType === val ? 'bg-gold text-white' : 'text-muted hover:bg-surface-2'}`}>
                     {label}
                   </button>
                 ))}
@@ -535,7 +535,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
           </>) : (
           <>
             <SectionLabel>Thông tin khách hàng</SectionLabel>
-            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+            <div className="flex rounded-xl border border-line overflow-hidden text-xs">
               {[
                 { val: false, label: '👥 Khách chung', hint: 'Mọi seller đều thấy' },
                 { val: true, label: '🔒 Khách riêng', hint: 'Chỉ bạn quản lý' },
@@ -543,10 +543,10 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
                 <button key={String(val)} type="button"
                   onClick={() => setIsPrivate(val)}
                   className={`flex-1 py-2 font-medium transition-colors flex flex-col items-center gap-0.5
-        ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
-        ${isPrivate === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+        ${i > 0 ? 'border-l border-line' : ''}
+        ${isPrivate === val ? 'bg-gold text-white' : 'text-muted hover:bg-surface-2'}`}>
                   <span>{label}</span>
-                  <span className={`text-[9px] font-normal ${isPrivate === val ? 'text-white/80' : 'text-[#C4B9A8]'}`}>{hint}</span>
+                  <span className={`text-[9px] font-normal ${isPrivate === val ? 'text-white/80' : 'text-faint'}`}>{hint}</span>
                 </button>
               ))}
             </div>
@@ -565,8 +565,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
 
             {/* Loại giá */}
             <div>
-              <label className="text-[11px] text-[#8E8878] mb-1 block font-medium">Loại giá</label>
-              <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+              <label className="text-[11px] text-muted mb-1 block font-medium">Loại giá</label>
+              <div className="flex rounded-xl border border-line overflow-hidden text-xs">
                 {[
                   ['RETAIL_PRICE', 'Bán lẻ (giá gốc)'],
                   ['WHOLESALE_PRICE', 'Bán sỉ (khung giá)'],
@@ -574,8 +574,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
                   <button key={val} type="button"
                     onClick={() => setField('pricingType', val)}
                     className={`flex-1 py-2 font-medium transition-colors
-                      ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
-                      ${form.pricingType === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                      ${i > 0 ? 'border-l border-line' : ''}
+                      ${form.pricingType === val ? 'bg-gold text-white' : 'text-muted hover:bg-surface-2'}`}>
                     {label}
                   </button>
                 ))}
@@ -591,7 +591,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
           placeholder={contractDefault || 'Tên công ty / tên khách hàng'}
           value={form.contractName}
           onChange={e => { setContractTouched(true); setField('contractName', e.target.value); }} />
-        <p className="text-[10px] text-[#C4B9A8] -mt-1">
+        <p className="text-[10px] text-faint -mt-1">
           {contractTouched && form.contractName.trim()
             ? 'Đang dùng tên riêng cho hợp đồng.'
             : `Mặc định theo ${isCompany ? 'tên công ty' : 'tên khách hàng'}. Sửa nếu hợp đồng ký tên khác.`}
@@ -602,10 +602,10 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
           <div className="flex items-center gap-1.5">
             {/* Địa chỉ giao hàng — tuỳ chọn cho mọi loại khách */}
             <SectionLabel>Địa chỉ giao hàng</SectionLabel>
-            <span className="text-[9px] text-[#C4B9A8]">(tuỳ chọn)</span>
+            <span className="text-[9px] text-faint">(tuỳ chọn)</span>
           </div>
           <button type="button" onClick={addReceiver}
-            className="flex items-center gap-1 text-[#C9A84C] text-[11px] font-semibold hover:text-[#A07830] transition-colors">
+            className="flex items-center gap-1 text-gold text-[11px] font-semibold hover:text-gold-deep transition-colors">
             <Plus size={12} /> Thêm
           </button>
         </div>
@@ -628,19 +628,19 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
         </div>
 
         {!isCompany && (
-          <p className="text-[10px] text-[#C4B9A8] italic">
+          <p className="text-[10px] text-faint italic">
             💡 Khách cá nhân có thể bỏ qua địa chỉ giao hàng nếu mua tại công ty.
           </p>
         )}
       </div>
 
-      <div className="px-4 pb-4 pt-3 border-t border-[#F0EBE3] flex gap-2 shrink-0">
+      <div className="px-4 pb-4 pt-3 border-t border-line-soft flex gap-2 shrink-0">
         <button type="button" onClick={onBack}
-          className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-medium hover:bg-[#F0EBE3] transition-colors">
+          className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-medium hover:bg-surface-2 transition-colors">
           Huỷ
         </button>
         <button type="button" onClick={handleSave} disabled={saving}
-          className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#A07830] disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
+          className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-deep disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
           {saving ? <><Loader2 size={14} className="animate-spin" />Đang lưu...</> : 'Tạo khách hàng'}
         </button>
       </div>
@@ -803,7 +803,7 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      <div className="px-4 py-3 bg-[#FAF8F3] border-b border-[#F0EBE3] shrink-0 space-y-2">
+      <div className="px-4 py-3 bg-canvas border-b border-line-soft shrink-0 space-y-2">
         {/* Tên + mã */}
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -814,8 +814,8 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
       ${customer.customerType === 'COMPANY'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-green-100 text-green-700'
+                  ? 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300'
+                  : 'bg-green-100 dark:bg-green-500/18 text-green-700 dark:text-green-300'
                 }`}
             >
               {customer.customerType === 'COMPANY'
@@ -823,38 +823,38 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
                 : '👤 Khách cá nhân'}
             </span>
           </div>
-          <p className="text-[11px] text-[#8E8878]">Mã KH: #{customer.customerCode} · {customer.phone}</p>
+          <p className="text-[11px] text-muted">Mã KH: #{customer.customerCode} · {customer.phone}</p>
         </div>
 
         {/* Chiết khấu + Xuất hóa đơn */}
         <div className="flex flex-wrap gap-2">
           {/* Chiết khấu */}
           {customerMeta.discountRate > 0 ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200">
-              <span className="text-[10px] font-bold text-emerald-600">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28">
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-300">
                 Chiết khấu {customerMeta.discountRate}%
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F0EBE3] border border-[#E8DDD0]">
-              <span className="text-[10px] text-[#8E8878]">Không chiết khấu</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-2 border border-line">
+              <span className="text-[10px] text-muted">Không chiết khấu</span>
             </div>
           )}
 
           {/* Xuất hóa đơn */}
           {customerMeta.invoiceDays === -1 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F0EBE3] border border-[#E8DDD0]">
-              <span className="text-[10px] text-[#8E8878]">Không xuất hóa đơn</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-2 border border-line">
+              <span className="text-[10px] text-muted">Không xuất hóa đơn</span>
             </div>
           )}
           {customerMeta.invoiceDays === 0 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200">
-              <span className="text-[10px] font-bold text-violet-600">Xuất HĐ ngay trong ngày</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/28">
+              <span className="text-[10px] font-bold text-violet-600 dark:text-violet-300">Xuất HĐ ngay trong ngày</span>
             </div>
           )}
           {customerMeta.invoiceDays > 0 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200">
-              <span className="text-[10px] font-bold text-violet-600">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/28">
+              <span className="text-[10px] font-bold text-violet-600 dark:text-violet-300">
                 Xuất HĐ sau {customerMeta.invoiceDays} ngày
               </span>
             </div>
@@ -865,17 +865,17 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-5 h-5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <>
             {receiverInfos.length === 0 && !showAdd && (
               <div className="text-center py-12">
-                <div className="mx-auto w-16 h-16 bg-[#F0EBE3] rounded-full flex items-center justify-center mb-4">
-                  <User size={28} className="text-[#C4B9A8]" />
+                <div className="mx-auto w-16 h-16 bg-surface-2 rounded-full flex items-center justify-center mb-4">
+                  <User size={28} className="text-faint" />
                 </div>
-                <p className="text-[#1C1C1E] font-medium">Chưa có thông tin người nhận</p>
-                <p className="text-[13px] text-[#8E8878] mt-1">
+                <p className="text-ink font-medium">Chưa có thông tin người nhận</p>
+                <p className="text-[13px] text-muted mt-1">
                   {isCompany
                     ? "Bạn có thể thêm hoặc xác nhận để tiếp tục"
                     : "Bạn có thể thêm hoặc xác nhận để tiếp tục"}
@@ -893,30 +893,30 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
                   <div onClick={() => setSelectedId(r.id)}
                     className={`flex items-start gap-3 px-3 py-3 rounded-xl border transition-all cursor-pointer group
                       ${selectedId === r.id
-                        ? 'border-[#C9A84C] bg-[#FDF8ED]'
-                        : 'border-[#E8DDD0] hover:border-[#C9A84C]/50 hover:bg-[#FAF8F3]'}`}>
+                        ? 'border-gold bg-gold-tint'
+                        : 'border-line hover:border-gold/50 hover:bg-canvas'}`}>
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors
-                      ${selectedId === r.id ? 'border-[#C9A84C] bg-[#C9A84C]' : 'border-[#D4C9B8]'}`}>
-                      {selectedId === r.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      ${selectedId === r.id ? 'border-gold bg-gold' : 'border-faint'}`}>
+                      {selectedId === r.id && <div className="w-1.5 h-1.5 rounded-full bg-surface" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-semibold text-[#1C1C1E] truncate">
+                        <p className="text-sm font-semibold text-ink truncate">
                           {r.receiverAddress || '—'}
                         </p>
                         {r.isDefault && (
-                          <span className="text-[9px] bg-[#C9A84C]/20 text-[#C9A84C] rounded-full px-1.5 py-0.5 font-semibold shrink-0">
+                          <span className="text-[9px] bg-gold/20 text-gold rounded-full px-1.5 py-0.5 font-semibold shrink-0">
                             Mặc định
                           </span>
                         )}
                       </div>
                       {r.receiverName && (
-                        <p className="text-[11px] text-[#8E8878] flex items-center gap-1 mt-0.5">
+                        <p className="text-[11px] text-muted flex items-center gap-1 mt-0.5">
                           <User size={9} className="shrink-0" />{r.receiverName}
                         </p>
                       )}
                       {r.receiverPhone && (
-                        <p className="text-[11px] text-[#8E8878] flex items-center gap-1 mt-0.5">
+                        <p className="text-[11px] text-muted flex items-center gap-1 mt-0.5">
                           <Phone size={9} className="shrink-0" />{r.receiverPhone}
                         </p>
                       )}
@@ -924,7 +924,7 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={e => e.stopPropagation()}>
                       <button onClick={() => startEdit(r)}
-                        className="p-1 rounded-md hover:bg-[#F0EBE3] text-[#C4B9A8] hover:text-[#8E8878] transition-colors"
+                        className="p-1 rounded-md hover:bg-surface-2 text-faint hover:text-muted transition-colors"
                         title="Chỉnh sửa">
                         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -933,13 +933,13 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
                       </button>
                       {!r.isDefault && (
                         <button onClick={() => handleSetDefault(r.id)}
-                          className="p-1 rounded-md hover:bg-[#FDF8ED] text-[#C4B9A8] hover:text-[#C9A84C] transition-colors"
+                          className="p-1 rounded-md hover:bg-gold-tint text-faint hover:text-gold transition-colors"
                           title="Đặt làm mặc định">
                           <Star size={11} />
                         </button>
                       )}
                       <button onClick={() => handleDelete(r.id)}
-                        className="p-1 rounded-md hover:bg-red-50 text-[#C4B9A8] hover:text-red-400 transition-colors"
+                        className="p-1 rounded-md hover:bg-red-50 dark:bg-red-500/10 text-faint hover:text-red-400 transition-colors"
                         title="Xóa">
                         <Trash2 size={11} />
                       </button>
@@ -958,25 +958,25 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
         )}
       </div>
 
-      <div className="px-4 pb-4 pt-3 border-t border-[#F0EBE3] space-y-2 shrink-0">
+      <div className="px-4 pb-4 pt-3 border-t border-line-soft space-y-2 shrink-0">
         {!showAdd && !editingId && (
           <button
             onClick={() => { setShowAdd(true); setEditingId(null); resetForm(); }}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-[#E8DDD0] text-xs text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-line text-xs text-muted hover:border-gold hover:text-gold transition-colors">
             <Plus size={13} /> Thêm người nhận mới
           </button>
         )}
 
         <div className="flex gap-2">
           <button onClick={onSkip}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-medium hover:bg-[#F0EBE3] transition-colors">
+            className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-medium hover:bg-surface-2 transition-colors">
             Bỏ qua
           </button>
 
           <button
             onClick={handleConfirm}
             disabled={!canConfirm || showAdd || editingId}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#A07830] disabled:opacity-40 transition-colors"
+            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-deep disabled:opacity-40 transition-colors"
           >
             Xác nhận
           </button>
@@ -1032,20 +1032,20 @@ export default function CustomerSearchModal({ open, onClose, onSelect, selected 
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative bg-white w-full sm:rounded-2xl sm:max-w-md flex flex-col shadow-2xl animate-fadeIn overflow-hidden"
+        className="relative bg-surface w-full sm:rounded-2xl sm:max-w-md flex flex-col shadow-2xl animate-fadeIn overflow-hidden"
         style={{ maxHeight: '88vh', height: '88vh' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F0EBE3] shrink-0">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-line-soft shrink-0">
           <div className="flex items-center gap-2">
             {(step === 'receiver' || step === 'create') && (
               <button onClick={() => setStep('search')}
-                className="p-1 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+                className="p-1 rounded-lg text-muted hover:bg-surface-2 transition-colors">
                 <ArrowLeft size={15} />
               </button>
             )}
-            <h2 className="font-semibold text-[#1C1C1E] text-sm">{titles[step]}</h2>
+            <h2 className="font-semibold text-ink text-sm">{titles[step]}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-surface-2">
             <X size={17} />
           </button>
         </div>
@@ -1053,36 +1053,36 @@ export default function CustomerSearchModal({ open, onClose, onSelect, selected 
         {/* Step: Search */}
         {step === 'search' && (
           <div className="flex flex-col flex-1 min-h-0">
-            <div className="px-4 py-3 border-b border-[#F0EBE3] shrink-0">
+            <div className="px-4 py-3 border-b border-line-soft shrink-0">
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                 <input ref={inputRef} type="text" placeholder="Tìm theo tên, mã KH, SĐT..."
                   value={query} onChange={e => setQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAF8F3]" />
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-line text-sm focus:outline-none focus:border-gold bg-canvas" />
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto min-h-0">
               {searching ? (
                 <div className="flex justify-center py-10">
-                  <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : results.length === 0 && query.trim() ? (
-                <div className="flex flex-col items-center py-10 text-[#8E8878] gap-2">
+                <div className="flex flex-col items-center py-10 text-muted gap-2">
                   <span className="text-2xl">🔍</span>
                   <p className="text-sm">Không tìm thấy khách hàng</p>
                   <button onClick={() => setStep('create')}
-                    className="mt-1 text-xs text-[#C9A84C] font-semibold hover:underline">
+                    className="mt-1 text-xs text-gold font-semibold hover:underline">
                     + Tạo khách hàng mới
                   </button>
                 </div>
               ) : results.length === 0 ? (
-                <div className="flex flex-col items-center py-10 text-[#C4B9A8] gap-2">
+                <div className="flex flex-col items-center py-10 text-faint gap-2">
                   <Search size={28} strokeWidth={1} />
                   <p className="text-sm">Nhập để tìm kiếm</p>
                 </div>
               ) : (
-                <div className="divide-y divide-[#F0EBE3]">
+                <div className="divide-y divide-line-soft">
                   {results.map((c) => {
                     const isLocked = c.isActive === false;
                     return (
@@ -1092,32 +1092,32 @@ export default function CustomerSearchModal({ open, onClose, onSelect, selected 
                           handleSelectCustomer(c);
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-                          ${isLocked ? 'bg-red-50/30 hover:bg-red-50/50 border-l-2 border-red-400' : 'hover:bg-[#FAF8F3]'}`}>
+                          ${isLocked ? 'bg-red-50/30 dark:bg-red-500/4 hover:bg-red-50/50 dark:bg-red-500/5 border-l-2 border-red-400' : 'hover:bg-canvas'}`}>
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold
-                          ${isLocked ? 'bg-red-100 text-red-400' : c.customerType === 'COMPANY' ? 'bg-blue-100 text-blue-500' : 'bg-[#FDF8ED] text-[#C9A84C]'}`}>
+                          ${isLocked ? 'bg-red-100 dark:bg-red-500/18 text-red-400' : c.customerType === 'COMPANY' ? 'bg-blue-100 dark:bg-blue-500/18 text-blue-500' : 'bg-gold-tint text-gold'}`}>
                           {c.customerType === 'COMPANY' ? <Building2 size={16} /> : (c.contactName || c.name || 'K')[0]?.toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className={`text-sm font-semibold truncate ${isLocked ? 'text-red-500' : 'text-[#1C1C1E]'}`}>
+                            <p className={`text-sm font-semibold truncate ${isLocked ? 'text-red-500' : 'text-ink'}`}>
                               {c.contactName || c.name || c.companyName || 'Khách vãng lai'}
                             </p>
                             {isLocked && (
-                              <span className="text-[9px] bg-red-100 text-red-500 border border-red-200 rounded-full px-1.5 py-0.5 font-semibold shrink-0 whitespace-nowrap">
+                              <span className="text-[9px] bg-red-100 dark:bg-red-500/18 text-red-500 border border-red-200 dark:border-red-500/28 rounded-full px-1.5 py-0.5 font-semibold shrink-0 whitespace-nowrap">
                                 Tạm khóa
                               </span>
                             )}
                           </div>
-                          <p className={`text-xs truncate ${isLocked ? 'text-red-400' : 'text-[#8E8878]'}`}>
+                          <p className={`text-xs truncate ${isLocked ? 'text-red-400' : 'text-muted'}`}>
                             {c.customerCode} · {c.phone}
                             {c.customerType === 'COMPANY' && c.companyName && ` · ${c.companyName}`}
                           </p>
                           {!isLocked && c.discountRate > 0 && (
-                            <span className="text-[10px] text-emerald-600 font-medium">Chiết khấu {c.discountRate}%</span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-300 font-medium">Chiết khấu {c.discountRate}%</span>
                           )}
                         </div>
                         {selected?.id === c.id && !isLocked && (
-                          <UserCheck size={15} className="text-[#C9A84C] shrink-0" />
+                          <UserCheck size={15} className="text-gold shrink-0" />
                         )}
                       </button>
                     );
@@ -1126,9 +1126,9 @@ export default function CustomerSearchModal({ open, onClose, onSelect, selected 
               )}
             </div>
 
-            <div className="px-4 py-3 border-t border-[#F0EBE3] shrink-0">
+            <div className="px-4 py-3 border-t border-line-soft shrink-0">
               <button onClick={() => setStep('create')}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-[#E8DDD0] text-xs text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-line text-xs text-muted hover:border-gold hover:text-gold transition-colors">
                 <Plus size={13} /> Tạo khách hàng mới
               </button>
             </div>

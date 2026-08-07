@@ -37,7 +37,7 @@ function CalendarGrid({ viewDate, selected, minDate, onSelect, days }) {
     <div>
       <div className="grid grid-cols-7 mb-1">
         {days.map(d => (
-          <div key={d} className="text-center text-[10px] font-bold text-[#8E8878] py-1">{d}</div>
+          <div key={d} className="text-center text-[10px] font-bold text-muted py-1">{d}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-y-0.5">
@@ -50,10 +50,10 @@ function CalendarGrid({ viewDate, selected, minDate, onSelect, days }) {
             <button key={idx} onClick={() => !isPast && onSelect(date)} disabled={isPast}
               className={[
                 'h-8 w-8 mx-auto rounded-lg text-xs font-medium transition-all',
-                isPast ? 'text-[#D5C5A8] cursor-not-allowed' : 'cursor-pointer',
-                isSelected ? 'bg-[#C9A84C] text-white font-bold shadow-sm hover:bg-[#b8963d]' : '',
-                isToday && !isSelected ? 'border border-[#C9A84C] text-[#C9A84C]' : '',
-                !isSelected && !isToday && !isPast ? 'text-[#1C1C1E] hover:bg-[#FDF8ED]' : '',
+                isPast ? 'text-faint cursor-not-allowed' : 'cursor-pointer',
+                isSelected ? 'bg-gold text-white font-bold shadow-sm hover:bg-gold-strong' : '',
+                isToday && !isSelected ? 'border border-gold text-gold' : '',
+                !isSelected && !isToday && !isPast ? 'text-ink hover:bg-gold-tint' : '',
               ].join(' ')}>
               {date.getDate()}
             </button>
@@ -89,28 +89,28 @@ function TimePicker({ hour, minute, onChangeHour, onChangeMinute, labelHour, lab
     <div className="flex gap-2 h-full">
       {/* Hours */}
       <div className="flex-1 flex flex-col">
-        <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider text-center mb-1.5">{labelHour}</p>
+        <p className="text-[10px] font-bold text-muted uppercase tracking-wider text-center mb-1.5">{labelHour}</p>
         <div ref={hourRef} className="flex-1 overflow-y-auto space-y-0.5"
           style={{ maxHeight: 190, scrollbarWidth: 'thin' }}>
           {hours.map(h => (
             <button key={h} onClick={() => onChangeHour(h)}
               className={`w-full py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${h === hour ? 'bg-[#C9A84C] text-white font-bold' : 'text-[#5C4E3D] hover:bg-[#F0EBE3]'}`}>
+                ${h === hour ? 'bg-gold text-white font-bold' : 'text-ink-2 hover:bg-surface-2'}`}>
               {pad(h)}
             </button>
           ))}
         </div>
       </div>
-      <div className="flex items-center text-[#C4B9A8] font-bold text-lg select-none">:</div>
+      <div className="flex items-center text-faint font-bold text-lg select-none">:</div>
       {/* Minutes */}
       <div className="flex-1 flex flex-col">
-        <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider text-center mb-1.5">{labelMinute}</p>
+        <p className="text-[10px] font-bold text-muted uppercase tracking-wider text-center mb-1.5">{labelMinute}</p>
         <div ref={minRef} className="flex-1 overflow-y-auto space-y-0.5"
           style={{ maxHeight: 190, scrollbarWidth: 'thin' }}>
           {minutes.map(m => (
             <button key={m} onClick={() => onChangeMinute(m)}
               className={`w-full py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${m === minute ? 'bg-[#C9A84C] text-white font-bold' : 'text-[#5C4E3D] hover:bg-[#F0EBE3]'}`}>
+                ${m === minute ? 'bg-gold text-white font-bold' : 'text-ink-2 hover:bg-surface-2'}`}>
               {pad(m)}
             </button>
           ))}
@@ -230,29 +230,29 @@ export default function DateTimePicker({
     <div ref={triggerRef} className="relative">
       <button type="button" onClick={handleOpen}
         className={`w-full flex items-center justify-between rounded-xl border-2 px-4 py-2.5 text-sm transition-all
-          ${open ? 'border-[#C9A84C] shadow-sm' : 'border-[#E8DDD0]'} bg-[#FAFAF8]`}>
-        <span className={displayValue ? 'text-[#1C1C1E] font-semibold' : 'text-[#C4B9A8]'}>
+          ${open ? 'border-gold shadow-sm' : 'border-line'} bg-surface`}>
+        <span className={displayValue ? 'text-ink font-semibold' : 'text-faint'}>
           {displayValue || defaultPlaceholder}
         </span>
-        <ChevronDown size={15} className={`text-[#8E8878] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={15} className={`text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div
           ref={dropdownRef}
-          className="fixed bg-white rounded-2xl shadow-2xl border border-[#F0EBE3] z-[9999] overflow-hidden"
+          className="fixed bg-surface rounded-2xl shadow-2xl border border-line-soft z-[9999] overflow-hidden"
           // style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
           style={{ bottom: 0, left: dropPos.left, width: dropPos.width }}>
 
           {/* Tab bar */}
-          <div className="flex border-b border-[#F0EBE3] bg-[#FAFAF8]">
+          <div className="flex border-b border-line-soft bg-surface">
             {[
               { id: 'calendar', label: tabCalendarLabel },
               { id: 'time',     label: tabTimeLabel },
             ].map(tb => (
               <button key={tb.id} onClick={() => setTab(tb.id)}
                 className={`flex-1 py-2.5 text-xs font-bold transition-colors
-                  ${tab === tb.id ? 'text-[#C9A84C] border-b-2 border-[#C9A84C] bg-white' : 'text-[#8E8878] hover:text-[#5C4E3D]'}`}>
+                  ${tab === tb.id ? 'text-gold border-b-2 border-gold bg-surface' : 'text-muted hover:text-ink-2'}`}>
                 {tb.label}
               </button>
             ))}
@@ -266,17 +266,17 @@ export default function DateTimePicker({
                   const d = new Date(viewDate);
                   d.setMonth(d.getMonth() - 1);
                   setViewDate(d);
-                }} className="w-7 h-7 rounded-lg hover:bg-[#F0EBE3] flex items-center justify-center text-[#5C4E3D] transition-colors">
+                }} className="w-7 h-7 rounded-lg hover:bg-surface-2 flex items-center justify-center text-ink-2 transition-colors">
                   <ChevronLeft size={15} />
                 </button>
-                <span className="text-sm font-bold text-[#1C1C1E]">
+                <span className="text-sm font-bold text-ink">
                   {monthLabel(viewDate.getMonth())} {viewDate.getFullYear()}
                 </span>
                 <button onClick={() => {
                   const d = new Date(viewDate);
                   d.setMonth(d.getMonth() + 1);
                   setViewDate(d);
-                }} className="w-7 h-7 rounded-lg hover:bg-[#F0EBE3] flex items-center justify-center text-[#5C4E3D] transition-colors">
+                }} className="w-7 h-7 rounded-lg hover:bg-surface-2 flex items-center justify-center text-ink-2 transition-colors">
                   <ChevronRight size={15} />
                 </button>
               </div>
@@ -298,21 +298,21 @@ export default function DateTimePicker({
           )}
 
           {/* Quick actions + Confirm */}
-          <div className="px-3 pb-3 pt-2 border-t border-[#F0EBE3] flex gap-1.5">
+          <div className="px-3 pb-3 pt-2 border-t border-line-soft flex gap-1.5">
             <button onClick={() => quickSet(0)}
-              className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-[#5C4E3D] text-[11px] font-semibold hover:bg-[#F0EBE3] transition-colors">
+              className="flex-1 py-2 rounded-xl border border-line text-ink-2 text-[11px] font-semibold hover:bg-surface-2 transition-colors">
               {t('common', 'now_icon')}
             </button>
             <button onClick={() => quickSet(1)}
-              className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-[#5C4E3D] text-[11px] font-semibold hover:bg-[#F0EBE3] transition-colors">
+              className="flex-1 py-2 rounded-xl border border-line text-ink-2 text-[11px] font-semibold hover:bg-surface-2 transition-colors">
               +1h
             </button>
             <button onClick={() => quickSet(2)}
-              className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-[#5C4E3D] text-[11px] font-semibold hover:bg-[#F0EBE3] transition-colors">
+              className="flex-1 py-2 rounded-xl border border-line text-ink-2 text-[11px] font-semibold hover:bg-surface-2 transition-colors">
               +2h
             </button>
             <button onClick={() => setOpen(false)}
-              className="flex-1 py-2 rounded-xl bg-[#C9A84C] text-white text-[11px] font-bold hover:bg-[#b8963d] transition-colors">
+              className="flex-1 py-2 rounded-xl bg-gold text-white text-[11px] font-bold hover:bg-gold-strong transition-colors">
               {t('common', 'done')}
             </button>
           </div>

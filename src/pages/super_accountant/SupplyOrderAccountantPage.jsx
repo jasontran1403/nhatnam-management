@@ -38,7 +38,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const PAGE_SIZE = 10;
 
 function StatusPill({ status }) {
-  const meta = SUPPLY_STATUS[status] || { label: status, cls: 'bg-gray-100 text-gray-600 ring-gray-200' };
+  const meta = SUPPLY_STATUS[status] || { label: status, cls: 'bg-surface-2 text-ink-2 ring-line' };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ${meta.cls}`}>
       {meta.label}
@@ -119,35 +119,35 @@ function ConfirmOrderModal({ open, order, onClose, onDone }) {
   return (
     <Modal open={open} onClose={onClose} title={`Xác nhận đặt hàng — ${order.requestCode}`} size="xl">
       <div className="space-y-4">
-        <div className="flex items-start gap-2 p-3 rounded-xl bg-blue-50 border border-blue-200">
-          <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-blue-800">
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28">
+          <Info size={16} className="text-blue-600 dark:text-blue-300 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-blue-800 dark:text-blue-300">
             Phiếu này <b>chỉ duyệt hết hoặc từ chối hết</b> — không duyệt một phần.
             Từ chối là trạng thái cuối cùng, không thể duyệt lại.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-sm text-[#8E8878]">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
           <span className="inline-flex items-center gap-1.5"><Warehouse size={14} /> {order.supplyWarehouseName}</span>
           <span>Người tạo: {order.createdByName}</span>
           {order.requiredBy && <span>Cần trước: {fmtDate(order.requiredBy)}</span>}
         </div>
 
         <SectionCard>
-          <div className="px-4 py-2.5 bg-[#FAF7F2] text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+          <div className="px-4 py-2.5 bg-canvas text-xs font-semibold text-muted uppercase tracking-wider">
             Gán nhà cung cấp cho từng mặt hàng
           </div>
-          <div className="divide-y divide-black/5">
+          <div className="divide-y divide-hairline">
             {order.items.map(i => (
               <div key={i.id} className="p-3 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div className="sm:col-span-6">
-                  <div className="text-sm text-[#1C1C1E]">{i.itemName}</div>
-                  <div className="text-xs text-[#8E8878]">
+                  <div className="text-sm text-ink">{i.itemName}</div>
+                  <div className="text-xs text-muted">
                     {i.specification ? `${i.specification} · ` : ''}
                     {fmtQty(i.orderedQuantity)} {i.unit}
                     {i.categoryKind === 'SERVICE' && ' · Dịch vụ (không nhập kho)'}
                   </div>
-                  {i.note && <div className="text-xs text-[#8E8878] italic mt-0.5">{i.note}</div>}
+                  {i.note && <div className="text-xs text-muted italic mt-0.5">{i.note}</div>}
                 </div>
                 <div className="sm:col-span-6">
                   <Field label="Nhà cung cấp" required>
@@ -165,15 +165,15 @@ function ConfirmOrderModal({ open, order, onClose, onDone }) {
 
         {Object.keys(grouped).length > 0 && (
           <SectionCard>
-            <div className="px-4 py-2.5 bg-[#FAF7F2] text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+            <div className="px-4 py-2.5 bg-canvas text-xs font-semibold text-muted uppercase tracking-wider">
               Thông tin giao hàng theo nhà cung cấp
             </div>
-            <div className="divide-y divide-black/5">
+            <div className="divide-y divide-hairline">
               {Object.entries(grouped).map(([sid, itemIds]) => (
                 <div key={sid} className="p-4 space-y-3">
-                  <div className="text-sm font-semibold text-[#1C1C1E]">
+                  <div className="text-sm font-semibold text-ink">
                     {supplierName(sid)}
-                    <span className="ml-2 text-xs font-normal text-[#8E8878]">({itemIds.length} mặt hàng)</span>
+                    <span className="ml-2 text-xs font-normal text-muted">({itemIds.length} mặt hàng)</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Field label="Giao dự kiến">
@@ -199,7 +199,7 @@ function ConfirmOrderModal({ open, order, onClose, onDone }) {
         )}
 
         {rejecting ? (
-          <div className="space-y-3 p-4 rounded-xl bg-red-50 border border-red-200">
+          <div className="space-y-3 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28">
             <Field label="Lý do từ chối" required
               hint="Phiếu bị từ chối KHÔNG thể duyệt lại — người tạo sẽ phải lập phiếu mới.">
               <textarea rows={3} className={inputCls} value={rejectReason}
@@ -421,9 +421,9 @@ function SettleModal({ open, order, onClose, onDone }) {
   return (
     <Modal open={open} onClose={onClose} title={`Tất toán — ${order.requestCode}`} size="xl">
       <div className="space-y-4">
-        <div className="flex items-start gap-2 p-3 rounded-xl bg-[#FAF7F2] border border-black/5">
-          <Info size={16} className="text-[#C9A84C] mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-[#8E8878]">
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-canvas border border-hairline">
+          <Info size={16} className="text-gold mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-muted">
             Tiền tính theo <b>số lượng thực nhận</b>. Thuế/phí được phân bổ vào từng
             mặt hàng <b>theo tỷ trọng giá trị</b>; mọi bước trung gian giữ 3 số thập
             phân, chỉ làm tròn lên hàng đơn vị đồng ở con số cuối cùng.
@@ -438,9 +438,9 @@ function SettleModal({ open, order, onClose, onDone }) {
 
           return (
             <SectionCard key={g.id}>
-              <div className="px-4 py-3 bg-[#FAF7F2] flex items-center justify-between">
-                <div className="text-sm font-semibold text-[#1C1C1E]">{g.supplierName}</div>
-                <div className="text-xs text-[#8E8878]">{g.code}</div>
+              <div className="px-4 py-3 bg-canvas flex items-center justify-between">
+                <div className="text-sm font-semibold text-ink">{g.supplierName}</div>
+                <div className="text-xs text-muted">{g.code}</div>
               </div>
 
               <div className="p-4 space-y-4">
@@ -451,21 +451,21 @@ function SettleModal({ open, order, onClose, onDone }) {
                     const qty = num(i.receivedQuantity);
                     const p = preview?.byItem[i.id];
                     return (
-                      <div key={i.id} className="p-3 rounded-xl bg-[#FAF7F2]/50 space-y-2">
+                      <div key={i.id} className="p-3 rounded-xl bg-canvas/50 space-y-2">
                         <div className="flex items-baseline justify-between gap-3 flex-wrap">
                           <div>
-                            <span className="text-sm text-[#1C1C1E]">{i.itemName}</span>
-                            <span className="ml-2 text-xs text-[#8E8878]">
+                            <span className="text-sm text-ink">{i.itemName}</span>
+                            <span className="ml-2 text-xs text-muted">
                               {i.specification ? `${i.specification} · ` : ''}
                               thực nhận {fmtQty(qty)} {i.unit}
                               {i.receiveStatus === 'CLOSED_SHORT' && ' (chốt thiếu)'}
                             </span>
                           </div>
-                          {p && <span className="text-sm font-semibold text-[#1C1C1E]">{fmtMoney(p.total)}</span>}
+                          {p && <span className="text-sm font-semibold text-ink">{fmtMoney(p.total)}</span>}
                         </div>
 
                         {qty === 0 ? (
-                          <p className="text-xs text-[#8E8878] italic">
+                          <p className="text-xs text-muted italic">
                             Không nhận được hàng — không phát sinh tiền.
                           </p>
                         ) : (
@@ -490,7 +490,7 @@ function SettleModal({ open, order, onClose, onDone }) {
                                   onChange={e => patchItem(g.id, i.id, { unitPrice: e.target.value })} />
                               </Field>
                             )}
-                            <div className="flex flex-col justify-end pb-2.5 text-xs text-[#8E8878]">
+                            <div className="flex flex-col justify-end pb-2.5 text-xs text-muted">
                               {p && (
                                 <>
                                   <span>Tiền hàng: {fmtMoney3(p.goods)}</span>
@@ -506,17 +506,17 @@ function SettleModal({ open, order, onClose, onDone }) {
                 </div>
 
                 {/* ── Thuế / phí ── */}
-                <div className="rounded-xl border border-black/5 overflow-hidden">
-                  <div className="px-3 py-2 bg-[#FAF7F2] flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Thuế / phí</span>
+                <div className="rounded-xl border border-hairline overflow-hidden">
+                  <div className="px-3 py-2 bg-canvas flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted uppercase tracking-wider">Thuế / phí</span>
                     <button type="button"
                       onClick={() => patchGroup(g.id, { fees: [...gs.fees, { label: '', amount: '' }] })}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#C9A84C]">
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-gold">
                       <Plus size={12} /> Thêm dòng
                     </button>
                   </div>
                   {gs.fees.length === 0 ? (
-                    <p className="px-3 py-3 text-xs text-[#8E8878]">Chưa có dòng thuế/phí nào.</p>
+                    <p className="px-3 py-3 text-xs text-muted">Chưa có dòng thuế/phí nào.</p>
                   ) : (
                     <div className="p-3 space-y-2">
                       {gs.fees.map((f, idx) => (
@@ -535,7 +535,7 @@ function SettleModal({ open, order, onClose, onDone }) {
                               fees[idx] = { ...fees[idx], amount: e.target.value };
                               patchGroup(g.id, { fees });
                             }} />
-                          <button type="button" className="text-[#8E8878] hover:text-red-600 p-2"
+                          <button type="button" className="text-muted hover:text-red-600 dark:text-red-300 p-2"
                             onClick={() => patchGroup(g.id, { fees: gs.fees.filter((_, k) => k !== idx) })}>
                             <Trash2 size={14} />
                           </button>
@@ -592,7 +592,7 @@ function SettleModal({ open, order, onClose, onDone }) {
                       onBusyChange={(b) => setUploading(u => ({ ...u, [g.id]: b }))}
                     />
 
-                    <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
+                    <p className="flex items-start gap-1.5 text-xs text-muted">
                       <Receipt size={13} className="mt-0.5 flex-shrink-0" />
                       Phiếu chi sẽ đi qua đúng luật duyệt hiện hành: trong danh mục cho phép
                       và dưới hạn mức thì tự duyệt, ngược lại chờ chủ doanh nghiệp duyệt.
@@ -601,11 +601,11 @@ function SettleModal({ open, order, onClose, onDone }) {
                 )}
 
                 {preview && (
-                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-[#C9A84C]/10 border border-[#C9A84C]/20">
-                    <span className="text-sm text-[#8E8878]">
+                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gold/10 border border-gold/20">
+                    <span className="text-sm text-muted">
                       Tiền hàng {fmtMoney3(preview.goodsTotal)} + Thuế/phí {fmtMoney3(preview.feeTotal)}
                     </span>
-                    <span className="text-base font-bold text-[#1C1C1E]">{fmtMoney(preview.grandTotal)}</span>
+                    <span className="text-base font-bold text-ink">{fmtMoney(preview.grandTotal)}</span>
                   </div>
                 )}
               </div>
@@ -674,7 +674,7 @@ export default function SupplyOrderAccountantPage() {
       <div className="flex flex-wrap items-center gap-3">
         <TabBar tabs={tabs} active={status} onChange={setStatus} />
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm mã phiếu, người tạo, NCC…" className={`${inputCls} pl-9`} />
         </div>
@@ -693,10 +693,10 @@ export default function SupplyOrderAccountantPage() {
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="font-semibold text-[#1C1C1E]">{o.requestCode}</span>
+                          <span className="font-semibold text-ink">{o.requestCode}</span>
                           <StatusPill status={o.status} />
                         </div>
-                        <div className="text-xs text-[#8E8878] mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <div className="text-xs text-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="inline-flex items-center gap-1"><Warehouse size={12} /> {o.supplyWarehouseName || '—'}</span>
                           <span>{o.createdByName}</span>
                           <span>{fmtDateTime(o.createdAt)}</span>
@@ -725,7 +725,7 @@ export default function SupplyOrderAccountantPage() {
                           </PrimaryButton>
                         )}
                         {o.grandTotal > 0 && (
-                          <span className="text-sm font-bold text-[#1C1C1E]">{fmtMoney(o.grandTotal)}</span>
+                          <span className="text-sm font-bold text-ink">{fmtMoney(o.grandTotal)}</span>
                         )}
                       </div>
                     </div>
@@ -733,7 +733,7 @@ export default function SupplyOrderAccountantPage() {
                     <div className="mt-3 overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-xs uppercase text-[#8E8878]">
+                          <tr className="text-xs uppercase text-muted">
                             <th className="px-2 py-1.5 text-left">Mặt hàng</th>
                             <th className="px-2 py-1.5 text-left">Quy cách</th>
                             <th className="px-2 py-1.5 text-right">Đặt</th>
@@ -746,14 +746,14 @@ export default function SupplyOrderAccountantPage() {
                           {o.items.map(i => {
                             const rs = RECEIVE_STATUS[i.receiveStatus] || {};
                             return (
-                              <tr key={i.id} className="border-t border-black/5">
+                              <tr key={i.id} className="border-t border-hairline">
                                 <td className="px-2 py-1.5">{i.itemName}</td>
-                                <td className="px-2 py-1.5 text-[#8E8878]">{i.specification || '—'}</td>
+                                <td className="px-2 py-1.5 text-muted">{i.specification || '—'}</td>
                                 <td className="px-2 py-1.5 text-right">{fmtQty(i.orderedQuantity)} {i.unit}</td>
                                 <td className="px-2 py-1.5 text-right">{fmtQty(i.receivedQuantity)}</td>
-                                <td className="px-2 py-1.5 text-[#8E8878]">{i.supplierName || '—'}</td>
+                                <td className="px-2 py-1.5 text-muted">{i.supplierName || '—'}</td>
                                 <td className="px-2 py-1.5">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs ${rs.cls || 'bg-gray-100 text-gray-500'}`}>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs ${rs.cls || 'bg-surface-2 text-muted'}`}>
                                     {rs.label || '—'}
                                   </span>
                                 </td>
@@ -765,7 +765,7 @@ export default function SupplyOrderAccountantPage() {
                     </div>
 
                     {o.status === 'REJECTED' && o.rejectReason && (
-                      <div className="mt-3 flex items-start gap-2 text-xs text-red-700">
+                      <div className="mt-3 flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
                         <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" />
                         Lý do từ chối: {o.rejectReason}
                       </div>
@@ -777,19 +777,19 @@ export default function SupplyOrderAccountantPage() {
                           const gs = GROUP_STATUS[g.status] || {};
                           return (
                             <span key={g.id}
-                              className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#FAF7F2] border border-black/5 text-xs">
-                              <span className="font-medium text-[#1C1C1E]">{g.supplierName}</span>
+                              className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-canvas border border-hairline text-xs">
+                              <span className="font-medium text-ink">{g.supplierName}</span>
                               <span className={`px-1.5 py-0.5 rounded-full ${gs.cls || ''}`}>{gs.label || g.status}</span>
                               {g.expectedDeliveryAt && (
-                                <span className="text-[#8E8878]">giao {fmtDate(g.expectedDeliveryAt)}</span>
+                                <span className="text-muted">giao {fmtDate(g.expectedDeliveryAt)}</span>
                               )}
                               {g.paymentMode && (
-                                <span className="text-[#8E8878]">
+                                <span className="text-muted">
                                   {g.paymentMode === 'PAY_NOW' ? `Phiếu chi ${g.paymentVoucherCode || ''}` : 'Công nợ'}
                                 </span>
                               )}
                               {g.totalAmount != null && (
-                                <span className="font-semibold text-[#1C1C1E]">{fmtMoney(g.totalAmount)}</span>
+                                <span className="font-semibold text-ink">{fmtMoney(g.totalAmount)}</span>
                               )}
                             </span>
                           );

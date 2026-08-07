@@ -62,27 +62,27 @@ export default function OwnerFactoryStockPage() {
   const totalTypes = rows.length;
 
   return (
-    <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
+    <div className="p-4 space-y-4 bg-surface-2 min-h-full">
       <button onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
+        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors">
         <ChevronLeft size={16} /> Quay lại danh sách kho
       </button>
 
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-[#C9A84C]/15 text-[#C9A84C] flex items-center justify-center flex-shrink-0">
+        <div className="w-11 h-11 rounded-xl bg-gold/15 text-gold flex items-center justify-center flex-shrink-0">
           <Factory size={20} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[#1C1C1E]">{factoryName || 'Kho xưởng'}</h1>
-          <p className="text-sm text-[#8E8878]">{KIND_LABEL[kind]} · {totalTypes} loại</p>
+          <h1 className="text-xl font-bold text-ink">{factoryName || 'Kho xưởng'}</h1>
+          <p className="text-sm text-muted">{KIND_LABEL[kind]} · {totalTypes} loại</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-canvas placeholder-muted"
             placeholder="Tìm tên..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
@@ -90,24 +90,24 @@ export default function OwnerFactoryStockPage() {
       {loading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-          <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-          <p className="text-[#8E8878] text-sm">Kho trống</p>
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+          <Package size={32} className="mx-auto text-muted mb-2" />
+          <p className="text-muted text-sm">Kho trống</p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map((r, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 flex items-center justify-between">
+            <div key={i} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 flex items-center justify-between">
               <div>
-                <p className="font-semibold text-[#1C1C1E]">{r.name}</p>
-                <p className="text-2xl font-bold text-[#1A2B1A] mt-0.5">
-                  {fmtNum(r.qty, 3)} <span className="text-xs font-medium text-[#8E8878]">{r.unit}</span>
+                <p className="font-semibold text-ink">{r.name}</p>
+                <p className="text-2xl font-bold text-forest mt-0.5">
+                  {fmtNum(r.qty, 3)} <span className="text-xs font-medium text-muted">{r.unit}</span>
                 </p>
                 {r.nearestExpiry && (
-                  <p className="text-[11px] text-[#8E8878] mt-1">HSD gần nhất: {fmtDate(r.nearestExpiry)}</p>
+                  <p className="text-[11px] text-muted mt-1">HSD gần nhất: {fmtDate(r.nearestExpiry)}</p>
                 )}
               </div>
-              <span className="text-xs text-[#8E8878]">{r.lotCount} lô</span>
+              <span className="text-xs text-muted">{r.lotCount} lô</span>
             </div>
           ))}
         </div>

@@ -67,18 +67,18 @@ function ImageUploader({ label, onUpload, uploaded=[], required=false }) {
   };
   return (
     <div>
-      {label && <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}{required&&<span className="text-red-500 ml-1">*</span>}</p>}
+      {label && <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{label}{required&&<span className="text-red-500 ml-1">*</span>}</p>}
       <div className="flex gap-2 flex-wrap">
-        {uploaded.map((u,i)=><div key={`u-${i}`} className="w-16 h-16 rounded-xl overflow-hidden border border-black/10"><img src={img(u)} alt="" className="w-full h-full object-cover"/></div>)}
+        {uploaded.map((u,i)=><div key={`u-${i}`} className="w-16 h-16 rounded-xl overflow-hidden border border-hairline-2"><img src={img(u)} alt="" className="w-full h-full object-cover"/></div>)}
         {previews.map((p,i)=>(
-          <div key={`p-${i}`} className="w-16 h-16 rounded-xl overflow-hidden border border-black/10 relative">
+          <div key={`p-${i}`} className="w-16 h-16 rounded-xl overflow-hidden border border-hairline-2 relative">
             <img src={p} alt="" className="w-full h-full object-cover"/>
             {uploading&&<div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={10} className="text-white animate-spin"/></div>}
           </div>
         ))}
         <button type="button" onClick={()=>ref.current?.click()}
-          className="w-16 h-16 rounded-xl border-2 border-dashed border-[#C9A84C]/40 flex flex-col items-center justify-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition-colors">
-          <Camera size={18} className="text-[#C9A84C]"/><span className="text-[10px] text-[#C9A84C] mt-0.5">{t('common', 'add')}</span>
+          className="w-16 h-16 rounded-xl border-2 border-dashed border-gold/40 flex flex-col items-center justify-center hover:border-gold hover:bg-gold/5 transition-colors">
+          <Camera size={18} className="text-gold"/><span className="text-[10px] text-gold mt-0.5">{t('common', 'add')}</span>
         </button>
         <input ref={ref} type="file" multiple accept="image/*" capture="environment" className="hidden" onChange={e=>handleFiles(e.target.files)}/>
       </div>
@@ -149,8 +149,8 @@ function FactoryGantt({ orders, onOrderClick }) {
         {orders.map(wo=>(
           <div key={`lbl-${wo.id}`} style={{height:ROW_H, marginBottom:6}} className="flex items-center">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-[#1C1C1E] truncate max-w-[172px]">{wo.workOrderCode}</p>
-              <p className="text-[9px] text-[#8E8878] truncate max-w-[172px]">{wo.productName}</p>
+              <p className="text-[10px] font-bold text-ink truncate max-w-[172px]">{wo.workOrderCode}</p>
+              <p className="text-[9px] text-muted truncate max-w-[172px]">{wo.productName}</p>
             </div>
           </div>
         ))}
@@ -160,16 +160,16 @@ function FactoryGantt({ orders, onOrderClick }) {
           <div className="flex mb-1" style={{height:26}}>
             {weeks.map((w,i)=>{
               const isThis=w<=today&&today<new Date(w.getTime()+7*86400000);
-              return <div key={i} className={`flex-1 text-center text-[10px] py-1 font-medium border-l border-black/5 ${isThis?'text-[#C9A84C] font-bold bg-[#C9A84C]/5':'text-[#8E8878]'}`}>{`${w.getDate()}/${w.getMonth()+1}`}</div>;
+              return <div key={i} className={`flex-1 text-center text-[10px] py-1 font-medium border-l border-hairline ${isThis?'text-gold font-bold bg-gold/5':'text-muted'}`}>{`${w.getDate()}/${w.getMonth()+1}`}</div>;
             })}
           </div>
           {orders.map(wo=>{
             const s=wo.scheduledStartDate||startMs, e=wo.plannedEndDate||(s+7*86400000);
             const pct=Number(wo.progressPct||0), cancelled=wo.status==='CANCELLED', completed=wo.status==='COMPLETED';
-            const color=cancelled?{hex:'#9ca3af'}:completed?{hex:'#10b981'}:progressColor(pct);
+            const color=cancelled?{hex:'var(--c-muted)'}:completed?{hex:'var(--c-success)'}:progressColor(pct);
             return (
               <div key={`bar-${wo.id}`} className="relative" style={{height:ROW_H, marginBottom:6}}>
-                <div className="absolute top-0 bottom-0 w-px bg-[#C9A84C]/50 z-10" style={{left:`${todayPct}%`}}/>
+                <div className="absolute top-0 bottom-0 w-px bg-gold/50 z-10" style={{left:`${todayPct}%`}}/>
                 <button onClick={()=>onOrderClick(wo)}
                   className={`absolute top-2 bottom-2 rounded cursor-pointer hover:brightness-110 transition-all flex items-center px-1.5 overflow-hidden${wo.status==='IN_PROGRESS'?' gantt-bar-active':''}`}
                   style={{left:`${pctL(Number(s))}%`,width:`${pctW(Number(s),Number(e))}%`,
@@ -194,10 +194,10 @@ function StepControlBadge({ step }) {
   const { t } = useLang();
   const controlType = step.controlType || (step.requiresQC === true || step.requiresQc === true ? 'PHOTO_WEIGHT' : 'NONE');
   if (controlType === 'PHOTO_WEIGHT') {
-    return <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-normal">📷 {t('production', 'step_badge_photo_weight')}</span>;
+    return <span className="ml-2 text-[10px] bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-normal">📷 {t('production', 'step_badge_photo_weight')}</span>;
   }
   if (controlType === 'VISUAL') {
-    return <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-normal">👁 {t('production', 'step_badge_visual')}</span>;
+    return <span className="ml-2 text-[10px] bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-normal">👁 {t('production', 'step_badge_visual')}</span>;
   }
   return null;
 }
@@ -231,21 +231,21 @@ function ConfirmStepModal({ batch, step, onClose, onSaved }) {
     <Modal open title={`${t('production', 'confirm_step_title')} ${step.stepSequence}: ${step.stepName}`} onClose={onClose} size="sm"
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'confirm_step_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{t('production', 'confirm_step_confirm')}</PrimaryButton></div>}>
       <div className="space-y-4">
-        {err&&<p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err&&<p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
         {requiresPhoto ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
-            <AlertTriangle size={16} className="text-amber-600 flex-shrink-0"/>
-            <p className="text-xs text-amber-700">{t('production', 'confirm_step_photo_weight_notice')}</p>
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl p-3 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-amber-600 dark:text-amber-300 flex-shrink-0"/>
+            <p className="text-xs text-amber-700 dark:text-amber-300">{t('production', 'confirm_step_photo_weight_notice')}</p>
           </div>
         ) : isVisualControl ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
-            <Eye size={16} className="text-blue-600 flex-shrink-0"/>
-            <p className="text-xs text-blue-700">{t('production', 'confirm_step_visual_notice')}</p>
+          <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 rounded-xl p-3 flex items-center gap-2">
+            <Eye size={16} className="text-blue-600 dark:text-blue-300 flex-shrink-0"/>
+            <p className="text-xs text-blue-700 dark:text-blue-300">{t('production', 'confirm_step_visual_notice')}</p>
           </div>
         ) : (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-blue-600 flex-shrink-0"/>
-            <p className="text-xs text-blue-700">{t('production', 'confirm_step_none_notice')}</p>
+          <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 rounded-xl p-3 flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-blue-600 dark:text-blue-300 flex-shrink-0"/>
+            <p className="text-xs text-blue-700 dark:text-blue-300">{t('production', 'confirm_step_none_notice')}</p>
           </div>
         )}
         {requiresPhoto && (
@@ -306,21 +306,21 @@ function ConfirmStageRunModal({ run, stageName, outputUnit, onClose, onSaved }) 
     <Modal open title={`${t('production', 'confirm_step_title')}: ${stageName} — ${runLabel}`} onClose={onClose} size="sm"
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'confirm_step_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{t('production', 'confirm_step_confirm')}</PrimaryButton></div>}>
       <div className="space-y-4">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
         {requiresPhoto ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
-            <AlertTriangle size={16} className="text-amber-600 flex-shrink-0"/>
-            <p className="text-xs text-amber-700">{t('production', 'confirm_step_photo_weight_notice')}</p>
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl p-3 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-amber-600 dark:text-amber-300 flex-shrink-0"/>
+            <p className="text-xs text-amber-700 dark:text-amber-300">{t('production', 'confirm_step_photo_weight_notice')}</p>
           </div>
         ) : isVisualControl ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
-            <Eye size={16} className="text-blue-600 flex-shrink-0"/>
-            <p className="text-xs text-blue-700">{t('production', 'confirm_step_visual_notice')}</p>
+          <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 rounded-xl p-3 flex items-center gap-2">
+            <Eye size={16} className="text-blue-600 dark:text-blue-300 flex-shrink-0"/>
+            <p className="text-xs text-blue-700 dark:text-blue-300">{t('production', 'confirm_step_visual_notice')}</p>
           </div>
         ) : (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-blue-600 flex-shrink-0"/>
-            <p className="text-xs text-blue-700">{t('production', 'confirm_step_none_notice')}</p>
+          <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 rounded-xl p-3 flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-blue-600 dark:text-blue-300 flex-shrink-0"/>
+            <p className="text-xs text-blue-700 dark:text-blue-300">{t('production', 'confirm_step_none_notice')}</p>
           </div>
         )}
         {requiresPhoto && (
@@ -348,7 +348,7 @@ function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId, outputU
   const { t } = useLang();
   const [lightbox, setLightbox] = useState(null);
   if (!stages || stages.length === 0) {
-    return <p className="text-xs text-[#8E8878]">{t('production', 'stage_none')}</p>;
+    return <p className="text-xs text-muted">{t('production', 'stage_none')}</p>;
   }
   return (
     <>
@@ -357,20 +357,20 @@ function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId, outputU
           const done = stage.status === 'COMPLETED';
           const running = stage.status === 'IN_PROGRESS';
           return (
-            <div key={stage.stageSequence} className="border border-black/5 rounded-2xl overflow-hidden">
-              <div className={`px-4 py-3 flex items-center justify-between gap-2 ${done?'bg-emerald-50':running?'bg-amber-50':'bg-[#FAF7F2]'}`}>
+            <div key={stage.stageSequence} className="border border-hairline rounded-2xl overflow-hidden">
+              <div className={`px-4 py-3 flex items-center justify-between gap-2 ${done?'bg-emerald-50 dark:bg-emerald-500/10':running?'bg-amber-50 dark:bg-amber-500/10':'bg-canvas'}`}>
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${done?'bg-emerald-500 text-white':'bg-[#C9A84C] text-white'}`}>
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${done?'bg-emerald-500 text-white':'bg-gold text-white'}`}>
                     {done ? <CheckCircle2 size={14}/> : stage.stageSequence}
                   </span>
                   <div className="min-w-0">
-                    <p className="font-semibold text-sm text-[#1C1C1E] truncate">
+                    <p className="font-semibold text-sm text-ink truncate">
                       {stage.stageName}
                       {stage.shared
-                        ? <span className="ml-2 text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-normal">🔗 {t('production', 'stage_shared_badge')}</span>
-                        : <span className="ml-2 text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal">{t('production', 'stage_perbatch_badge')}</span>}
+                        ? <span className="ml-2 text-[10px] bg-violet-100 dark:bg-violet-500/18 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded-full font-normal">🔗 {t('production', 'stage_shared_badge')}</span>
+                        : <span className="ml-2 text-[10px] bg-surface-2 text-ink-2 px-1.5 py-0.5 rounded-full font-normal">{t('production', 'stage_perbatch_badge')}</span>}
                     </p>
-                    <p className="text-[11px] text-[#8E8878]">
+                    <p className="text-[11px] text-muted">
                       {stage.completedRuns}/{stage.totalRuns} {stage.shared ? t('production', 'stage_runs_suffix') : t('production', 'roadmap_batches_suffix') || 'mẻ'}
                       {stage.machineName ? <> · ⚙ {stage.machineName}</> : null}
                       {stage.durationMinutes ? <> · ⏱ {stage.durationMinutes} {t('production', 'roadmap_minutes')}</> : null}
@@ -388,16 +388,16 @@ function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId, outputU
                   const qty = run.runQty != null ? `${fmtNum(run.runQty)}kg` : '';
                   return (
                     <div key={run.id} className="flex items-center gap-3 flex-wrap">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${rDone?'bg-emerald-100 text-emerald-700':rRunning?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600'}`}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${rDone?'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300':rRunning?'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300':'bg-surface-2 text-ink-2'}`}>
                         {rLabel}{qty?` · ${qty}`:''}
                       </span>
-                      {rDone && <span className="text-xs text-emerald-600">✓ {run.completedByName} · {fmtDate(run.completedAt)}</span>}
+                      {rDone && <span className="text-xs text-emerald-600 dark:text-emerald-300">✓ {run.completedByName} · {fmtDate(run.completedAt)}</span>}
                       {rDone && Number(run.damagedQty) > 0 && (
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300">
                           Hư hỏng: {fmtNum(run.damagedQty)} {outputUnit || 'kg'}
                         </span>
                       )}
-                      {rRunning && <span className="text-xs text-amber-600">▶ {run.startedByName} · {fmtDate(run.startedAt)}</span>}
+                      {rRunning && <span className="text-xs text-amber-600 dark:text-amber-300">▶ {run.startedByName} · {fmtDate(run.startedAt)}</span>}
                       <div className="flex-1"/>
                       {run.status === 'PENDING' && run.canStart && (
                         <SecondaryButton loading={startingRunId===run.id} onClick={()=>onStartRun(run)} className="!px-3 !py-1 text-xs flex-shrink-0">
@@ -405,7 +405,7 @@ function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId, outputU
                         </SecondaryButton>
                       )}
                       {run.status === 'PENDING' && !run.canStart && (
-                        <span className="text-[11px] text-[#8E8878] italic">{t('production', 'stage_wait_prev')}</span>
+                        <span className="text-[11px] text-muted italic">{t('production', 'stage_wait_prev')}</span>
                       )}
                       {rRunning && (
                         <PrimaryButton onClick={()=>onConfirmRun(stage, run)} className="!px-3 !py-1 text-xs flex-shrink-0">{t('production', 'roadmap_complete_btn')}</PrimaryButton>
@@ -414,7 +414,7 @@ function StageRoadmap({ stages, onStartRun, onConfirmRun, startingRunId, outputU
                         <div className="flex gap-1">
                           {run.attachments.map((url,idx)=>(
                             <button key={idx} onClick={()=>setLightbox({images:run.attachments,idx})}
-                              className="w-8 h-8 rounded-lg overflow-hidden border border-black/10">
+                              className="w-8 h-8 rounded-lg overflow-hidden border border-hairline-2">
                               <img src={url} alt="" className="w-full h-full object-cover"/>
                             </button>
                           ))}
@@ -489,41 +489,41 @@ function CompleteBatchInline({ batch, wo, onSaved }) {
     } finally { setSaving(false); }
   };
   return (
-    <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-200 space-y-2">
-      <p className="text-xs font-semibold text-emerald-700">✓ {t('production', 'complete_batch_all_done')}</p>
-      {planQty>0&&<p className="text-[10px] text-[#8E8878]">{t('production', 'complete_batch_plan_qty')}: {planQty} {wo.outputUnit}</p>}
+    <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-500/10 border-t border-emerald-200 dark:border-emerald-500/28 space-y-2">
+      <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">✓ {t('production', 'complete_batch_all_done')}</p>
+      {planQty>0&&<p className="text-[10px] text-muted">{t('production', 'complete_batch_plan_qty')}: {planQty} {wo.outputUnit}</p>}
       {qty && isOutOfRange(qty) && (
-        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+        <p className="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-lg px-2 py-1.5">
           ⚠ {t('production', 'complete_batch_out_of_range')}
         </p>
       )}
-      {err&&<p className="text-xs text-red-600">{err}</p>}
+      {err&&<p className="text-xs text-red-600 dark:text-red-300">{err}</p>}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <p className="text-[10px] text-[#8E8878] mb-1">{t('production', 'complete_batch_qty_achieved')} ({wo.outputUnit})</p>
+          <p className="text-[10px] text-muted mb-1">{t('production', 'complete_batch_qty_achieved')} ({wo.outputUnit})</p>
           <input type="number" step="0.1" className={inputCls} placeholder={`${t('production', 'complete_batch_achieved_placeholder')} (${wo.outputUnit})`}
             value={qty} onChange={e=>{setQty(e.target.value);setErr('');}}/>
         </div>
         <div>
-          <p className="text-[10px] text-[#8E8878] mb-1">{t('production', 'complete_batch_qty_scrap')} ({wo.outputUnit})</p>
+          <p className="text-[10px] text-muted mb-1">{t('production', 'complete_batch_qty_scrap')} ({wo.outputUnit})</p>
           <input type="number" step="0.1" min="0" className={inputCls} placeholder="0"
             value={scrapQty} onChange={e=>{setScrapQty(e.target.value);setErr('');}}/>
         </div>
       </div>
       {Number(scrapQty || 0) > 0 && (
         <div>
-          <p className="text-[10px] text-[#8E8878] mb-1">{t('production', 'complete_batch_scrap_reason_label')}</p>
+          <p className="text-[10px] text-muted mb-1">{t('production', 'complete_batch_scrap_reason_label')}</p>
           <input type="text" className={inputCls} placeholder={t('production', 'complete_batch_scrap_reason_placeholder')}
             value={scrapReason} onChange={e=>{setScrapReason(e.target.value);setErr('');}}/>
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <p className="text-[10px] text-[#8E8878] mb-1">{t('production', 'complete_batch_mfg_date_label')}</p>
+          <p className="text-[10px] text-muted mb-1">{t('production', 'complete_batch_mfg_date_label')}</p>
           <DatePicker value={manufactureDate} onChange={d=>{setManufactureDate(d);setErr('');}} placeholder={t('production', 'complete_batch_mfg_date_placeholder')} />
         </div>
         <div>
-          <p className="text-[10px] text-[#8E8878] mb-1">{t('production', 'complete_batch_expiry_label')}</p>
+          <p className="text-[10px] text-muted mb-1">{t('production', 'complete_batch_expiry_label')}</p>
           <div className="flex flex-wrap gap-1.5 mb-1.5">
             {[
               { label: t('production', 'complete_batch_6m'), fn: (d) => addMonths(d, 6) },
@@ -536,7 +536,7 @@ function CompleteBatchInline({ batch, wo, onSaved }) {
                 <button key={opt.label} type="button"
                   onClick={() => { setExpiryDate(computed); setErr(''); }}
                   className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-colors ${
-                    active ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#F0EBE3] border-black/5'
+                    active ? 'bg-gold text-white border-gold' : 'bg-canvas text-ink hover:bg-surface-2 border-hairline'
                   }`}>
                   {opt.label}
                 </button>
@@ -650,14 +650,14 @@ function CancelBatchModal({ batch, workOrder, onClose, onSaved }) {
         </div>
       }>
       <div className="space-y-5">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl p-3 flex items-start gap-2">
           <AlertTriangle size={16} className="text-red-500 flex-shrink-0 mt-0.5"/>
-          <p className="text-xs text-red-700">
+          <p className="text-xs text-red-700 dark:text-red-300">
             {t('production', 'cancel_batch_warning')}
           </p>
         </div>
 
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
         <Field label={t('production', 'cancel_batch_reason_label')} required>
           <textarea className={inputCls} rows={2} value={reason}
@@ -666,16 +666,16 @@ function CancelBatchModal({ batch, workOrder, onClose, onSaved }) {
         </Field>
 
         <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2 block">
+          <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">
             {t('production', 'cancel_batch_resolution_label')}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {RESOLUTIONS.map(r => (
               <button key={r.value} type="button" onClick={() => setResolution(r.value)}
                 className={`text-left rounded-xl border p-2.5 transition-colors ${resolution === r.value
-                  ? 'border-[#C9A84C] bg-[#C9A84C]/10' : 'border-black/10 hover:border-[#C9A84C]/40'}`}>
-                <p className="text-sm font-semibold text-[#1C1C1E]">{r.label}</p>
-                <p className="text-[10px] text-[#8E8878] mt-0.5">{r.desc}</p>
+                  ? 'border-gold bg-gold/10' : 'border-hairline-2 hover:border-gold/40'}`}>
+                <p className="text-sm font-semibold text-ink">{r.label}</p>
+                <p className="text-[10px] text-muted mt-0.5">{r.desc}</p>
               </button>
             ))}
           </div>
@@ -686,24 +686,24 @@ function CancelBatchModal({ batch, workOrder, onClose, onSaved }) {
             <input type="number" min="0" step="0.01" className={inputCls + ' flex-1'}
               placeholder={t('production', 'cancel_batch_actual_output_placeholder')}
               value={actualOutputQty} onChange={e => { setActualOutputQty(e.target.value); setErr(''); }}/>
-            <span className="text-sm text-[#8E8878] flex-shrink-0">{batch.outputUnit}</span>
+            <span className="text-sm text-muted flex-shrink-0">{batch.outputUnit}</span>
           </div>
-          <p className="text-[10px] text-[#8E8878] mt-1">{t('production', 'cancel_batch_actual_output_hint')} {workOrder.workOrderCode}.</p>
+          <p className="text-[10px] text-muted mt-1">{t('production', 'cancel_batch_actual_output_hint')} {workOrder.workOrderCode}.</p>
         </Field>
 
         <div>
-          <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <PackageX size={13}/> {t('production', 'cancel_batch_materials_used_label')}
           </label>
           {loadingMats ? (
-            <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-[#C9A84C]"/></div>
+            <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-gold"/></div>
           ) : materials.length === 0 ? (
-            <p className="text-xs text-[#8E8878] italic bg-[#FAF7F2] rounded-xl px-3 py-3">
+            <p className="text-xs text-muted italic bg-canvas rounded-xl px-3 py-3">
               {t('production', 'cancel_batch_no_materials')}
             </p>
           ) : (
             <div className="space-y-2">
-              <p className="text-[10px] text-[#8E8878] mb-1">
+              <p className="text-[10px] text-muted mb-1">
                 {t('production', 'cancel_batch_materials_hint')}
               </p>
               {materials.map((m, i) => {
@@ -711,19 +711,19 @@ function CancelBatchModal({ batch, workOrder, onClose, onSaved }) {
                 const willReturn = m.usedQty !== '' && !isNaN(Number(m.usedQty))
                   ? Math.max(0, m.remainingQty - Number(m.usedQty)) : null;
                 return (
-                  <div key={i} className={`rounded-xl border p-3 ${over ? 'border-red-300 bg-red-50' : 'border-black/5 bg-[#FAF7F2]'}`}>
+                  <div key={i} className={`rounded-xl border p-3 ${over ? 'border-red-300 dark:border-red-500/35 bg-red-50 dark:bg-red-500/10' : 'border-hairline bg-canvas'}`}>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#1C1C1E] truncate">{m.materialName}</p>
-                        <p className="text-[10px] text-[#8E8878]">{t('production', 'cancel_batch_taken_from_stock')}: {m.remainingQty.toLocaleString('vi-VN')} {m.unit}</p>
+                        <p className="text-sm font-semibold text-ink truncate">{m.materialName}</p>
+                        <p className="text-[10px] text-muted">{t('production', 'cancel_batch_taken_from_stock')}: {m.remainingQty.toLocaleString('vi-VN')} {m.unit}</p>
                       </div>
                       <input type="number" min="0" max={m.remainingQty} step="0.001" className={`${inputCls} flex-shrink-0`}
                         style={{ width: 90 }} placeholder={t('production', 'cancel_batch_used_placeholder')}
                         value={m.usedQty} onChange={e => { setUsed(i, e.target.value); setErr(''); }}/>
-                      <span className="text-xs text-[#8E8878] font-medium flex-shrink-0 w-8">{m.unit}</span>
+                      <span className="text-xs text-muted font-medium flex-shrink-0 w-8">{m.unit}</span>
                     </div>
                     {willReturn !== null && (
-                      <p className={`text-xs mt-1.5 ${over ? 'text-red-600 font-semibold' : 'text-emerald-600'}`}>
+                      <p className={`text-xs mt-1.5 ${over ? 'text-red-600 dark:text-red-300 font-semibold' : 'text-emerald-600 dark:text-emerald-300'}`}>
                         {over
                           ? `⚠ ${t('production', 'cancel_batch_over_limit')}`
                           : willReturn > 0
@@ -763,7 +763,7 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
   const toggle = (id) => setExpanded(prev=>{const s=new Set(prev);s.has(id)?s.delete(id):s.add(id);return s;});
 
   if (!batches?.length) return (
-    <div className="text-center py-6 text-[#8E8878] text-sm">
+    <div className="text-center py-6 text-muted text-sm">
       {wo.status==='IN_PROGRESS'?t('production', 'roadmap_no_batch_started'):t('production', 'roadmap_order_not_started')}
     </div>
   );
@@ -773,7 +773,7 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
       <div className="space-y-3">
         {sorted.map(batch=>{
           const batchPct=Number(batch.stepProgressPct||0);
-          const batchColor=batch.status==='CANCELLED'?{hex:'#9ca3af'}:progressColor(batchPct);
+          const batchColor=batch.status==='CANCELLED'?{hex:'var(--c-muted)'}:progressColor(batchPct);
           const isExpanded=expanded.has(batch.id);
           const isCompleted=batch.status==='COMPLETED';
           const isCancelled=batch.status==='CANCELLED';
@@ -781,38 +781,38 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
 
           return (
             <div key={batch.id} className={`border rounded-2xl overflow-hidden transition-all
-              ${isCompleted?'border-emerald-200 bg-emerald-50/30':isCancelled?'border-red-200 bg-red-50/20 opacity-70':'border-black/5 bg-white'}`}>
-              <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/5 transition-colors"
+              ${isCompleted?'border-emerald-200 dark:border-emerald-500/28 bg-emerald-50/30 dark:bg-emerald-500/4':isCancelled?'border-red-200 dark:border-red-500/28 bg-red-50/20 dark:bg-red-500/4 opacity-70':'border-hairline bg-surface'}`}>
+              <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-hairline transition-colors"
                 onClick={()=>toggle(batch.id)}>
                 <div className="flex items-center gap-2">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
-                    ${isCompleted?'bg-emerald-500 text-white':isCancelled?'bg-red-100 text-red-500':'bg-[#C9A84C]/20 text-[#C9A84C]'}`}>
+                    ${isCompleted?'bg-emerald-500 text-white':isCancelled?'bg-red-100 dark:bg-red-500/18 text-red-500':'bg-gold/20 text-gold'}`}>
                     {batch.batchNumber}
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-[#1C1C1E]">{batch.batchCode}</p>
-                    <p className="text-xs text-[#8E8878]">
+                    <p className="text-sm font-semibold text-ink">{batch.batchCode}</p>
+                    <p className="text-xs text-muted">
                       {isCompleted?`✓ ${fmtNum(batch.actualOutputQty)} ${batch.outputUnit}`
                         :isCancelled?`🚫 ${t('production', 'roadmap_cancelled')}`:`${batch.completedSteps}/${batch.totalSteps} ${t('production', 'roadmap_steps_suffix')}`}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-16 h-1.5 bg-black/5 rounded-full overflow-hidden">
+                  <div className="w-16 h-1.5 bg-hairline rounded-full overflow-hidden">
                     <div className="h-full rounded-full" style={{width:`${Math.min(batchPct,100)}%`,backgroundColor:batchColor.hex}}/>
                   </div>
                   <span className="text-xs font-bold" style={{color:batchColor.hex}}>{batchPct.toFixed(0)}%</span>
-                  {isExpanded?<ChevronUp size={14} className="text-[#8E8878]"/>:<ChevronDown size={14} className="text-[#8E8878]"/>}
+                  {isExpanded?<ChevronUp size={14} className="text-muted"/>:<ChevronDown size={14} className="text-muted"/>}
                 </div>
               </button>
 
               {/* Nguyên liệu riêng của mẻ này — expand/collapse */}
               {isExpanded && batch.batchMaterials?.length > 0 && (
-                <div className="px-4 py-3 border-t border-black/5 bg-[#FAF7F2]/60">
-                  <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'roadmap_batch_materials')}</p>
+                <div className="px-4 py-3 border-t border-hairline bg-canvas/60">
+                  <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">{t('production', 'roadmap_batch_materials')}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {batch.batchMaterials.map((m,i)=>(
-                      <span key={i} className="text-xs bg-white border border-black/10 rounded-full px-2.5 py-1 text-[#1C1C1E]">
+                      <span key={i} className="text-xs bg-surface border border-hairline-2 rounded-full px-2.5 py-1 text-ink">
                         {m.materialName}: <b>{fmtNum(m.qty)} {m.unit}</b>
                       </span>
                     ))}
@@ -821,9 +821,9 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
               )}
 
               {isExpanded && batch.steps?.length>0 && (
-                <div className="px-4 py-4 border-t border-black/5">
+                <div className="px-4 py-4 border-t border-hairline">
                   <div className="relative">
-                    <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-black/10"/>
+                    <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-hairline-2"/>
                     <div className="space-y-4">
                       {batch.steps.map((step,i)=>{
                         const done=step.status==='COMPLETED';
@@ -836,16 +836,16 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
                           <div key={step.id} className="flex gap-4 relative">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 border-2 transition-all
                               ${done?'bg-emerald-500 border-emerald-500 text-white'
-                                :running?'bg-white border-[#C9A84C] text-[#C9A84C] ring-4 ring-[#C9A84C]/20 animate-pulse'
-                                :'bg-white border-black/15 text-[#8E8878]'}`}>
+                                :running?'bg-surface border-gold text-gold ring-4 ring-gold/20 animate-pulse'
+                                :'bg-surface border-hairline-3 text-muted'}`}>
                               {done?<CheckCircle2 size={16}/>:<span className="text-xs font-bold">{step.stepSequence}</span>}
                             </div>
                             <div className={`flex-1 pb-2 ${done?'':'opacity-80'}`}>
                               <div className="flex items-center justify-between gap-2">
-                                <p className={`text-sm font-semibold ${done?'text-emerald-700':running?'text-[#C9A84C]':'text-[#8E8878]'}`}>
+                                <p className={`text-sm font-semibold ${done?'text-emerald-700 dark:text-emerald-300':running?'text-gold':'text-muted'}`}>
                                   {step.stepName}
                                   <StepControlBadge step={step} />
-                                  {running&&<span className="ml-2 text-[10px] bg-[#C9A84C]/10 text-[#C9A84C] px-2 py-0.5 rounded-full font-normal">{t('production', 'roadmap_in_progress_badge')}</span>}
+                                  {running&&<span className="ml-2 text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full font-normal">{t('production', 'roadmap_in_progress_badge')}</span>}
                                 </p>
                                 {!readOnlySteps&&running&&<PrimaryButton onClick={()=>onConfirmStep(batch,step)} className="!px-3 !py-1 text-xs flex-shrink-0">{t('production', 'roadmap_complete_btn')}</PrimaryButton>}
                                 {!readOnlySteps&&canStart&&(
@@ -854,24 +854,24 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
                                   </SecondaryButton>
                                 )}
                               </div>
-                              <p className="text-xs text-[#8E8878] mt-0.5 flex items-center gap-2 flex-wrap">
+                              <p className="text-xs text-muted mt-0.5 flex items-center gap-2 flex-wrap">
                                 {step.durationMinutes ? <span>⏱ {t('production', 'roadmap_expected_duration')} {step.durationMinutes} {t('production', 'roadmap_minutes')}</span> : null}
                                 {step.machineName ? <span>⚙ {step.machineName}</span> : null}
                               </p>
-                              {running&&step.startedByName&&<p className="text-xs text-[#8E8878] mt-0.5">▶ {t('production', 'roadmap_started_by')} {step.startedByName} · {fmtDate(step.startedAt)}</p>}
-                              {done&&step.completedByName&&<p className="text-xs text-[#8E8878] mt-0.5">✓ {step.completedByName} · {fmtDate(step.completedAt)}</p>}
+                              {running&&step.startedByName&&<p className="text-xs text-muted mt-0.5">▶ {t('production', 'roadmap_started_by')} {step.startedByName} · {fmtDate(step.startedAt)}</p>}
+                              {done&&step.completedByName&&<p className="text-xs text-muted mt-0.5">✓ {step.completedByName} · {fmtDate(step.completedAt)}</p>}
                               {step.attachments?.length>0&&(
                                 <div className="flex gap-1.5 mt-2 flex-wrap">
                                   {step.attachments.map((url,idx)=>(
                                     <button key={idx} onClick={()=>setLightbox({images:step.attachments,idx})}
-                                      className="w-14 h-14 rounded-lg overflow-hidden border border-black/10 hover:scale-110 transition-transform relative group">
+                                      className="w-14 h-14 rounded-lg overflow-hidden border border-hairline-2 hover:scale-110 transition-transform relative group">
                                       <img src={img(url)} alt="" className="w-full h-full object-cover"/>
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center">
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-hairline-3 flex items-center justify-center">
                                         <ZoomIn size={14} className="text-white opacity-0 group-hover:opacity-100"/>
                                       </div>
                                     </button>
                                   ))}
-                                  {step.notes&&<p className="w-full text-xs text-[#8E8878] italic mt-1">{step.notes}</p>}
+                                  {step.notes&&<p className="w-full text-xs text-muted italic mt-1">{step.notes}</p>}
                                 </div>
                               )}
                             </div>
@@ -884,33 +884,33 @@ function BatchRoadmap({ batches, onConfirmStep, onStartStep, startingStepId, wo,
               )}
 
               {isExpanded && batch.status==='IN_PROGRESS' && (
-                <div className="px-4 py-3 border-t border-black/5 flex items-center justify-between gap-2">
+                <div className="px-4 py-3 border-t border-hairline flex items-center justify-between gap-2">
                   {batch.steps?.every(s=>s.status==='COMPLETED') ? (
                     <CompleteBatchInline batch={batch} wo={woWithPlan} onSaved={onBatchCompleted}/>
                   ) : (
-                    <p className="text-xs text-[#8E8878]">{t('production', 'roadmap_in_progress_continue')}</p>
+                    <p className="text-xs text-muted">{t('production', 'roadmap_in_progress_continue')}</p>
                   )}
-                  <SecondaryButton onClick={()=>onCancelBatch(batch)} className="!text-red-600 !border-red-200 hover:!bg-red-50 flex-shrink-0">
+                  <SecondaryButton onClick={()=>onCancelBatch(batch)} className="!text-red-600 dark:text-red-300 !border-red-200 dark:border-red-500/28 hover:!bg-red-50 dark:bg-red-500/10 flex-shrink-0">
                     <XCircle size={13}/> {t('production', 'roadmap_cancel_batch')}
                   </SecondaryButton>
                 </div>
               )}
               {batch.cancellation&&(
-                <div className="px-4 py-3 bg-red-50 border-t border-red-200 text-xs text-red-600 space-y-1.5">
+                <div className="px-4 py-3 bg-red-50 dark:bg-red-500/10 border-t border-red-200 dark:border-red-500/28 text-xs text-red-600 dark:text-red-300 space-y-1.5">
                   <p className="font-semibold">{t('production', 'roadmap_cancel_reason')}: {batch.cancellation.reason}</p>
                   <p>{t('production', 'roadmap_cancelled_by')} {batch.cancellation.cancelledByName} · {fmtDate(batch.cancellation.cancelledAt)}</p>
                   {batch.cancellation.actualOutputQty != null && (
                     <p>{t('production', 'roadmap_output_before_cancel')}: <b>{fmtNum(batch.cancellation.actualOutputQty)} {batch.outputUnit}</b></p>
                   )}
                   {batch.cancellation.materialUsage?.length > 0 && (
-                    <div className="mt-1.5 pt-1.5 border-t border-red-200">
+                    <div className="mt-1.5 pt-1.5 border-t border-red-200 dark:border-red-500/28">
                       <p className="font-semibold mb-1">{t('production', 'roadmap_materials_deducted')}:</p>
                       {batch.cancellation.materialUsage.map((m,i) => {
                         const returned = Math.max(0, Number(m.deductedQty||0) - Number(m.actualUsedQty||0));
                         return (
                           <p key={i} className="text-[11px]">
                             {m.materialName}: {t('production', 'roadmap_taken')} {fmtNum(m.deductedQty)} {m.unit} — {t('production', 'roadmap_used')} {fmtNum(m.actualUsedQty)} {m.unit}
-                            {returned > 0 && <span className="text-emerald-600"> · {t('production', 'roadmap_returned')} {fmtNum(returned)} {m.unit}</span>}
+                            {returned > 0 && <span className="text-emerald-600 dark:text-emerald-300"> · {t('production', 'roadmap_returned')} {fmtNum(returned)} {m.unit}</span>}
                           </p>
                         );
                       })}
@@ -980,7 +980,7 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
     <Modal open title={t('production', 'submit_plan_title')} onClose={onClose} size="xl"
       footer={
         <div className="flex justify-between items-center">
-          <p className="text-xs text-[#8E8878]">{t('production', 'submit_plan_deadline')}: {fmtDate(workOrder.planDeadline)}</p>
+          <p className="text-xs text-muted">{t('production', 'submit_plan_deadline')}: {fmtDate(workOrder.planDeadline)}</p>
           <div className="flex gap-2">
             <SecondaryButton onClick={onClose}>{t('production', 'submit_plan_cancel')}</SecondaryButton>
             <PrimaryButton onClick={submit} loading={saving} disabled={!preview}>{t('production', 'submit_plan_submit')}</PrimaryButton>
@@ -988,11 +988,11 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
         </div>
       }>
       <div className="space-y-5">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
         {/* Lệnh info */}
-        <div className="bg-[#1A2B1A] rounded-xl p-4 text-white">
-          <p className="text-[#7CB87C] text-xs uppercase tracking-wider">{t('production', 'submit_plan_order_label')}</p>
+        <div className="bg-forest-deep rounded-xl p-4 text-white">
+          <p className="text-forest text-xs uppercase tracking-wider">{t('production', 'submit_plan_order_label')}</p>
           <p className="font-bold text-lg mt-0.5">{workOrder.workOrderCode}</p>
           <p className="text-white/70 text-sm">{workOrder.productName} — {t('production', 'wo_panel_planned').toLowerCase()} {fmtNum(workOrder.plannedQty)} {workOrder.outputUnit}</p>
         </div>
@@ -1001,9 +1001,9 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label={t('production', 'submit_plan_recipe_label')} required>
             {loadingRecipes ? (
-              <p className="text-xs text-[#8E8878]">{t('production', 'submit_plan_loading')}</p>
+              <p className="text-xs text-muted">{t('production', 'submit_plan_loading')}</p>
             ) : recipes.length === 0 ? (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2">
                 {t('production', 'submit_plan_no_recipe')}
               </p>
             ) : (
@@ -1032,26 +1032,26 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
         {/* Preview kết quả tính toán */}
         {preview && (
           <div className="space-y-4">
-            <div className="bg-[#FAF7F2] rounded-xl p-4 border border-black/5">
-              <p className="text-sm font-semibold text-[#1C1C1E]">
+            <div className="bg-canvas rounded-xl p-4 border border-hairline">
+              <p className="text-sm font-semibold text-ink">
                 {preview.totalBatches} {t('production', 'submit_plan_batches_count')} — {t('production', 'submit_plan_variant_word')} "{preview.recipeName}" ({t('production', 'submit_plan_recipe_option_suffix')} {fmtNum(preview.standardOutputQty)} {preview.outputUnit}{t('production', 'submit_plan_per_batch')})
               </p>
-              <p className="text-xs text-[#8E8878] mt-0.5">{t('production', 'submit_plan_total_requested')}: {fmtNum(preview.requestedQty)} {preview.outputUnit}</p>
+              <p className="text-xs text-muted mt-0.5">{t('production', 'submit_plan_total_requested')}: {fmtNum(preview.requestedQty)} {preview.outputUnit}</p>
             </div>
 
             {/* Từng mẻ */}
             <div>
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production', 'submit_plan_batch_detail')}</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{t('production', 'submit_plan_batch_detail')}</p>
               <div className="space-y-2">
                 {preview.batches?.map(b => (
-                  <div key={b.batchNumber} className="border border-black/5 rounded-xl p-3 bg-white">
+                  <div key={b.batchNumber} className="border border-hairline rounded-xl p-3 bg-surface">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-semibold text-[#1C1C1E]">{t('production', 'submit_plan_batch_word')} {b.batchNumber}</span>
-                      <span className="text-sm text-[#C9A84C] font-semibold">{fmtNum(b.outputQty)} {preview.outputUnit}</span>
+                      <span className="text-sm font-semibold text-ink">{t('production', 'submit_plan_batch_word')} {b.batchNumber}</span>
+                      <span className="text-sm text-gold font-semibold">{fmtNum(b.outputQty)} {preview.outputUnit}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {b.materials?.map((m, i) => (
-                        <span key={i} className="text-xs bg-[#FAF7F2] border border-black/5 rounded-full px-2.5 py-1 text-[#1C1C1E]">
+                        <span key={i} className="text-xs bg-canvas border border-hairline rounded-full px-2.5 py-1 text-ink">
                           {m.materialName}: <b>{fmtNum(m.qty)} {m.unit}</b>
                         </span>
                       ))}
@@ -1063,10 +1063,10 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
 
             {/* Tổng nguyên liệu */}
             <div>
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production', 'submit_plan_total_materials')}</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{t('production', 'submit_plan_total_materials')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {preview.totalMaterials?.map((m, i) => (
-                  <span key={i} className="text-xs bg-blue-50 border border-blue-200 rounded-full px-2.5 py-1 text-blue-700">
+                  <span key={i} className="text-xs bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 rounded-full px-2.5 py-1 text-blue-700 dark:text-blue-300">
                     {m.materialName}: <b>{fmtNum(m.qty)} {m.unit}</b>
                   </span>
                 ))}
@@ -1075,16 +1075,16 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
 
             {/* Các bước */}
             <div>
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production', 'submit_plan_steps_repeat')}</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{t('production', 'submit_plan_steps_repeat')}</p>
               <ol className="space-y-1.5">
                 {preview.steps?.map((s, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm bg-[#FAF7F2] rounded-xl px-3 py-2">
-                    <span className="w-5 h-5 rounded-full bg-[#1C1C1E] text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">{i+1}</span>
-                    <span className="font-medium flex-1 text-[#1C1C1E]">{s.stepName}</span>
-                    {s.shared && <span className="text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">🔗 {t('production','stage_shared_badge')}{s.capacityPerRun ? ` ${fmtNum(s.capacityPerRun)}kg` : ''}</span>}
+                  <li key={i} className="flex items-center gap-2 text-sm bg-canvas rounded-xl px-3 py-2">
+                    <span className="w-5 h-5 rounded-full bg-chrome text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">{i+1}</span>
+                    <span className="font-medium flex-1 text-ink">{s.stepName}</span>
+                    {s.shared && <span className="text-[10px] bg-violet-100 dark:bg-violet-500/18 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded-full">🔗 {t('production','stage_shared_badge')}{s.capacityPerRun ? ` ${fmtNum(s.capacityPerRun)}kg` : ''}</span>}
                     <StepControlBadge step={s} />
-                    <span className="text-xs text-[#8E8878]">{s.durationMinutes} {t('production', 'roadmap_minutes')}</span>
-                    {s.machineName && <span className="text-xs text-[#8E8878]">⚙ {s.machineName}</span>}
+                    <span className="text-xs text-muted">{s.durationMinutes} {t('production', 'roadmap_minutes')}</span>
+                    {s.machineName && <span className="text-xs text-muted">⚙ {s.machineName}</span>}
                   </li>
                 ))}
               </ol>
@@ -1159,7 +1159,7 @@ function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
   };
 
   const pct=Number(wo.progressPct||0);
-  const color=isCompleted?{hex:'#10b981',text:'text-emerald-600'}:wo.status==='CANCELLED'?{hex:'#9ca3af',text:'text-gray-400'}:progressColor(pct);
+  const color=isCompleted?{hex:'var(--c-success)',text:'text-emerald-600 dark:text-emerald-300'}:wo.status==='CANCELLED'?{hex:'var(--c-muted)',text:'text-faint'}:progressColor(pct);
   const isDaysAway=wo.scheduledStartDate?Math.ceil((wo.scheduledStartDate-Date.now())/86400000):0;
   const batches=detail?.batches||[];
   const plan=detail?.plan;
@@ -1176,23 +1176,23 @@ function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
             {label:t('production', 'wo_panel_actual'),value:`${fmtNum(wo.accumulatedQty)} ${wo.outputUnit}`},
             {label:t('production', 'wo_panel_progress'),value:<span className="font-bold" style={{color:color.hex}}>{isCompleted?`✓ ${t('production', 'wo_panel_completed')}`:`${pct.toFixed(0)}%`}</span>},
           ].map(s=>(
-            <div key={s.label} className="bg-[#FAF7F2] rounded-xl p-3">
-              <p className="text-xs text-[#8E8878] mb-0.5">{s.label}</p>
-              <p className="font-semibold text-sm text-[#1C1C1E]">{s.value}</p>
+            <div key={s.label} className="bg-canvas rounded-xl p-3">
+              <p className="text-xs text-muted mb-0.5">{s.label}</p>
+              <p className="font-semibold text-sm text-ink">{s.value}</p>
             </div>
           ))}
         </div>
         {plan?.recipeName && (
-          <div className="bg-[#FAF7F2] rounded-xl px-3 py-2 text-xs text-[#8E8878]">
-            {t('production', 'wo_panel_recipe_label')}: <b className="text-[#1C1C1E]">{plan.recipeName}</b>
-            {plan.requestedQty != null && <> · {t('production', 'wo_panel_requested_qty')}: <b className="text-[#1C1C1E]">{fmtNum(plan.requestedQty)} {wo.outputUnit}</b></>}
+          <div className="bg-canvas rounded-xl px-3 py-2 text-xs text-muted">
+            {t('production', 'wo_panel_recipe_label')}: <b className="text-ink">{plan.recipeName}</b>
+            {plan.requestedQty != null && <> · {t('production', 'wo_panel_requested_qty')}: <b className="text-ink">{fmtNum(plan.requestedQty)} {wo.outputUnit}</b></>}
           </div>
         )}
-        <div className="flex gap-3 flex-wrap text-xs text-[#8E8878]">
-          {wo.productionFactoryName&&<span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium flex items-center gap-1"><Factory size={12}/> {wo.productionFactoryName}</span>}
+        <div className="flex gap-3 flex-wrap text-xs text-muted">
+          {wo.productionFactoryName&&<span className="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium flex items-center gap-1"><Factory size={12}/> {wo.productionFactoryName}</span>}
           <span>📅 {fmtDate(wo.scheduledStartDate)} → {fmtDate(wo.plannedEndDate)}</span>
-          {wo.status==='SCHEDULED'&&wo.scheduledMode&&<span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full font-medium flex items-center gap-1"><Lock size={12}/> {t('production', 'wo_panel_scheduled_mode')} · {isDaysAway>0?`${t('production', 'wo_panel_days_left')} ${isDaysAway} ${t('production', 'wo_panel_days_suffix')}`:t('production', 'wo_panel_due_now')}</span>}
-          {isCompleted&&<span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-medium">✓ {t('production', 'wo_panel_done_badge')}</span>}
+          {wo.status==='SCHEDULED'&&wo.scheduledMode&&<span className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-1 rounded-full font-medium flex items-center gap-1"><Lock size={12}/> {t('production', 'wo_panel_scheduled_mode')} · {isDaysAway>0?`${t('production', 'wo_panel_days_left')} ${isDaysAway} ${t('production', 'wo_panel_days_suffix')}`:t('production', 'wo_panel_due_now')}</span>}
+          {isCompleted&&<span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full font-medium">✓ {t('production', 'wo_panel_done_badge')}</span>}
         </div>
 
         {!isCompleted && (
@@ -1222,11 +1222,11 @@ function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
 
         {wo.status==='IN_PROGRESS' && (
           <div>
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
               {t('production', 'stage_section_title')} {loadingDetail&&<Loader2 size={10} className="inline animate-spin ml-1"/>}
             </p>
             {loadingDetail?(
-              <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-[#C9A84C]"/></div>
+              <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-gold"/></div>
             ):(
               <StageRoadmap stages={stages}
                 onStartRun={handleStartRun}
@@ -1238,11 +1238,11 @@ function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
         )}
 
         <div>
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-3">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
             {t('production', 'wo_panel_batch_progress_title')} {loadingDetail&&<Loader2 size={10} className="inline animate-spin ml-1"/>}
           </p>
           {loadingDetail?(
-            <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-[#C9A84C]"/></div>
+            <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-gold"/></div>
           ):(
             <BatchRoadmap batches={batches} wo={wo} planBatchQtyPerRun={plan?.batchQtyPerRun}
               readOnlySteps
@@ -1292,16 +1292,16 @@ export default function FactoryOrdersPage() {
   if(loading&&orders.length===0&&factories.length===0) return <div className="p-6 space-y-4">{[...Array(3)].map((_,i)=><CardSkeleton key={i} lines={3}/>)}</div>;
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 bg-[#F5F0EB] min-h-full">
-      <div className="bg-[#1A2B1A] rounded-2xl p-5 text-white">
-        <p className="text-[#7CB87C] text-xs uppercase tracking-widest font-medium">{t('production', 'orders_factory_label')}</p>
+    <div className="p-4 sm:p-6 space-y-4 bg-surface-2 min-h-full">
+      <div className="bg-forest-deep rounded-2xl p-5 text-white">
+        <p className="text-forest text-xs uppercase tracking-widest font-medium">{t('production', 'orders_factory_label')}</p>
         <h1 className="text-xl font-bold mt-0.5">{t('production', 'orders_page_title')}</h1>
-        {pendingCount>0&&<p className="text-amber-300 text-xs mt-1">⚠ {pendingCount} {t('production', 'orders_pending_plan_warning')}</p>}
+        {pendingCount>0&&<p className="text-amber-300 dark:text-amber-300 text-xs mt-1">⚠ {pendingCount} {t('production', 'orders_pending_plan_warning')}</p>}
         {factories.length>1&&(
           <div className="flex gap-2 mt-3 flex-wrap">
-            <button onClick={()=>setSelected(null)} className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors ${selectedFactory===null?'bg-white text-[#1A2B1A]':'bg-white/20 text-white hover:bg-white/30'}`}>{t('production', 'orders_all_factories')}</button>
+            <button onClick={()=>setSelected(null)} className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors ${selectedFactory===null?'bg-surface text-forest':'bg-white/20 text-white hover:bg-white/30'}`}>{t('production', 'orders_all_factories')}</button>
             {factories.map(f=>(
-              <button key={f.id} onClick={()=>setSelected(f.id)} className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors flex items-center gap-1 ${selectedFactory===f.id?'bg-white text-[#1A2B1A]':'bg-white/20 text-white hover:bg-white/30'}`}>
+              <button key={f.id} onClick={()=>setSelected(f.id)} className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors flex items-center gap-1 ${selectedFactory===f.id?'bg-surface text-forest':'bg-white/20 text-white hover:bg-white/30'}`}>
                 <Factory size={11}/> {f.name}
               </button>
             ))}
@@ -1310,15 +1310,15 @@ export default function FactoryOrdersPage() {
       </div>
 
       {visible.length>0&&(
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-3">{t('production', 'orders_timeline_12w')}</p>
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">{t('production', 'orders_timeline_12w')}</p>
           <FactoryGantt orders={visible} onOrderClick={setSelectedWO}/>
         </div>
       )}
       {visible.length===0&&!loading&&(
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-          <ClipboardList size={32} className="mx-auto text-[#C4B9A8] mb-3"/>
-          <p className="text-sm text-[#8E8878]">{t('production', 'orders_empty')}</p>
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+          <ClipboardList size={32} className="mx-auto text-faint mb-3"/>
+          <p className="text-sm text-muted">{t('production', 'orders_empty')}</p>
         </div>
       )}
 

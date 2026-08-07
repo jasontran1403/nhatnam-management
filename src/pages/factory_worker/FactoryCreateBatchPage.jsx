@@ -43,10 +43,10 @@ function handleNumberInput(value, unit) {
 function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, selectedRecipe, onProductChange, onRecipeChange }) {
   const { t } = useLang();
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col min-h-[420px]">
-      <div className="px-5 py-4 border-b border-black/5 bg-[#FAF7F2] flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-[#C9A84C] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</div>
-        <h2 className="font-semibold text-[#1C1C1E] text-sm">{t('batch','select_formula')}</h2>
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden flex flex-col min-h-[420px]">
+      <div className="px-5 py-4 border-b border-hairline bg-canvas flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</div>
+        <h2 className="font-semibold text-ink text-sm">{t('batch','select_formula')}</h2>
       </div>
       <div className="p-5 space-y-4 flex-1">
         <Field label={t('batch','finished_goods_label')} required>
@@ -59,7 +59,7 @@ function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, select
         {selectedProduct && (
           <Field label={t('batch','formula_definition')} required>
             {loadingRecipes
-              ? <p className="text-sm text-[#8E8878] py-2 animate-pulse">{t('common','loading')}</p>
+              ? <p className="text-sm text-muted py-2 animate-pulse">{t('common','loading')}</p>
               : (
                 <select className={inputCls} value={selectedRecipe?.id || ''} onChange={e => onRecipeChange(e.target.value)}>
                   <option value="">{t('batch','select_formula')}</option>
@@ -70,9 +70,9 @@ function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, select
         )}
 
         {selectedRecipe && (
-          <div className="bg-[#FAF7F2] border border-black/5 rounded-xl p-3 text-sm">
-            <p className="font-semibold text-[#1C1C1E]">{selectedRecipe.name}</p>
-            <p className="text-xs text-[#8E8878] mt-0.5">{selectedRecipe.factoryProductName}</p>
+          <div className="bg-canvas border border-hairline rounded-xl p-3 text-sm">
+            <p className="font-semibold text-ink">{selectedRecipe.name}</p>
+            <p className="text-xs text-muted mt-0.5">{selectedRecipe.factoryProductName}</p>
           </div>
         )}
       </div>
@@ -84,21 +84,21 @@ function StepRecipe({ products, recipes, loadingRecipes, selectedProduct, select
 function StepMaterials({ items, setItem }) {
   const { t } = useLang();
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col min-h-[420px]">
-      <div className="px-5 py-4 border-b border-black/5 bg-[#FAF7F2] flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-[#C9A84C] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</div>
-        <h2 className="font-semibold text-[#1C1C1E] text-sm">{t('batch', 'materials_used_title')}</h2>
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden flex flex-col min-h-[420px]">
+      <div className="px-5 py-4 border-b border-hairline bg-canvas flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</div>
+        <h2 className="font-semibold text-ink text-sm">{t('batch', 'materials_used_title')}</h2>
       </div>
       <div className="p-5 flex-1">
         {items.length === 0 && (
-          <p className="text-sm text-[#8E8878] italic text-center py-8">{t('batch', 'select_formula_step1_hint')}</p>
+          <p className="text-sm text-muted italic text-center py-8">{t('batch', 'select_formula_step1_hint')}</p>
         )}
         <div className="grid grid-cols-2 gap-2">
           {items.map((item, idx) => {
             const decimal = isDecimalAllowed(item.unit);
             return (
-              <div key={idx} className="border border-black/5 rounded-xl p-3 bg-[#FAF7F2]">
-                <p className="text-xs font-semibold text-[#1C1C1E] mb-2 truncate">{item.materialName}</p>
+              <div key={idx} className="border border-hairline rounded-xl p-3 bg-canvas">
+                <p className="text-xs font-semibold text-ink mb-2 truncate">{item.materialName}</p>
                 <div className="flex gap-1.5 items-center">
                   <input
                     type="number"
@@ -112,7 +112,7 @@ function StepMaterials({ items, setItem }) {
                     onWheel={e => e.target.blur()}
                     onChange={e => setItem(idx, 'actualQty', handleNumberInput(e.target.value, item.unit))}
                   />
-                  <span className="text-xs text-[#8E8878] font-medium whitespace-nowrap flex-shrink-0">{item.unit}</span>
+                  <span className="text-xs text-muted font-medium whitespace-nowrap flex-shrink-0">{item.unit}</span>
                 </div>
               </div>
             );
@@ -129,14 +129,14 @@ function StepOutput({ selectedRecipe, actualOutput, setActualOutput, notes, setN
   const decimal = selectedRecipe ? isDecimalAllowed(selectedRecipe.outputUnit) : true;
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col min-h-[420px]">
-      <div className="px-5 py-4 border-b border-black/5 bg-[#FAF7F2] flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-[#C9A84C] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</div>
-        <h2 className="font-semibold text-[#1C1C1E] text-sm">{t('batch', 'output_obtained_title')}</h2>
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden flex flex-col min-h-[420px]">
+      <div className="px-5 py-4 border-b border-hairline bg-canvas flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</div>
+        <h2 className="font-semibold text-ink text-sm">{t('batch', 'output_obtained_title')}</h2>
       </div>
       <div className="p-5 space-y-4 flex-1">
         {!selectedRecipe
-          ? <p className="text-sm text-[#8E8878] italic text-center py-8">{t('batch', 'select_formula_step1_hint_short')}</p>
+          ? <p className="text-sm text-muted italic text-center py-8">{t('batch', 'select_formula_step1_hint_short')}</p>
           : (
             <>
               <Field label={`${t('batch', 'actual_output_label')} (${selectedRecipe.outputUnit})`} required>
@@ -154,9 +154,9 @@ function StepOutput({ selectedRecipe, actualOutput, setActualOutput, notes, setN
                 />
               </Field>
 
-              <div className="bg-[#FAF7F2] border border-black/5 rounded-xl px-4 py-3 flex items-center justify-between text-sm">
-                <span className="text-[#8E8878]">{t('batch', 'produced_date_label')}</span>
-                <span className="font-semibold text-[#1C1C1E]">
+              <div className="bg-canvas border border-hairline rounded-xl px-4 py-3 flex items-center justify-between text-sm">
+                <span className="text-muted">{t('batch', 'produced_date_label')}</span>
+                <span className="font-semibold text-ink">
                   {new Date(producedAt + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </span>
               </div>
@@ -172,7 +172,7 @@ function StepOutput({ selectedRecipe, actualOutput, setActualOutput, notes, setN
       </div>
 
       {selectedRecipe && (
-        <div className="px-5 py-4 border-t border-black/5 bg-[#FAF7F2]/50">
+        <div className="px-5 py-4 border-t border-hairline bg-canvas/50">
           <PrimaryButton
             onClick={onSubmit}
             loading={saving}
@@ -269,11 +269,11 @@ export default function FactoryCreateBatchPage() {
   if (success) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-          <CheckCircle size={36} className="text-emerald-600" />
+        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/18 rounded-full flex items-center justify-center">
+          <CheckCircle size={36} className="text-emerald-600 dark:text-emerald-300" />
         </div>
-        <h2 className="text-xl font-bold text-[#1C1C1E]">{t('batch', 'batch_recorded_success')}</h2>
-        <p className="text-sm text-[#8E8878]">{t('batch', 'redirecting_to_history')}</p>
+        <h2 className="text-xl font-bold text-ink">{t('batch', 'batch_recorded_success')}</h2>
+        <p className="text-sm text-muted">{t('batch', 'redirecting_to_history')}</p>
       </div>
     );
   }
@@ -281,10 +281,10 @@ export default function FactoryCreateBatchPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
+        <h1 className="text-2xl sm:text-3xl font-bold text-ink" style={{ fontFamily: 'var(--font-display)' }}>
           {t('batch', 'create_batch_title')}
         </h1>
-        <p className="text-sm text-[#8E8878] mt-1">{t('batch', 'create_batch_subtitle')}</p>
+        <p className="text-sm text-muted mt-1">{t('batch', 'create_batch_subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">

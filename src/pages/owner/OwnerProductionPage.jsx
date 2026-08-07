@@ -30,10 +30,10 @@ const fmtDate = (ms) => ms
 
 function VarianceBadge({ pct }) {
   const v = parseFloat(pct || 0);
-  if (Math.abs(v) < 0.1) return <Badge className="bg-slate-50 text-slate-500 ring-slate-200">±0%</Badge>;
+  if (Math.abs(v) < 0.1) return <Badge className="bg-canvas text-muted ring-line">±0%</Badge>;
   const up = v > 0;
   return (
-    <Badge className={up ? 'bg-red-50 text-red-700 ring-red-200' : 'bg-emerald-50 text-emerald-700 ring-emerald-200'}>
+    <Badge className={up ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-500/28' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28'}>
       {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
       {up ? '+' : ''}{v.toFixed(1)}%
     </Badge>
@@ -169,12 +169,12 @@ export default function OwnerProductionPage() {
       />
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-black/5 p-1 shadow-sm flex gap-1 w-fit">
+      <div className="bg-surface rounded-2xl border border-hairline p-1 shadow-sm flex gap-1 w-fit">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === t.id
-              ? 'bg-[#1C1C1E] text-white shadow-sm'
-              : 'text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'
+              ? 'bg-chrome text-white shadow-sm'
+              : 'text-muted hover:text-ink hover:bg-canvas'
               }`}>
             <t.icon size={15} />
             {t.label}
@@ -192,7 +192,7 @@ export default function OwnerProductionPage() {
           {tab === 'batches' && (
             <div className="space-y-4">
               {/* Date filter */}
-              <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm relative">
+              <div className="bg-surface rounded-2xl border border-hairline p-3 sm:p-4 shadow-sm relative">
                 <DateRangePicker
                   preset={preset}
                   onPreset={setPreset}
@@ -203,10 +203,10 @@ export default function OwnerProductionPage() {
               {filteredBatches.length === 0
                 ? <EmptyState icon={ClipboardList} title={t('batch', 'no_batches')} />
               : (
-              <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+              <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
                 <table className="w-full text-sm hidden md:table">
                   <thead>
-                    <tr className="bg-[#FAF7F2] text-[#8E8878]">
+                    <tr className="bg-canvas text-muted">
                       <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Mã mẻ</th>
                       <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Thành phẩm</th>
                       <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Nhân viên</th>
@@ -219,27 +219,27 @@ export default function OwnerProductionPage() {
                   </thead>
                   <tbody>
                     {filteredBatches.map(b => (
-                      <tr key={b.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs font-semibold text-[#1C1C1E]">{b.batchCode}</td>
+                      <tr key={b.id} className="border-t border-hairline hover:bg-canvas/50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-ink">{b.batchCode}</td>
                         <td className="px-4 py-3">
-                          <p className="font-medium text-[#1C1C1E]">{b.productName}</p>
-                          <p className="text-xs text-[#8E8878]">{b.recipeName}</p>
+                          <p className="font-medium text-ink">{b.productName}</p>
+                          <p className="text-xs text-muted">{b.recipeName}</p>
                         </td>
-                        <td className="px-4 py-3 text-[#8E8878] text-xs">{b.createdByName}</td>
-                        <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{fmtDate(b.producedAt)}</td>
+                        <td className="px-4 py-3 text-muted text-xs">{b.createdByName}</td>
+                        <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{fmtDate(b.producedAt)}</td>
                         <td className="px-4 py-3 text-right text-sm">
-                          <span className="font-semibold text-[#1C1C1E]">{b.actualOutputQty}</span>
-                          <span className="text-[#8E8878]"> / {b.standardOutputQty} {b.outputUnit}</span>
+                          <span className="font-semibold text-ink">{b.actualOutputQty}</span>
+                          <span className="text-muted"> / {b.standardOutputQty} {b.outputUnit}</span>
                         </td>
                         <td className="px-4 py-3 text-center"><VarianceBadge pct={b.outputVariancePct} /></td>
                         <td className="px-4 py-3 text-center">
                           {b.status === 'REVIEWED'
-                            ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đã xem</Badge>
-                            : <Badge className="bg-amber-50 text-amber-700 ring-amber-200">Chờ xem</Badge>}
+                            ? <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Đã xem</Badge>
+                            : <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28">Chờ xem</Badge>}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button onClick={() => openBatch(b.id)}
-                            className="px-3 py-1.5 text-xs font-medium rounded-xl bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#F0EBE3] transition-colors border border-black/5">
+                            className="px-3 py-1.5 text-xs font-medium rounded-xl bg-canvas text-ink hover:bg-surface-2 transition-colors border border-hairline">
                             Chi tiết
                           </button>
                         </td>
@@ -249,18 +249,18 @@ export default function OwnerProductionPage() {
                 </table>
 
                 {/* Mobile */}
-                <div className="md:hidden divide-y divide-black/5">
+                <div className="md:hidden divide-y divide-hairline">
                   {filteredBatches.map(b => (
                     <div key={b.id} className="p-4" onClick={() => openBatch(b.id)}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-mono text-xs font-semibold text-[#1C1C1E]">{b.batchCode}</p>
-                          <p className="font-medium text-sm text-[#1C1C1E] mt-0.5">{b.productName}</p>
-                          <p className="text-xs text-[#8E8878]">{b.createdByName} · {fmtDate(b.producedAt)}</p>
+                          <p className="font-mono text-xs font-semibold text-ink">{b.batchCode}</p>
+                          <p className="font-medium text-sm text-ink mt-0.5">{b.productName}</p>
+                          <p className="text-xs text-muted">{b.createdByName} · {fmtDate(b.producedAt)}</p>
                         </div>
                         <div className="text-right flex-shrink-0">
                           <VarianceBadge pct={b.outputVariancePct} />
-                          <p className="text-xs text-[#8E8878] mt-1">
+                          <p className="text-xs text-muted mt-1">
                             {b.status === 'REVIEWED' ? '✓ Đã xem' : '⏳ Chờ xem'}
                           </p>
                         </div>
@@ -276,16 +276,16 @@ export default function OwnerProductionPage() {
           {/* ── Recipes (= Biến thể sản xuất, Owner chỉ XEM + bật/tắt) ─────── */}
           {tab === 'recipes' && (
             <div className="space-y-3">
-              <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl px-3 py-2.5 border border-black/5">
+              <p className="text-xs text-muted bg-canvas rounded-xl px-3 py-2.5 border border-hairline">
                 Biến thể sản xuất do nhân viên xưởng tạo và quản lý. Tại đây bạn có thể xem chi tiết và bật/tắt từng biến thể.
               </p>
               {recipes.length === 0
                 ? <EmptyState icon={FlaskConical} title="Chưa có biến thể sản xuất nào" />
                 : (
-                  <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+                  <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-[#FAF7F2] text-[#8E8878]">
+                        <tr className="bg-canvas text-muted">
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Biến thể</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Thành phẩm</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Định lượng chuẩn</th>
@@ -296,35 +296,35 @@ export default function OwnerProductionPage() {
                       </thead>
                       <tbody>
                         {recipes.map(r => (
-                          <tr key={r.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-[#1C1C1E]">{r.name}</td>
-                            <td className="px-4 py-3 text-[#8E8878]">{r.factoryProductName}</td>
+                          <tr key={r.id} className="border-t border-hairline hover:bg-canvas/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-ink">{r.name}</td>
+                            <td className="px-4 py-3 text-muted">{r.factoryProductName}</td>
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
                                 {(r.items || []).map(i => (
-                                  <Badge key={i.id} className="bg-slate-50 text-slate-600 ring-slate-200">
+                                  <Badge key={i.id} className="bg-canvas text-ink-2 ring-line">
                                     {i.materialName}: {i.standardQty} {i.unit}
                                   </Badge>
                                 ))}
-                                <Badge className="bg-[#C9A84C]/10 text-[#A07830] ring-[#C9A84C]/30">
+                                <Badge className="bg-gold/10 text-gold-deep ring-gold/30">
                                   → {r.standardOutputQty} {r.outputUnit}
                                 </Badge>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-[#8E8878] text-xs">{r.createdByName || '—'}</td>
+                            <td className="px-4 py-3 text-muted text-xs">{r.createdByName || '—'}</td>
                             <td className="px-4 py-3 text-center">
                               {r.isActive
-                                ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đang dùng</Badge>
-                                : <Badge className="bg-slate-100 text-slate-500 ring-slate-200">Đã tắt</Badge>}
+                                ? <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Đang dùng</Badge>
+                                : <Badge className="bg-surface-2 text-muted ring-line">Đã tắt</Badge>}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button onClick={() => openRecipeDetail(r.id)} title="Xem chi tiết"
-                                  className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+                                  className="p-2 rounded-lg text-muted hover:bg-canvas hover:text-ink transition-colors">
                                   <Eye size={15} />
                                 </button>
                                 <button onClick={() => toggleRecipeActive(r)} title={r.isActive ? 'Tắt biến thể' : 'Bật biến thể'}
-                                  className={`p-2 rounded-lg transition-colors ${r.isActive ? 'text-emerald-600 hover:bg-emerald-50' : 'text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+                                  className={`p-2 rounded-lg transition-colors ${r.isActive ? 'text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:bg-emerald-500/10' : 'text-muted hover:bg-canvas'}`}>
                                   <Power size={15} />
                                 </button>
                               </div>
@@ -356,10 +356,10 @@ export default function OwnerProductionPage() {
               {products.length === 0
                 ? <EmptyState icon={Package} title="Chưa có thành phẩm nào" />
                 : (
-                  <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+                  <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-[#FAF7F2] text-[#8E8878]">
+                        <tr className="bg-canvas text-muted">
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Tên thành phẩm</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Đơn vị</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Mô tả</th>
@@ -368,13 +368,13 @@ export default function OwnerProductionPage() {
                       </thead>
                       <tbody>
                         {products.map(p => (
-                          <tr key={p.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-[#1C1C1E]">{p.name}</td>
-                            <td className="px-4 py-3"><Badge className="bg-blue-50 text-blue-700 ring-blue-200">{p.unit}</Badge></td>
-                            <td className="px-4 py-3 text-[#8E8878] text-xs">{p.description || '—'}</td>
+                          <tr key={p.id} className="border-t border-hairline hover:bg-canvas/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-ink">{p.name}</td>
+                            <td className="px-4 py-3"><Badge className="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-500/28">{p.unit}</Badge></td>
+                            <td className="px-4 py-3 text-muted text-xs">{p.description || '—'}</td>
                             <td className="px-4 py-3 text-right">
                               <button onClick={() => { setEditProd(p); setShowProdModal(true); }}
-                                className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+                                className="p-2 rounded-lg text-muted hover:bg-canvas hover:text-ink transition-colors">
                                 <Edit2 size={15} />
                               </button>
                             </td>
@@ -398,10 +398,10 @@ export default function OwnerProductionPage() {
               {materials.length === 0
                 ? <EmptyState icon={Factory} title="Chưa có nguyên vật liệu nào" />
                 : (
-                  <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+                  <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-[#FAF7F2] text-[#8E8878]">
+                        <tr className="bg-canvas text-muted">
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Tên NVL</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Đơn vị</th>
                           <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Mô tả</th>
@@ -410,13 +410,13 @@ export default function OwnerProductionPage() {
                       </thead>
                       <tbody>
                         {materials.map(m => (
-                          <tr key={m.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-[#1C1C1E]">{m.name}</td>
-                            <td className="px-4 py-3"><Badge className="bg-amber-50 text-amber-700 ring-amber-200">{m.unit}</Badge></td>
-                            <td className="px-4 py-3 text-[#8E8878] text-xs">{m.description || '—'}</td>
+                          <tr key={m.id} className="border-t border-hairline hover:bg-canvas/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-ink">{m.name}</td>
+                            <td className="px-4 py-3"><Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28">{m.unit}</Badge></td>
+                            <td className="px-4 py-3 text-muted text-xs">{m.description || '—'}</td>
                             <td className="px-4 py-3 text-right">
                               <button onClick={() => { setEditMat(m); setShowMatModal(true); }}
-                                className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+                                className="p-2 rounded-lg text-muted hover:bg-canvas hover:text-ink transition-colors">
                                 <Edit2 size={15} />
                               </button>
                             </td>
@@ -437,7 +437,7 @@ export default function OwnerProductionPage() {
           title={`Chi tiết mẻ: ${batchDetail.batchCode}`} size="lg"
           footer={
             <div className="flex justify-between items-center">
-              <p className="text-xs text-[#8E8878]">Tạo bởi: {batchDetail.createdByName}</p>
+              <p className="text-xs text-muted">Tạo bởi: {batchDetail.createdByName}</p>
               <div className="flex gap-2">
                 <SecondaryButton onClick={() => setBatchDetail(null)}>Đóng</SecondaryButton>
                 {batchDetail.status !== 'REVIEWED' && (
@@ -450,51 +450,51 @@ export default function OwnerProductionPage() {
           }>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-[#FAF7F2] rounded-xl p-3">
-                <p className="text-xs text-[#8E8878] mb-0.5">Thành phẩm</p>
-                <p className="font-semibold text-[#1C1C1E]">{batchDetail.productName}</p>
+              <div className="bg-canvas rounded-xl p-3">
+                <p className="text-xs text-muted mb-0.5">Thành phẩm</p>
+                <p className="font-semibold text-ink">{batchDetail.productName}</p>
               </div>
-              <div className="bg-[#FAF7F2] rounded-xl p-3">
-                <p className="text-xs text-[#8E8878] mb-0.5">Công thức</p>
-                <p className="font-semibold text-[#1C1C1E]">{batchDetail.recipeName}</p>
+              <div className="bg-canvas rounded-xl p-3">
+                <p className="text-xs text-muted mb-0.5">Công thức</p>
+                <p className="font-semibold text-ink">{batchDetail.recipeName}</p>
               </div>
-              <div className="bg-[#FAF7F2] rounded-xl p-3">
-                <p className="text-xs text-[#8E8878] mb-0.5">Ngày sản xuất</p>
-                <p className="font-semibold text-[#1C1C1E]">{fmtDate(batchDetail.producedAt)}</p>
+              <div className="bg-canvas rounded-xl p-3">
+                <p className="text-xs text-muted mb-0.5">Ngày sản xuất</p>
+                <p className="font-semibold text-ink">{fmtDate(batchDetail.producedAt)}</p>
               </div>
-              <div className="bg-[#FAF7F2] rounded-xl p-3">
-                <p className="text-xs text-[#8E8878] mb-0.5">Trạng thái</p>
+              <div className="bg-canvas rounded-xl p-3">
+                <p className="text-xs text-muted mb-0.5">Trạng thái</p>
                 {batchDetail.status === 'REVIEWED'
-                  ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đã xem</Badge>
-                  : <Badge className="bg-amber-50 text-amber-700 ring-amber-200">Chờ xem</Badge>}
+                  ? <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Đã xem</Badge>
+                  : <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28">Chờ xem</Badge>}
               </div>
             </div>
 
             {/* Output */}
-            <div className="border border-black/5 rounded-xl overflow-hidden">
-              <div className="bg-[#FAF7F2] px-4 py-2.5 border-b border-black/5">
-                <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Thành phẩm đầu ra</p>
+            <div className="border border-hairline rounded-xl overflow-hidden">
+              <div className="bg-canvas px-4 py-2.5 border-b border-hairline">
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Thành phẩm đầu ra</p>
               </div>
               <div className="p-4 flex items-center justify-between">
                 <div className="text-sm space-y-1">
-                  <p className="text-[#8E8878]">Định lượng chuẩn: <strong className="text-[#1C1C1E]">{batchDetail.standardOutputQty} {batchDetail.outputUnit}</strong></p>
-                  <p className="text-[#8E8878]">Thực tế thu được: <strong className="text-[#1C1C1E]">{batchDetail.actualOutputQty} {batchDetail.outputUnit}</strong></p>
+                  <p className="text-muted">Định lượng chuẩn: <strong className="text-ink">{batchDetail.standardOutputQty} {batchDetail.outputUnit}</strong></p>
+                  <p className="text-muted">Thực tế thu được: <strong className="text-ink">{batchDetail.actualOutputQty} {batchDetail.outputUnit}</strong></p>
                 </div>
                 <div className="text-right">
                   <VarianceBadge pct={batchDetail.outputVariancePct} />
-                  <p className="text-xs text-[#8E8878] mt-1">so với chuẩn</p>
+                  <p className="text-xs text-muted mt-1">so với chuẩn</p>
                 </div>
               </div>
             </div>
 
             {/* NVL table */}
-            <div className="border border-black/5 rounded-xl overflow-hidden">
-              <div className="bg-[#FAF7F2] px-4 py-2.5 border-b border-black/5">
-                <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Nguyên vật liệu đã dùng</p>
+            <div className="border border-hairline rounded-xl overflow-hidden">
+              <div className="bg-canvas px-4 py-2.5 border-b border-hairline">
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Nguyên vật liệu đã dùng</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-black/5 text-[#8E8878]">
+                  <tr className="border-b border-hairline text-muted">
                     <th className="px-4 py-2 text-left text-xs font-semibold">NVL</th>
                     <th className="px-4 py-2 text-right text-xs font-semibold">Chuẩn</th>
                     <th className="px-4 py-2 text-right text-xs font-semibold">Thực tế</th>
@@ -503,10 +503,10 @@ export default function OwnerProductionPage() {
                 </thead>
                 <tbody>
                   {(batchDetail.items || []).map(item => (
-                    <tr key={item.id} className="border-t border-black/5">
-                      <td className="px-4 py-2.5 font-medium text-[#1C1C1E]">{item.materialName}</td>
-                      <td className="px-4 py-2.5 text-right text-[#8E8878]">{item.standardQty} {item.unit}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-[#1C1C1E]">{item.actualQty} {item.unit}</td>
+                    <tr key={item.id} className="border-t border-hairline">
+                      <td className="px-4 py-2.5 font-medium text-ink">{item.materialName}</td>
+                      <td className="px-4 py-2.5 text-right text-muted">{item.standardQty} {item.unit}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-ink">{item.actualQty} {item.unit}</td>
                       <td className="px-4 py-2.5 text-right"><VarianceBadge pct={item.variancePct} /></td>
                     </tr>
                   ))}
@@ -515,7 +515,7 @@ export default function OwnerProductionPage() {
             </div>
 
             {batchDetail.notes && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl p-3 text-sm text-amber-800 dark:text-amber-300">
                 <strong>Ghi chú:</strong> {batchDetail.notes}
               </div>
             )}
@@ -596,7 +596,7 @@ function SimpleFormModal({ title, initial, fields, onClose, onSave }) {
         </div>
       }>
       <div className="space-y-4">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
         {fields.map(f => (
           <Field key={f.key} label={f.label} required={f.required}>
             <input className={inputCls} value={form[f.key] || ''}
@@ -622,70 +622,70 @@ function RecipeDetailModal({ recipe: r, onClose }) {
     <Modal open title={`Biến thể: ${r.name}`} onClose={onClose} size="lg">
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge className="bg-blue-50 text-blue-700 ring-blue-200">{r.factoryProductName}</Badge>
-          <Badge className="bg-[#C9A84C]/10 text-[#A07830] ring-[#C9A84C]/30">
+          <Badge className="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-500/28">{r.factoryProductName}</Badge>
+          <Badge className="bg-gold/10 text-gold-deep ring-gold/30">
             Sản lượng chuẩn: {r.standardOutputQty} {r.outputUnit}
           </Badge>
           {r.isActive
-            ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Đang dùng</Badge>
-            : <Badge className="bg-slate-100 text-slate-500 ring-slate-200">Đã tắt</Badge>}
+            ? <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Đang dùng</Badge>
+            : <Badge className="bg-surface-2 text-muted ring-line">Đã tắt</Badge>}
         </div>
 
         {r.notes && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl p-3 text-sm text-amber-800 dark:text-amber-300">
             <strong>Ghi chú:</strong> {r.notes}
           </div>
         )}
 
         {/* Materials */}
         <div>
-          <p className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Package size={13} /> Nguyên liệu
           </p>
           <div className="flex flex-wrap gap-1.5">
             {(r.items || []).map(i => (
-              <Badge key={i.id} className="bg-slate-50 text-slate-600 ring-slate-200">
+              <Badge key={i.id} className="bg-canvas text-ink-2 ring-line">
                 {i.materialName}: {i.standardQty} {i.unit}
               </Badge>
             ))}
-            {(r.items || []).length === 0 && <span className="text-xs text-[#8E8878] italic">Chưa có nguyên liệu</span>}
+            {(r.items || []).length === 0 && <span className="text-xs text-muted italic">Chưa có nguyên liệu</span>}
           </div>
         </div>
 
         {/* Steps */}
         <div>
-          <p className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Clock size={13} /> Các bước xử lý
           </p>
           <ol className="space-y-1.5">
             {(r.steps || []).map((s, idx) => (
-              <li key={s.id} className="flex items-center gap-2 text-sm text-[#1C1C1E] bg-[#FAF7F2] rounded-xl px-3 py-2">
-                <span className="w-5 h-5 rounded-full bg-[#1C1C1E] text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+              <li key={s.id} className="flex items-center gap-2 text-sm text-ink bg-canvas rounded-xl px-3 py-2">
+                <span className="w-5 h-5 rounded-full bg-chrome text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">
                   {idx + 1}
                 </span>
                 <span className="font-medium flex-1">{s.stepName}</span>
                 {s.controlType === 'PHOTO_WEIGHT' || (!s.controlType && s.requiresQc) ? (
-                  <span className="flex items-center gap-0.5 text-amber-600 text-xs flex-shrink-0">
+                  <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-300 text-xs flex-shrink-0">
                     <ShieldCheck size={12} /> KS cân ký
                   </span>
                 ) : s.controlType === 'VISUAL' ? (
-                  <span className="flex items-center gap-0.5 text-blue-600 text-xs flex-shrink-0">
+                  <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-300 text-xs flex-shrink-0">
                     <Eye size={12} /> KS trực quan
                   </span>
                 ) : null}
-                <span className="text-[#8E8878] text-xs flex-shrink-0">{fmtDuration(s.durationMinutes)}</span>
+                <span className="text-muted text-xs flex-shrink-0">{fmtDuration(s.durationMinutes)}</span>
                 {s.machineName && (
-                  <span className="flex items-center gap-1 text-[#8E8878] text-xs flex-shrink-0">
+                  <span className="flex items-center gap-1 text-muted text-xs flex-shrink-0">
                     <Wrench size={11} /> {s.machineName}
                   </span>
                 )}
               </li>
             ))}
-            {(r.steps || []).length === 0 && <span className="text-xs text-[#8E8878] italic">Chưa có bước nào</span>}
+            {(r.steps || []).length === 0 && <span className="text-xs text-muted italic">Chưa có bước nào</span>}
           </ol>
         </div>
 
-        <p className="text-xs text-[#8E8878] italic">
+        <p className="text-xs text-muted italic">
           Biến thể này do nhân viên xưởng tạo/sửa tại trang "Biến thể sản xuất" của xưởng.
         </p>
       </div>
@@ -696,8 +696,8 @@ function RecipeDetailModal({ recipe: r, onClose }) {
 // Xưởng — Owner tạo xưởng (tên + địa chỉ) & gán nhân viên xưởng quản lý
 // ══════════════════════════════════════════════════════════════════════════
 const FACTORY_STATUS_CFG = {
-  ACTIVE:   { label: 'Đang hoạt động', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-  INACTIVE: { label: 'Ngừng',          cls: 'bg-slate-100 text-slate-500 ring-slate-200' },
+  ACTIVE:   { label: 'Đang hoạt động', cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28' },
+  INACTIVE: { label: 'Ngừng',          cls: 'bg-surface-2 text-muted ring-line' },
 };
 
 function FactoriesTab() {
@@ -745,7 +745,7 @@ function FactoriesTab() {
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center gap-3 flex-wrap">
-        <p className="text-sm text-[#8E8878]">
+        <p className="text-sm text-muted">
           Mỗi xưởng có kho riêng. Nhân viên xưởng được gán vào xưởng sẽ chỉ thấy & thao tác trên dữ liệu của xưởng mình quản lý.
         </p>
         <PrimaryButton onClick={() => setShowCreate(true)}>
@@ -763,16 +763,16 @@ function FactoriesTab() {
           {factories.map(f => {
             const cfg = FACTORY_STATUS_CFG[f.status] || FACTORY_STATUS_CFG.INACTIVE;
             return (
-              <div key={f.id} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+              <div key={f.id} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-[#C9A84C]/15 text-[#C9A84C] flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-gold/15 text-gold flex items-center justify-center flex-shrink-0">
                       <Building2 size={18} />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-[#1C1C1E] truncate">{f.name}</p>
+                      <p className="font-semibold text-ink truncate">{f.name}</p>
                       {f.address && (
-                        <p className="text-xs text-[#8E8878] mt-0.5 flex items-center gap-1">
+                        <p className="text-xs text-muted mt-0.5 flex items-center gap-1">
                           <MapPin size={11} className="flex-shrink-0" /> <span className="truncate">{f.address}</span>
                         </p>
                       )}
@@ -781,18 +781,18 @@ function FactoriesTab() {
                   <Badge className={cfg.cls}>{cfg.label}</Badge>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-black/5">
+                <div className="mt-3 pt-3 border-t border-hairline">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-[#8E8878] flex items-center gap-1.5">
+                    <span className="text-xs text-muted flex items-center gap-1.5">
                       <Users size={13} /> {(f.managers || []).length} nhân viên quản lý
                     </span>
                     <div className="flex items-center gap-1">
                       <button onClick={() => setManageFactory(f)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#1C1C1E] bg-[#FAF7F2] hover:bg-[#F0EBE3] transition-colors">
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-ink bg-canvas hover:bg-surface-2 transition-colors">
                         Gán nhân viên
                       </button>
                       <button onClick={() => toggle(f)} title={f.status === 'ACTIVE' ? 'Ngừng xưởng' : 'Kích hoạt'}
-                        className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+                        className="p-2 rounded-lg text-muted hover:bg-canvas hover:text-ink transition-colors">
                         <Power size={15} />
                       </button>
                     </div>
@@ -800,7 +800,7 @@ function FactoriesTab() {
                   {(f.managers || []).length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {f.managers.map(m => (
-                        <span key={m.id} className="text-[11px] bg-[#F5F0EB] text-[#8E8878] px-2 py-0.5 rounded-full">
+                        <span key={m.id} className="text-[11px] bg-surface-2 text-muted px-2 py-0.5 rounded-full">
                           {m.fullName || m.username}
                         </span>
                       ))}
@@ -857,17 +857,17 @@ function CreateFactoryModal({ workers, onClose, onCreated }) {
         </div>
       }>
       <div className="space-y-3">
-        {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
+        {err && <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2">{err}</div>}
         <div>
-          <label className="text-sm font-medium text-[#1C1C1E]">Tên xưởng <span className="text-red-500">*</span></label>
+          <label className="text-sm font-medium text-ink">Tên xưởng <span className="text-red-500">*</span></label>
           <input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="VD: Xưởng Quận 12" />
         </div>
         <div>
-          <label className="text-sm font-medium text-[#1C1C1E]">Địa chỉ <span className="text-red-500">*</span></label>
+          <label className="text-sm font-medium text-ink">Địa chỉ <span className="text-red-500">*</span></label>
           <input className={inputCls} value={address} onChange={e => setAddress(e.target.value)} placeholder="Số nhà, đường, phường, quận…" />
         </div>
         <div>
-          <label className="text-sm font-medium text-[#1C1C1E]">Mô tả</label>
+          <label className="text-sm font-medium text-ink">Mô tả</label>
           <input className={inputCls} value={description} onChange={e => setDescription(e.target.value)} placeholder="(tuỳ chọn)" />
         </div>
         <ManagerPicker workers={workers} selected={managerIds} onChange={setManagerIds} />
@@ -899,8 +899,8 @@ function AssignManagersModal({ factory, workers, onClose, onSaved }) {
         </div>
       }>
       <div className="space-y-3">
-        {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
-        <p className="text-xs text-[#8E8878]">
+        {err && <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2">{err}</div>}
+        <p className="text-xs text-muted">
           Chọn trưởng xưởng sản xuất / nhân viên sản xuất quản lý xưởng này. 1 nhân viên có thể quản lý nhiều xưởng.
         </p>
         <ManagerPicker workers={workers} selected={managerIds} onChange={setManagerIds} />
@@ -936,9 +936,9 @@ function ManagerPicker({ workers, selected, onChange }) {
 
   return (
     <div>
-      <label className="text-sm font-medium text-[#1C1C1E]">Nhân viên quản lý xưởng</label>
+      <label className="text-sm font-medium text-ink">Nhân viên quản lý xưởng</label>
       {workers.length === 0 ? (
-        <p className="text-xs text-[#8E8878] mt-1">
+        <p className="text-xs text-muted mt-1">
           Chưa có tài khoản trưởng xưởng / nhân viên xưởng / kế toán kho xưởng.
         </p>
       ) : (
@@ -950,8 +950,8 @@ function ManagerPicker({ workers, selected, onChange }) {
               <button key={u.id} type="button" onClick={() => toggle(u.id)}
                 title={roles.map(r => FACTORY_ROLE_LABEL[r]).join(' · ')}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${on
-                  ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40'
-                  : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]/40'}`}>
+                  ? 'bg-gold/15 text-gold border-gold/40'
+                  : 'bg-surface text-muted border-line hover:border-gold/40'}`}>
                 {on && <Check size={12} className="inline mr-1" />}
                 {u.fullName || u.username}
                 {roles.length > 0 && (

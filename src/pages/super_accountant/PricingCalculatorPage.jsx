@@ -93,10 +93,10 @@ function IngredientSelect({ value, onChange }) {
                 onClick={() => setOpen((o) => !o)}
                 className={`${inputCls} flex items-center justify-between text-left`}
             >
-                <span className={value ? 'text-[#1C1C1E] truncate' : 'text-[#8E8878]'}>
+                <span className={value ? 'text-ink truncate' : 'text-muted'}>
                     {value ? `${value.name}${value.unit ? ` (${value.unit})` : ''}` : t('production','mps_select_product')}
                 </span>
-                <Search size={15} className="text-[#8E8878] shrink-0" />
+                <Search size={15} className="text-muted shrink-0" />
             </button>
 
             {open && (
@@ -108,9 +108,9 @@ function IngredientSelect({ value, onChange }) {
                         width: pos.width,
                         zIndex: 9999,
                     }}
-                    className="bg-white rounded-xl shadow-lg border border-[#E8DDD0] overflow-hidden"
+                    className="bg-surface rounded-xl shadow-lg border border-line overflow-hidden"
                 >
-                    <div className="p-2 border-b border-[#F0E9DF]">
+                    <div className="p-2 border-b border-line-soft">
                         <input
                             autoFocus
                             value={q}
@@ -121,10 +121,10 @@ function IngredientSelect({ value, onChange }) {
                     </div>
 
                     <div className="max-h-60 overflow-auto">
-                        {loading && <p className="px-3 py-3 text-sm text-[#8E8878]">{t('production','pcalc_searching')}</p>}
+                        {loading && <p className="px-3 py-3 text-sm text-muted">{t('production','pcalc_searching')}</p>}
 
                         {!loading && options.length === 0 && (
-                            <p className="px-3 py-3 text-sm text-[#8E8878]">{t('production','pcalc_no_results')}</p>
+                            <p className="px-3 py-3 text-sm text-muted">{t('production','pcalc_no_results')}</p>
                         )}
 
                         {!loading && options.map((o) => (
@@ -136,11 +136,11 @@ function IngredientSelect({ value, onChange }) {
                                     setOpen(false);
                                     setQ('');
                                 }}
-                                className="w-full text-left px-3 py-2 hover:bg-[#FBF7F0] flex items-center gap-2"
+                                className="w-full text-left px-3 py-2 hover:bg-canvas flex items-center gap-2"
                             >
-                                <Package size={14} className="text-[#C9A84C] shrink-0" />
-                                <span className="text-sm text-[#1C1C1E] flex-1 truncate">{o.name}</span>
-                                {o.unit && <span className="text-xs text-[#8E8878]">{o.unit}</span>}
+                                <Package size={14} className="text-gold shrink-0" />
+                                <span className="text-sm text-ink flex-1 truncate">{o.name}</span>
+                                {o.unit && <span className="text-xs text-muted">{o.unit}</span>}
                             </button>
                         ))}
                     </div>
@@ -198,7 +198,7 @@ function CostLabelInput({ value, onChange, labels, onCreate }) {
     return (
         <div className="relative flex-1 min-w-0" ref={boxRef}>
             <div className="flex items-center gap-1">
-                <Tag size={14} className="text-[#C9A84C] shrink-0" />
+                <Tag size={14} className="text-gold shrink-0" />
 
                 <input
                     ref={inputRef}
@@ -222,7 +222,7 @@ function CostLabelInput({ value, onChange, labels, onCreate }) {
                         width: pos.width,
                         zIndex: 9999,
                     }}
-                    className="bg-white rounded-xl shadow-lg border border-[#E8DDD0] overflow-hidden"
+                    className="bg-surface rounded-xl shadow-lg border border-line overflow-hidden"
                 >
                     <div className="max-h-48 overflow-auto">
                         {filtered.map((l) => (
@@ -233,7 +233,7 @@ function CostLabelInput({ value, onChange, labels, onCreate }) {
                                     onChange(l.name);
                                     setOpen(false);
                                 }}
-                                className="w-full text-left px-3 py-2 hover:bg-[#FBF7F0] text-sm text-[#1C1C1E]"
+                                className="w-full text-left px-3 py-2 hover:bg-canvas text-sm text-ink"
                             >
                                 {l.name}
                             </button>
@@ -247,7 +247,7 @@ function CostLabelInput({ value, onChange, labels, onCreate }) {
                                     if (c) onChange(c.name);
                                     setOpen(false);
                                 }}
-                                className="w-full text-left px-3 py-2 hover:bg-[#FBF7F0] text-sm text-[#C9A84C] flex items-center gap-1 border-t border-[#F0E9DF]"
+                                className="w-full text-left px-3 py-2 hover:bg-canvas text-sm text-gold flex items-center gap-1 border-t border-line-soft"
                             >
                                 <Plus size={14} /> Tạo nhãn "{value.trim()}"
                             </button>
@@ -388,11 +388,11 @@ export default function PricingCalculatorPage() {
                                 <Plus size={15} />{t('common','add')}</SecondaryButton>} />
                         <div className="space-y-4 mt-3">
                             {rows.map((r, idx) => (
-                                <div key={r.key} className="rounded-xl border border-[#EFE7DA] p-3 bg-[#FDFBF7]">
+                                <div key={r.key} className="rounded-xl border border-line-soft p-3 bg-canvas">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-[#8E8878]">Nguyên liệu #{idx + 1}</span>
+                                        <span className="text-xs font-semibold text-muted">Nguyên liệu #{idx + 1}</span>
                                         {rows.length > 1 && (
-                                            <button onClick={() => removeRow(r.key)} className="text-red-400 hover:text-red-600">
+                                            <button onClick={() => removeRow(r.key)} className="text-red-400 hover:text-red-600 dark:text-red-300">
                                                 <Trash2 size={15} /></button>
                                         )}
                                     </div>
@@ -444,7 +444,7 @@ export default function PricingCalculatorPage() {
                                             {r.priceMode === 'total' &&
                                                 parseVN(r.quantity) > 0 &&
                                                 parseVN(r.priceValue) > 0 && (
-                                                    <p className="text-[11px] text-[#8E8878] mt-1">
+                                                    <p className="text-[11px] text-muted mt-1">
                                                         {t('production','pcalc_unit_price')} ≈{' '}
                                                         {formatVN(
                                                             parseVN(r.priceValue) / parseVN(r.quantity),
@@ -484,13 +484,13 @@ export default function PricingCalculatorPage() {
                         w-11
                         rounded-xl
                         border
-                        border-[#E8DDD0]
-                        bg-white
-                        hover:bg-[#FBF7F0]
+                        border-line
+                        bg-surface
+                        hover:bg-canvas
                         flex
                         items-center
                         justify-center
-                        text-[#C9A84C]
+                        text-gold
                         shrink-0
                     "
                                                         >
@@ -517,13 +517,13 @@ export default function PricingCalculatorPage() {
 
                                                         <Percent
                                                             size={14}
-                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9C9C9C]"
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
                                                         />
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <p className="text-[11px] text-[#8E8878] mt-1">
+                                            <p className="text-[11px] text-muted mt-1">
                                                 Nhấn <Wand2 size={12} className="inline mx-1" />
                                                 để tự động lấy giá mua làm giá tính thuế.
                                             </p>
@@ -539,11 +539,11 @@ export default function PricingCalculatorPage() {
                             action={<SecondaryButton onClick={() => setCosts((cs) => [...cs, newCostRow()])}>
                                 <Plus size={15} />{t('common','add')}</SecondaryButton>} />
                         <div className="px-5 pt-4 pb-5">
-                            <p className="text-xs text-[#8E8878] mt-1">
+                            <p className="text-xs text-muted mt-1">
                                 VD: phí kho bãi, lưu kho, vận chuyển, hải quan... Mỗi dòng chọn cơ sở phân bổ riêng (mặc định theo giá trị).
                             </p>
                             <div className="space-y-2 mt-3">
-                                {costs.length === 0 && <p className="text-sm text-[#9C9C9C] italic">{t('production','pcalc_no_overhead')}</p>}
+                                {costs.length === 0 && <p className="text-sm text-muted italic">{t('production','pcalc_no_overhead')}</p>}
                                 {costs.map((c) => (
                                     <div key={c.key} className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                                         <CostLabelInput value={c.label} labels={labels}
@@ -555,7 +555,7 @@ export default function PricingCalculatorPage() {
                                             className={selectCls + ' sm:w-44 shrink-0'}>
                                             {BASIS_OPTIONS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
                                         </select>
-                                        <button onClick={() => removeCost(c.key)} className="text-red-400 hover:text-red-600 self-center px-1">
+                                        <button onClick={() => removeCost(c.key)} className="text-red-400 hover:text-red-600 dark:text-red-300 self-center px-1">
                                             <Trash2 size={15} /></button>
                                     </div>
                                 ))}
@@ -579,7 +579,7 @@ export default function PricingCalculatorPage() {
                                         />
                                         <Percent
                                             size={14}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9C9C9C]"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
                                         />
                                     </div>
                                 </div>
@@ -596,7 +596,7 @@ export default function PricingCalculatorPage() {
 
                 {/* ── CỘT PHẢI: preview ── */}
                 <div className="lg:sticky lg:top-4">
-                    <SectionCard className="border-[#C9A84C]/40">
+                    <SectionCard className="border-gold/40">
                         <SectionHeader title={t('production','pcalc_results')} />
                         {!result ? (
                             <div className="py-10">
@@ -607,22 +607,22 @@ export default function PricingCalculatorPage() {
                             <>
                                 <div className="mt-3 space-y-3">
                                     {result.detail.map((it) => (
-                                        <div key={it.key} className="rounded-xl border border-[#EFE7DA] p-4 bg-[#FDFBF7]">
+                                        <div key={it.key} className="rounded-xl border border-line-soft p-4 bg-canvas">
                                             <div className="flex items-center justify-between mb-2">
-                                                <span className="font-semibold text-[#1C1C1E]">{it.name}</span>
-                                                <span className="text-xs text-[#8E8878]">{formatVN(it.qty, 3)} {it.unit || t('production','pcalc_unit_fallback')}</span>
+                                                <span className="font-semibold text-ink">{it.name}</span>
+                                                <span className="text-xs text-muted">{formatVN(it.qty, 3)} {it.unit || t('production','pcalc_unit_fallback')}</span>
                                             </div>
                                             <div className="space-y-1 text-sm">
                                                 <Line label={t('production','pcalc_total')} value={formatVN(roundHalfUp(it.buying))} />
                                                 <Line label={t('production','pcalc_unit_price')} value={formatVNTrimDecimal(it.unitBuy, 3)} suffix={`/ ${it.unit || t('production','pcalc_unit_fallback')}`} />
                                                 <Line label={t('production','pcalc_tax')} value={formatVN(it.tax)} />
                                                 <Line label={t('production','pcalc_overhead_alloc')} value={formatVN(it.allocated)} />
-                                                <div className="border-t border-[#EFE7DA] my-1" />
+                                                <div className="border-t border-line-soft my-1" />
                                                 <Line label={t('production','pcalc_total_cost')} value={formatVN(it.totalCost)} strong />
                                                 <Line label={t('production','pcalc_cogs_per_unit')} value={formatVN(it.unitCost)} suffix={`/ ${it.unit || t('production','pcalc_unit_fallback')}`} strong />
-                                                <div className="mt-2 rounded-lg bg-[#C9A84C]/10 px-3 py-2 flex items-center justify-between">
-                                                    <span className="text-[#8A6D1F] font-semibold text-sm">{t('production','pcalc_sell_price_per_unit')}</span>
-                                                    <span className="text-[#8A6D1F] font-bold">{formatVN(it.sellUnit)} đ</span>
+                                                <div className="mt-2 rounded-lg bg-gold/10 px-3 py-2 flex items-center justify-between">
+                                                    <span className="text-gold-deep font-semibold text-sm">{t('production','pcalc_sell_price_per_unit')}</span>
+                                                    <span className="text-gold-deep font-bold">{formatVN(it.sellUnit)} đ</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -641,9 +641,9 @@ function Line({ label, value, suffix, strong }) {
     const { t } = useLang();
     return (
         <div className="flex items-center justify-between">
-            <span className={strong ? 'text-[#1C1C1E] font-medium' : 'text-[#8E8878]'}>{label}</span>
-            <span className={strong ? 'text-[#1C1C1E] font-semibold' : 'text-[#5C5C5C]'}>
-                {value}{suffix ? <span className="text-[#9C9C9C] text-xs ml-1">{suffix}</span> : null}
+            <span className={strong ? 'text-ink font-medium' : 'text-muted'}>{label}</span>
+            <span className={strong ? 'text-ink font-semibold' : 'text-ink-2'}>
+                {value}{suffix ? <span className="text-muted text-xs ml-1">{suffix}</span> : null}
             </span>
         </div>
     );
@@ -652,9 +652,9 @@ function Line({ label, value, suffix, strong }) {
 function Summary({ label, value }) {
     const { t } = useLang();
     return (
-        <div className="rounded-xl border border-[#EFE7DA] p-3 bg-white">
-            <p className="text-[11px] text-[#8E8878]">{label}</p>
-            <p className="text-[#1C1C1E] font-semibold mt-0.5">{value}</p>
+        <div className="rounded-xl border border-line-soft p-3 bg-surface">
+            <p className="text-[11px] text-muted">{label}</p>
+            <p className="text-ink font-semibold mt-0.5">{value}</p>
         </div>
     );
 }

@@ -48,8 +48,8 @@ export function MachineModal({ machine, factories, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-black/5 bg-[#1A2B1A] flex items-center justify-between">
+      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-hairline bg-forest-deep flex items-center justify-between">
           <h2 className="text-white font-semibold text-sm">
             {machine ? t('production', 'omach_edit_title') : t('production', 'omach_create_title')}
           </h2>
@@ -102,9 +102,9 @@ export function MachineModal({ machine, factories, onClose, onSaved }) {
               value={form.description} onChange={e => set('description', e.target.value)} />
           </Field>
         </div>
-        <div className="px-6 py-4 border-t border-black/5 bg-[#FAF7F2]/50 flex gap-3 justify-end">
+        <div className="px-6 py-4 border-t border-hairline bg-canvas/50 flex gap-3 justify-end">
           <button onClick={onClose}
-            className="px-4 py-2 text-sm text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
+            className="px-4 py-2 text-sm text-muted hover:text-ink transition-colors">
             {t('common', 'cancel')}
           </button>
           <PrimaryButton onClick={submit} loading={saving}
@@ -216,12 +216,12 @@ export default function OwnerMachinePage() {  const navigate = useNavigate();
   const inactive = useMemo(() => machines.filter(m => m.status !== 'ACTIVE'), [machines]);
 
   const stats = useMemo(() => [
-    { label: t('production', 'omach_stat_active'),   value: active.length,   color: 'text-emerald-600' },
+    { label: t('production', 'omach_stat_active'),   value: active.length,   color: 'text-emerald-600 dark:text-emerald-300' },
     { label: t('production', 'omach_stat_inactive'), value: inactive.length, color: 'text-red-500' },
     {
       label: t('production', 'omach_stat_total_capacity'),
       value: active.reduce((s, m) => s + Number(m.capacityHoursPerMonth || 0), 0),
-      color: 'text-[#C9A84C]',
+      color: 'text-gold',
     },
   ], [t, active, inactive]);
 
@@ -232,29 +232,29 @@ export default function OwnerMachinePage() {  const navigate = useNavigate();
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]"
+          <h1 className="text-2xl sm:text-3xl font-bold text-ink"
               style={{ fontFamily: 'var(--font-display)' }}>
             {t('production', 'omach_title')}
           </h1>
-          <p className="text-sm text-[#8E8878] mt-1">
+          <p className="text-sm text-muted mt-1">
             {t('production', 'omach_subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <input ref={importInputRef} type="file" accept=".xlsx" hidden onChange={handleImport} />
           <button onClick={handleExport} disabled={exporting}
-            className="flex items-center gap-2 border border-[#E8DDD0] text-[#1C1C1E] px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#FAF7F2] transition-colors disabled:opacity-50">
+            className="flex items-center gap-2 border border-line text-ink px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-canvas transition-colors disabled:opacity-50">
             <Download size={16} />
             {exporting ? 'Đang xuất…' : 'Export'}
           </button>
           <button onClick={() => importInputRef.current?.click()} disabled={importing}
-            className="flex items-center gap-2 border border-[#E8DDD0] text-[#1C1C1E] px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#FAF7F2] transition-colors disabled:opacity-50">
+            className="flex items-center gap-2 border border-line text-ink px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-canvas transition-colors disabled:opacity-50">
             <Upload size={16} />
             {importing ? 'Đang nhập…' : 'Import'}
           </button>
           <button
             onClick={() => setModal('create')}
-            className="flex items-center gap-2 bg-[#1A2B1A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#243824] transition-colors">
+            className="flex items-center gap-2 bg-forest-deep text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-forest-mid transition-colors">
             <Plus size={16} />
             {t('production', 'omach_add')}
           </button>
@@ -264,18 +264,18 @@ export default function OwnerMachinePage() {  const navigate = useNavigate();
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {stats.map(stat => (
-          <div key={stat.label} className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+          <div key={stat.label} className="bg-surface rounded-2xl border border-hairline p-4 shadow-sm">
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            <p className="text-xs text-[#8E8878] mt-1">{stat.label}</p>
+            <p className="text-xs text-muted mt-1">{stat.label}</p>
           </div>
         ))}
       </div>
 
       {/* List */}
       {machines.length === 0 && (
-        <div className="bg-white rounded-2xl border border-black/5 p-12 text-center">
-          <Settings2 size={32} className="mx-auto text-[#8E8878] mb-3" />
-          <p className="text-sm text-[#8E8878]">{t('production', 'omach_empty')}</p>
+        <div className="bg-surface rounded-2xl border border-hairline p-12 text-center">
+          <Settings2 size={32} className="mx-auto text-muted mb-3" />
+          <p className="text-sm text-muted">{t('production', 'omach_empty')}</p>
         </div>
       )}
 
@@ -283,19 +283,19 @@ export default function OwnerMachinePage() {  const navigate = useNavigate();
         {groupMachinesByFactory(machines).map(group => (
           <div key={group.key}>
             <div className="flex items-center gap-2 mb-3">
-              <Building2 size={15} className="text-[#C9A84C]" />
-              <h2 className="text-sm font-bold text-[#1C1C1E] uppercase tracking-wide">{group.factoryName}</h2>
-              <span className="text-xs text-[#8E8878]">({group.machines.length} máy)</span>
+              <Building2 size={15} className="text-gold" />
+              <h2 className="text-sm font-bold text-ink uppercase tracking-wide">{group.factoryName}</h2>
+              <span className="text-xs text-muted">({group.machines.length} máy)</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {group.machines.map(m => (
           <div key={m.id}
-               className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-opacity ${
-                 m.status !== 'ACTIVE' ? 'opacity-60 border-black/5' : 'border-black/5'
+               className={`bg-surface rounded-2xl border shadow-sm overflow-hidden transition-opacity ${
+                 m.status !== 'ACTIVE' ? 'opacity-60 border-hairline' : 'border-hairline'
                }`}>
-            <div className="px-4 py-3 border-b border-black/5 bg-[#FAF7F2] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-hairline bg-canvas flex items-center justify-between">
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                m.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                m.status === 'ACTIVE' ? 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' : 'bg-surface-2 text-muted'
               }`}>
                 {m.status === 'ACTIVE'
                   ? t('production', 'fmgmt_status_active')
@@ -303,31 +303,31 @@ export default function OwnerMachinePage() {  const navigate = useNavigate();
               </span>
               <div className="flex items-center gap-2">
                 <button onClick={() => setModal(m)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-black/5 text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-hairline text-muted hover:text-ink transition-colors">
                   <Pencil size={13} />
                 </button>
                 <button onClick={() => toggleStatus(m)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-black/5 text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
-                  {m.status === 'ACTIVE' ? <ToggleRight size={16} className="text-emerald-600" /> : <ToggleLeft size={16} />}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-hairline text-muted hover:text-ink transition-colors">
+                  {m.status === 'ACTIVE' ? <ToggleRight size={16} className="text-emerald-600 dark:text-emerald-300" /> : <ToggleLeft size={16} />}
                 </button>
               </div>
             </div>
             <div className="p-4">
               <button onClick={() => navigate(`/owner/production/machines/${m.id}/metrics`)}
-                className="font-semibold text-[#1C1C1E] text-sm truncate hover:text-[#C9A84C] hover:underline transition-colors text-left">
+                className="font-semibold text-ink text-sm truncate hover:text-gold hover:underline transition-colors text-left">
                 {m.name}
               </button>
               {m.description && (
-                <p className="text-xs text-[#8E8878] mt-0.5 truncate">{m.description}</p>
+                <p className="text-xs text-muted mt-0.5 truncate">{m.description}</p>
               )}
               {m.factoryName && (
-                <p className="text-xs text-[#C9A84C] mt-1 flex items-center gap-1">
+                <p className="text-xs text-gold mt-1 flex items-center gap-1">
                   <Building2 size={11} className="flex-shrink-0" /> {m.factoryName}
                 </p>
               )}
               <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs text-[#8E8878]">{t('production', 'omach_capacity')}</span>
-                <span className="text-sm font-bold text-[#1C1C1E]">
+                <span className="text-xs text-muted">{t('production', 'omach_capacity')}</span>
+                <span className="text-sm font-bold text-ink">
                   {t('production', 'omach_hours_per_month', { n: fmtNum(m.capacityHoursPerMonth) })}
                 </span>
               </div>

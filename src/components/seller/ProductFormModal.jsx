@@ -74,12 +74,12 @@ function ImagePicker({ value, onChange }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs text-[#8E8878] block font-medium">
+      <label className="text-xs text-muted block font-medium">
         {t('product','image_required')} <span className="text-red-400">*</span>
       </label>
       <div
         onClick={() => !uploading && fileRef.current?.click()}
-        className="relative w-full h-36 rounded-xl border-2 border-dashed border-[#E8DDD0] bg-[#FAF8F3] flex items-center justify-center cursor-pointer overflow-hidden group hover:border-[#C9A84C] transition-colors"
+        className="relative w-full h-36 rounded-xl border-2 border-dashed border-line bg-canvas flex items-center justify-center cursor-pointer overflow-hidden group hover:border-gold transition-colors"
       >
         {previewUrl ? (
           <>
@@ -95,12 +95,12 @@ function ImagePicker({ value, onChange }) {
             </button>
           </>
         ) : uploading ? (
-          <div className="flex flex-col items-center gap-2 text-[#C9A84C]">
-            <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-2 text-gold">
+            <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
             <span className="text-xs">Đang upload...</span>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 text-[#C4B9A8]">
+          <div className="flex flex-col items-center gap-2 text-faint">
             <Image size={28} strokeWidth={1.5} />
             <span className="text-xs">Nhấn để chọn ảnh</span>
           </div>
@@ -191,26 +191,26 @@ function IngredientPickerPopup({ selected, onConfirm, onClose }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[80vh] animate-fadeIn">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE3]">
-          <h3 className="font-semibold text-[#1C1C1E] text-sm">Chọn nguyên liệu</h3>
-          <button onClick={onClose} className="p-1 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[80vh] animate-fadeIn">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-line-soft">
+          <h3 className="font-semibold text-ink text-sm">Chọn nguyên liệu</h3>
+          <button onClick={onClose} className="p-1 rounded-lg text-muted hover:bg-surface-2"><X size={16} /></button>
         </div>
-        <div className="px-4 py-2.5 border-b border-[#F0EBE3]">
+        <div className="px-4 py-2.5 border-b border-line-soft">
           <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input autoFocus type="text" placeholder="Tìm nguyên liệu..." value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 rounded-xl border border-[#E8DDD0] text-xs focus:outline-none focus:border-[#C9A84C] bg-[#FAF8F3]" />
+              className="w-full pl-8 pr-3 py-2 rounded-xl border border-line text-xs focus:outline-none focus:border-gold bg-canvas" />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-center text-xs text-[#8E8878] py-8">Không tìm thấy</p>
+            <p className="text-center text-xs text-muted py-8">Không tìm thấy</p>
           ) : (
             <div className="space-y-1">
               {filtered.map(ing => {
@@ -218,15 +218,15 @@ function IngredientPickerPopup({ selected, onConfirm, onClose }) {
                 return (
                   <div key={ing.id}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors
-                      ${isSelected ? 'bg-[#FDF8ED] border border-[#C9A84C]/30' : 'hover:bg-[#FAF8F3]'}`}>
+                      ${isSelected ? 'bg-gold-tint border border-gold/30' : 'hover:bg-canvas'}`}>
                     <div onClick={() => toggle(ing)} className="shrink-0">
                       {isSelected
-                        ? <CheckCircle2 size={18} className="text-[#C9A84C]" />
-                        : <Circle size={18} className="text-[#D4C9B8]" />}
+                        ? <CheckCircle2 size={18} className="text-gold" />
+                        : <Circle size={18} className="text-faint" />}
                     </div>
                     <div onClick={() => toggle(ing)} className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-[#1C1C1E] truncate">{ing.name}</p>
-                      <p className="text-[10px] text-[#8E8878]">{ing.unit}</p>
+                      <p className="text-xs font-medium text-ink truncate">{ing.name}</p>
+                      <p className="text-[10px] text-muted">{ing.unit}</p>
                     </div>
                     {isSelected && (
                       <div className="shrink-0 flex items-center gap-1">
@@ -234,17 +234,17 @@ function IngredientPickerPopup({ selected, onConfirm, onClose }) {
                           type="number"
                           value={picks[ing.id]?.qty ?? 1}
                           onChange={e => setQty(ing.id, e.target.value)}
-                          className="w-16 text-center border border-[#E8DDD0] rounded-lg px-2 py-1 text-xs ..."
+                          className="w-16 text-center border border-line rounded-lg px-2 py-1 text-xs ..."
                         />
-                        <span className="text-[10px] text-[#8E8878]">{ing.unit}</span>
+                        <span className="text-[10px] text-muted">{ing.unit}</span>
 
                         {/* Toggle canOverride */}
                         <button
                           type="button"
                           onClick={e => { e.stopPropagation(); toggleOverride(ing.id); }}
                           className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition-colors border ${picks[ing.id]?.canOverride
-                            ? 'bg-[#FDF8ED] border-[#C9A84C] text-[#C9A84C]'
-                            : 'bg-[#F0EBE3] border-transparent text-[#8E8878]'
+                            ? 'bg-gold-tint border-gold text-gold'
+                            : 'bg-surface-2 border-transparent text-muted'
                             }`}
                         >
                           <span>{picks[ing.id]?.canOverride ? '≈ Tỷ lệ' : '# Cố định'}</span>
@@ -257,13 +257,13 @@ function IngredientPickerPopup({ selected, onConfirm, onClose }) {
             </div>
           )}
         </div>
-        <div className="px-4 pb-4 pt-3 border-t border-[#F0EBE3] flex gap-2">
+        <div className="px-4 pb-4 pt-3 border-t border-line-soft flex gap-2">
           <button onClick={onClose}
-            className="flex-1 py-2 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-xs font-medium hover:bg-[#F0EBE3]">
+            className="flex-1 py-2 rounded-xl border border-line text-muted text-xs font-medium hover:bg-surface-2">
             Huỷ
           </button>
           <button onClick={handleConfirm}
-            className="flex-1 py-2 rounded-xl bg-[#C9A84C] text-white text-xs font-bold hover:bg-[#A07830]">
+            className="flex-1 py-2 rounded-xl bg-gold text-white text-xs font-bold hover:bg-gold-deep">
             Xác nhận ({Object.keys(picks).length})
           </button>
         </div>
@@ -418,14 +418,14 @@ export default function ProductFormModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn flex flex-col max-h-[90vh]">
+        <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn flex flex-col max-h-[90vh]">
 
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
-            <h2 className="font-semibold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft">
+            <h2 className="font-semibold text-ink" style={{ fontFamily: 'var(--font-display)' }}>
               {isEdit ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới'}
             </h2>
-            <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
+            <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-surface-2">
               <X size={17} />
             </button>
           </div>
@@ -436,7 +436,7 @@ export default function ProductFormModal({
 
             {/* Name */}
             <div>
-              <label className="text-xs text-[#8E8878] mb-1 block font-medium">
+              <label className="text-xs text-muted mb-1 block font-medium">
                 Tên sản phẩm <span className="text-red-400">*</span>
               </label>
               <input autoFocus value={form.name}
@@ -448,62 +448,62 @@ export default function ProductFormModal({
             {/* Category */}
             {categories?.length > 0 && (
               <div>
-                <label className="text-xs text-[#8E8878] mb-1 block font-medium">Danh mục</label>
+                <label className="text-xs text-muted mb-1 block font-medium">Danh mục</label>
                 <div className="relative">
                   <select
                     value={form.categoryId || ''}
                     onChange={(e) => setForm({ ...form, categoryId: e.target.value ? Number(e.target.value) : null })}
-                    className="w-full px-3 py-2 pr-8 rounded-lg border border-[#E8DDD0] text-sm bg-white appearance-none focus:outline-none focus:border-[#C9A84C]">
+                    className="w-full px-3 py-2 pr-8 rounded-lg border border-line text-sm bg-surface appearance-none focus:outline-none focus:border-gold">
                     <option value="">-- Không chọn --</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
-                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
                 </div>
               </div>
             )}
 
             {/* Unit */}
             <div>
-              <label className="text-xs text-[#8E8878] mb-1 block font-medium">Đơn vị tính</label>
+              <label className="text-xs text-muted mb-1 block font-medium">Đơn vị tính</label>
               <div className="relative">
                 <select value={form.unit}
                   onChange={(e) => setForm({ ...form, unit: e.target.value, unitsPerBox: '' })}
-                  className="w-full px-3 py-2 pr-8 rounded-lg border border-[#E8DDD0] text-sm bg-white appearance-none focus:outline-none focus:border-[#C9A84C]">
+                  className="w-full px-3 py-2 pr-8 rounded-lg border border-line text-sm bg-surface appearance-none focus:outline-none focus:border-gold">
                   {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
-                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               </div>
             </div>
 
             {/* Quy cách bán thùng */}
-            <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+            <div className="rounded-xl border border-line overflow-hidden">
               {/* Toggle header */}
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, unitsPerBox: f.unitsPerBox ? '' : '1' }))}
-                className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 bg-canvas hover:bg-surface-2 transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm">📦</span>
-                  <span className="text-xs font-semibold text-[#1C1C1E]">Bán theo thùng / quy cách</span>
+                  <span className="text-xs font-semibold text-ink">Bán theo thùng / quy cách</span>
                 </div>
                 {/* Toggle pill */}
-                <div className={`w-10 h-5 rounded-full transition-colors relative ${form.unitsPerBox ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.unitsPerBox ? 'left-5' : 'left-0.5'}`} />
+                <div className={`w-10 h-5 rounded-full transition-colors relative ${form.unitsPerBox ? 'bg-gold' : 'bg-surface-3'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-surface shadow transition-all ${form.unitsPerBox ? 'left-5' : 'left-0.5'}`} />
                 </div>
               </button>
 
               {/* Expanded content */}
               {form.unitsPerBox !== '' && (
-                <div className="px-4 py-3 space-y-3 border-t border-[#E8DDD0] bg-white">
-                  <p className="text-[11px] text-[#8E8878]">
+                <div className="px-4 py-3 space-y-3 border-t border-line bg-surface">
+                  <p className="text-[11px] text-muted">
                     Cho phép bán nguyên thùng. Giá thùng = giá {form.unit} × số {form.unit}/thùng.
                   </p>
 
                   {/* Input số lượng / thùng */}
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 flex-1">
-                      <span className="text-xs text-[#8E8878] whitespace-nowrap">1 thùng =</span>
+                      <span className="text-xs text-muted whitespace-nowrap">1 thùng =</span>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -513,17 +513,17 @@ export default function ProductFormModal({
                           setForm({ ...form, unitsPerBox: raw });
                         }}
                         placeholder="12"
-                        className="w-20 px-3 py-2 rounded-lg border-2 border-[#C9A84C] text-sm font-bold text-center focus:outline-none text-[#1C1C1E]"
+                        className="w-20 px-3 py-2 rounded-lg border-2 border-gold text-sm font-bold text-center focus:outline-none text-ink"
                       />
-                      <span className="text-xs text-[#8E8878]">{form.unit}</span>
+                      <span className="text-xs text-muted">{form.unit}</span>
                     </div>
                   </div>
 
                   {/* Preview giá thùng */}
                   {form.unitsPerBox && parseInt(form.unitsPerBox) > 0 && tiers[0]?.price && (
-                    <div className="bg-[#FDF8ED] rounded-lg px-3 py-2 flex items-center justify-between">
-                      <span className="text-xs text-[#8E8878]">Giá 1 thùng ({form.unitsPerBox} {form.unit})</span>
-                      <span className="text-sm font-bold text-[#C9A84C]">
+                    <div className="bg-gold-tint rounded-lg px-3 py-2 flex items-center justify-between">
+                      <span className="text-xs text-muted">Giá 1 thùng ({form.unitsPerBox} {form.unit})</span>
+                      <span className="text-sm font-bold text-gold">
                         {new Intl.NumberFormat('vi-VN').format(
                           parseInt(form.unitsPerBox) * (parseFloat(tiers[0].price) || 0)
                         )} đ
@@ -532,7 +532,7 @@ export default function ProductFormModal({
                   )}
 
                   {form.unitsPerBox && parseInt(form.unitsPerBox) > 0 && !tiers[0]?.price && (
-                    <p className="text-[11px] text-[#C4B9A8] italic">Nhập giá bên dưới để xem giá thùng.</p>
+                    <p className="text-[11px] text-faint italic">Nhập giá bên dưới để xem giá thùng.</p>
                   )}
                 </div>
               )}
@@ -540,7 +540,7 @@ export default function ProductFormModal({
 
             {/* VAT */}
             <div>
-              <label className="text-xs text-[#8E8878] mb-2 block font-medium">Thuế VAT</label>
+              <label className="text-xs text-muted mb-2 block font-medium">Thuế VAT</label>
               <div className="flex gap-2 items-start">
                 {/* VAT rate selector */}
                 <div className="relative shrink-0">
@@ -552,31 +552,31 @@ export default function ProductFormModal({
                       // Reset vatMode về INCLUDED nếu chọn lại 0%
                       vatMode: Number(e.target.value) === 0 ? 'INCLUDED' : f.vatMode,
                     }))}
-                    className="px-3 py-2 pr-8 rounded-lg border border-[#E8DDD0] text-sm bg-white appearance-none focus:outline-none focus:border-[#C9A84C]">
+                    className="px-3 py-2 pr-8 rounded-lg border border-line text-sm bg-surface appearance-none focus:outline-none focus:border-gold">
                     {VAT_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                   </select>
-                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
                 </div>
 
                 {/* VAT mode toggle — chỉ hiện khi vatRate > 0 */}
                 {form.vatRate > 0 && (
-                  <div className="flex rounded-lg border border-[#E8DDD0] overflow-hidden text-xs flex-1">
+                  <div className="flex rounded-lg border border-line overflow-hidden text-xs flex-1">
                     <button
                       type="button"
                       onClick={() => setForm(f => ({ ...f, vatMode: 'INCLUDED' }))}
                       className={`flex-1 px-3 py-2 font-medium transition-colors
                         ${form.vatMode === 'INCLUDED'
-                          ? 'bg-[#C9A84C] text-white'
-                          : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                          ? 'bg-gold text-white'
+                          : 'text-muted hover:bg-surface-2'}`}>
                       Có trong giá
                     </button>
                     <button
                       type="button"
                       onClick={() => setForm(f => ({ ...f, vatMode: 'ADDED' }))}
-                      className={`flex-1 px-3 py-2 font-medium transition-colors border-l border-[#E8DDD0]
+                      className={`flex-1 px-3 py-2 font-medium transition-colors border-l border-line
                         ${form.vatMode === 'ADDED'
-                          ? 'bg-[#C9A84C] text-white'
-                          : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                          ? 'bg-gold text-white'
+                          : 'text-muted hover:bg-surface-2'}`}>
                       Tính thêm
                     </button>
                   </div>
@@ -585,7 +585,7 @@ export default function ProductFormModal({
 
               {/* Hint text */}
               {form.vatRate > 0 && (
-                <p className="text-[10px] text-[#B0A898] mt-1.5">
+                <p className="text-[10px] text-muted mt-1.5">
                   {form.vatMode === 'INCLUDED'
                     ? `Giá hiển thị đã bao gồm VAT ${form.vatRate}%. Ví dụ: giá 100.000đ → đã có VAT.`
                     : `VAT ${form.vatRate}% sẽ được cộng thêm vào giá khi thanh toán. Ví dụ: giá 100.000đ → cộng thêm ${form.vatRate === 8 ? '8.000đ' : form.vatRate === 10 ? '10.000đ' : `${form.vatRate}.000đ`}.`}
@@ -596,12 +596,12 @@ export default function ProductFormModal({
             {/* Price tiers */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">
                   Bảng giá <span className="text-red-400">*</span>
                 </p>
                 <button
                   onClick={() => setTiers(prev => [...prev, { fromQty: '', price: '' }])}
-                  className="flex items-center gap-1 text-[#C9A84C] text-xs font-medium hover:text-[#A07830]">
+                  className="flex items-center gap-1 text-gold text-xs font-medium hover:text-gold-deep">
                   <Plus size={13} /> Thêm mức
                 </button>
               </div>
@@ -610,13 +610,13 @@ export default function ProductFormModal({
                   const nextFrom = idx < tiers.length - 1 ? tiers[idx + 1].fromQty : null;
                   const toLabel = nextFrom !== '' && nextFrom != null ? formatNumber(nextFrom) : '∞';
                   return (
-                    <div key={idx} className="grid items-center gap-1.5 bg-[#FAF7F2] rounded-xl px-3 py-2.5"
+                    <div key={idx} className="grid items-center gap-1.5 bg-canvas rounded-xl px-3 py-2.5"
                       style={{ gridTemplateColumns: 'auto 56px auto 56px auto 1fr auto auto' }}>
 
-                      <span className="text-[10px] text-[#8E8878]">Từ</span>
+                      <span className="text-[10px] text-muted">Từ</span>
 
                       {idx === 0 ? (
-                        <span className="text-xs font-semibold text-[#1C1C1E] text-center">0</span>
+                        <span className="text-xs font-semibold text-ink text-center">0</span>
                       ) : (
                         <input
                           type="number" min="0"
@@ -627,22 +627,22 @@ export default function ProductFormModal({
                         />
                       )}
 
-                      <span className="text-[10px] text-[#8E8878] text-center">–</span>
+                      <span className="text-[10px] text-muted text-center">–</span>
 
-                      <span className="text-xs font-semibold text-[#8E8878] text-center">{toLabel}</span>
+                      <span className="text-xs font-semibold text-muted text-center">{toLabel}</span>
 
-                      <span className="text-[10px] text-[#8E8878]">:</span>
+                      <span className="text-[10px] text-muted">:</span>
 
                       <PriceInput value={t.price} onChange={(val) => handleTierPrice(idx, val)}
                         placeholder="Đơn giá"
                         className="input-elegant w-full rounded-lg px-3 py-1 text-xs text-right" />
 
-                      <span className="text-[10px] text-[#8E8878]">đ</span>
+                      <span className="text-[10px] text-muted">đ</span>
 
                       {idx > 0 ? (
                         <button
                           onClick={() => setTiers(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-red-400 hover:text-red-600">
+                          className="text-red-400 hover:text-red-600 dark:text-red-300">
                           <Trash2 size={13} />
                         </button>
                       ) : (
@@ -657,31 +657,31 @@ export default function ProductFormModal({
             {/* Ingredients */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">
                   Nguyên liệu <span className="text-red-400">*</span>
                 </p>
                 <button onClick={() => setShowIngPicker(true)}
-                  className="flex items-center gap-1 text-[#C9A84C] text-xs font-medium hover:text-[#A07830]">
+                  className="flex items-center gap-1 text-gold text-xs font-medium hover:text-gold-deep">
                   <Plus size={13} /> Chọn nguyên liệu
                 </button>
               </div>
 
               {ingredients.length === 0 ? (
                 <button onClick={() => setShowIngPicker(true)}
-                  className="w-full py-3 rounded-xl border-2 border-dashed border-[#E8DDD0] text-xs text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+                  className="w-full py-3 rounded-xl border-2 border-dashed border-line text-xs text-muted hover:border-gold hover:text-gold transition-colors">
                   + Thêm nguyên liệu cho sản phẩm
                 </button>
               ) : (
                 <div className="space-y-1.5">
                   {ingredients.map((ing) => (
-                    <div key={ing.ingredientId} className="flex items-center gap-2 bg-[#FAF7F2] rounded-xl px-3 py-2">
+                    <div key={ing.ingredientId} className="flex items-center gap-2 bg-canvas rounded-xl px-3 py-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-medium text-[#1C1C1E] truncate">{ing.name}</p>
+                          <p className="text-xs font-medium text-ink truncate">{ing.name}</p>
                           {/* Badge hiển thị chế độ tính */}
                           <span className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-medium ${ing.canOverride
-                            ? 'bg-[#FDF8ED] text-[#C9A84C]'
-                            : 'bg-[#F0EBE3] text-[#8E8878]'
+                            ? 'bg-gold-tint text-gold'
+                            : 'bg-surface-2 text-muted'
                             }`}>
                             {ing.canOverride ? '≈' : '#'}
                           </span>
@@ -697,18 +697,18 @@ export default function ProductFormModal({
                           onChange={e => updateIngQty(ing.ingredientId, e.target.value)}
                           onBlur={e => commitIngQty(ing.ingredientId, e.target.value)}
                           onFocus={e => e.target.select()}
-                          className="w-16 text-center border border-[#E8DDD0] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#C9A84C] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-16 text-center border border-line rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-gold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
-                        <span className="text-[10px] text-[#8E8878] w-8">{ing.unit}</span>
+                        <span className="text-[10px] text-muted w-8">{ing.unit}</span>
                         <button onClick={() => removeIngredient(ing.ingredientId)}
-                          className="text-red-400 hover:text-red-600">
+                          className="text-red-400 hover:text-red-600 dark:text-red-300">
                           <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
                   ))}
                   <button onClick={() => setShowIngPicker(true)}
-                    className="w-full py-2 rounded-xl border border-dashed border-[#E8DDD0] text-[10px] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+                    className="w-full py-2 rounded-xl border border-dashed border-line text-[10px] text-muted hover:border-gold hover:text-gold transition-colors">
                     Chỉnh sửa danh sách nguyên liệu
                   </button>
                 </div>
@@ -717,9 +717,9 @@ export default function ProductFormModal({
           </div>
 
           {/* Footer */}
-          <div className="px-5 pb-5 pt-3 border-t border-[#F0EBE3] flex gap-3">
+          <div className="px-5 pb-5 pt-3 border-t border-line-soft flex gap-3">
             <button onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-medium hover:bg-[#F0EBE3] transition-colors">
+              className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-medium hover:bg-surface-2 transition-colors">
               Huỷ
             </button>
             <button onClick={handleSubmit} disabled={saving}

@@ -20,6 +20,11 @@ export const hrSalaryApi = {
     return (body && typeof body === 'object') ? body : null;
   }),
   listCurrent:()             => api.get('/api/hr/salaries/current').then(r),
+  /**
+   * { userId, userFullName, current, pending } — lương đang áp dụng + phiếu mới
+   * chờ duyệt. Dùng cho nút "Xem lương" trên trang Nhân viên (màn so sánh).
+   */
+  overview:   (userId)      => api.get(`/api/hr/salaries/overview/${userId}`).then(r),
   getBreakdown:()            => api.get('/api/hr/salaries/breakdown').then(r),
   approve:    (id)          => api.put(`/api/hr/salaries/${id}/approve`).then(r),
   bulkApprove:(salaryIds)   => api.put('/api/hr/salaries/bulk-approve', { salaryIds }).then(r),

@@ -3,13 +3,16 @@
  * Truyền vào `navItems` để mỗi role có menu riêng.
  */
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, Menu, X, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
 import NotificationBell from '../common/NotificationBell';
 import ProfileButton from '../common/ProfileButton';
 import LangToggle from '../common/LangToggle';
+import BrandLogo from '../common/BrandLogo';
+import ThemeToggle, { ThemeToggleOnChrome } from '../common/ThemeToggle';
+import SlideOutlet from './SlideOutlet';
 
 export default function AppLayout({ navItems = [], groups = null }) {
   const { user, token, logout } = useAuth();
@@ -31,7 +34,7 @@ export default function AppLayout({ navItems = [], groups = null }) {
     allPaths.some(p => p !== to && p.startsWith(to.endsWith('/') ? to : to + '/'));
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAF7F2]">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       {/* Overlay mobile */}
       {open && (
         <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden" onClick={close} />
@@ -39,19 +42,14 @@ export default function AppLayout({ navItems = [], groups = null }) {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:relative inset-y-0 left-0 z-50 w-60 bg-[#1C1C1E] flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-50 w-60 bg-chrome flex flex-col
         transform transition-transform duration-300 ease-in-out
         ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
       `}>
         {/* Logo */}
         <div className="px-6 py-5 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-white font-bold text-lg leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-                Nhất Nam
-              </h1>
-              <p className="text-[#C9A84C] text-[10px] tracking-widest uppercase mt-0.5">Fine Foods</p>
-            </div>
+            <BrandLogo size="md" />
             <button className="lg:hidden text-white/40 hover:text-white p-1" onClick={close}>
               <X size={17} />
             </button>
@@ -62,14 +60,14 @@ export default function AppLayout({ navItems = [], groups = null }) {
         <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
           {menuGroups.map(group => (
             <div key={group.label}>
-              <p className="text-[#8E8878]/60 text-[10px] uppercase tracking-widest px-3 mb-1">{group.label}</p>
+              <p className="text-muted/60 text-[10px] uppercase tracking-widest px-3 mb-1">{group.label}</p>
               {group.items.map(({ to, label, icon: Icon }) => (
                 <NavLink key={to} to={to} onClick={close} end={isPrefixOfAnother(to)}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all duration-150
                     ${isActive
-                      ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
-                      : 'text-[#8E8878] hover:text-white hover:bg-white/5'}`
+                      ? 'bg-gold/20 text-gold'
+                      : 'text-muted hover:text-white hover:bg-white/5'}`
                   }>
                   {({ isActive }) => (
                     <>
@@ -87,7 +85,7 @@ export default function AppLayout({ navItems = [], groups = null }) {
         {/* User + logout + lang toggle */}
         <div className="px-3 py-3 border-t border-white/10 flex-shrink-0">
           <button onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-[#8E8878] hover:text-red-400 hover:bg-red-500/10 transition-all">
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-muted hover:text-red-400 hover:bg-red-500/10 transition-all">
             <LogOut size={16} />
             <span className="text-sm font-medium">{t('profile', 'logout')}</span>
           </button>
@@ -97,28 +95,28 @@ export default function AppLayout({ navItems = [], groups = null }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Mobile topbar */}
-        <header className="lg:hidden bg-[#1C1C1E] px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <header className="lg:hidden bg-chrome px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <button onClick={() => setOpen(true)} className="text-white p-1">
             <Menu size={20} />
           </button>
-          <span className="text-white text-sm font-bold flex-1" style={{ fontFamily: 'var(--font-display)' }}>
-            Nhất Nam Fine Foods
-          </span>
+          <BrandLogo inline className="flex-1" />
+          <ThemeToggleOnChrome />
           <ProfileButton compact />
           <NotificationBell role={user?.role} token={token} compact />
         </header>
 
         {/* Desktop topbar */}
-        <div className="hidden lg:flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0 gap-1">
+        <div className="hidden lg:flex items-center justify-end px-6 py-2 border-b border-line-soft bg-surface flex-shrink-0 gap-1">
+          <ThemeToggle variant="ghost" />
           <LangToggle variant="ghost" />
-          <div className="w-px h-5 bg-black/10 mx-1" />
+          <div className="w-px h-5 bg-hairline-2 mx-1" />
           <ProfileButton />
-          <div className="w-px h-5 bg-black/10 mx-1" />
+          <div className="w-px h-5 bg-hairline-2 mx-1" />
           <NotificationBell role={user?.role} token={token} />
         </div>
 
         <main className="flex-1 overflow-auto">
-          <Outlet />
+          <SlideOutlet />
         </main>
       </div>
     </div>

@@ -122,25 +122,25 @@ function MonthYearDropdown({ value, onSelect, onCancel, t }) {
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden w-[300px]"
+      className="bg-surface rounded-2xl shadow-2xl border border-line overflow-hidden w-[300px]"
       style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.12))' }}
     >
       {/* Year navigator */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE3]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line-soft">
         <button
           onClick={() => setDisplayYear(y => y - 1)}
-          className="w-8 h-8 rounded-lg border border-[#E8DDD0] flex items-center justify-center
-            text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+          className="w-8 h-8 rounded-lg border border-line flex items-center justify-center
+            text-muted hover:border-gold hover:text-gold transition-colors">
           <ChevronLeft size={16} />
         </button>
-        <span className="text-sm font-bold text-[#1C1C1E]">Năm {displayYear}</span>
+        <span className="text-sm font-bold text-ink">Năm {displayYear}</span>
         <button
           onClick={() => setDisplayYear(y => Math.min(curYear, y + 1))}
           disabled={displayYear >= curYear}
           className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-colors
             ${displayYear >= curYear
-              ? 'border-[#F0EBE3] text-[#D8CFC2] cursor-not-allowed'
-              : 'border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}>
+              ? 'border-line-soft text-faint cursor-not-allowed'
+              : 'border-line text-muted hover:border-gold hover:text-gold'}`}>
           <ChevronRight size={16} />
         </button>
       </div>
@@ -158,21 +158,21 @@ function MonthYearDropdown({ value, onSelect, onCancel, t }) {
               onClick={() => enabled && onSelect(displayYear, m)}
               className={`py-2 rounded-xl text-xs font-semibold transition-all border
                 ${selected
-                  ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'
+                  ? 'bg-gold text-white border-gold shadow-sm'
                   : enabled
-                    ? 'bg-white text-[#5C5C5C] border-[#E8DDD0] hover:border-[#C9A84C] hover:text-[#C9A84C]'
-                    : 'bg-[#FAF7F2] text-[#D8CFC2] border-transparent cursor-not-allowed'}`}>
+                    ? 'bg-surface text-ink-2 border-line hover:border-gold hover:text-gold'
+                    : 'bg-canvas text-faint border-transparent cursor-not-allowed'}`}>
               Tháng {m}
             </button>
           );
         })}
       </div>
 
-      <div className="flex items-center justify-end px-4 py-2.5 border-t border-[#F0EBE3] bg-[#FAF7F2]">
+      <div className="flex items-center justify-end px-4 py-2.5 border-t border-line-soft bg-canvas">
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 text-xs text-[#8E8878] rounded-xl border border-[#E8DDD0]
-            hover:bg-[#F0EBE3] transition-colors">
+          className="px-3 py-1.5 text-xs text-muted rounded-xl border border-line
+            hover:bg-surface-2 transition-colors">
           {t('common', 'cancel')}
         </button>
       </div>
@@ -185,7 +185,7 @@ function MonthYearDropdown({ value, onSelect, onCancel, t }) {
 function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, minDate, maxDate }) {
   return (
     <div
-      className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden"
+      className="bg-surface rounded-2xl shadow-2xl border border-line overflow-hidden"
       style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.12))' }}
     >
       <DateRange
@@ -196,30 +196,30 @@ function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, minDate, 
         direction="vertical"
         showMonthAndYearPickers
         showDateDisplay={false}
-        rangeColors={['#C9A84C']}
-        color="#C9A84C"
+        rangeColors={['var(--c-gold)']}
+        color="var(--c-gold)"
         weekStartsOn={1}
         moveRangeOnFirstSelection={false}
         minDate={minDate}
         maxDate={maxDate}
       />
-      <div className="flex items-center justify-between px-4 py-3 border-t border-[#F0EBE3] bg-[#FAF7F2]">
-        <p className="text-xs text-[#8E8878]">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-line-soft bg-canvas">
+        <p className="text-xs text-muted">
           {format(selection.startDate, 'dd/MM/yyyy')}
-          {' '}<span className="text-[#C9A84C]">→</span>{' '}
+          {' '}<span className="text-gold">→</span>{' '}
           {format(selection.endDate, 'dd/MM/yyyy')}
         </p>
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 text-xs text-[#8E8878] rounded-xl border border-[#E8DDD0]
-              hover:bg-[#F0EBE3] transition-colors">
+            className="px-3 py-1.5 text-xs text-muted rounded-xl border border-line
+              hover:bg-surface-2 transition-colors">
             {t('common', 'cancel')}
           </button>
           <button
             onClick={onApply}
-            className="px-4 py-1.5 text-xs font-semibold text-white bg-[#C9A84C] rounded-xl
-              hover:bg-[#B8943C] transition-colors">
+            className="px-4 py-1.5 text-xs font-semibold text-white bg-gold rounded-xl
+              hover:bg-gold-strong transition-colors">
             {t('common', 'confirm')}
           </button>
         </div>
@@ -307,8 +307,8 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
             transition-all border whitespace-nowrap
             ${preset === p.key
-              ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'
-              : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}
+              ? 'bg-gold text-white border-gold shadow-sm'
+              : 'bg-surface text-muted border-line hover:border-gold hover:text-gold'}`}
         >
           {(p.key === 'custom' || p.key === 'fixedmonth') && <CalendarDays size={12} />}
           {p.key === 'custom' ? customLabel : p.key === 'fixedmonth' ? monthLabel : p.label}
@@ -397,8 +397,8 @@ function SimplePicker({ from, to, onChange, placeholder, align = 'left', minDate
         className={`flex items-center gap-1.5 px-3 h-[38px] rounded-xl text-xs font-semibold
           transition-all border whitespace-nowrap
           ${hasRange
-            ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'
-            : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}
+            ? 'bg-gold text-white border-gold shadow-sm'
+            : 'bg-surface text-muted border-line hover:border-gold hover:text-gold'}`}
       >
         <CalendarDays size={12} />
         {label}

@@ -20,12 +20,13 @@ import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/common/Toast';
 import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
+import { BackButton } from '../../components/common/SubPageNav';
 
 function Row({ label, val, bold, red }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-xs text-[#8E8878]">{label}</span>
-      <span className={`text-sm ${bold ? 'font-bold' : 'font-medium'} ${red ? 'text-red-600' : 'text-[#1C1C1E]'}`}>{val}</span>
+      <span className="text-xs text-muted">{label}</span>
+      <span className={`text-sm ${bold ? 'font-bold' : 'font-medium'} ${red ? 'text-red-600 dark:text-red-300' : 'text-ink'}`}>{val}</span>
     </div>
   );
 }
@@ -36,7 +37,7 @@ function EmployeeFilterBar({ q, setQ, dept, setDept, deptOptions, showSearch = t
     <div className="flex flex-wrap gap-2 items-center">
       {showSearch && (
         <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input className={`${inputCls} pl-8`} value={q}
             onChange={e => setQ(e.target.value)} placeholder="Tìm nhân viên…" />
         </div>
@@ -69,7 +70,7 @@ function RejectModal({ salary, onClose, onDone }) {
 
   return (
     <Modal open onClose={onClose} title="Từ chối phiếu lương">
-      <p className="text-sm text-[#8E8878] mb-3">
+      <p className="text-sm text-muted mb-3">
         Phiếu lương của <b>{salary.userFullName}</b> — lương CB: {formatCurrency(salary.baseSalary)}
       </p>
       <Field label="Lý do từ chối" required>
@@ -108,7 +109,7 @@ function EmployeesTab() {
   return (
     <div className="space-y-4">
       <div className="relative max-w-xs">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input className={`${inputCls} pl-8`} value={q}
           onChange={e => { setQ(e.target.value); setPage(0); }}
           placeholder="Tìm nhân viên…" />
@@ -131,7 +132,7 @@ function EmployeesTab() {
                 <Tr key={u.id}>
                   <Td>
                     <div className="font-medium">{u.fullName}</div>
-                    <div className="text-xs text-[#8E8878]">{u.username}</div>
+                    <div className="text-xs text-muted">{u.username}</div>
                   </Td>
                   <Td>{u.department || '—'}</Td>
                   <Td>{u.position || '—'}</Td>
@@ -141,7 +142,7 @@ function EmployeesTab() {
           </Table>
         )}
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-black/5">
+          <div className="px-4 py-3 border-t border-hairline">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}
@@ -201,7 +202,7 @@ function LeavesTab() {
                 <Tr key={l.id}>
                   <Td>
                     <div className="font-medium">{l.userFullName}</div>
-                    {l.department && <div className="text-xs text-[#8E8878]">{l.department}</div>}
+                    {l.department && <div className="text-xs text-muted">{l.department}</div>}
                   </Td>
                   <Td><Badge variant={l.leaveType === 'PAID' ? 'success' : 'warning'}>{l.leaveType === 'PAID' ? 'Có lương' : 'Không lương'}</Badge></Td>
                   <Td>{formatDate(l.leaveDate)}</Td>
@@ -278,7 +279,7 @@ function OtTab() {
                   <Td>
                     <div className="text-sm">{(o.employees || []).map(e => e.fullName).join(', ')}</div>
                   </Td>
-                  <Td><span className="text-sm text-[#8E8878] line-clamp-1">{o.reason}</span></Td>
+                  <Td><span className="text-sm text-muted line-clamp-1">{o.reason}</span></Td>
                   <Td>{formatDateTime(o.createdAt)}</Td>
                 </Tr>
               ))}
@@ -356,7 +357,7 @@ function SalaryApprovalTab() {
           ].map(({ val, label }) => (
             <button key={val} onClick={() => { setStatusFilter(val); setPage(0); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
-                ${statusFilter === val ? 'bg-[#1C1C1E] text-white' : 'bg-white border border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+                ${statusFilter === val ? 'bg-chrome text-white' : 'bg-surface border border-hairline-2 text-muted hover:bg-canvas'}`}>
               {label}
             </button>
           ))}
@@ -402,7 +403,7 @@ function SalaryApprovalTab() {
                   )}
                   <Td>
                     <div className="font-medium">{s.userFullName}</div>
-                    <div className="text-xs text-[#8E8878]">{s.position || '—'}</div>
+                    <div className="text-xs text-muted">{s.position || '—'}</div>
                   </Td>
                   <Td>{s.department || '—'}</Td>
                   <Td>{s.position || '—'}</Td>
@@ -441,7 +442,7 @@ function SalaryApprovalTab() {
           </Table>
         )}
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-black/5">
+          <div className="px-4 py-3 border-t border-hairline">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}
@@ -461,14 +462,14 @@ const MONTH_NAMES_OWNER = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', '
   'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
 
 const PAYROLL_STATUS_LABEL_OWNER = {
-  DRAFT: { label: 'Đã export, chưa import', cls: 'bg-amber-50 text-amber-700' },
-  PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-blue-50 text-blue-700' },
-  APPROVED: { label: 'Đã duyệt', cls: 'bg-emerald-50 text-emerald-700' },
-  REJECTED: { label: 'Đã từ chối', cls: 'bg-red-50 text-red-700' },
+  DRAFT: { label: 'Đã export, chưa import', cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300' },
+  PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300' },
+  APPROVED: { label: 'Đã duyệt', cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+  REJECTED: { label: 'Đã từ chối', cls: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300' },
 };
 
 function PayrollStatusBadgeOwner({ status }) {
-  const cfg = PAYROLL_STATUS_LABEL_OWNER[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = PAYROLL_STATUS_LABEL_OWNER[status] || { label: status, cls: 'bg-surface-2 text-ink-2' };
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
@@ -503,7 +504,7 @@ function RejectPayrollModal({ batch, onClose, onDone }) {
 
   return (
     <Modal open onClose={onClose} title="Từ chối phiếu lương">
-      <p className="text-sm text-[#8E8878] mb-3">
+      <p className="text-sm text-muted mb-3">
         Phiếu lương tháng <b>{MONTH_NAMES_OWNER[batch.month]}/{batch.year}</b> — {batch.employeeCount} nhân viên.
         HR/Kế toán sẽ cần tạo lại phiếu lương từ đầu sau khi bị từ chối.
       </p>
@@ -553,9 +554,9 @@ function PayrollBatchDetailModal({ batch, onClose, onApproved }) {
         <EmptyState icon={FileText} title="Chưa có dữ liệu" />
       ) : (
         <div className="space-y-3">
-          <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-[#8E8878]">Tổng lương NET phải chi tháng này</span>
-            <span className="text-lg font-bold text-emerald-700">{formatCurrency(totalNet)}</span>
+          <div className="bg-canvas rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-muted">Tổng lương NET phải chi tháng này</span>
+            <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(totalNet)}</span>
           </div>
           <div className="overflow-x-auto">
             <Table>
@@ -575,14 +576,14 @@ function PayrollBatchDetailModal({ batch, onClose, onApproved }) {
                   <Tr key={p.id}>
                     <Td>
                       <div className="font-medium">{p.userFullName}</div>
-                      <div className="text-xs text-[#8E8878]">{p.department || '—'} {p.division ? `· ${p.division}` : ''}</div>
+                      <div className="text-xs text-muted">{p.department || '—'} {p.division ? `· ${p.division}` : ''}</div>
                     </Td>
                     <Td right>{formatCurrency(p.grossSalary)}</Td>
                     <Td right>{p.dependents ?? 0}</Td>
                     <Td right>{formatCurrency(p.totalInsuranceAmount)}</Td>
                     <Td right>{formatCurrency(p.taxableIncome)}</Td>
                     <Td right>{formatCurrency(p.personalIncomeTax)}</Td>
-                    <Td right><span className="font-semibold text-emerald-700">{formatCurrency(p.netSalary)}</span></Td>
+                    <Td right><span className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(p.netSalary)}</span></Td>
                   </Tr>
                 ))}
               </tbody>
@@ -678,7 +679,7 @@ function SalaryBreakdownTab() {
                   <Tr key={r.userId}>
                     <Td>
                       <div className="font-medium">{r.userFullName}</div>
-                      <div className="text-xs text-[#8E8878]">{r.department || '—'} {r.position ? `· ${r.position}` : ''}</div>
+                      <div className="text-xs text-muted">{r.department || '—'} {r.position ? `· ${r.position}` : ''}</div>
                     </Td>
                     <Td right>{formatCurrency(r.baseSalary)}</Td>
                     <Td right>{formatCurrency(r.insuranceSalary)}</Td>
@@ -686,7 +687,7 @@ function SalaryBreakdownTab() {
                     <Td right>{formatCurrency((r.employeeInsuranceTotal || 0) + (r.personalIncomeTax || 0))}</Td>
                     <Td right>{formatCurrency(r.allowance)}</Td>
                     <Td right>{formatCurrency(r.effectiveBonus)}</Td>
-                    <Td right><span className="font-semibold text-emerald-700">{formatCurrency(r.netSalary)}</span></Td>
+                    <Td right><span className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(r.netSalary)}</span></Td>
                     <Td right>
                       <SecondaryButton className="!px-2.5 !py-1.5 text-xs" onClick={() => setDetailRow(r)}>
                         <Eye size={12} /> Xem
@@ -697,19 +698,19 @@ function SalaryBreakdownTab() {
               </tbody>
               {summary && (
                 <tfoot>
-                  <tr className="border-t-2 border-[#E8DDD0] bg-[#FAF7F2]">
-                    <td className="px-4 py-3 font-bold text-[#1C1C1E] text-sm">Tổng cộng ({rows.length} nhân viên)</td>
-                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.base)}</td>
+                  <tr className="border-t-2 border-line bg-canvas">
+                    <td className="px-4 py-3 font-bold text-ink text-sm">Tổng cộng ({rows.length} nhân viên)</td>
+                    <td className="px-4 py-3 text-right font-bold text-ink text-sm">{formatCurrency(totals.base)}</td>
                     <td className="px-4 py-3" />
-                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.employerIns)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.empPit)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.allowance)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-[#1C1C1E] text-sm">{formatCurrency(totals.bonus)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-700 text-sm">{formatCurrency(totals.net)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-ink text-sm">{formatCurrency(totals.employerIns)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-ink text-sm">{formatCurrency(totals.empPit)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-ink text-sm">{formatCurrency(totals.allowance)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-ink text-sm">{formatCurrency(totals.bonus)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-300 text-sm">{formatCurrency(totals.net)}</td>
                     <td className="px-4 py-3" />
                   </tr>
-                  <tr className="bg-[#FAF7F2]">
-                    <td colSpan={9} className="px-4 py-2 text-xs text-[#8E8878]">
+                  <tr className="bg-canvas">
+                    <td colSpan={9} className="px-4 py-2 text-xs text-muted">
                       Tổng chi phí doanh nghiệp (gồm bảo hiểm DN đóng): <strong>{formatCurrency(totals.cost)}</strong>
                     </td>
                   </tr>
@@ -780,7 +781,7 @@ function PayrollApprovalTab() {
         ].map(({ val, label }) => (
           <button key={val} onClick={() => setStatusFilter(val)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
-              ${statusFilter === val ? 'bg-[#1C1C1E] text-white' : 'bg-white border border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+              ${statusFilter === val ? 'bg-chrome text-white' : 'bg-surface border border-hairline-2 text-muted hover:bg-canvas'}`}>
             {label}
           </button>
         ))}
@@ -874,7 +875,9 @@ export default function OwnerEmployeesPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <PageHeader icon={Users} title="Nhân sự" subtitle="Quản lý & duyệt lương nhân viên" />
+      <BackButton fallback="/owner/users" />
+
+      <PageHeader icon={Users} title="Duyệt lương" subtitle="Quản lý & duyệt lương nhân viên" />
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {/* {tab === 'employees' && <EmployeesTab />} */}
       {tab === 'leaves' && <LeavesTab />}

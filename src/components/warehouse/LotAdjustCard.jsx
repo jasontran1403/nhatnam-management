@@ -23,11 +23,11 @@ const fmt = (v) => Number(v || 0).toLocaleString('vi-VN', { maximumFractionDigit
 
 /** Tình trạng HSD → màu badge */
 function expiryTone(dateStr) {
-  if (!dateStr) return { bg: '#f3f0eb', color: '#8E8878', label: 'Không HSD' };
+  if (!dateStr) return { bg: 'var(--c-surface-2)', color: 'var(--c-muted)', label: 'Không HSD' };
   const days = Math.ceil((new Date(dateStr) - new Date()) / 86400000);
-  if (days < 0) return { bg: '#fee2e2', color: '#b91c1c', label: `Quá hạn ${Math.abs(days)} ngày` };
-  if (days <= 30) return { bg: '#ffedd5', color: '#c2410c', label: `Còn ${days} ngày` };
-  return { bg: '#dcfce7', color: '#15803d', label: `Còn ${days} ngày` };
+  if (days < 0) return { bg: 'var(--c-danger-tint)', color: 'var(--c-danger-ink)', label: `Quá hạn ${Math.abs(days)} ngày` };
+  if (days <= 30) return { bg: 'var(--c-warning-tint)', color: 'var(--c-warning-ink)', label: `Còn ${days} ngày` };
+  return { bg: 'var(--c-success-tint)', color: 'var(--c-success)', label: `Còn ${days} ngày` };
 }
 
 export default function LotAdjustCard({
@@ -103,14 +103,14 @@ export default function LotAdjustCard({
               display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0,
               textAlign: 'left', padding: '8px 12px', borderRadius: 8,
               border: '1px solid var(--wh-border)',
-              background: selected ? 'white' : 'var(--wh-surface2)',
+              background: selected ? 'var(--c-surface)' : 'var(--wh-surface2)',
               cursor: 'pointer',
             }}
           >
             {selected ? (
               <>
                 <div style={{
-                  width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: '#f5f0eb',
+                  width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: 'var(--c-surface-2)',
                   overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
                 }}>
                   {selected.imageUrl
@@ -160,7 +160,7 @@ export default function LotAdjustCard({
               <div style={{
                 marginTop: 8, fontSize: 11.5, lineHeight: 1.5,
                 background: 'rgba(234,88,12,.08)', border: '1px solid rgba(234,88,12,.25)',
-                color: '#9a3412', borderRadius: 8, padding: '7px 10px',
+                color: 'var(--c-warning-ink)', borderRadius: 8, padding: '7px 10px',
               }}>
                 ⚠️ Có <b>{fmt(untracked)} {selected.unit}</b> tồn chưa gắn lô. Sau khi lưu, tổng tồn sẽ
                 được tính lại bằng đúng tổng các lô bên dưới — phần chưa gắn lô sẽ không còn.
@@ -230,14 +230,14 @@ function LotRow({ lot, unit, onChange, onRemove }) {
         {lot.isNew ? (
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700,
-            background: 'var(--wh-accent)', color: '#fff', padding: '2px 8px', borderRadius: 99,
+            background: 'var(--wh-accent)', color: 'var(--c-surface)', padding: '2px 8px', borderRadius: 99,
           }}>
             <Sparkles size={11} /> LÔ MỚI
           </span>
         ) : (
           <span style={{
             fontSize: 11, fontWeight: 700, color: 'var(--wh-muted)',
-            background: '#fff', border: '1px solid var(--wh-border)',
+            background: 'var(--c-surface)', border: '1px solid var(--wh-border)',
             padding: '2px 8px', borderRadius: 99,
           }}>
             Lô #{lot.lotId}
@@ -257,7 +257,7 @@ function LotRow({ lot, unit, onChange, onRemove }) {
           </span>
         )}
         {lot.isNew && (
-          <span style={{ fontSize: 11, color: '#92681a' }}>
+          <span style={{ fontSize: 11, color: 'var(--c-gold-deep)' }}>
             Giá vốn tạm = 1 · kế toán trưởng nhập sau
           </span>
         )}
@@ -293,7 +293,7 @@ function LotRow({ lot, unit, onChange, onRemove }) {
           {/* HSD không bắt buộc — ghi rõ trên nhãn để người nhập khỏi đi tìm
               một giá trị không tồn tại cho vật tư vốn không có hạn. */}
           <label className="wh-label" style={{ marginBottom: 4 }}>
-            Hạn sử dụng <span style={{ color: '#8E8878', fontWeight: 400 }}>(không bắt buộc)</span>
+            Hạn sử dụng <span style={{ color: 'var(--c-muted)', fontWeight: 400 }}>(không bắt buộc)</span>
           </label>
           <ExpiryDatePicker
             value={lot.expiryDate || ''}
@@ -307,9 +307,9 @@ function LotRow({ lot, unit, onChange, onRemove }) {
 
 function Stat({ label, value, strong, tone }) {
   const color =
-    tone === 'up' ? '#15803d' :
-    tone === 'down' ? '#b91c1c' :
-    tone === 'ok' ? '#15803d' :
+    tone === 'up' ? 'var(--c-success-ink)' :
+    tone === 'down' ? 'var(--c-danger-ink)' :
+    tone === 'ok' ? 'var(--c-success-ink)' :
     'var(--wh-text)';
   return (
     <div style={{

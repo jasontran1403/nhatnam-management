@@ -42,7 +42,7 @@ function PriceBadge({ priceSource, tierName }) {
   if (priceSource === 'MANUAL') {
     return (
       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold
-        bg-purple-100 text-purple-700 border border-purple-200 whitespace-nowrap">
+        bg-purple-100 dark:bg-purple-500/18 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/28 whitespace-nowrap">
         Thủ công
       </span>
     );
@@ -50,7 +50,7 @@ function PriceBadge({ priceSource, tierName }) {
   if (priceSource === 'TIER') {
     return (
       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold
-        bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap">
+        bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28 whitespace-nowrap">
         {tierName || 'Giá sỉ'}
       </span>
     );
@@ -58,7 +58,7 @@ function PriceBadge({ priceSource, tierName }) {
   // BASE
   return (
     <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold
-      bg-sky-100 text-sky-700 border border-sky-200 whitespace-nowrap">
+      bg-sky-100 dark:bg-sky-500/18 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/28 whitespace-nowrap">
       Giá lẻ
     </span>
   );
@@ -192,9 +192,9 @@ export default function CartItem({
   const hasDiscount = itemDiscountPct > 0;
 
   return (
-    <div className="flex items-start gap-2.5 py-3 border-b border-[#F0EBE3] last:border-0">
+    <div className="flex items-start gap-2.5 py-3 border-b border-line-soft last:border-0">
       {/* Image */}
-      <div className="w-10 h-10 rounded-lg bg-[#F0EBE3] overflow-hidden shrink-0 mt-0.5">
+      <div className="w-10 h-10 rounded-lg bg-surface-2 overflow-hidden shrink-0 mt-0.5">
         {imgUrl
           ? <img src={imgUrl} alt={item.productName} className="w-full h-full object-cover" />
           : <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>
@@ -203,16 +203,16 @@ export default function CartItem({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-[#1C1C1E] truncate">{item.productName}</p>
+        <p className="text-xs font-semibold text-ink truncate">{item.productName}</p>
 
         {/* Badges hàng 1: sale type + price source + VAT */}
         <div className="flex items-center gap-1 flex-wrap mt-0.5">
           {item.saleType === 'BOX' ? (
-            <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+            <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28">
               📦 Thùng ({item.unitsPerBox} {item.unit}/thùng)
             </span>
           ) : (
-            <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-sky-50 text-sky-600 border border-sky-200">
+            <span className="text-[9px] rounded px-1.5 py-0.5 font-semibold bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-500/28">
               Lẻ
             </span>
           )}
@@ -232,11 +232,11 @@ export default function CartItem({
             className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold border transition-colors
               ${vatRate > 0
                 ? isInclusive
-                  ? 'bg-amber-50 text-amber-700 border-amber-200 cursor-default'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 cursor-pointer'
+                  ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28 cursor-default'
+                  : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28 hover:bg-emerald-100 dark:bg-emerald-500/18 cursor-pointer'
                 : isExclusive
-                  ? 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 cursor-pointer'
-                  : 'bg-gray-50 text-gray-400 border-gray-200 cursor-default'
+                  ? 'bg-canvas text-muted border-line hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-emerald-600 dark:text-emerald-300 hover:border-emerald-200 dark:border-emerald-500/28 cursor-pointer'
+                  : 'bg-canvas text-faint border-line cursor-default'
               }`}
             title={isInclusive ? 'VAT đã bao gồm trong giá, không thể đổi' : 'Chọn thuế VAT cộng thêm'}
           >
@@ -250,8 +250,8 @@ export default function CartItem({
 
         {/* VAT picker dropdown (EXCLUSIVE only) */}
         {showVatPicker && isExclusive && (
-          <div className="mt-1.5 flex items-center gap-1 flex-wrap bg-emerald-50 rounded-lg px-2 py-1.5 border border-emerald-200">
-            <span className="text-[9px] text-emerald-700 font-semibold mr-1">Thuế %:</span>
+          <div className="mt-1.5 flex items-center gap-1 flex-wrap bg-emerald-50 dark:bg-emerald-500/10 rounded-lg px-2 py-1.5 border border-emerald-200 dark:border-emerald-500/28">
+            <span className="text-[9px] text-emerald-700 dark:text-emerald-300 font-semibold mr-1">Thuế %:</span>
             {EXCLUSIVE_VAT_OPTIONS.map(r => (
               <button
                 key={r}
@@ -259,7 +259,7 @@ export default function CartItem({
                 className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition-colors
                   ${vatRate === r
                     ? 'bg-emerald-600 text-white'
-                    : 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-100'}`}
+                    : 'bg-surface text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/35 hover:bg-emerald-100 dark:bg-emerald-500/18'}`}
               >
                 {r}%
               </button>
@@ -269,7 +269,7 @@ export default function CartItem({
 
         {/* VAT inclusive info */}
         {isInclusive && vatRate > 0 && (
-          <p className="text-[9px] text-amber-600 mt-0.5">
+          <p className="text-[9px] text-amber-600 dark:text-amber-300 mt-0.5">
             Đơn giá đã trừ ngược VAT {vatRate}%
           </p>
         )}
@@ -300,18 +300,18 @@ export default function CartItem({
                     if (e.key === 'Enter') commitPrice();
                     if (e.key === 'Escape') setEditingPrice(false);
                   }}
-                  className="w-24 text-xs border-2 border-[#C9A84C] rounded-lg px-2 py-1 focus:outline-none font-semibold text-[#1C1C1E]"
+                  className="w-24 text-xs border-2 border-gold rounded-lg px-2 py-1 focus:outline-none font-semibold text-ink"
                 />
-                <span className="text-[10px] text-[#8E8878]">đ</span>
+                <span className="text-[10px] text-muted">đ</span>
               </div>
             ) : (
               <button onClick={handlePriceClick} className="flex items-center gap-1 group">
                 {/* Hiển thị đơn giá CHƯA thuế */}
                 <span className={`text-xs font-bold transition-colors
-                  ${isPriceOverridden ? 'text-purple-600' : 'text-[#C9A84C] group-hover:text-[#A07830]'}`}>
+                  ${isPriceOverridden ? 'text-purple-600 dark:text-purple-300' : 'text-gold group-hover:text-gold-deep'}`}>
                   {fmt(netUnitPrice)}
                 </span>
-                <Pencil size={9} className="text-[#C4B9A8] group-hover:text-[#C9A84C] transition-colors" />
+                <Pencil size={9} className="text-faint group-hover:text-gold transition-colors" />
               </button>
             )}
           </div>
@@ -321,14 +321,14 @@ export default function CartItem({
             {!isPromo && (hasDiscount ? (
               <button onClick={openDiscount}
                 className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                  bg-orange-100 text-orange-600 border border-orange-200 font-semibold hover:bg-orange-200 transition-colors">
+                  bg-orange-100 dark:bg-orange-500/18 text-orange-600 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28 font-semibold hover:bg-orange-200 dark:bg-orange-500/28 transition-colors">
                 <Percent size={8} />
                 -{itemDiscountPct}%
               </button>
             ) : (
               <button onClick={openDiscount}
                 className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                  bg-[#F5F0E8] text-[#C4B9A8] border border-[#E8DDD0] hover:bg-[#EDE8DF] hover:text-[#8E8878] transition-colors">
+                  bg-surface-2 text-faint border border-line hover:bg-surface-2 hover:text-muted transition-colors">
                 <Percent size={8} />
                 CK
               </button>
@@ -337,8 +337,8 @@ export default function CartItem({
               className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
                 font-semibold border transition-colors
                 ${isPromo
-                  ? 'bg-rose-100 text-rose-600 border-rose-300 hover:bg-rose-200'
-                  : 'bg-[#F5F0E8] text-[#C4B9A8] border-[#E8DDD0] hover:bg-rose-50 hover:text-rose-400 hover:border-rose-200'}`}>
+                  ? 'bg-rose-100 dark:bg-rose-500/18 text-rose-600 dark:text-rose-300 border-rose-300 dark:border-rose-500/35 hover:bg-rose-200 dark:bg-rose-500/28'
+                  : 'bg-surface-2 text-faint border-line hover:bg-rose-50 dark:bg-rose-500/10 hover:text-rose-400 hover:border-rose-200 dark:border-rose-500/28'}`}>
               <Gift size={8} />
               KM
             </button>
@@ -347,7 +347,7 @@ export default function CartItem({
 
         {/* Discount panel */}
         {showDiscount && (
-          <div className="mt-1.5 flex items-center gap-1.5 bg-[#FAF7F2] rounded-lg px-2 py-1.5 border border-[#E8DDD0]">
+          <div className="mt-1.5 flex items-center gap-1.5 bg-canvas rounded-lg px-2 py-1.5 border border-line">
             <input
               ref={discountInputRef}
               type="text" inputMode="numeric"
@@ -359,19 +359,19 @@ export default function CartItem({
               }}
               onKeyDown={e => { if (e.key === 'Enter') commitDiscount(); if (e.key === 'Escape') setShowDiscount(false); }}
               placeholder="0"
-              className="w-10 text-xs text-center border border-[#E8DDD0] rounded-lg px-1 py-1
-                focus:outline-none focus:border-[#C9A84C] bg-white font-semibold"
+              className="w-10 text-xs text-center border border-line rounded-lg px-1 py-1
+                focus:outline-none focus:border-gold bg-surface font-semibold"
             />
-            <span className="text-[10px] text-[#8E8878] flex-shrink-0">%</span>
+            <span className="text-[10px] text-muted flex-shrink-0">%</span>
             {maxDiscount > 0 && (
-              <span className="text-[9px] text-[#C4B9A8] flex-1">tối đa {maxDiscount}%</span>
+              <span className="text-[9px] text-faint flex-1">tối đa {maxDiscount}%</span>
             )}
             <button onClick={commitDiscount}
-              className="w-5 h-5 rounded-full bg-[#C9A84C] text-white flex items-center justify-center hover:bg-[#A07830] transition-colors flex-shrink-0">
+              className="w-5 h-5 rounded-full bg-gold text-white flex items-center justify-center hover:bg-gold-deep transition-colors flex-shrink-0">
               <Check size={10} />
             </button>
             {hasDiscount && (
-              <button onClick={clearDiscount} className="text-[9px] text-red-400 hover:text-red-600 flex-shrink-0">
+              <button onClick={clearDiscount} className="text-[9px] text-red-400 hover:text-red-600 dark:text-red-300 flex-shrink-0">
                 xóa
               </button>
             )}
@@ -380,7 +380,7 @@ export default function CartItem({
 
         {/* Promo note panel */}
         {showPromoNote && (
-          <div className="mt-1.5 flex items-center gap-1.5 bg-rose-50 rounded-lg px-2 py-1.5 border border-rose-200">
+          <div className="mt-1.5 flex items-center gap-1.5 bg-rose-50 dark:bg-rose-500/10 rounded-lg px-2 py-1.5 border border-rose-200 dark:border-rose-500/28">
             <input
               ref={promoNoteRef}
               type="text"
@@ -391,8 +391,8 @@ export default function CartItem({
                 if (e.key === 'Escape') setShowPromoNote(false);
               }}
               placeholder="Ghi chú KM..."
-              className="flex-1 text-[10px] border border-rose-200 rounded-lg px-2 py-1
-                focus:outline-none focus:border-rose-400 bg-white text-[#1C1C1E]"
+              className="flex-1 text-[10px] border border-rose-200 dark:border-rose-500/28 rounded-lg px-2 py-1
+                focus:outline-none focus:border-rose-400 bg-surface text-ink"
             />
             <button onClick={() => commitPromoNote()}
               className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 transition-colors flex-shrink-0">
@@ -402,17 +402,17 @@ export default function CartItem({
         )}
         {isPromo && promoNote && !showPromoNote && (
           <button onClick={openPromoNote}
-            className="mt-0.5 text-[9px] text-rose-500 italic truncate max-w-full text-left hover:text-rose-700">
+            className="mt-0.5 text-[9px] text-rose-500 italic truncate max-w-full text-left hover:text-rose-700 dark:text-rose-300">
             📌 {promoNote}
           </button>
         )}
 
         {/* Thành tiền dòng */}
         {!isPromo && (
-          <p className="text-[10px] text-[#8E8878] mt-0.5">
+          <p className="text-[10px] text-muted mt-0.5">
             = {fmt(lineBaseTotal)}
             {hasDiscount && (
-              <span className="text-emerald-600 ml-1">
+              <span className="text-emerald-600 dark:text-emerald-300 ml-1">
                 → {fmt(lineBaseTotal * (1 - itemDiscountPct / 100))}
               </span>
             )}
@@ -423,12 +423,12 @@ export default function CartItem({
       {/* Qty + delete */}
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <button onClick={() => onRemove(item.id)}
-          className="w-5 h-5 rounded-full text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 flex items-center justify-center transition-colors">
+          className="w-5 h-5 rounded-full text-faint hover:text-red-400 hover:bg-red-50 dark:bg-red-500/10 flex items-center justify-center transition-colors">
           <Trash2 size={11} />
         </button>
         <div className="flex items-center gap-1">
           <button onClick={() => onUpdate(item.id, item.quantity - 1)}
-            className="w-6 h-6 rounded-full bg-[#F0EBE3] text-[#1C1C1E] text-sm font-bold flex items-center justify-center hover:bg-[#E8DDD0] transition-colors">
+            className="w-6 h-6 rounded-full bg-surface-2 text-ink text-sm font-bold flex items-center justify-center hover:bg-surface-3 transition-colors">
             −
           </button>
           {editingQty ? (
@@ -450,16 +450,16 @@ export default function CartItem({
               }}
               onBlur={commitQty}
               onKeyDown={e => { if (e.key === 'Enter') commitQty(); if (e.key === 'Escape') setEditingQty(false); }}
-              className="w-14 text-xs font-bold text-center text-[#1C1C1E] border-2 border-[#C9A84C] rounded-lg px-1 py-2 focus:outline-none"
+              className="w-14 text-xs font-bold text-center text-ink border-2 border-gold rounded-lg px-1 py-2 focus:outline-none"
             />
           ) : (
             <span onClick={handleQtyClick}
-              className="text-xs font-bold w-14 text-center text-[#1C1C1E] border border-[#E8DDD0] rounded-lg py-2 cursor-pointer hover:border-[#C9A84C] transition-colors block">
+              className="text-xs font-bold w-14 text-center text-ink border border-line rounded-lg py-2 cursor-pointer hover:border-gold transition-colors block">
               {item.quantity}
             </span>
           )}
           <button onClick={() => onUpdate(item.id, item.quantity + 1)}
-            className="w-6 h-6 rounded-full bg-[#F0EBE3] text-[#1C1C1E] text-sm font-bold flex items-center justify-center hover:bg-[#E8DDD0] transition-colors">
+            className="w-6 h-6 rounded-full bg-surface-2 text-ink text-sm font-bold flex items-center justify-center hover:bg-surface-3 transition-colors">
             +
           </button>
         </div>

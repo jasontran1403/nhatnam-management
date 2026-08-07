@@ -127,7 +127,7 @@ export default function NotificationBell({ role, token }) {
       {/* Bell button */}
       <button
         onClick={handleOpen}
-        className="relative p-2 rounded-xl text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#F0EBE3] transition-all"
+        className="relative p-2 rounded-xl text-muted hover:text-ink hover:bg-surface-2 transition-all"
       >
         <Bell size={18} />
         {unreadCount > 0 && (
@@ -139,13 +139,13 @@ export default function NotificationBell({ role, token }) {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-[#F0EBE3] flex flex-col overflow-hidden">
+        <div className="absolute right-0 top-10 z-50 w-80 bg-surface rounded-2xl shadow-2xl border border-line-soft flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE3]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-line-soft">
             <div>
-              <h3 className="text-sm font-semibold text-[#1C1C1E]">{t('notification', 'notification_bell')}</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('notification', 'notification_bell')}</h3>
               {unreadCount > 0 && (
-                <p className="text-[10px] text-[#8E8878]">{t('notification', 'unread_count').replace('{n}', unreadCount)}</p>
+                <p className="text-[10px] text-muted">{t('notification', 'unread_count').replace('{n}', unreadCount)}</p>
               )}
             </div>
             <div className="flex items-center gap-1">
@@ -153,14 +153,14 @@ export default function NotificationBell({ role, token }) {
                 <button
                   onClick={handleMarkAllRead}
                   title={t('common', 'mark_all_read')}
-                  className="p-1.5 rounded-lg text-[#8E8878] hover:text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-all"
+                  className="p-1.5 rounded-lg text-muted hover:text-gold hover:bg-gold/10 transition-all"
                 >
                   <CheckCheck size={14} />
                 </button>
               )}
               <button
                 onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#F0EBE3] transition-all"
+                className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-2 transition-all"
               >
                 <X size={14} />
               </button>
@@ -171,12 +171,12 @@ export default function NotificationBell({ role, token }) {
           <div className="overflow-y-auto max-h-96">
             {loading && notifications.length === 0 ? (
               <div className="flex items-center justify-center py-8">
-                <div className="w-5 h-5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               </div>
             ) : notifications.length === 0 ? (
               <div className="text-center py-10">
-                <Bell size={28} className="mx-auto text-[#D3CFC8] mb-2" />
-                <p className="text-sm text-[#8E8878]">Chưa có thông báo</p>
+                <Bell size={28} className="mx-auto text-faint mb-2" />
+                <p className="text-sm text-muted">Chưa có thông báo</p>
               </div>
             ) : (
               <>
@@ -186,24 +186,24 @@ export default function NotificationBell({ role, token }) {
                     <div
                       key={n.id}
                       onClick={() => !n.isRead && handleMarkRead(n.id)}
-                      className={`flex items-start gap-3 px-4 py-3 border-b border-[#F8F5F0] cursor-pointer transition-colors
-                        ${n.isRead ? 'bg-white' : 'bg-amber-50/40 hover:bg-amber-50'}`}
+                      className={`flex items-start gap-3 px-4 py-3 border-b border-canvas cursor-pointer transition-colors
+                        ${n.isRead ? 'bg-surface' : 'bg-amber-50/40 dark:bg-amber-500/4 hover:bg-amber-50 dark:bg-amber-500/10'}`}
                     >
                       <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0
-                        ${n.isRead ? 'bg-[#F0EBE3]' : 'bg-[#C9A84C]/15'}`}>
-                        <Icon size={13} className={n.isRead ? 'text-[#8E8878]' : 'text-[#C9A84C]'} />
+                        ${n.isRead ? 'bg-surface-2' : 'bg-gold/15'}`}>
+                        <Icon size={13} className={n.isRead ? 'text-muted' : 'text-gold'} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs leading-snug ${n.isRead ? 'text-[#5C5C5C]' : 'text-[#1C1C1E] font-medium'}`}>
+                        <p className={`text-xs leading-snug ${n.isRead ? 'text-ink-2' : 'text-ink font-medium'}`}>
                           {n.message}
                         </p>
-                        <p className="text-[10px] text-[#8E8878] mt-0.5 flex items-center gap-1">
+                        <p className="text-[10px] text-muted mt-0.5 flex items-center gap-1">
                           <Clock size={9} />
                           {formatTime(n.createdAt, t, lang)}
                         </p>
                       </div>
                       {!n.isRead && (
-                        <div className="w-2 h-2 rounded-full bg-[#C9A84C] flex-shrink-0 mt-1.5" />
+                        <div className="w-2 h-2 rounded-full bg-gold flex-shrink-0 mt-1.5" />
                       )}
                     </div>
                   );
@@ -212,7 +212,7 @@ export default function NotificationBell({ role, token }) {
                   <button
                     onClick={() => fetchNotifications(false)}
                     disabled={loading}
-                    className="w-full py-2.5 text-xs text-[#C9A84C] hover:bg-[#FAF7F2] transition-colors font-medium"
+                    className="w-full py-2.5 text-xs text-gold hover:bg-canvas transition-colors font-medium"
                   >
                     {loading ? t('common','loading'): t('common','view_more')}
                   </button>

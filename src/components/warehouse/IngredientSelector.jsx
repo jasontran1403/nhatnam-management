@@ -89,17 +89,17 @@ export function IngredientPickerModal({ stocks, selectedIds, onSelect, onClose }
           display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
           padding: `9px 14px 9px ${14 + indent}px`,
           borderBottom: '1px solid var(--wh-border)',
-          background: isSelected ? 'rgba(201,168,76,.06)' : 'white',
+          background: isSelected ? 'color-mix(in srgb, var(--c-gold) 8%, var(--c-surface))' : 'var(--c-surface)',
           cursor: isSelected ? 'default' : 'pointer',
           transition: 'background .12s',
         }}
-        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#faf7f2'; }}
-        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'white'; }}
+        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--c-surface-2)'; }}
+        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'var(--c-surface)'; }}
       >
         {/* Ảnh */}
         <div style={{
           width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-          background: '#f5f0eb', overflow: 'hidden',
+          background: 'var(--c-surface-2)', overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
         }}>
           {s.imageUrl
@@ -278,7 +278,7 @@ export function IngredientPickerModal({ stocks, selectedIds, onSelect, onClose }
       {/* Modal */}
       <div style={{
         position: 'relative', width: '100%', maxWidth: 480,
-        background: '#fff', borderRadius: 16,
+        background: 'var(--c-surface)', borderRadius: 16,
         boxShadow: '0 20px 60px rgba(0,0,0,.2)',
         display: 'flex', flexDirection: 'column',
         maxHeight: 'min(600px, 85vh)',
@@ -387,7 +387,7 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
             width: '100%', textAlign: 'left',
             padding: '8px 12px', borderRadius: 8,
             border: '1px solid var(--wh-border)',
-            background: selected ? 'white' : 'var(--wh-surface2)',
+            background: selected ? 'var(--c-surface)' : 'var(--wh-surface2)',
             cursor: 'pointer', transition: 'border-color .15s',
           }}
           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--wh-accent)'}
@@ -398,7 +398,7 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
               {/* Ảnh */}
               <div style={{
                 width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                background: '#f5f0eb', overflow: 'hidden',
+                background: 'var(--c-surface-2)', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
               }}>
                 {selected.imageUrl

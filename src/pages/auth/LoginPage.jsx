@@ -7,27 +7,28 @@ import { useLang } from '../../context/LangContext';
 import { Eye, EyeOff, LogIn, ChevronRight } from 'lucide-react';
 import SplashScreen from '../../components/common/SplashScreen';
 import LangToggle from '../../components/common/LangToggle';
+import { BRAND } from '../../config/brand';
 
 function getRoleLabel(role, t) {
   const colorMap = {
-    ADMIN:            'bg-red-100 text-red-700 border-red-200',
-    OWNER:            'bg-purple-100 text-purple-700 border-purple-200',
-    ACCOUNTANT:       'bg-blue-100 text-blue-700 border-blue-200',
-    SUPER_ACCOUNTANT: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-    WAREHOUSE:        'bg-yellow-100 text-yellow-700 border-yellow-200',
-    SUPER_WAREHOUSE:  'bg-orange-100 text-orange-700 border-orange-200',
-    SELLER:           'bg-green-100 text-green-700 border-green-200',
-    SUPER_SELLER:     'bg-emerald-100 text-emerald-700 border-emerald-200',
-    OPERATOR:         'bg-teal-100 text-teal-700 border-teal-200',
-    SHIPPER:          'bg-sky-100 text-sky-700 border-sky-200',
-    FACTORY_WORKER:   'bg-cyan-100 text-cyan-700 border-cyan-200',
-    SUPER_FACTORY_WORKER: 'bg-cyan-200 text-cyan-800 border-cyan-300',
-    FACTORY_ACCOUNTANT: 'bg-teal-100 text-teal-700 border-teal-200',
-    HR:               'bg-pink-100 text-pink-700 border-pink-200',
+    ADMIN:            'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/28',
+    OWNER:            'bg-purple-100 dark:bg-purple-500/18 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/28',
+    ACCOUNTANT:       'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/28',
+    SUPER_ACCOUNTANT: 'bg-indigo-100 dark:bg-indigo-500/18 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/28',
+    WAREHOUSE:        'bg-yellow-100 dark:bg-yellow-500/18 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-500/28',
+    SUPER_WAREHOUSE:  'bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/28',
+    SELLER:           'bg-green-100 dark:bg-green-500/18 text-green-700 dark:text-green-300 border-green-200 dark:border-green-500/28',
+    SUPER_SELLER:     'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28',
+    OPERATOR:         'bg-teal-100 dark:bg-teal-500/18 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-500/28',
+    SHIPPER:          'bg-sky-100 dark:bg-sky-500/18 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/28',
+    FACTORY_WORKER:   'bg-cyan-100 dark:bg-cyan-500/18 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/28',
+    SUPER_FACTORY_WORKER: 'bg-cyan-200 dark:bg-cyan-500/28 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-500/35',
+    FACTORY_ACCOUNTANT: 'bg-teal-100 dark:bg-teal-500/18 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-500/28',
+    HR:               'bg-pink-100 dark:bg-pink-500/18 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-500/28',
   };
   return {
     label: t('roles', role.toLowerCase()) || role,
-    color: colorMap[role] || 'bg-gray-100 text-gray-700 border-gray-200',
+    color: colorMap[role] || 'bg-surface-2 text-ink-2 border-line',
   };
 }
 
@@ -127,22 +128,23 @@ export default function LoginPage() {
 
       <div className="min-h-screen flex">
         {/* ── Left panel ─────────────────────────────── */}
-        <div className="hidden lg:flex flex-col justify-between w-1/2 bg-[#1C1C1E] p-12 relative overflow-hidden">
+        <div className="hidden lg:flex flex-col justify-between w-1/2 bg-chrome p-12 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#C9A84C] blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-[#A07830] blur-2xl translate-y-1/2 -translate-x-1/2" />
+            <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-gold blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-gold-deep blur-2xl translate-y-1/2 -translate-x-1/2" />
           </div>
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#C9A84C]/40 bg-[#C9A84C]/10 mb-8">
-              <span className="text-[#C9A84C] text-xs tracking-widest uppercase font-semibold">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gold/40 bg-gold/10 mb-8">
+              <span className="text-gold text-xs tracking-widest uppercase font-semibold">
                 {'Hệ thống quản lý'}
               </span>
             </div>
-            <h1 className="text-white text-5xl font-bold leading-tight">
-              Nhất Nam<br />
-              <span className="text-[#C9A84C]">Fine Foods</span>
+            <h1 className="text-white text-5xl font-bold leading-tight"
+              style={{ fontFamily: 'var(--font-display)' }}>
+              {BRAND.name}<br />
+              <span className="text-gold">{BRAND.suffix}</span>
             </h1>
-            <p className="text-[#8E8878] text-base mt-4 leading-relaxed">
+            <p className="text-muted text-base mt-4 leading-relaxed">
               {'Nền tảng quản lý bán hàng chuyên nghiệp — thực đơn, đơn hàng, kho hàng trong tầm tay.'}
             </p>
           </div>
@@ -151,13 +153,13 @@ export default function LoginPage() {
               <div key={i} className="text-6xl text-center">{e}</div>
             ))}
           </div>
-          <p className="relative z-10 text-[#8E8878] text-xs">
-            © 2025 Nhất Nam Fine Foods. All rights reserved.
+          <p className="relative z-10 text-muted text-xs">
+            {BRAND.copyright}
           </p>
         </div>
 
         {/* ── Right panel ────────────────────────────── */}
-        <div className="flex-1 flex items-center justify-center bg-[#FAF7F2] px-6">
+        <div className="flex-1 flex items-center justify-center bg-canvas px-6">
           <div className="w-full max-w-md">
             {/* Lang toggle */}
             <div className="flex justify-end mb-4">
@@ -165,13 +167,13 @@ export default function LoginPage() {
             </div>
 
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-[#1C1C1E]">{t('auth', 'login')}</h2>
-              <p className="text-[#8E8878] mt-2">{t('auth', 'welcome_back')}</p>
+              <h2 className="text-3xl font-bold text-ink">{t('auth', 'login')}</h2>
+              <p className="text-muted mt-2">{t('auth', 'welcome_back')}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+                <label className="block text-sm font-semibold text-ink mb-1.5">
                   {'Tên đăng nhập'}
                 </label>
                 <input
@@ -179,13 +181,13 @@ export default function LoginPage() {
                   autoComplete="username"
                   value={form.username}
                   onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#1C1C1E] placeholder:text-[#8E8878] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                  className="w-full px-4 py-3 rounded-xl border border-hairline-2 bg-surface text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-gold/40"
                   placeholder={t('auth', 'enter_username')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+                <label className="block text-sm font-semibold text-ink mb-1.5">
                   {'Mật khẩu'}
                 </label>
                 <div className="relative">
@@ -194,11 +196,11 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     value={form.password}
                     onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#1C1C1E] placeholder:text-[#8E8878] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 pr-12"
+                    className="w-full px-4 py-3 rounded-xl border border-hairline-2 bg-surface text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-gold/40 pr-12"
                     placeholder={t('auth', 'enter_password')}
                   />
                   <button type="button" onClick={() => setShowPw(p => !p)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
                     {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -207,7 +209,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gold text-white font-semibold hover:bg-gold-strong transition disabled:opacity-50"
               >
                 {loading
                   ? <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -221,9 +223,9 @@ export default function LoginPage() {
         {/* ── Multi-role popup ────────────────────────── */}
         {availableRoles && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-              <h3 className="text-xl font-bold text-[#1C1C1E] mb-1">{t('auth', 'select_role')}</h3>
-              <p className="text-sm text-[#8E8878] mb-5">
+            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6">
+              <h3 className="text-xl font-bold text-ink mb-1">{t('auth', 'select_role')}</h3>
+              <p className="text-sm text-muted mb-5">
                 {t('auth', 'select_role_hint').replace('{{count}}', availableRoles.length)}
               </p>
               <div className="space-y-3">
@@ -244,7 +246,7 @@ export default function LoginPage() {
               </div>
               <button
                 onClick={() => { setAvailableRoles(null); setPendingCreds(null); }}
-                className="mt-4 w-full py-2.5 rounded-xl border border-black/10 text-[#8E8878] hover:bg-gray-50 text-sm"
+                className="mt-4 w-full py-2.5 rounded-xl border border-hairline-2 text-muted hover:bg-canvas text-sm"
               >
                 {t('common', 'cancel')}
               </button>

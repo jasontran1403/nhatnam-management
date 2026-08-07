@@ -54,7 +54,7 @@ function SearchSelect({ options, value, onChange, placeholder, disabled, emptyTe
   return (
     <div className="relative" ref={boxRef}>
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input
           className={inputCls + ' pl-9 pr-8'}
           disabled={disabled}
@@ -65,7 +65,7 @@ function SearchSelect({ options, value, onChange, placeholder, disabled, emptyTe
         />
         {selected && !disabled && (
           <button type="button"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
             onClick={() => { onChange(''); setQuery(''); setOpen(false); }}>
             <X size={14} />
           </button>
@@ -73,15 +73,15 @@ function SearchSelect({ options, value, onChange, placeholder, disabled, emptyTe
       </div>
 
       {open && !disabled && (
-        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-xl border border-[#E8DDD0] bg-white shadow-lg">
+        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-xl border border-line bg-surface shadow-lg">
           {filtered.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-[#8E8878]">{emptyText || 'Không có kết quả'}</p>
+            <p className="px-3 py-3 text-xs text-muted">{emptyText || 'Không có kết quả'}</p>
           ) : filtered.map(o => (
             <button key={o.value} type="button"
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] ${o.value === value ? 'bg-[#FAF7F2] font-semibold' : ''}`}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-canvas ${o.value === value ? 'bg-canvas font-semibold' : ''}`}
               onClick={() => { onChange(o.value); setOpen(false); setQuery(''); }}>
-              <span className="text-[#1C1C1E]">{o.label}</span>
-              {o.hint && <span className="block text-[11px] text-[#8E8878]">{o.hint}</span>}
+              <span className="text-ink">{o.label}</span>
+              {o.hint && <span className="block text-[11px] text-muted">{o.hint}</span>}
             </button>
           ))}
         </div>
@@ -124,7 +124,7 @@ function ExportGoodsModal({ item, factoryId, onClose, onDone }) {
   return (
     <Modal open onClose={onClose} title={`Xuất kho — ${item.productName}`}>
       <div className="space-y-4">
-        <p className="text-sm text-[#8E8878]">
+        <p className="text-sm text-muted">
           Tồn kho hiện có: <strong>{fmtQty(item.totalQuantity)} {item.unit}</strong>
         </p>
         <Field label="Số lượng xuất *">
@@ -218,7 +218,7 @@ function TransferGoodsModal({ factoryId, presetProduct, onClose, onDone }) {
   return (
     <Modal open onClose={onClose} title="Chuyển kho thành phẩm">
       <div className="space-y-4">
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2">
           Ngày sản xuất, hạn sử dụng và giá vốn của từng lô được chuyển nguyên vẹn sang kho đích.
           Dropdown thành phẩm chỉ hiện những mặt hàng mà kho đích <strong>đã có nguyên liệu trùng tên</strong>.
         </p>
@@ -248,7 +248,7 @@ function TransferGoodsModal({ factoryId, presetProduct, onClose, onDone }) {
         </Field>
 
         {selected && (
-          <p className="text-sm text-[#8E8878]">
+          <p className="text-sm text-muted">
             Tồn khả dụng: <strong>{fmtQty(selected.availableQuantity)} {selected.unit}</strong>
           </p>
         )}
@@ -285,23 +285,23 @@ function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
   const hasWarning = nearExpiryLots.length > 0;
 
   return (
-    <div className={`rounded-2xl border shadow-sm overflow-hidden ${hasWarning ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
+    <div className={`rounded-2xl border shadow-sm overflow-hidden ${hasWarning ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28' : 'bg-surface border-hairline'}`}>
       <button className="w-full text-left px-5 py-4" onClick={() => setExpanded(e => !e)}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-[#1C1C1E]">{item.productName}</span>
+              <span className="font-semibold text-ink">{item.productName}</span>
               {hasWarning && (
-                <span className="flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium">
+                <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/18 px-2 py-0.5 rounded-full font-medium">
                   <AlertTriangle size={10} /> {nearExpiryLots.length} lô sắp hết hạn
                 </span>
               )}
             </div>
-            <p className="text-2xl font-bold text-[#1A2B1A] mt-1">
+            <p className="text-2xl font-bold text-forest mt-1">
               {fmtQty(item.totalQuantity)}
-              <span className="text-xs text-[#8E8878] bg-[#F5F0EB] px-2 py-0.5 rounded-full ml-2">{item.unit}</span>
+              <span className="text-xs text-muted bg-surface-2 px-2 py-0.5 rounded-full ml-2">{item.unit}</span>
             </p>
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-[#8E8878]">
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted">
               {item.nearestExpiryDate && (
                 <span className="flex items-center gap-1">
                   <Calendar size={11} /> Cận date nhất: {fmtDate(item.nearestExpiryDate)}
@@ -313,52 +313,52 @@ function FinishedGoodsCard({ item, onExport, onTransfer, canManage }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#8E8878]">{item.lotCount || 0} lô</span>
-            {expanded ? <ChevronUp size={16} className="text-[#8E8878]" /> : <ChevronDown size={16} className="text-[#8E8878]" />}
+            <span className="text-xs text-muted">{item.lotCount || 0} lô</span>
+            {expanded ? <ChevronUp size={16} className="text-muted" /> : <ChevronDown size={16} className="text-muted" />}
           </div>
         </div>
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 border-t border-black/10">
+        <div className="px-5 pb-4 border-t border-hairline-2">
           {canManage && (
             <div className="flex gap-2 mt-3 mb-3">
               <button onClick={() => onExport(item)}
-                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-white border border-black/10 text-[#1C1C1E] hover:bg-[#FAF7F2]">
+                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-surface border border-hairline-2 text-ink hover:bg-canvas">
                 <ArrowUpFromLine size={13} /> Xuất kho
               </button>
               <button onClick={() => onTransfer(item.productName)}
-                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[#1A2B1A] text-white hover:bg-[#243524]">
+                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-forest-deep text-white hover:bg-forest-mid">
                 <ArrowRightLeft size={13} /> Chuyển kho
               </button>
             </div>
           )}
 
-          <p className="text-xs font-medium text-[#8E8878] mb-2">Chi tiết từng lô</p>
+          <p className="text-xs font-medium text-muted mb-2">Chi tiết từng lô</p>
           <div className="space-y-2">
             {(item.lots || []).map((lot, i) => {
               const days = daysLeft(lot.expiryDate);
               const isNear = days != null && days <= 30;
               return (
                 <div key={lot.id || i}
-                  className={`flex items-center justify-between text-sm px-3 py-2 rounded-xl ${isNear ? 'bg-amber-100' : 'bg-[#FAF7F2]'}`}>
+                  className={`flex items-center justify-between text-sm px-3 py-2 rounded-xl ${isNear ? 'bg-amber-100 dark:bg-amber-500/18' : 'bg-canvas'}`}>
                   <div>
-                    <span className="text-[#1C1C1E] font-medium">{fmtQty(lot.quantity)} {item.unit}</span>
-                    {lot.batchCode && <p className="text-[10px] text-[#8E8878]">Mẻ sản xuất {lot.batchCode}</p>}
-                    {lot.manufactureDate && <p className="text-[10px] text-[#8E8878]">Ngày sản xuất: {fmtDate(lot.manufactureDate)}</p>}
+                    <span className="text-ink font-medium">{fmtQty(lot.quantity)} {item.unit}</span>
+                    {lot.batchCode && <p className="text-[10px] text-muted">Mẻ sản xuất {lot.batchCode}</p>}
+                    {lot.manufactureDate && <p className="text-[10px] text-muted">Ngày sản xuất: {fmtDate(lot.manufactureDate)}</p>}
                   </div>
                   <div className="text-right">
                     {lot.expiryDate ? (
                       <div>
-                        <p className={`text-xs font-medium ${isNear ? 'text-amber-700' : 'text-[#8E8878]'}`}>
+                        <p className={`text-xs font-medium ${isNear ? 'text-amber-700 dark:text-amber-300' : 'text-muted'}`}>
                           Hạn sử dụng: {fmtDate(lot.expiryDate)}
                         </p>
                         {days != null && days <= 30 && (
-                          <p className={`text-xs ${days <= 7 ? 'text-red-600' : 'text-amber-600'}`}>còn {days} ngày</p>
+                          <p className={`text-xs ${days <= 7 ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}`}>còn {days} ngày</p>
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-[#8E8878]">Không có HSD</span>
+                      <span className="text-xs text-muted">Không có HSD</span>
                     )}
                   </div>
                 </div>
@@ -417,12 +417,12 @@ export default function FactoryFinishedGoodsPage() {
   , [items]);
 
   return (
-    <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
+    <div className="p-4 space-y-4 bg-surface-2 min-h-full">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production', 'fg_title')}</h1>
+        <h1 className="text-xl font-bold text-ink">{t('production', 'fg_title')}</h1>
         {canManage && (
           <button onClick={() => openTransfer('')}
-            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl bg-[#1A2B1A] text-white hover:bg-[#243524]">
+            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl bg-forest-deep text-white hover:bg-forest-mid">
             <ArrowRightLeft size={14} /> Lập phiếu chuyển kho
           </button>
         )}
@@ -430,8 +430,8 @@ export default function FactoryFinishedGoodsPage() {
 
       {factories.length >= 1 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] font-medium">{t('production', 'mstock_factory_label')}:</span>
-          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+          <span className="text-xs text-muted font-medium">{t('production', 'mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-line bg-surface text-ink focus:outline-none focus:border-gold"
             value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
             {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
@@ -440,37 +440,37 @@ export default function FactoryFinishedGoodsPage() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
-          <p className="text-xs text-[#8E8878]">{t('production', 'fg_product_types')}</p>
-          <p className="text-2xl font-bold text-[#1A2B1A] mt-1">{items.length}</p>
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
+          <p className="text-xs text-muted">{t('production', 'fg_product_types')}</p>
+          <p className="text-2xl font-bold text-forest mt-1">{items.length}</p>
         </div>
-        <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
-          <p className="text-xs text-[#8E8878]">{t('production', 'inv_near_expiry')}</p>
-          <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700' : 'text-[#1A2B1A]'}`}>
+        <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28' : 'bg-surface border-hairline'}`}>
+          <p className="text-xs text-muted">{t('production', 'inv_near_expiry')}</p>
+          <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-forest'}`}>
             {nearExpiryCount}
           </p>
         </div>
       </div>
 
       {/* Search + Filter */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 space-y-3">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 space-y-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0]
-              focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-line
+              focus:outline-none focus:border-gold bg-canvas placeholder-muted"
             placeholder="Tìm tên thành phẩm..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] whitespace-nowrap">Cận date trước:</span>
+          <span className="text-xs text-muted whitespace-nowrap">Cận date trước:</span>
           <div className="flex-1">
             <DatePicker value={expiryFilter} onChange={setExpiryFilter} placeholder="Tất cả" />
           </div>
           {expiryFilter && (
-            <button onClick={() => setExpiryFilter(null)} className="text-xs text-[#8E8878] hover:text-[#1C1C1E] underline">
+            <button onClick={() => setExpiryFilter(null)} className="text-xs text-muted hover:text-ink underline">
               Xoá lọc
             </button>
           )}
@@ -482,9 +482,9 @@ export default function FactoryFinishedGoodsPage() {
         ? <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>
         : items.length === 0
           ? (
-            <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-              <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">{t('production', 'fg_empty')}</p>
+            <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+              <Package size={32} className="mx-auto text-muted mb-2" />
+              <p className="text-muted text-sm">{t('production', 'fg_empty')}</p>
             </div>
           )
           : (

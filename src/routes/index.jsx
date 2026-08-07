@@ -332,6 +332,13 @@ export default function AppRoutes() {
         <Route path="incomes" element={<IncomeListPage />} />
         <Route path="expenses" element={<ExpenseListPage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
+        {/* ── Kho hàng (CHỈ XEM) — dùng chung page với OWNER/ADMIN.
+             Kế toán cần đối chiếu tồn kho với chứng từ, nhưng không được tạo /
+             sửa / đóng kho; các nút thao tác bị ẩn theo rolePrefix trong page,
+             backend vẫn chặn độc lập. */}
+        <Route path="warehouses" element={<AdminWarehouses />} />
+        <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
+        <Route path="supply-warehouse" element={<OwnerSupplyWarehousePage />} />
         <Route path="my-payroll" element={<MyPayrollPage />} />
         <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
@@ -353,6 +360,13 @@ export default function AppRoutes() {
         <Route path="pricing" element={<PricingCalculatorPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
         {/* Panel điều chỉnh lô — nhập giá vốn cho lô mới do kho tạo */}
+        {/* ── Kho hàng (CHỈ XEM) — dùng chung page với OWNER/ADMIN.
+             Kế toán cần đối chiếu tồn kho với chứng từ, nhưng không được tạo /
+             sửa / đóng kho; các nút thao tác bị ẩn theo rolePrefix trong page,
+             backend vẫn chặn độc lập. */}
+        <Route path="warehouses" element={<AdminWarehouses />} />
+        <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
+        <Route path="supply-warehouse" element={<OwnerSupplyWarehousePage />} />
         <Route path="lot-pricing" element={<AccountantLotPricingPage />} />
         <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />

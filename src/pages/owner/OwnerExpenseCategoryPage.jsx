@@ -29,7 +29,7 @@ const KIND_CFG = {
   MATERIAL: {
     label: 'Nguyên liệu',
     icon: Package,
-    cls: 'bg-[#C9A84C]/15 text-[#C9A84C]',
+    cls: 'bg-gold/15 text-gold',
     // Nguyên liệu: "mua"
     verbMin: 'Giá thấp nhất đã mua',
     verbMax: 'Giá cao nhất đã mua',
@@ -40,7 +40,7 @@ const KIND_CFG = {
   EXPENSE: {
     label: 'Khoản chi / dịch vụ',
     icon: Receipt,
-    cls: 'bg-emerald-100 text-emerald-700',
+    cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300',
     // Dịch vụ / khoản chi: "sử dụng / chi"
     verbMin: 'Chi thấp nhất',
     verbMax: 'Chi cao nhất',
@@ -95,7 +95,7 @@ export default function OwnerExpenseCategoryPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <button onClick={() => navigate('/owner/production/suppliers')}
-        className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
+        className="flex items-center gap-1.5 text-sm text-muted hover:text-ink font-medium">
         <ChevronLeft size={16} /> Quay lại quản lý nhà cung cấp
       </button>
 
@@ -103,35 +103,35 @@ export default function OwnerExpenseCategoryPage() {
         subtitle={`${rows.length} danh mục · ${counts.MATERIAL} nguyên liệu · ${counts.EXPENSE} khoản chi`} />
 
       {/* Tổng chi */}
-      <div className="bg-gradient-to-r from-[#FAF7F2] to-white rounded-2xl border border-[#E8DDD0] p-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-canvas to-white rounded-2xl border border-line p-4 flex items-center justify-between">
         <div>
-          <p className="text-xs text-[#8E8878] font-medium">
+          <p className="text-xs text-muted font-medium">
             {kindFilter ? `Tổng chi · ${KIND_CFG[kindFilter].label}` : 'Tổng chi tất cả danh mục'}
           </p>
-          <p className="text-2xl font-bold text-[#1C1C1E] mt-0.5">{money(totalSpent)}</p>
+          <p className="text-2xl font-bold text-ink mt-0.5">{money(totalSpent)}</p>
         </div>
-        <Layers size={28} className="text-[#C9A84C]/40" />
+        <Layers size={28} className="text-gold/40" />
       </div>
 
       {/* Tìm kiếm + sắp xếp */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm theo tên danh mục chi / tên nguyên liệu..."
-            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white"
+            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-surface"
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <ArrowUpDown size={13} className="text-[#8E8878]" />
+          <ArrowUpDown size={13} className="text-muted" />
           {[
             { val: 'spent', label: 'Chi nhiều nhất' },
             { val: 'latest', label: 'Mới nhất' },
             { val: 'name', label: 'Tên A-Z' },
           ].map(s => (
             <button key={s.val} onClick={() => setSortBy(s.val)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${sortBy === s.val ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#1A2B1A]'}`}>
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${sortBy === s.val ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-line hover:border-forest-deep'}`}>
               {s.label}
             </button>
           ))}
@@ -141,12 +141,12 @@ export default function OwnerExpenseCategoryPage() {
       {/* Filter theo loại danh mục */}
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={() => setKindFilter('')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!kindFilter ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!kindFilter ? 'bg-gold text-white border-gold' : 'bg-surface text-muted border-line hover:border-gold'}`}>
           Tất cả ({rows.length})
         </button>
         {Object.entries(KIND_CFG).map(([kind, cfg]) => (
           <button key={kind} onClick={() => setKindFilter(k => k === kind ? '' : kind)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${kindFilter === kind ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${kindFilter === kind ? 'bg-gold text-white border-gold' : 'bg-surface text-muted border-line hover:border-gold'}`}>
             <cfg.icon size={12} />{cfg.label} ({counts[kind]})
           </button>
         ))}
@@ -180,7 +180,7 @@ function CategoryCard({ row, onOpen }) {
 
   return (
     <button onClick={onOpen}
-      className="w-full text-left bg-white rounded-2xl border border-black/5 p-4 hover:border-[#C9A84C] hover:shadow-sm transition-all">
+      className="w-full text-left bg-surface rounded-2xl border border-hairline p-4 hover:border-gold hover:shadow-sm transition-all">
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.cls}`}>
@@ -188,22 +188,22 @@ function CategoryCard({ row, onOpen }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-[#1C1C1E] truncate">{row.name}</p>
+            <p className="font-semibold text-ink truncate">{row.name}</p>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.cls}`}>
               {cfg.label}
             </span>
           </div>
-          <p className="text-xs text-[#8E8878] mt-0.5">
+          <p className="text-xs text-muted mt-0.5">
             {row.purchaseCount} {cfg.countSuffix}
             {row.vendorCount > 0 && ` · ${row.vendorCount} nhà cung cấp`}
             {isMaterial && row.totalQuantity != null && ` · ${qtyFmt(row.totalQuantity)} ${row.unit}`}
           </p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-[11px] text-[#8E8878]">{cfg.verbTotal}</p>
-          <p className="text-lg font-bold text-[#1C1C1E]">{money(row.totalSpent)}</p>
+          <p className="text-[11px] text-muted">{cfg.verbTotal}</p>
+          <p className="text-lg font-bold text-ink">{money(row.totalSpent)}</p>
         </div>
-        <ChevronRight size={16} className="text-[#8E8878] mt-2 flex-shrink-0" />
+        <ChevronRight size={16} className="text-muted mt-2 flex-shrink-0" />
       </div>
 
       {/* Giá thấp nhất / cao nhất / gần nhất */}
@@ -223,15 +223,15 @@ function CategoryCard({ row, onOpen }) {
 }
 
 function PriceBox({ label, value, suffix, hint, tone }) {
-  const color = tone === 'good' ? 'text-emerald-600' : tone === 'bad' ? 'text-red-600' : 'text-[#1C1C1E]';
+  const color = tone === 'good' ? 'text-emerald-600 dark:text-emerald-300' : tone === 'bad' ? 'text-red-600 dark:text-red-300' : 'text-ink';
   return (
-    <div className="bg-[#FAF7F2] rounded-xl px-3 py-2">
-      <p className="text-[11px] text-[#8E8878]">{label}</p>
+    <div className="bg-canvas rounded-xl px-3 py-2">
+      <p className="text-[11px] text-muted">{label}</p>
       <p className={`text-sm font-bold mt-0.5 ${color}`}>
         {value}
-        {suffix && <span className="text-[11px] font-medium text-[#8E8878] ml-1">{suffix}</span>}
+        {suffix && <span className="text-[11px] font-medium text-muted ml-1">{suffix}</span>}
       </p>
-      <p className="text-[10px] text-[#8E8878] mt-0.5 truncate">{hint}</p>
+      <p className="text-[10px] text-muted mt-0.5 truncate">{hint}</p>
     </div>
   );
 }

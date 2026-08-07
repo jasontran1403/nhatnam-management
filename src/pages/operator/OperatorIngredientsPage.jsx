@@ -28,28 +28,28 @@ function ConfirmDeleteModal({ open, onClose, onConfirm, itemName, deleting }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm">
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0">
               <AlertTriangle size={18} className="text-red-500" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1C1C1E]">Xác nhận xóa</h3>
-              <p className="text-xs text-[#8E8878] mt-0.5">Hành động này không thể hoàn tác</p>
+              <h3 className="text-base font-bold text-ink">Xác nhận xóa</h3>
+              <p className="text-xs text-muted mt-0.5">Hành động này không thể hoàn tác</p>
             </div>
           </div>
-          <p className="text-sm text-[#5C5C5C]">
+          <p className="text-sm text-ink-2">
             Bạn có chắc muốn xóa nguyên liệu <strong>"{itemName}"</strong>?
             <br />
-            <span className="text-xs text-[#8E8878]">
+            <span className="text-xs text-muted">
               Các đơn hàng và giao dịch kho cũ vẫn giữ nguyên thông tin.
             </span>
           </p>
         </div>
         <div className="px-6 pb-6 flex gap-2">
           <button onClick={onClose} disabled={deleting}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2] disabled:opacity-50">
+            className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas disabled:opacity-50">
             Huỷ
           </button>
           <button onClick={onConfirm} disabled={deleting}
@@ -90,53 +90,53 @@ function CategoryCombobox({ label, options, value, onChange, onCreateNew, placeh
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {label && <label className="block text-xs font-medium text-[#5C5C5C] mb-1">{label}</label>}
+      {label && <label className="block text-xs font-medium text-ink-2 mb-1">{label}</label>}
       <div className="flex items-center gap-1.5">
         <div onClick={handleOpen}
           className={`flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 text-sm rounded-xl border cursor-pointer transition-all
-    ${disabled ? 'opacity-50 cursor-not-allowed bg-[#FAF7F2]' : 'bg-white hover:border-[#C9A84C]'}
-    ${open ? 'border-[#C9A84C] ring-1 ring-[#C9A84C]/20' : 'border-[#E8DDD0]'}`}>
+    ${disabled ? 'opacity-50 cursor-not-allowed bg-canvas' : 'bg-surface hover:border-gold'}
+    ${open ? 'border-gold ring-1 ring-gold/20' : 'border-line'}`}>
           {selected
-            ? <><span className="flex-1 text-[#1C1C1E] truncate">{selected.name}</span>
-              <button onClick={handleClear} className="text-[#C4B9A8] hover:text-[#5C5C5C]"><X size={13} /></button></>
-            : <span className="flex-1 text-[#C4B9A8]">{placeholder}</span>}
-          <Search size={13} className="text-[#C4B9A8] flex-shrink-0" />
+            ? <><span className="flex-1 text-ink truncate">{selected.name}</span>
+              <button onClick={handleClear} className="text-faint hover:text-ink-2"><X size={13} /></button></>
+            : <span className="flex-1 text-faint">{placeholder}</span>}
+          <Search size={13} className="text-faint flex-shrink-0" />
         </div>
         {onCreateNew && !disabled && (
           <button onClick={() => onCreateNew(query)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#E8DDD0] text-[#C9A84C] hover:border-[#C9A84C] hover:bg-[#C9A84C]/10 transition-all flex-shrink-0">
+            className="w-9 h-9 flex items-center justify-center rounded-xl border border-line text-gold hover:border-gold hover:bg-gold/10 transition-all flex-shrink-0">
             <Plus size={15} />
           </button>
         )}
       </div>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#E8DDD0] rounded-xl shadow-xl overflow-hidden"
+        <div className="absolute left-0 top-full mt-1 z-50 bg-surface border border-line rounded-xl shadow-xl overflow-hidden"
           style={{ width: 'calc(100% - 44px)', minWidth: 180, maxHeight: 260 }}>
-          <div className="p-2 border-b border-[#F0EBE3]">
+          <div className="p-2 border-b border-line-soft">
             <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#C4B9A8]" />
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
               <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Tìm danh mục..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]" />
+                className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-line focus:outline-none focus:border-gold" />
             </div>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: 196 }}>
             {filtered.length === 0
-              ? <div className="px-3 py-3 text-xs text-[#C4B9A8] text-center">
+              ? <div className="px-3 py-3 text-xs text-faint text-center">
                 Không tìm thấy
                 {query && onCreateNew && (
                   <button onClick={() => { onCreateNew(query); setOpen(false); }}
-                    className="block mx-auto mt-1.5 text-[#C9A84C] font-medium hover:underline">
+                    className="block mx-auto mt-1.5 text-gold font-medium hover:underline">
                     + Tạo "{query}"
                   </button>
                 )}
               </div>
               : filtered.map(opt => (
                 <button key={opt.id} onClick={() => handleSelect(opt)}
-                  className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-[#FAF7F2] transition-colors
-                    ${String(opt.id) === String(value) ? 'text-[#C9A84C] font-semibold bg-[#C9A84C]/5' : 'text-[#1C1C1E]'}`}>
+                  className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-canvas transition-colors
+                    ${String(opt.id) === String(value) ? 'text-gold font-semibold bg-gold/5' : 'text-ink'}`}>
                   {opt.imageUrl && (
-                    <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 border border-[#F0EBE3]">
+                    <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 border border-line-soft">
                       <img src={opt.imageUrl.startsWith('http') ? opt.imageUrl : `${BASE_URL}/api/auth${opt.imageUrl}`}
                         alt="" className="w-full h-full object-cover" />
                     </div>
@@ -197,36 +197,36 @@ function QuickCreateCategoryModal({ open, onClose, onCreated, parentId, parentNa
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft">
           <div>
-            <h3 className="text-base font-bold text-[#1C1C1E]">
+            <h3 className="text-base font-bold text-ink">
               {parentId ? t('category', 'add_sub_category') : t('category', 'add_category')}
             </h3>
-            {parentId && parentName && <p className="text-xs text-[#8E8878] mt-0.5">Thuộc: <strong>{parentName}</strong></p>}
+            {parentId && parentName && <p className="text-xs text-muted mt-0.5">Thuộc: <strong>{parentName}</strong></p>}
           </div>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
+          <button onClick={onClose} className="text-muted hover:text-ink"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] flex items-center justify-center overflow-hidden flex-shrink-0">
-              {imageUrl ? <img src={imgSrc(imageUrl)} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={20} className="text-[#D3CFC8]" />}
+            <div className="w-14 h-14 rounded-xl border border-line bg-canvas flex items-center justify-center overflow-hidden flex-shrink-0">
+              {imageUrl ? <img src={imgSrc(imageUrl)} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={20} className="text-faint" />}
             </div>
-            <label className="flex items-center gap-2 px-3 py-2 text-xs rounded-xl border border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
-              {uploading ? <div className="w-3 h-3 border border-[#C9A84C] border-t-transparent rounded-full animate-spin" /> : <ImagePlus size={13} />}
+            <label className="flex items-center gap-2 px-3 py-2 text-xs rounded-xl border border-line text-ink-2 hover:border-gold cursor-pointer transition-all">
+              {uploading ? <div className="w-3 h-3 border border-gold border-t-transparent rounded-full animate-spin" /> : <ImagePlus size={13} />}
               {uploading ? t('common', 'loading') : t('common', 'select')}
               <input type="file" accept="image/*" className="hidden" onChange={e => handleUpload(e.target.files[0])} />
             </label>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#5C5C5C] mb-1">{t('category', 'category')} *</label>
+            <label className="block text-xs font-medium text-ink-2 mb-1">{t('category', 'category')} *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="VD: Thịt bò, Rau củ..."
-              className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]"
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-line focus:outline-none focus:border-gold"
               onKeyDown={e => e.key === 'Enter' && handleSave()} />
           </div>
         </div>
         <div className="px-5 pb-5 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">{t('common', 'cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas">{t('common', 'cancel')}</button>
           <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl btn-gold text-sm font-medium disabled:opacity-50">
             {saving ? t('common', 'saving') : t('common', 'create')}
           </button>
@@ -268,25 +268,25 @@ function WarehouseModal({ open, onClose, ingredient, warehouses, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft">
           <div>
-            <h3 className="text-base font-bold text-[#1C1C1E]">Quản lý kho</h3>
-            <p className="text-xs text-[#8E8878] mt-0.5"><strong>{ingredient.name}</strong></p>
+            <h3 className="text-base font-bold text-ink">Quản lý kho</h3>
+            <p className="text-xs text-muted mt-0.5"><strong>{ingredient.name}</strong></p>
           </div>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
+          <button onClick={onClose} className="text-muted hover:text-ink"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-2 max-h-64 overflow-y-auto">
           {warehouses.length === 0
-            ? <p className="text-sm text-center text-[#C4B9A8] py-4">Chưa có kho nào</p>
+            ? <p className="text-sm text-center text-faint py-4">Chưa có kho nào</p>
             : warehouses.map(wh => {
               const isSelected = selected.has(String(wh.id));
               return (
                 <button key={wh.id} onClick={() => toggle(wh.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left
-                    ${isSelected ? 'border-[#C9A84C] bg-[#C9A84C]/5' : 'border-[#E8DDD0] hover:border-[#C9A84C]/50'}`}>
+                    ${isSelected ? 'border-gold bg-gold/5' : 'border-line hover:border-gold/50'}`}>
                   <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0
-                    ${isSelected ? 'border-[#C9A84C] bg-[#C9A84C]' : 'border-[#D3CFC8]'}`}>
+                    ${isSelected ? 'border-gold bg-gold' : 'border-line'}`}>
                     {isSelected && <Check size={12} className="text-white" strokeWidth={3} />}
                   </div>
                   <span className="text-sm font-medium">{wh.name}</span>
@@ -295,7 +295,7 @@ function WarehouseModal({ open, onClose, ingredient, warehouses, onSaved }) {
             })}
         </div>
         <div className="px-5 pb-5 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">Huỷ</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas">Huỷ</button>
           <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl btn-gold text-sm font-medium disabled:opacity-50">
             {saving ? 'Đang lưu...' : 'Lưu'}
           </button>
@@ -309,38 +309,38 @@ function WarehouseModal({ open, onClose, ingredient, warehouses, onSaved }) {
 // THAY ĐỔI: thêm prop onDelete + nút Xóa
 function IngredientRow({ ingredient, warehouses, onEdit, onManageWarehouse, onDelete, imgSrc }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#FAF7F2] transition-colors group">
-      <div className="w-7 h-7 rounded-lg border border-[#F0EBE3] bg-[#FAF7F2] flex items-center justify-center overflow-hidden flex-shrink-0">
+    <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-canvas transition-colors group">
+      <div className="w-7 h-7 rounded-lg border border-line-soft bg-canvas flex items-center justify-center overflow-hidden flex-shrink-0">
         {imgSrc(ingredient.imageUrl)
           ? <img src={imgSrc(ingredient.imageUrl)} alt={ingredient.name} className="w-full h-full object-cover" />
-          : <Leaf size={12} className="text-[#D3CFC8]" />}
+          : <Leaf size={12} className="text-faint" />}
       </div>
 
       <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium text-[#1C1C1E]">{ingredient.name}</span>
+        <span className="text-sm font-medium text-ink">{ingredient.name}</span>
         {ingredient.itemCode && (
-          <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-mono">
+          <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 text-[10px] font-mono">
             {ingredient.itemCode}
           </span>
         )}
       </div>
 
-      <span className="text-xs text-[#8E8878] flex-shrink-0 min-w-[40px] text-center">
+      <span className="text-xs text-muted flex-shrink-0 min-w-[40px] text-center">
         {ingredient.unit.toUpperCase()}
       </span>
 
-      <div className="w-px h-4 bg-[#E8DDD0] flex-shrink-0" />
+      <div className="w-px h-4 bg-surface-3 flex-shrink-0" />
 
       <div className="flex items-center gap-1 flex-shrink-0">
         <button onClick={() => onEdit(ingredient)}
-          className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all">
+          className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-line text-ink-2 hover:border-gold hover:text-gold transition-all">
           <Edit2 size={10} /> Sửa
         </button>
         {/* [NEW] Nút xóa — ẩn mặc định, hiện khi hover row */}
         <button
           onClick={() => onDelete(ingredient)}
           className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-transparent
-            text-[#C4B9A8] hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all
+            text-faint hover:border-red-200 dark:border-red-500/28 hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 transition-all
             opacity-0 group-hover:opacity-100">
           <Trash2 size={10} /> Xóa
         </button>
@@ -399,7 +399,7 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
   );
 
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-line-soft overflow-hidden">
       {categories.map(cat => {
         const isExpanded = expandedCatId === cat.id;
         const subs = subsOfCat(cat.id);
@@ -407,33 +407,33 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
         const total = countCat(cat.id);
 
         return (
-          <div key={cat.id} className="border-b border-[#F0EBE3] last:border-b-0">
+          <div key={cat.id} className="border-b border-line-soft last:border-b-0">
             <button onClick={() => toggleCat(cat.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-                ${isExpanded ? 'bg-[#FAF7F2]' : 'hover:bg-[#FAF7F2]/60'}`}>
-              <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 text-[#C9A84C]">
+                ${isExpanded ? 'bg-canvas' : 'hover:bg-canvas/60'}`}>
+              <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 text-gold">
                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </div>
               {cat.imageUrl ? (
-                <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 border border-[#F0EBE3]">
+                <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 border border-line-soft">
                   <img src={cat.imageUrl.startsWith('http') ? cat.imageUrl : `${BASE_URL}/api/auth${cat.imageUrl}`}
                     alt="" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                  {isExpanded ? <FolderOpen size={15} className="text-[#C9A84C]" /> : <Folder size={15} className="text-[#8E8878]" />}
+                  {isExpanded ? <FolderOpen size={15} className="text-gold" /> : <Folder size={15} className="text-muted" />}
                 </div>
               )}
-              <span className={`flex-1 text-sm font-semibold ${isExpanded ? 'text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+              <span className={`flex-1 text-sm font-semibold ${isExpanded ? 'text-gold' : 'text-ink'}`}>
                 {cat.name}
               </span>
-              <span className="text-xs text-[#C4B9A8] bg-[#F0EBE3] px-2 py-0.5 rounded-full flex-shrink-0">
+              <span className="text-xs text-faint bg-surface-2 px-2 py-0.5 rounded-full flex-shrink-0">
                 {total}
               </span>
             </button>
 
             {isExpanded && (
-              <div className="border-t border-[#F0EBE3]/60">
+              <div className="border-t border-line-soft/60">
                 {subs.map(sub => {
                   const isSubExpanded = expandedSubIds.has(sub.id);
                   const subIngs = ingsOfSub(sub.id);
@@ -441,31 +441,31 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
                     <div key={sub.id}>
                       <button onClick={() => toggleSub(sub.id)}
                         className={`w-full flex items-center gap-3 pl-10 pr-4 py-2.5 text-left transition-colors
-                          ${isSubExpanded ? 'bg-[#C9A84C]/5' : 'hover:bg-[#FAF7F2]/80'}`}>
-                        <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-[#C9A84C]">
+                          ${isSubExpanded ? 'bg-gold/5' : 'hover:bg-canvas/80'}`}>
+                        <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-gold">
                           {isSubExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                         </div>
                         {sub.imageUrl ? (
-                          <div className="w-5 h-5 rounded overflow-hidden flex-shrink-0 border border-[#F0EBE3]">
+                          <div className="w-5 h-5 rounded overflow-hidden flex-shrink-0 border border-line-soft">
                             <img src={sub.imageUrl.startsWith('http') ? sub.imageUrl : `${BASE_URL}/api/auth${sub.imageUrl}`}
                               alt="" className="w-full h-full object-cover" />
                           </div>
                         ) : (
                           <div className="w-5 h-5 flex items-center justify-center">
-                            {isSubExpanded ? <FolderOpen size={13} className="text-[#C9A84C]" /> : <Folder size={13} className="text-[#8E8878]" />}
+                            {isSubExpanded ? <FolderOpen size={13} className="text-gold" /> : <Folder size={13} className="text-muted" />}
                           </div>
                         )}
-                        <span className={`flex-1 text-xs font-medium ${isSubExpanded ? 'text-[#C9A84C]' : 'text-[#5C5C5C]'}`}>
+                        <span className={`flex-1 text-xs font-medium ${isSubExpanded ? 'text-gold' : 'text-ink-2'}`}>
                           {sub.name}
                         </span>
-                        <span className="text-[10px] text-[#C4B9A8] bg-[#F0EBE3] px-1.5 py-0.5 rounded-full">
+                        <span className="text-[10px] text-faint bg-surface-2 px-1.5 py-0.5 rounded-full">
                           {subIngs.length}
                         </span>
                       </button>
                       {isSubExpanded && (
-                        <div className="pl-14 border-t border-[#F0EBE3]/40">
+                        <div className="pl-14 border-t border-line-soft/40">
                           {subIngs.length === 0
-                            ? <p className="px-4 py-3 text-xs text-[#C4B9A8]">Không có nguyên liệu</p>
+                            ? <p className="px-4 py-3 text-xs text-faint">Không có nguyên liệu</p>
                             : subIngs.map(renderRow)}
                         </div>
                       )}
@@ -474,10 +474,10 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
                 })}
 
                 {directIngs.length > 0 && (
-                  <div className={`pl-10 ${subs.length > 0 ? 'border-t border-[#F0EBE3]/40' : ''}`}>
+                  <div className={`pl-10 ${subs.length > 0 ? 'border-t border-line-soft/40' : ''}`}>
                     {subs.length > 0 && (
                       <div className="px-4 py-1.5">
-                        <span className="text-[10px] text-[#C4B9A8] font-medium uppercase tracking-wide">Chung</span>
+                        <span className="text-[10px] text-faint font-medium uppercase tracking-wide">Chung</span>
                       </div>
                     )}
                     {directIngs.map(renderRow)}
@@ -485,7 +485,7 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
                 )}
 
                 {directIngs.length === 0 && subs.every(s => ingsOfSub(s.id).length === 0) && (
-                  <p className="pl-10 px-4 py-3 text-xs text-[#C4B9A8]">Không có nguyên liệu</p>
+                  <p className="pl-10 px-4 py-3 text-xs text-faint">Không có nguyên liệu</p>
                 )}
               </div>
             )}
@@ -494,11 +494,11 @@ function CategoryTree({ categories, subCategories, ingredients, warehouses, sear
       })}
 
       {ingsNoCat.length > 0 && (
-        <div className="border-t border-[#F0EBE3]">
-          <div className="flex items-center gap-3 px-4 py-3 bg-[#FAF7F2]/40">
-            <Leaf size={14} className="text-[#C4B9A8]" />
-            <span className="text-sm font-semibold text-[#8E8878]">Chưa phân loại</span>
-            <span className="text-xs text-[#C4B9A8] bg-[#F0EBE3] px-2 py-0.5 rounded-full ml-auto">{ingsNoCat.length}</span>
+        <div className="border-t border-line-soft">
+          <div className="flex items-center gap-3 px-4 py-3 bg-canvas/40">
+            <Leaf size={14} className="text-faint" />
+            <span className="text-sm font-semibold text-muted">Chưa phân loại</span>
+            <span className="text-xs text-faint bg-surface-2 px-2 py-0.5 rounded-full ml-auto">{ingsNoCat.length}</span>
           </div>
           {ingsNoCat.map(renderRow)}
         </div>
@@ -556,52 +556,52 @@ function ImportIngredientsModal({ open, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE3]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line-soft">
           <div>
-            <h2 className="text-base font-bold text-[#1C1C1E]">Import nguyên liệu</h2>
-            <p className="text-xs text-[#8E8878] mt-0.5">
+            <h2 className="text-base font-bold text-ink">Import nguyên liệu</h2>
+            <p className="text-xs text-muted mt-0.5">
               {step === 'upload'
                 ? 'Tải file Excel đã export từ hệ thống để cập nhật'
                 : 'Kết quả import'}
             </p>
           </div>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]">
+          <button onClick={onClose} className="text-muted hover:text-ink">
             <X size={20} />
           </button>
         </div>
 
         {step === 'upload' ? (
           <div className="flex flex-col items-center justify-center p-10 gap-5">
-            <div className="w-16 h-16 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center">
               {uploading
-                ? <div className="w-8 h-8 border-3 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-                : <Upload size={28} className="text-[#C9A84C]" />}
+                ? <div className="w-8 h-8 border-3 border-gold border-t-transparent rounded-full animate-spin" />
+                : <Upload size={28} className="text-gold" />}
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-[#1C1C1E]">
+              <p className="text-sm font-semibold text-ink">
                 {uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}
               </p>
-              <p className="text-xs text-[#8E8878] mt-1">
+              <p className="text-xs text-muted mt-1">
                 Dùng file đã Export từ hệ thống. Backend dựa vào cột <strong>ID</strong> để cập nhật.
               </p>
-              <p className="text-xs text-[#C9A84C] mt-1">
+              <p className="text-xs text-gold mt-1">
                 ⚠ Danh mục và kho phải khớp tên trong hệ thống.
               </p>
-              <p className="text-xs text-amber-600 mt-1 bg-amber-50 rounded-lg px-3 py-1.5">
+              <p className="text-xs text-amber-600 dark:text-amber-300 mt-1 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-1.5">
                 ⚠ Mỗi file chỉ import được <strong>1 lần</strong>. Export lại nếu muốn import tiếp.
               </p>
               {uploadError && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-left max-w-xs">
+                <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3 text-left max-w-xs">
                   <span className="text-red-500 mt-0.5 shrink-0">✕</span>
-                  <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+                  <p className="text-xs text-red-600 dark:text-red-300 font-medium">{uploadError}</p>
                 </div>
               )}
             </div>
             {!uploading && (
-              <label className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+              <label className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gold text-white text-sm font-semibold cursor-pointer hover:bg-gold-deep transition-colors">
                 <Upload size={15} /> Chọn file .xlsx
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
                   onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
@@ -612,22 +612,22 @@ function ImportIngredientsModal({ open, onClose, onDone }) {
           <div className="p-6 space-y-4">
             {/* Summary */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-emerald-600">{result?.updated ?? 0}</p>
-                <p className="text-xs text-emerald-700 mt-0.5">Cập nhật thành công</p>
+              <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">{result?.updated ?? 0}</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Cập nhật thành công</p>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3 text-center">
                 <p className="text-2xl font-bold text-red-500">{result?.skipped ?? 0}</p>
-                <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
+                <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">Bỏ qua / lỗi</p>
               </div>
             </div>
 
             {/* Errors */}
             {result?.errors?.length > 0 && (
-              <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-48 overflow-y-auto">
-                <p className="text-xs font-semibold text-red-600 mb-2">Chi tiết lỗi:</p>
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl p-3 max-h-48 overflow-y-auto">
+                <p className="text-xs font-semibold text-red-600 dark:text-red-300 mb-2">Chi tiết lỗi:</p>
                 {result.errors.map((err, i) => (
-                  <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 last:border-0">{err}</p>
+                  <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 dark:border-red-500/18 last:border-0">{err}</p>
                 ))}
               </div>
             )}
@@ -635,10 +635,10 @@ function ImportIngredientsModal({ open, onClose, onDone }) {
             {/* Actions */}
             <div className="flex gap-2 pt-2">
               <button onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">
+                className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas">
                 Đóng
               </button>
-              <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+              <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold cursor-pointer hover:bg-gold-deep transition-colors">
                 <Upload size={14} /> Import thêm
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
                   onChange={e => { if (e.target.files[0]) { setStep('upload'); handleFile(e.target.files[0]); } }} />
@@ -829,25 +829,25 @@ export default function OperatorIngredientsPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-[#F0EBE3]">
+      <div className="flex-shrink-0 px-6 py-4 bg-surface border-b border-line-soft">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>Nguyên liệu</h1>
-            <p className="text-xs text-[#8E8878]">{totalFiltered}/{ingredients.length} nguyên liệu</p>
+            <h1 className="text-xl font-bold text-ink" style={{ fontFamily: 'var(--font-display)' }}>Nguyên liệu</h1>
+            <p className="text-xs text-muted">{totalFiltered}/{ingredients.length} nguyên liệu</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <select value={filterWarehouseId} onChange={e => setFilterWarehouseId(e.target.value)}
-              className="px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] text-[#5C5C5C]">
+              className="px-3 py-2 text-sm rounded-xl border border-line bg-canvas focus:outline-none focus:border-gold text-ink-2">
               <option value="">Tất cả kho</option>
               {warehouses.map(wh => <option key={wh.id} value={String(wh.id)}>{wh.name}</option>)}
             </select>
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên, mã hàng..."
-                className="pl-8 pr-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] w-44" />
+                className="pl-8 pr-3 py-2 text-sm rounded-xl border border-line bg-canvas focus:outline-none focus:border-gold w-44" />
             </div>
             <button onClick={() => setImportModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line text-sm text-ink-2 hover:border-gold transition-all">
               <Upload size={14} /> Import
             </button>
             <button onClick={async () => {
@@ -869,7 +869,7 @@ export default function OperatorIngredientsPage() {
                 toast(e?.response?.data?.message || 'Lỗi xuất file', 'error');
               }
             }}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line text-sm text-ink-2 hover:border-gold transition-all">
               <Download size={14} /> Export
             </button>
             <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 rounded-xl btn-gold text-sm font-medium">
@@ -883,7 +883,7 @@ export default function OperatorIngredientsPage() {
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <CategoryTree
@@ -903,23 +903,23 @@ export default function OperatorIngredientsPage() {
       {/* Modal thêm/sửa */}
       {modal.open && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE3] sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-bold text-[#1C1C1E]">{modal.item ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu'}</h2>
-              <button onClick={() => setModal({ open: false, item: null })} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
+          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-line-soft sticky top-0 bg-surface z-10">
+              <h2 className="text-lg font-bold text-ink">{modal.item ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu'}</h2>
+              <button onClick={() => setModal({ open: false, item: null })} className="text-muted hover:text-ink"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Tên nguyên liệu *</label>
+                <label className="block text-xs font-medium text-ink-2 mb-1">Tên nguyên liệu *</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="Nhập tên nguyên liệu"
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]" />
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-line focus:outline-none focus:border-gold" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Mã hàng</label>
+                <label className="block text-xs font-medium text-ink-2 mb-1">Mã hàng</label>
                 <input value={form.itemCode} onChange={e => setForm(f => ({ ...f, itemCode: e.target.value }))}
                   placeholder="VD: NL-001"
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] font-mono" />
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-line focus:outline-none focus:border-gold font-mono" />
               </div>
               <CategoryCombobox label="Danh mục" options={rootCats} value={form.categoryId}
                 onChange={v => setForm(f => ({ ...f, categoryId: v, subCategoryId: '' }))}
@@ -931,30 +931,30 @@ export default function OperatorIngredientsPage() {
                   placeholder={formSubCats.length === 0 ? 'Chưa có danh mục con — nhấn + để tạo' : 'Chọn danh mục con...'} />
               )}
               <div>
-                <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Đơn vị *</label>
+                <label className="block text-xs font-medium text-ink-2 mb-1">Đơn vị *</label>
                 <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold">
                   {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-[#5C5C5C] mb-2">Kho chứa nguyên liệu</label>
+                <label className="block text-xs font-medium text-ink-2 mb-2">Kho chứa nguyên liệu</label>
                 {warehouses.length === 0
-                  ? <p className="text-xs text-[#C4B9A8]">Chưa có kho nào</p>
+                  ? <p className="text-xs text-faint">Chưa có kho nào</p>
                   : <div className="grid grid-cols-2 gap-2">
                     {warehouses.map(wh => {
                       const isSelected = form.warehouseIds.map(String).includes(String(wh.id));
                       return (
                         <button key={wh.id} type="button" onClick={() => toggleFormWarehouse(wh.id)}
                           className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all
-                            ${isSelected ? 'border-[#C9A84C] bg-[#C9A84C]/5' : 'border-[#E8DDD0] hover:border-[#C9A84C]/40'}`}>
+                            ${isSelected ? 'border-gold bg-gold/5' : 'border-line hover:border-gold/40'}`}>
                           <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0
-                            ${isSelected ? 'border-[#C9A84C] bg-[#C9A84C]' : 'border-[#D3CFC8]'}`}>
+                            ${isSelected ? 'border-gold bg-gold' : 'border-line'}`}>
                             {isSelected && <Check size={10} className="text-white" strokeWidth={3} />}
                           </div>
                           <div className="min-w-0">
                             <div className="text-xs font-medium truncate">{wh.name}</div>
-                            <div className="text-[10px] text-[#8E8878]">{wh.type === 'TRANSIT' ? 'Trung chuyển' : 'Bán hàng'}</div>
+                            <div className="text-[10px] text-muted">{wh.type === 'TRANSIT' ? 'Trung chuyển' : 'Bán hàng'}</div>
                           </div>
                         </button>
                       );
@@ -964,7 +964,7 @@ export default function OperatorIngredientsPage() {
             </div>
             <div className="px-6 pb-6 flex gap-2">
               <button onClick={() => setModal({ open: false, item: null })}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">Huỷ</button>
+                className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas">Huỷ</button>
               <button onClick={handleSave} disabled={saving}
                 className="flex-1 py-2.5 rounded-xl btn-gold text-sm font-medium disabled:opacity-50">
                 {saving ? 'Đang lưu...' : t('common', 'save')}

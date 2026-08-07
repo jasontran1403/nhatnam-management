@@ -64,14 +64,14 @@ function BtnSpinner({ size = 13, colorClass = 'border-current' }) {
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS_MAP = {
-    PENDING:         { label: 'Chờ xử lý',      bg: 'bg-amber-50   text-amber-600   border-amber-200',   Icon: Clock },
-    CONFIRMED:       { label: 'Đã xác nhận',     bg: 'bg-sky-50     text-sky-600     border-sky-200',     Icon: CheckCircle },
-    PREPARING:       { label: 'Đang chuẩn bị',   bg: 'bg-blue-50    text-blue-600    border-blue-200',    Icon: Package },
-    READY:           { label: 'Sẵn sàng giao',   bg: 'bg-indigo-50  text-indigo-600  border-indigo-200',  Icon: CheckCircle },
-    DELIVERING:      { label: 'Đang giao',        bg: 'bg-purple-50  text-purple-600  border-purple-200',  Icon: Truck },
-    PENDING_PAYMENT: { label: 'Chờ thanh toán',  bg: 'bg-orange-50  text-orange-600  border-orange-200',  Icon: CreditCard },
-    COMPLETED:       { label: 'Hoàn thành',       bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', Icon: CheckCircle },
-    CANCELLED:       { label: 'Đã huỷ',          bg: 'bg-red-50     text-red-500     border-red-200',     Icon: XCircle },
+    PENDING:         { label: 'Chờ xử lý',      bg: 'bg-amber-50 dark:bg-amber-500/10   text-amber-600 dark:text-amber-300   border-amber-200 dark:border-amber-500/28',   Icon: Clock },
+    CONFIRMED:       { label: 'Đã xác nhận',     bg: 'bg-sky-50 dark:bg-sky-500/10     text-sky-600 dark:text-sky-300     border-sky-200 dark:border-sky-500/28',     Icon: CheckCircle },
+    PREPARING:       { label: 'Đang chuẩn bị',   bg: 'bg-blue-50 dark:bg-blue-500/10    text-blue-600 dark:text-blue-300    border-blue-200 dark:border-blue-500/28',    Icon: Package },
+    READY:           { label: 'Sẵn sàng giao',   bg: 'bg-indigo-50 dark:bg-indigo-500/10  text-indigo-600 dark:text-indigo-300  border-indigo-200 dark:border-indigo-500/28',  Icon: CheckCircle },
+    DELIVERING:      { label: 'Đang giao',        bg: 'bg-purple-50 dark:bg-purple-500/10  text-purple-600 dark:text-purple-300  border-purple-200 dark:border-purple-500/28',  Icon: Truck },
+    PENDING_PAYMENT: { label: 'Chờ thanh toán',  bg: 'bg-orange-50 dark:bg-orange-500/10  text-orange-600 dark:text-orange-300  border-orange-200 dark:border-orange-500/28',  Icon: CreditCard },
+    COMPLETED:       { label: 'Hoàn thành',       bg: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', Icon: CheckCircle },
+    CANCELLED:       { label: 'Đã huỷ',          bg: 'bg-red-50 dark:bg-red-500/10     text-red-500     border-red-200 dark:border-red-500/28',     Icon: XCircle },
 };
 
 const DELIVERY_TYPES = [
@@ -162,7 +162,7 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
 
     return (
         <div className="space-y-3">
-            <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+            <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
                 Tài xế giao hàng
             </p>
 
@@ -173,8 +173,8 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
                         onClick={() => setSelectedType(dt.value)}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors
                             ${selectedType === dt.value
-                                ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                                : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+                                ? 'bg-gold text-white border-gold'
+                                : 'bg-surface text-muted border-line hover:border-gold'}`}>
                         {dt.label}
                     </button>
                 ))}
@@ -185,23 +185,23 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
                 <div className="space-y-1.5">
                     {deliveryInfo.map((d, idx) => (
                         <div key={idx}
-                            className="flex items-center gap-2 bg-white rounded-xl border border-[#E8DDD0] px-3 py-2">
+                            className="flex items-center gap-2 bg-surface rounded-xl border border-line px-3 py-2">
                             <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
-                            <span className="flex-1 text-xs font-medium text-[#1C1C1E]">{d.name}</span>
+                            <span className="flex-1 text-xs font-medium text-ink">{d.name}</span>
                             <div className="flex items-center gap-1">
                                 <button onClick={() => decreaseTrips(idx)}
-                                    className="w-5 h-5 rounded-full bg-[#F0EBE3] text-[#8E8878] text-xs font-bold hover:bg-[#E8DDD0] flex items-center justify-center">
+                                    className="w-5 h-5 rounded-full bg-surface-2 text-muted text-xs font-bold hover:bg-surface-3 flex items-center justify-center">
                                     −
                                 </button>
-                                <span className="text-xs font-bold text-[#C9A84C] min-w-[2.5rem] text-center">
+                                <span className="text-xs font-bold text-gold min-w-[2.5rem] text-center">
                                     {d.trips} lượt
                                 </span>
                                 <button onClick={() => increaseTrips(idx)}
-                                    className="w-5 h-5 rounded-full bg-[#F0EBE3] text-[#8E8878] text-xs font-bold hover:bg-[#E8DDD0] flex items-center justify-center">
+                                    className="w-5 h-5 rounded-full bg-surface-2 text-muted text-xs font-bold hover:bg-surface-3 flex items-center justify-center">
                                     +
                                 </button>
                             </div>
-                            <button onClick={() => remove(idx)} className="text-[#C4B9A8] hover:text-red-400 ml-1">
+                            <button onClick={() => remove(idx)} className="text-faint hover:text-red-400 ml-1">
                                 <X size={12} />
                             </button>
                         </div>
@@ -213,34 +213,34 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
             <div ref={dropRef} className="relative">
                 <div className="flex gap-1.5">
                     <div className="relative flex-1">
-                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
                         <input ref={inputRef} type="text"
                             placeholder={`Tìm tài xế (${selectedType === 'TRUCK' ? 'xe tải' : 'xe máy'})...`}
                             value={query}
                             onChange={e => { setQuery(e.target.value); setOpen(true); }}
                             onFocus={() => setOpen(true)}
-                            className="w-full pl-8 pr-3 py-2 text-xs border border-[#E8DDD0] rounded-lg
-                                focus:outline-none focus:border-[#C9A84C] bg-white placeholder:text-[#C4B9A8]" />
+                            className="w-full pl-8 pr-3 py-2 text-xs border border-line rounded-lg
+                                focus:outline-none focus:border-gold bg-surface placeholder:text-faint" />
                     </div>
                     {showCreate && (
                         <button onClick={createAndAdd} disabled={creating}
                             className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold
-                                bg-[#C9A84C] text-white hover:bg-[#B8943C] disabled:opacity-60">
+                                bg-gold text-white hover:bg-gold-strong disabled:opacity-60">
                             <Plus size={12} /> Thêm
                         </button>
                     )}
                 </div>
                 {open && results.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl
-                        border border-[#E8DDD0] shadow-lg py-1 max-h-40 overflow-y-auto">
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-surface rounded-xl
+                        border border-line shadow-lg py-1 max-h-40 overflow-y-auto">
                         {results.map(d => (
                             <button key={d.id}
                                 onClick={() => addDriver(d.name)}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left
-                                    hover:bg-[#FAF7F2] text-[#1C1C1E] transition-colors">
+                                    hover:bg-canvas text-ink transition-colors">
                                 <span>{selectedType === 'TRUCK' ? '🚛' : '🛵'}</span>
                                 <span className="flex-1">{d.name}</span>
-                                <span className="text-[#C4B9A8] text-[10px]">+ thêm lượt</span>
+                                <span className="text-faint text-[10px]">+ thêm lượt</span>
                             </button>
                         ))}
                     </div>
@@ -248,7 +248,7 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
             </div>
 
             {deliveryInfo.length === 0 && (
-                <p className="text-[10px] text-[#C4B9A8] italic">Chưa chọn tài xế</p>
+                <p className="text-[10px] text-faint italic">Chưa chọn tài xế</p>
             )}
         </div>
     );
@@ -346,7 +346,7 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
 
     return (
         <div className="space-y-3">
-            <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+            <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
                 Tài xế giao hàng
             </p>
 
@@ -355,11 +355,11 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
                 <div className="space-y-1.5">
                     {existingInfo.map((d, idx) => (
                         <div key={`existing-${idx}`}
-                            className="flex items-center gap-2 bg-[#FAF7F2] rounded-xl border border-[#E8DDD0] px-3 py-2">
+                            className="flex items-center gap-2 bg-canvas rounded-xl border border-line px-3 py-2">
                             <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
-                            <span className="flex-1 text-xs font-medium text-[#1C1C1E]">{d.name}</span>
-                            <span className="text-xs font-bold text-[#8E8878]">{d.trips} lượt</span>
-                            <span className="text-[9px] text-[#C4B9A8] italic ml-1">đã gán</span>
+                            <span className="flex-1 text-xs font-medium text-ink">{d.name}</span>
+                            <span className="text-xs font-bold text-muted">{d.trips} lượt</span>
+                            <span className="text-[9px] text-faint italic ml-1">đã gán</span>
                         </div>
                     ))}
                 </div>
@@ -370,25 +370,25 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
                 <div className="space-y-1.5">
                     {addedInfo.map((d, idx) => (
                         <div key={`added-${idx}`}
-                            className="flex items-center gap-2 bg-emerald-50 rounded-xl border border-emerald-200 px-3 py-2">
+                            className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl border border-emerald-200 dark:border-emerald-500/28 px-3 py-2">
                             <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
-                            <span className="flex-1 text-xs font-medium text-[#1C1C1E]">
-                                {d.name} <span className="text-[9px] text-emerald-600 font-normal">{d.isExisting ? '(+lượt)' : '(mới)'}</span>
+                            <span className="flex-1 text-xs font-medium text-ink">
+                                {d.name} <span className="text-[9px] text-emerald-600 dark:text-emerald-300 font-normal">{d.isExisting ? '(+lượt)' : '(mới)'}</span>
                             </span>
                             <div className="flex items-center gap-1">
                                 <button onClick={() => decreaseAddedTrips(idx)}
-                                    className="w-5 h-5 rounded-full bg-white text-[#8E8878] text-xs font-bold hover:bg-emerald-100 flex items-center justify-center">
+                                    className="w-5 h-5 rounded-full bg-surface text-muted text-xs font-bold hover:bg-emerald-100 dark:bg-emerald-500/18 flex items-center justify-center">
                                     −
                                 </button>
-                                <span className="text-xs font-bold text-emerald-600 min-w-[2.5rem] text-center">
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-300 min-w-[2.5rem] text-center">
                                     +{d.trips} lượt
                                 </span>
                                 <button onClick={() => increaseAddedTrips(idx)}
-                                    className="w-5 h-5 rounded-full bg-white text-[#8E8878] text-xs font-bold hover:bg-emerald-100 flex items-center justify-center">
+                                    className="w-5 h-5 rounded-full bg-surface text-muted text-xs font-bold hover:bg-emerald-100 dark:bg-emerald-500/18 flex items-center justify-center">
                                     +
                                 </button>
                             </div>
-                            <button onClick={() => removeAdded(idx)} className="text-[#C4B9A8] hover:text-red-400 ml-1">
+                            <button onClick={() => removeAdded(idx)} className="text-faint hover:text-red-400 ml-1">
                                 <X size={12} />
                             </button>
                         </div>
@@ -396,7 +396,7 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
                 </div>
             )}
 
-            {err && <p className="text-[10px] text-red-500 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">{err}</p>}
+            {err && <p className="text-[10px] text-red-500 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-lg px-2.5 py-1.5">{err}</p>}
 
             {/* Loại phương tiện */}
             <div className="flex gap-2">
@@ -405,8 +405,8 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
                         onClick={() => { setSelectedType(dt.value); setErr(''); }}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors
                             ${selectedType === dt.value
-                                ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                                : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+                                ? 'bg-gold text-white border-gold'
+                                : 'bg-surface text-muted border-line hover:border-gold'}`}>
                         {dt.label}
                     </button>
                 ))}
@@ -416,34 +416,34 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
             <div ref={dropRef} className="relative">
                 <div className="flex gap-1.5">
                     <div className="relative flex-1">
-                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
                         <input type="text"
                             placeholder={`Thêm tài xế (${selectedType === 'TRUCK' ? 'xe tải' : 'xe máy'})...`}
                             value={query}
                             onChange={e => { setQuery(e.target.value); setOpen(true); }}
                             onFocus={() => setOpen(true)}
-                            className="w-full pl-8 pr-3 py-2 text-xs border border-[#E8DDD0] rounded-lg
-                                focus:outline-none focus:border-[#C9A84C] bg-white placeholder:text-[#C4B9A8]" />
+                            className="w-full pl-8 pr-3 py-2 text-xs border border-line rounded-lg
+                                focus:outline-none focus:border-gold bg-surface placeholder:text-faint" />
                     </div>
                     {showCreate && (
                         <button onClick={createAndAdd} disabled={creating}
                             className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold
-                                bg-[#C9A84C] text-white hover:bg-[#B8943C] disabled:opacity-60">
+                                bg-gold text-white hover:bg-gold-strong disabled:opacity-60">
                             <Plus size={12} /> Thêm
                         </button>
                     )}
                 </div>
                 {open && results.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl
-                        border border-[#E8DDD0] shadow-lg py-1 max-h-40 overflow-y-auto">
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-surface rounded-xl
+                        border border-line shadow-lg py-1 max-h-40 overflow-y-auto">
                         {results.map(d => (
                             <button key={d.id}
                                 onClick={() => addOrBumpDriver(d.name)}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left
-                                    hover:bg-[#FAF7F2] text-[#1C1C1E] transition-colors">
+                                    hover:bg-canvas text-ink transition-colors">
                                 <span>{selectedType === 'TRUCK' ? '🚛' : '🛵'}</span>
                                 <span className="flex-1">{d.name}</span>
-                                <span className="text-[#C4B9A8] text-[10px]">+ thêm lượt</span>
+                                <span className="text-faint text-[10px]">+ thêm lượt</span>
                             </button>
                         ))}
                     </div>
@@ -451,7 +451,7 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
             </div>
 
             {existingInfo.length === 0 && addedInfo.length === 0 && (
-                <p className="text-[10px] text-[#C4B9A8] italic">Chưa có tài xế nào</p>
+                <p className="text-[10px] text-faint italic">Chưa có tài xế nào</p>
             )}
         </div>
     );
@@ -480,102 +480,102 @@ function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm,
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative w-full sm:max-w-xl bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="relative w-full sm:max-w-xl bg-surface rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3] flex-shrink-0">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft flex-shrink-0">
                     <div>
-                        <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Bắt đầu giao hàng</p>
-                        <h2 className="font-mono text-sm font-bold text-[#C9A84C]">{order?.orderCode}</h2>
-                        <p className="text-xs text-[#8E8878] mt-0.5">{formatDate(order?.createdAt)}</p>
+                        <p className="text-[10px] text-muted uppercase tracking-wider">Bắt đầu giao hàng</p>
+                        <h2 className="font-mono text-sm font-bold text-gold">{order?.orderCode}</h2>
+                        <p className="text-xs text-muted mt-0.5">{formatDate(order?.createdAt)}</p>
                     </div>
                     <button onClick={onClose}
-                        className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
+                        className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors">
                         <X size={16} />
                     </button>
                 </div>
 
                 {/* Customer info */}
-                <div className="px-5 py-3 bg-[#FAF7F2] border-b border-[#F0EBE3] flex-shrink-0">
-                    <p className="text-xs font-semibold text-[#1C1C1E]">{order?.customerName || 'Khách lẻ'}</p>
-                    {order?.customerPhone && <p className="text-[10px] text-[#8E8878]">{order.customerPhone}</p>}
-                    {order?.notes && <p className="text-[11px] text-[#8E8878] mt-1 italic">📝 {order.notes}</p>}
+                <div className="px-5 py-3 bg-canvas border-b border-line-soft flex-shrink-0">
+                    <p className="text-xs font-semibold text-ink">{order?.customerName || 'Khách lẻ'}</p>
+                    {order?.customerPhone && <p className="text-[10px] text-muted">{order.customerPhone}</p>}
+                    {order?.notes && <p className="text-[11px] text-muted mt-1 italic">📝 {order.notes}</p>}
                 </div>
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                    <div className="bg-[#FAF7F2] rounded-2xl px-4 py-3.5 border border-[#F0EBE3]">
+                    <div className="bg-canvas rounded-2xl px-4 py-3.5 border border-line-soft">
                         <DriverPicker deliveryInfo={deliveryInfo} onChange={setDeliveryInfo} />
                     </div>
 
                     <div>
-                        <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2.5">
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2.5">
                             Danh sách sản phẩm ({items.length})
                         </p>
                         {detailLoading ? (
                             <div className="flex justify-center py-8">
-                                <BtnSpinner size={22} colorClass="border-[#C9A84C]/30 !border-t-[#C9A84C]" />
+                                <BtnSpinner size={22} colorClass="border-gold/30 !border-t-gold" />
                             </div>
                         ) : items.length > 0 ? (
                             <div className="space-y-2">
                                 {items.map((item, idx) => (
                                     <div key={idx}
-                                        className="flex items-start gap-3 bg-[#FAF7F2] rounded-xl p-3 border border-[#F0EBE3]">
-                                        <div className="w-10 h-10 rounded-lg bg-white overflow-hidden shrink-0 border border-[#E8DDD0]">
+                                        className="flex items-start gap-3 bg-canvas rounded-xl p-3 border border-line-soft">
+                                        <div className="w-10 h-10 rounded-lg bg-surface overflow-hidden shrink-0 border border-line">
                                             {item.productImageUrl
                                                 ? <img src={getImageUrl(item.productImageUrl)} alt={item.productName} className="w-full h-full object-cover" />
                                                 : <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-semibold text-[#1C1C1E] leading-snug">{item.productName}</p>
+                                            <p className="text-xs font-semibold text-ink leading-snug">{item.productName}</p>
                                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                                 {item.saleType === 'BOX' ? (
-                                                    <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-md px-1.5 py-0.5">
+                                                    <span className="text-[10px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28 rounded-md px-1.5 py-0.5">
                                                         📦 Thùng ({item.unitsPerBox} {item.unit})
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[10px] font-medium bg-[#F0EBE3] text-[#8E8878] rounded-md px-1.5 py-0.5">
+                                                    <span className="text-[10px] font-medium bg-surface-2 text-muted rounded-md px-1.5 py-0.5">
                                                         {item.unit || 'cái'}
                                                     </span>
                                                 )}
-                                                {item.notes && <span className="text-[10px] text-[#8E8878] italic">· {item.notes}</span>}
+                                                {item.notes && <span className="text-[10px] text-muted italic">· {item.notes}</span>}
                                             </div>
                                             {item.ingredientsUsed?.length > 0 && (
                                                 <div className="mt-2 space-y-1">
                                                     {item.ingredientsUsed.map((ing, i) => (
                                                         <div key={i} className="flex items-center justify-between">
                                                             <div className="flex items-center gap-1.5">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] shrink-0" />
-                                                                <span className="text-[10px] text-[#8E8878]">{ing.ingredientName}</span>
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-gold shrink-0" />
+                                                                <span className="text-[10px] text-muted">{ing.ingredientName}</span>
                                                             </div>
-                                                            <span className="text-[10px] font-semibold text-[#C9A84C]">{ing.quantityUsed} {ing.unit}</span>
+                                                            <span className="text-[10px] font-semibold text-gold">{ing.quantityUsed} {ing.unit}</span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="shrink-0 min-w-[2rem] h-8 rounded-full bg-[#C9A84C]/10 flex items-center justify-center px-2">
-                                            <span className="text-xs font-bold text-[#C9A84C]">x{item.quantity}</span>
+                                        <div className="shrink-0 min-w-[2rem] h-8 rounded-full bg-gold/10 flex items-center justify-center px-2">
+                                            <span className="text-xs font-bold text-gold">x{item.quantity}</span>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-xs text-[#C4B9A8] italic text-center py-6">Không có thông tin sản phẩm</p>
+                            <p className="text-xs text-faint italic text-center py-6">Không có thông tin sản phẩm</p>
                         )}
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="px-5 py-4 border-t border-[#F0EBE3] flex-shrink-0 flex gap-2">
+                <div className="px-5 py-4 border-t border-line-soft flex-shrink-0 flex gap-2">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-3 rounded-2xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors font-medium">
+                        className="flex-1 py-3 rounded-2xl border border-line text-sm text-muted hover:bg-surface-2 transition-colors font-medium">
                         Huỷ
                     </button>
                     <button onClick={() => onConfirm(order.id, deliveryInfo)}
                         disabled={loading || !canDeliverOrder(order)}
                         title={canDeliverOrder(order) ? '' : 'Khách yêu cầu thanh toán trước — đơn chưa thu đủ tiền'}
-                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#C9A84C] text-white font-semibold text-sm hover:bg-[#B8943C] active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gold text-white font-semibold text-sm hover:bg-gold-strong active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                         {loading
                             ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
                             : canDeliverOrder(order)
@@ -615,34 +615,34 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] flex flex-col">
+            <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] flex flex-col">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3] flex-shrink-0">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft flex-shrink-0">
                     <div>
-                        <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xác nhận giao thành công</p>
-                        <h2 className="font-bold text-[#1C1C1E] font-mono text-sm">{order?.orderCode}</h2>
+                        <p className="text-[10px] text-muted uppercase tracking-wider">Xác nhận giao thành công</p>
+                        <h2 className="font-bold text-ink font-mono text-sm">{order?.orderCode}</h2>
                     </div>
-                    <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
+                    <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-surface-2">
                         <X size={16} />
                     </button>
                 </div>
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                    <div className="bg-[#FAF7F2] rounded-xl p-3 space-y-1.5">
+                    <div className="bg-canvas rounded-xl p-3 space-y-1.5">
                         <div className="flex justify-between text-xs">
-                            <span className="text-[#8E8878]">Khách hàng</span>
-                            <span className="font-semibold text-[#1C1C1E] text-right max-w-[180px] truncate">{order?.customerName || '—'}</span>
+                            <span className="text-muted">Khách hàng</span>
+                            <span className="font-semibold text-ink text-right max-w-[180px] truncate">{order?.customerName || '—'}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                            <span className="text-[#8E8878]">Tổng tiền</span>
-                            <span className="font-bold text-[#C9A84C]">{formatPrice(order?.finalAmount)}</span>
+                            <span className="text-muted">Tổng tiền</span>
+                            <span className="font-bold text-gold">{formatPrice(order?.finalAmount)}</span>
                         </div>
                     </div>
 
                     {/* Tài xế — chỉ được thêm, không xoá/đổi tài xế đã gán trước đó */}
-                    <div className="bg-[#FAF7F2] rounded-2xl px-3 py-3 border border-[#F0EBE3]">
+                    <div className="bg-canvas rounded-2xl px-3 py-3 border border-line-soft">
                         <AddDriverSection
                             existingInfo={existingDriverInfo}
                             addedInfo={addedDriverInfo}
@@ -652,12 +652,12 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
 
                     {/* Chứng từ */}
                     <div className="space-y-2">
-                        <p className="text-xs font-semibold text-[#1C1C1E]">
-                            Chứng từ nhận hàng <span className="text-[#8E8878] font-normal">(tuỳ chọn)</span>
+                        <p className="text-xs font-semibold text-ink">
+                            Chứng từ nhận hàng <span className="text-muted font-normal">(tuỳ chọn)</span>
                         </p>
                         {preview ? (
                             <div className="relative">
-                                <img src={preview} alt="preview" className="w-full h-36 object-cover rounded-xl border border-[#E8DDD0]" />
+                                <img src={preview} alt="preview" className="w-full h-36 object-cover rounded-xl border border-line" />
                                 <button onClick={() => { setFile(null); setPreview(null); }}
                                     className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white hover:bg-black/70">
                                     <X size={12} />
@@ -665,7 +665,7 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
                             </div>
                         ) : (
                             <button onClick={() => fileInputRef.current?.click()}
-                                className="flex flex-col items-center gap-2 py-5 w-full rounded-xl border-2 border-dashed border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] hover:bg-[#C9A84C]/5 transition-all">
+                                className="flex flex-col items-center gap-2 py-5 w-full rounded-xl border-2 border-dashed border-line text-muted hover:border-gold hover:text-gold hover:bg-gold/5 transition-all">
                                 <Camera size={22} />
                                 <span className="text-xs font-medium">Chụp ảnh / Chọn ảnh</span>
                             </button>
@@ -675,20 +675,20 @@ function ConfirmDeliverModal({ order, onClose, onConfirm, loading }) {
                             onChange={e => handleFile(e.target.files?.[0])} />
                     </div>
 
-                    <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl px-3 py-2 border border-[#E8DDD0]">
-                        Đơn sẽ chuyển sang <span className="font-semibold text-orange-600">Chờ thanh toán</span>.
+                    <p className="text-xs text-muted bg-canvas rounded-xl px-3 py-2 border border-line">
+                        Đơn sẽ chuyển sang <span className="font-semibold text-orange-600 dark:text-orange-300">Chờ thanh toán</span>.
                         {!file && ' Có thể tải chứng từ lên sau.'}
                     </p>
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-[#F0EBE3] flex-shrink-0">
+                <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-line-soft flex-shrink-0">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3] transition-colors font-medium">
+                        className="flex-1 py-2.5 rounded-xl border border-line text-sm text-muted hover:bg-surface-2 transition-colors font-medium">
                         Huỷ
                     </button>
                     <button onClick={() => onConfirm(file || null, addedDriverInfo)} disabled={loading}
-                        className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                        className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                         {loading
                             ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
                             : <><CheckSquare size={14} /> Xác nhận</>}
@@ -936,23 +936,23 @@ export default function WarehouseDeliveryPage() {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#FAF7F2]">
+        <div className="flex flex-col h-full bg-canvas">
 
             {/* ── Header ── */}
-            <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-surface border-b border-line-soft">
                 <div className="flex items-center gap-2 mb-3">
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">Đơn hàng</h1>
-                        <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} đơn</p>
+                        <h1 className="text-lg sm:text-xl font-bold text-ink">Đơn hàng</h1>
+                        <p className="text-[10px] sm:text-xs text-muted">{total} đơn</p>
                     </div>
                     <div className="relative flex-1 max-w-xs">
-                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                         <input type="text" placeholder="Mã đơn, khách hàng, người tạo..."
                             value={searchInput} onChange={e => setSearchInput(e.target.value)}
-                            className="border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white focus:outline-none focus:border-[#C9A84C] w-full" />
+                            className="border border-line rounded-xl pl-9 pr-4 py-2 text-sm bg-surface focus:outline-none focus:border-gold w-full" />
                         {searchInput && (
                             <button onClick={() => setSearchInput('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
                                 <X size={13} />
                             </button>
                         )}
@@ -963,12 +963,12 @@ export default function WarehouseDeliveryPage() {
                             placeholder="Khoảng ngày" align="right" />
                     </div>
                     <button onClick={() => fetchOrders(0)}
-                        className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors shrink-0">
+                        className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors shrink-0">
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                     </button>
                     <button onClick={() => setShowExportModal(true)}
                         title="Xuất báo cáo tài xế"
-                        className="p-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-colors shrink-0">
+                        className="p-2 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 transition-colors shrink-0">
                         <Download size={14} />
                     </button>
                 </div>
@@ -983,23 +983,23 @@ export default function WarehouseDeliveryPage() {
             <div className="flex-1 overflow-auto px-4 sm:px-6 py-4">
                 {loading && orders.length === 0 ? (
                     <div className="flex justify-center py-16">
-                        <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : orders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2">
+                    <div className="flex flex-col items-center justify-center py-16 text-muted gap-2">
                         <Search size={32} strokeWidth={1} />
                         <p className="text-sm">Không có đơn hàng nào</p>
                     </div>
                 ) : (
                     <>
                         {/* Desktop table */}
-                        <div className="hidden md:block bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden shadow-sm">
+                        <div className="hidden md:block bg-surface rounded-2xl border border-line-soft overflow-hidden shadow-sm">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
-                                    <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
+                                    <thead className="bg-canvas border-b border-line-soft">
                                         <tr>
                                             {['Mã đơn','Khách hàng','Người tạo đơn','Tổng tiền','Trạng thái','Ngày tạo','Chứng từ','Hành động'].map(h => (
-                                                <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
+                                                <th key={h} className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
@@ -1009,46 +1009,46 @@ export default function WarehouseDeliveryPage() {
                                             const isPendingPayment = o.status === 'PENDING_PAYMENT';
                                             const canUploadReceipt = isPendingPayment && !o.receiptFileUrl;
                                             return (
-                                                <tr key={o.id} className="border-b border-[#F0EBE3] last:border-0 hover:bg-[#FAF7F2]/50 transition-colors">
+                                                <tr key={o.id} className="border-b border-line-soft last:border-0 hover:bg-canvas/50 transition-colors">
                                                     <td className="px-4 py-3 whitespace-nowrap">
-                                                        <span className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</span>
+                                                        <span className="font-mono text-xs font-bold text-gold">{o.orderCode}</span>
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <p className="text-xs font-medium text-[#1C1C1E] truncate max-w-[140px]">{o.customerName || 'Khách lẻ'}</p>
-                                                        {o.customerPhone && <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>}
+                                                        <p className="text-xs font-medium text-ink truncate max-w-[140px]">{o.customerName || 'Khách lẻ'}</p>
+                                                        {o.customerPhone && <p className="text-[10px] text-muted">{o.customerPhone}</p>}
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex flex-col gap-1 items-start">
-                                                            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0] whitespace-nowrap w-fit">
+                                                            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-surface-2 text-muted border-line whitespace-nowrap w-fit">
                                                                 👤 {o.createdByName || '—'}
                                                             </span>
-                                                            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-sky-50 text-sky-700 border-sky-200 whitespace-nowrap w-fit">
+                                                            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/28 whitespace-nowrap w-fit">
                                                                 🏭 {o.warehouseName || '—'}
                                                             </span>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap">
-                                                        <span className="text-xs font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</span>
+                                                        <span className="text-xs font-bold text-ink">{formatPrice(o.finalAmount)}</span>
                                                     </td>
                                                     <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                                                     <td className="px-4 py-3 whitespace-nowrap">
-                                                        <span className="text-xs text-[#8E8878]">{formatDate(o.createdAt)}</span>
+                                                        <span className="text-xs text-muted">{formatDate(o.createdAt)}</span>
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         {o.receiptFileUrl ? (
                                                             <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer"
                                                                 onClick={e => e.stopPropagation()}
-                                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap hover:bg-emerald-100">
+                                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28 whitespace-nowrap hover:bg-emerald-100 dark:bg-emerald-500/18">
                                                                 📄 Xem
                                                             </a>
                                                         ) : canUploadReceipt ? (
                                                             <button onClick={e => { e.stopPropagation(); handleUploadReceipt(o.id); }}
                                                                 disabled={uploadingId === o.id}
-                                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap hover:bg-amber-100 disabled:opacity-50">
+                                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28 whitespace-nowrap hover:bg-amber-100 dark:bg-amber-500/18 disabled:opacity-50">
                                                                 {uploadingId === o.id ? <BtnSpinner size={9} /> : <><Paperclip size={9} /> Tải lên</>}
                                                             </button>
                                                         ) : (
-                                                            <span className="text-[10px] text-[#C4B9A8]">—</span>
+                                                            <span className="text-[10px] text-faint">—</span>
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-3">
@@ -1056,7 +1056,7 @@ export default function WarehouseDeliveryPage() {
                                                             {o.status === 'PREPARING' && (
                                                                 <DeliverButton order={o}
                                                                     onClick={e => { e.stopPropagation(); openPrepareModal(o); }}
-                                                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors text-[10px] font-semibold whitespace-nowrap">
+                                                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-500/28 hover:bg-purple-100 dark:bg-purple-500/18 transition-colors text-[10px] font-semibold whitespace-nowrap">
                                                                     <Truck size={11} /> Bắt đầu giao hàng
                                                                 </DeliverButton>
                                                             )}
@@ -1064,16 +1064,16 @@ export default function WarehouseDeliveryPage() {
                                                                 disabled={!!invoiceLoadingId}
                                                                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all text-[10px] font-semibold whitespace-nowrap
                                                                     ${invoiceLoadingId === o.id
-                                                                        ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait'
-                                                                        : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20'}`}>
+                                                                        ? 'bg-gold/15 text-gold border-gold/40 cursor-wait'
+                                                                        : 'bg-gold/10 text-gold border-transparent hover:bg-gold/20'}`}>
                                                                 {invoiceLoadingId === o.id
-                                                                    ? <BtnSpinner size={10} colorClass="border-[#C9A84C] !border-t-transparent" />
+                                                                    ? <BtnSpinner size={10} colorClass="border-gold !border-t-transparent" />
                                                                     : <FileText size={11} />}
                                                                 Phiếu đặt hàng
                                                             </button>
                                                             {isDelivering && (
                                                                 <button onClick={e => { e.stopPropagation(); setDeliverTarget(o); }}
-                                                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C9A84C] text-white border border-[#C9A84C] hover:bg-[#B8963E] transition-colors text-[10px] font-semibold whitespace-nowrap">
+                                                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gold text-white border border-gold hover:bg-gold-strong transition-colors text-[10px] font-semibold whitespace-nowrap">
                                                                     <CheckSquare size={11} /> Xác nhận giao
                                                                 </button>
                                                             )}
@@ -1094,53 +1094,53 @@ export default function WarehouseDeliveryPage() {
                                 const isPendingPayment = o.status === 'PENDING_PAYMENT';
                                 const canUploadReceipt = isPendingPayment && !o.receiptFileUrl;
                                 return (
-                                    <div key={o.id} className="bg-white rounded-2xl border border-[#F0EBE3] p-4 space-y-3 shadow-sm">
+                                    <div key={o.id} className="bg-surface rounded-2xl border border-line-soft p-4 space-y-3 shadow-sm">
                                         <div className="flex items-start justify-between gap-2">
                                             <div>
-                                                <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
-                                                <p className="text-sm font-semibold text-[#1C1C1E] mt-0.5">{o.customerName || 'Khách lẻ'}</p>
-                                                {o.customerPhone && <p className="text-[10px] text-[#8E8878]">{o.customerPhone}</p>}
+                                                <p className="font-mono text-xs font-bold text-gold">{o.orderCode}</p>
+                                                <p className="text-sm font-semibold text-ink mt-0.5">{o.customerName || 'Khách lẻ'}</p>
+                                                {o.customerPhone && <p className="text-[10px] text-muted">{o.customerPhone}</p>}
                                             </div>
                                             <div className="text-right shrink-0">
-                                                <p className="text-sm font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</p>
-                                                <p className="text-[10px] text-[#8E8878] mt-0.5">{formatDate(o.createdAt)}</p>
+                                                <p className="text-sm font-bold text-ink">{formatPrice(o.finalAmount)}</p>
+                                                <p className="text-[10px] text-muted mt-0.5">{formatDate(o.createdAt)}</p>
                                             </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#F0EBE3]">
+                                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-line-soft">
                                             <StatusBadge status={o.status} />
-                                            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0]">
+                                            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-surface-2 text-muted border-line">
                                                 👤 {o.orderedByName || o.createdByName || '—'}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2 flex-wrap">
                                             {o.receiptFileUrl ? (
                                                 <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer"
-                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28">
                                                     📄 Xem chứng từ
                                                 </a>
                                             ) : canUploadReceipt ? (
                                                 <button onClick={() => handleUploadReceipt(o.id)} disabled={uploadingId === o.id}
-                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-600 border border-amber-200 disabled:opacity-50">
+                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28 disabled:opacity-50">
                                                     {uploadingId === o.id ? <BtnSpinner size={10} /> : <><Paperclip size={11} /> Tải chứng từ</>}
                                                 </button>
                                             ) : null}
                                             {o.status === 'PREPARING' && (
                                                 <DeliverButton order={o}
                                                     onClick={() => openPrepareModal(o)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors">
+                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-500/28 hover:bg-purple-100 dark:bg-purple-500/18 transition-colors">
                                                     <Truck size={12} /> Bắt đầu giao hàng
                                                 </DeliverButton>
                                             )}
                                             <button onClick={e => { e.stopPropagation(); handleInvoice(o.id, e); }}
                                                 disabled={!!invoiceLoadingId}
-                                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/20">
+                                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-gold/10 text-gold border border-gold/20">
                                                 {invoiceLoadingId === o.id
-                                                    ? <BtnSpinner size={10} colorClass="border-[#C9A84C] !border-t-transparent" />
+                                                    ? <BtnSpinner size={10} colorClass="border-gold !border-t-transparent" />
                                                     : <><FileText size={12} /> Phiếu đặt hàng</>}
                                             </button>
                                             {isDelivering && (
                                                 <button onClick={() => setDeliverTarget(o)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#C9A84C] text-white hover:bg-[#B8963E] transition-colors">
+                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white hover:bg-gold-strong transition-colors">
                                                     <CheckSquare size={12} /> Xác nhận giao
                                                 </button>
                                             )}
@@ -1155,12 +1155,12 @@ export default function WarehouseDeliveryPage() {
                 {totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 mt-4">
                         <button onClick={() => fetchOrders(page - 1)} disabled={page === 0 || loading}
-                            className="p-2 rounded-xl bg-white border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] disabled:opacity-40 transition-colors">
+                            className="p-2 rounded-xl bg-surface border border-line text-muted hover:border-gold disabled:opacity-40 transition-colors">
                             <ChevronLeft size={15} />
                         </button>
-                        <span className="text-sm text-[#8E8878] px-3">{page + 1} / {totalPages}</span>
+                        <span className="text-sm text-muted px-3">{page + 1} / {totalPages}</span>
                         <button onClick={() => fetchOrders(page + 1)} disabled={page >= totalPages - 1 || loading}
-                            className="p-2 rounded-xl bg-white border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] disabled:opacity-40 transition-colors">
+                            className="p-2 rounded-xl bg-surface border border-line text-muted hover:border-gold disabled:opacity-40 transition-colors">
                             <ChevronRight size={15} />
                         </button>
                     </div>
@@ -1173,9 +1173,9 @@ export default function WarehouseDeliveryPage() {
             {/* ── Export Driver Report Modal ── */}
             {showExportModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                    <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
                         {/* Header with gradient */}
-                        <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
+                        <div className="bg-gradient-to-r from-gold to-gold-strong px-5 py-4 flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
                                     <Download size={16} className="text-white" />
@@ -1194,55 +1194,55 @@ export default function WarehouseDeliveryPage() {
                         <div className="p-5 space-y-4">
                             {/* Date range */}
                             <div>
-                                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2.5">
+                                <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2.5">
                                     Khoảng thời gian
                                 </p>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                        <label className="block text-[11px] font-semibold text-[#5C4E3D] flex items-center gap-1">
-                                            <Calendar size={10} className="text-[#C9A84C]" /> Từ ngày
+                                        <label className="block text-[11px] font-semibold text-ink-2 flex items-center gap-1">
+                                            <Calendar size={10} className="text-gold" /> Từ ngày
                                         </label>
                                         <input type="date" value={exportFrom}
                                             onChange={e => setExportFrom(e.target.value)}
-                                            className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/10 transition-all" />
+                                            className="w-full h-9 px-3 rounded-xl border border-line text-sm focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/10 transition-all" />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="block text-[11px] font-semibold text-[#5C4E3D] flex items-center gap-1">
-                                            <Calendar size={10} className="text-[#C9A84C]" /> Đến ngày
+                                        <label className="block text-[11px] font-semibold text-ink-2 flex items-center gap-1">
+                                            <Calendar size={10} className="text-gold" /> Đến ngày
                                         </label>
                                         <input type="date" value={exportTo}
                                             onChange={e => setExportTo(e.target.value)}
                                             min={exportFrom}
-                                            className="w-full h-9 px-3 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/10 transition-all" />
+                                            className="w-full h-9 px-3 rounded-xl border border-line text-sm focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/10 transition-all" />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Filter options */}
                             <div className="space-y-1.5">
-                                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+                                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
                                     Bộ lọc
                                 </p>
-                                <label className="flex items-center gap-3 p-3 rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] cursor-pointer hover:border-[#C9A84C]/50 transition-colors group">
+                                <label className="flex items-center gap-3 p-3 rounded-xl border border-line bg-canvas cursor-pointer hover:border-gold/50 transition-colors group">
                                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0
                                         ${exportExcludeWarehouse
-                                            ? 'bg-[#C9A84C] border-[#C9A84C]'
-                                            : 'border-[#E8DDD0] bg-white group-hover:border-[#C9A84C]/50'}`}
+                                            ? 'bg-gold border-gold'
+                                            : 'border-line bg-surface group-hover:border-gold/50'}`}
                                         onClick={() => setExportExcludeWarehouse(v => !v)}>
                                         {exportExcludeWarehouse && <Check size={11} className="text-white" strokeWidth={3} />}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-[#1C1C1E]">Bỏ tài xế giao tại kho</p>
-                                        <p className="text-[10px] text-[#8E8878] mt-0.5">Chỉ tính tài xế giao đến khách</p>
+                                        <p className="text-xs font-semibold text-ink">Bỏ tài xế giao tại kho</p>
+                                        <p className="text-[10px] text-muted mt-0.5">Chỉ tính tài xế giao đến khách</p>
                                     </div>
                                 </label>
                             </div>
 
                             {/* Summary hint */}
                             {exportFrom && exportTo && (
-                                <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">
+                                <div className="flex items-center gap-2 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/28 rounded-xl px-3 py-2">
                                     <FileText size={12} className="text-sky-500 shrink-0" />
-                                    <p className="text-[11px] text-sky-700">
+                                    <p className="text-[11px] text-sky-700 dark:text-sky-300">
                                         Báo cáo từ <strong>{new Date(exportFrom).toLocaleDateString('vi-VN')}</strong> đến <strong>{new Date(exportTo).toLocaleDateString('vi-VN')}</strong>
                                         {exportExcludeWarehouse && <span className="text-sky-500"> · không gồm giao tại kho</span>}
                                     </p>
@@ -1252,12 +1252,12 @@ export default function WarehouseDeliveryPage() {
 
                         <div className="flex gap-2 px-5 pb-5">
                             <button onClick={() => setShowExportModal(false)}
-                                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3] transition-colors font-medium">
+                                className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-surface-2 transition-colors font-medium">
                                 Hủy
                             </button>
                             <button onClick={handleExportReport}
                                 disabled={exporting || !exportFrom || !exportTo}
-                                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#b8963e] disabled:opacity-40 transition-colors">
+                                className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-gold-strong disabled:opacity-40 transition-colors">
                                 {exporting
                                     ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
                                     : <><Download size={14} /> Xuất Excel</>}

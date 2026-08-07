@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { operatorApi } from '../../api/operatorApi';
 import { useToast } from '../../components/common/Toast';
+import { BRAND } from '../../config/brand';
 import {
   Plus, Trash2, X, ChevronDown, ChevronUp,
   ImagePlus, Box, Search, Edit2, AlertTriangle,
@@ -107,39 +108,39 @@ function ImportProductsModal({ open, onClose, onDone }) {
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE3]">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line-soft">
           <div>
-            <h2 className="text-base font-bold text-[#1C1C1E]">Import sản phẩm</h2>
-            <p className="text-xs text-[#8E8878] mt-0.5">
+            <h2 className="text-base font-bold text-ink">Import sản phẩm</h2>
+            <p className="text-xs text-muted mt-0.5">
               {step === 'upload' ? 'Dùng file Export từ hệ thống — file chỉ import được 1 lần' : 'Kết quả import'}
             </p>
           </div>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={20} /></button>
+          <button onClick={onClose} className="text-muted hover:text-ink"><X size={20} /></button>
         </div>
 
         {step === 'upload' ? (
           <div className="flex flex-col items-center justify-center p-10 gap-5">
-            <div className="w-16 h-16 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center">
               {uploading
-                ? <div className="w-8 h-8 border-[3px] border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-                : <Upload size={28} className="text-[#C9A84C]" />}
+                ? <div className="w-8 h-8 border-[3px] border-gold border-t-transparent rounded-full animate-spin" />
+                : <Upload size={28} className="text-gold" />}
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
-              <p className="text-xs text-[#8E8878] mt-1">Backend dựa vào cột <strong>ID</strong> để cập nhật.</p>
-              <p className="text-xs text-amber-600 mt-1 bg-amber-50 rounded-lg px-3 py-1.5">
+              <p className="text-sm font-semibold text-ink">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
+              <p className="text-xs text-muted mt-1">Backend dựa vào cột <strong>ID</strong> để cập nhật.</p>
+              <p className="text-xs text-amber-600 dark:text-amber-300 mt-1 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-1.5">
                 ⚠ Mỗi file chỉ import được <strong>1 lần</strong>. Export lại nếu muốn import tiếp.
               </p>
               {uploadError && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-left max-w-xs">
+                <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3 text-left max-w-xs">
                   <span className="text-red-500 mt-0.5 shrink-0">✕</span>
-                  <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+                  <p className="text-xs text-red-600 dark:text-red-300 font-medium">{uploadError}</p>
                 </div>
               )}
             </div>
             {!uploading && (
-              <label className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+              <label className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gold text-white text-sm font-semibold cursor-pointer hover:bg-gold-deep transition-colors">
                 <Upload size={15} /> Chọn file .xlsx
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
                   onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
@@ -149,29 +150,29 @@ function ImportProductsModal({ open, onClose, onDone }) {
         ) : (
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-emerald-600">{result?.updated ?? 0}</p>
-                <p className="text-xs text-emerald-700 mt-0.5">Cập nhật thành công</p>
+              <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">{result?.updated ?? 0}</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Cập nhật thành công</p>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3 text-center">
                 <p className="text-2xl font-bold text-red-500">{result?.skipped ?? 0}</p>
-                <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
+                <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">Bỏ qua / lỗi</p>
               </div>
             </div>
             {result?.errors?.length > 0 && (
-              <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-48 overflow-y-auto">
-                <p className="text-xs font-semibold text-red-600 mb-2">Chi tiết lỗi:</p>
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl p-3 max-h-48 overflow-y-auto">
+                <p className="text-xs font-semibold text-red-600 dark:text-red-300 mb-2">Chi tiết lỗi:</p>
                 {result.errors.map((err, i) => (
-                  <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 last:border-0">{err}</p>
+                  <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 dark:border-red-500/18 last:border-0">{err}</p>
                 ))}
               </div>
             )}
             <div className="flex gap-2 pt-2">
               <button onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">
+                className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas">
                 Đóng
               </button>
-              <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830]">
+              <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold cursor-pointer hover:bg-gold-deep">
                 <Upload size={14} /> Import file mới
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
                   onChange={e => { if (e.target.files[0]) { setStep('upload'); handleFile(e.target.files[0]); } }} />
@@ -229,26 +230,26 @@ function ConfirmDeleteModal({ open, onClose, onConfirm, itemName, deleting }) {
   if (!open) return null;
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm">
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0">
               <AlertTriangle size={18} className="text-red-500" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1C1C1E]">Xác nhận xóa</h3>
-              <p className="text-xs text-[#8E8878] mt-0.5">Sản phẩm sẽ bị ẩn khỏi hệ thống</p>
+              <h3 className="text-base font-bold text-ink">Xác nhận xóa</h3>
+              <p className="text-xs text-muted mt-0.5">Sản phẩm sẽ bị ẩn khỏi hệ thống</p>
             </div>
           </div>
-          <p className="text-sm text-[#5C5C5C]">
+          <p className="text-sm text-ink-2">
             Bạn có chắc muốn xóa sản phẩm <strong>"{itemName}"</strong>?
             <br />
-            <span className="text-xs text-[#8E8878]">Các đơn hàng cũ vẫn giữ nguyên thông tin.</span>
+            <span className="text-xs text-muted">Các đơn hàng cũ vẫn giữ nguyên thông tin.</span>
           </p>
         </div>
         <div className="px-6 pb-6 flex gap-2">
           <button onClick={onClose} disabled={deleting}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2] disabled:opacity-50">
+            className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas disabled:opacity-50">
             Huỷ
           </button>
           <button onClick={onConfirm} disabled={deleting}
@@ -275,7 +276,7 @@ function PriceInput({ value, onChange, placeholder }) {
       onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       onChange={e => onChange(e.target.value.replace(/[^0-9]/g, ''))}
       placeholder={placeholder}
-      className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C] text-right" />
+      className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold text-right" />
   );
 }
 
@@ -289,30 +290,30 @@ function IngredientSelect({ ingredients, value, onChange }) {
   return (
     <>
       <div onClick={() => { setSearch(''); setOpen(true); }}
-        className="border border-[#E8DDD0] rounded-lg px-3 py-1.5 text-xs cursor-pointer hover:border-[#C9A84C] truncate">
+        className="border border-line rounded-lg px-3 py-1.5 text-xs cursor-pointer hover:border-gold truncate">
         {selected ? selected.name : 'Chọn nguyên liệu...'}
       </div>
       {open && ReactDOM.createPortal(
         <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg h-[60svh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="bg-surface rounded-2xl w-full max-w-lg h-[60svh] flex flex-col shadow-2xl overflow-hidden">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="font-semibold text-lg">Chọn nguyên liệu</h3>
-              <button onClick={() => { setOpen(false); setSearch(''); }} className="text-[#8E8878] hover:text-red-500">
+              <button onClick={() => { setOpen(false); setSearch(''); }} className="text-muted hover:text-red-500">
                 <X size={20} />
               </button>
             </div>
             <div className="p-4 border-b">
               <div className="relative">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C4B9A8]" />
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Tìm nguyên liệu..."
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E8DDD0] focus:border-[#C9A84C] focus:outline-none text-sm"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-line focus:border-gold focus:outline-none text-sm"
                   autoFocus />
               </div>
             </div>
             <div className="flex-1 overflow-auto p-2">
               {filtered.length === 0
-                ? <div className="flex flex-col items-center justify-center h-full text-[#B0A898]">
+                ? <div className="flex flex-col items-center justify-center h-full text-muted">
                   <Search size={32} className="mb-2 opacity-30" />
                   <p className="text-sm italic">Không tìm thấy</p>
                 </div>
@@ -320,13 +321,13 @@ function IngredientSelect({ ingredients, value, onChange }) {
                   <div key={i.id}
                     onClick={() => { onChange(i.id); setOpen(false); setSearch(''); }}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-colors
-                      ${String(i.id) === String(value) ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30' : 'hover:bg-[#FAF7F2]'}`}>
+                      ${String(i.id) === String(value) ? 'bg-gold/10 border border-gold/30' : 'hover:bg-canvas'}`}>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[#1C1C1E] truncate text-sm">{i.name}</p>
-                      {i.unit && <p className="text-xs text-[#8E8878]">ĐVT: {i.unit}</p>}
+                      <p className="font-medium text-ink truncate text-sm">{i.name}</p>
+                      {i.unit && <p className="text-xs text-muted">ĐVT: {i.unit}</p>}
                     </div>
                     {String(i.id) === String(value) && (
-                      <span className="text-[10px] bg-[#C9A84C] text-white rounded-full px-2 py-0.5 font-semibold shrink-0">Đang chọn</span>
+                      <span className="text-[10px] bg-gold text-white rounded-full px-2 py-0.5 font-semibold shrink-0">Đang chọn</span>
                     )}
                   </div>
                 ))}
@@ -506,13 +507,13 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE3] flex-shrink-0">
-          <h2 className="text-lg font-bold text-[#1C1C1E]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line-soft flex-shrink-0">
+          <h2 className="text-lg font-bold text-ink">
             {form.existingProductId ? 'Sửa sản phẩm' : 'Tạo sản phẩm mới'}
           </h2>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]">
+          <button onClick={onClose} className="text-muted hover:text-ink">
             <X size={20} />
           </button>
         </div>
@@ -523,15 +524,15 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           {/* Ảnh + Tên + Danh mục + Đơn vị */}
           <div className="flex gap-4">
             <div className="flex-shrink-0">
-              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">Ảnh</label>
-              <label className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#E8DDD0] bg-[#FAF7F2]
-                flex items-center justify-center cursor-pointer hover:border-[#C9A84C] transition-all overflow-hidden">
+              <label className="block text-xs font-semibold text-ink-2 mb-1.5">Ảnh</label>
+              <label className="relative w-20 h-20 rounded-xl border-2 border-dashed border-line bg-canvas
+                flex items-center justify-center cursor-pointer hover:border-gold transition-all overflow-hidden">
                 {imgSrc(form.imageUrl) ? (
                   <img src={imgSrc(form.imageUrl)} alt="" className="w-full h-full object-cover" />
                 ) : form._uploading ? (
-                  <div className="w-5 h-5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <div className="flex flex-col items-center gap-1 text-[#C4B9A8]">
+                  <div className="flex flex-col items-center gap-1 text-faint">
                     <ImagePlus size={18} />
                     <span className="text-[10px]">Chọn ảnh</span>
                   </div>
@@ -543,45 +544,45 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
 
             <div className="flex-1 grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                <label className="block text-xs font-semibold text-ink-2 mb-1">
                   Tên sản phẩm <span className="text-red-400">*</span>
                 </label>
                 <input value={form.name} onChange={e => upd({ name: e.target.value })}
-                  placeholder="Ví dụ: Sốt dừa Nhất Nam"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white" />
+                  placeholder={BRAND.examples.sauce.vi}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-surface" />
               </div>
               {/* SKU */}
               <div>
-                <label className="block text-xs font-semibold text-[#5C5C5C] mb-1 flex items-center gap-1">
-                  <Hash size={11} className="text-[#C9A84C]" /> SKU
-                  <span className="font-normal text-[#B0A898]">(mã hàng ngắn)</span>
+                <label className="block text-xs font-semibold text-ink-2 mb-1 flex items-center gap-1">
+                  <Hash size={11} className="text-gold" /> SKU
+                  <span className="font-normal text-muted">(mã hàng ngắn)</span>
                 </label>
                 <div className="flex gap-2">
                   <input value={form.sku} onChange={e => upd({ sku: e.target.value.toUpperCase() })}
                     placeholder="VD: KEM-SDA-001"
-                    className="flex-1 px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white font-mono" />
+                    className="flex-1 px-3 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-surface font-mono" />
                   <button type="button"
                     onClick={() => upd({ sku: generateSKU(form.name, form.categoryName, form.existingProductId) })}
-                    className="px-3 py-2 text-xs rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 font-semibold whitespace-nowrap transition-colors">
+                    className="px-3 py-2 text-xs rounded-xl bg-gold/10 text-gold hover:bg-gold/20 font-semibold whitespace-nowrap transition-colors">
                     Tạo SKU
                   </button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Danh mục</label>
+                  <label className="block text-xs font-semibold text-ink-2 mb-1">Danh mục</label>
                   <select value={form.categoryName} onChange={e => upd({ categoryName: e.target.value })}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold">
                     <option value="">— Chọn —</option>
                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1">
                     Đơn vị tính <span className="text-red-400">*</span>
                   </label>
                   <select value={form.unit} onChange={e => upd({ unit: e.target.value, unitsPerBox: '' })}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold">
                     <option value="">— Chọn —</option>
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
@@ -593,28 +594,28 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           {/* Giá + VAT */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">
+              <label className="block text-xs font-semibold text-ink-2 mb-1">
                 Giá bán lẻ (đ) <span className="text-red-400">*</span>
               </label>
               <PriceInput value={form.basePrice} onChange={val => upd({ basePrice: val })} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">CK tối đa (%)</label>
+              <label className="block text-xs font-semibold text-ink-2 mb-1">CK tối đa (%)</label>
               <input type="number" min={0} max={100} value={form.maxDiscountRate}
                 onChange={e => upd({ maxDiscountRate: e.target.value })}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]" />
+                className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Thuế VAT (%)</label>
+              <label className="block text-xs font-semibold text-ink-2 mb-1">Thuế VAT (%)</label>
               <select value={form.vatRate} onChange={e => upd({ vatRate: Number(e.target.value) })}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
+                className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold">
                 {VAT_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1">Kiểu VAT</label>
+              <label className="block text-xs font-semibold text-ink-2 mb-1">Kiểu VAT</label>
               <select value={form.vatMode} onChange={e => upd({ vatMode: e.target.value })}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-white focus:outline-none focus:border-[#C9A84C]">
+                className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold">
                 <option value="INCLUSIVE">VAT trong giá</option>
                 <option value="EXCLUSIVE">VAT tính thêm</option>
               </select>
@@ -622,36 +623,36 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           </div>
 
           {/* Quy cách thùng */}
-          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+          <div className="rounded-xl border border-line overflow-hidden">
             <button type="button" onClick={() => upd({ unitsPerBox: form.unitsPerBox ? '' : '1' })}
-              className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors">
+              className="w-full flex items-center justify-between px-4 py-3 bg-canvas hover:bg-surface-2 transition-colors">
               <div className="flex items-center gap-2">
-                <Box size={14} className="text-[#C9A84C]" />
-                <span className="text-xs font-semibold text-[#1C1C1E]">Bán theo thùng / quy cách</span>
-                <span className="text-[10px] text-[#B0A898]">(tuỳ chọn)</span>
+                <Box size={14} className="text-gold" />
+                <span className="text-xs font-semibold text-ink">Bán theo thùng / quy cách</span>
+                <span className="text-[10px] text-muted">(tuỳ chọn)</span>
               </div>
-              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.unitsPerBox ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.unitsPerBox ? 'left-4' : 'left-0.5'}`} />
+              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.unitsPerBox ? 'bg-gold' : 'bg-surface-3'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-surface shadow transition-all ${form.unitsPerBox ? 'left-4' : 'left-0.5'}`} />
               </div>
             </button>
             {form.unitsPerBox !== '' && (
-              <div className="px-4 py-3 bg-white border-t border-[#F0EBE3]">
+              <div className="px-4 py-3 bg-surface border-t border-line-soft">
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#5C5C5C] whitespace-nowrap font-medium">1 thùng =</span>
+                    <span className="text-xs text-ink-2 whitespace-nowrap font-medium">1 thùng =</span>
                     <input type="text" inputMode="numeric" value={form.unitsPerBox}
                       onFocus={e => requestAnimationFrame(() => e.target.select())}
                       onMouseUp={e => e.preventDefault()}
                       onChange={e => upd({ unitsPerBox: e.target.value.replace(/[^0-9]/g, '') })}
                       placeholder="12"
-                      className="w-20 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-[#C9A84C] focus:outline-none bg-[#FFFDF7]" />
-                    <span className="text-xs text-[#5C5C5C] font-medium">{form.unit || 'đơn vị'}</span>
+                      className="w-20 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-gold focus:outline-none bg-canvas" />
+                    <span className="text-xs text-ink-2 font-medium">{form.unit || 'đơn vị'}</span>
                   </div>
                   {boxPrice && (
-                    <div className="flex items-center gap-2 bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#EDD98A]">
-                      <Box size={13} className="text-[#C9A84C]" />
-                      <span className="text-xs text-[#8E8878]">Giá 1 thùng:</span>
-                      <span className="text-sm font-bold text-[#C9A84C]">{fmtNum(boxPrice)} đ</span>
+                    <div className="flex items-center gap-2 bg-gold-tint rounded-xl px-3 py-2 border border-gold/40">
+                      <Box size={13} className="text-gold" />
+                      <span className="text-xs text-muted">Giá 1 thùng:</span>
+                      <span className="text-sm font-bold text-gold">{fmtNum(boxPrice)} đ</span>
                     </div>
                   )}
                 </div>
@@ -660,33 +661,33 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           </div>
 
           {/* Giá sỉ */}
-          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
+          <div className="rounded-xl border border-line overflow-hidden">
             <button type="button" onClick={toggleWholesale}
-              className="w-full flex items-center justify-between px-4 py-3 bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors">
+              className="w-full flex items-center justify-between px-4 py-3 bg-canvas hover:bg-surface-2 transition-colors">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[#1C1C1E]">Có giá sỉ (khung giá)</span>
-                <span className="text-[10px] text-[#B0A898]">(tuỳ chọn)</span>
+                <span className="text-xs font-semibold text-ink">Có giá sỉ (khung giá)</span>
+                <span className="text-[10px] text-muted">(tuỳ chọn)</span>
               </div>
-              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.hasWholesale ? 'bg-[#C9A84C]' : 'bg-[#D8D0C8]'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.hasWholesale ? 'left-4' : 'left-0.5'}`} />
+              <div className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.hasWholesale ? 'bg-gold' : 'bg-surface-3'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-surface shadow transition-all ${form.hasWholesale ? 'left-4' : 'left-0.5'}`} />
               </div>
             </button>
             {form.hasWholesale && (
-              <div className="px-4 py-3 bg-white border-t border-[#F0EBE3]">
-                <p className="text-[11px] text-[#8E8878] mb-3">3 khung giá cố định. Sỉ 1 &gt; Sỉ 2 &gt; Sỉ 3.</p>
+              <div className="px-4 py-3 bg-surface border-t border-line-soft">
+                <p className="text-[11px] text-muted mb-3">3 khung giá cố định. Sỉ 1 &gt; Sỉ 2 &gt; Sỉ 3.</p>
                 <div className="space-y-2">
                   {form.tiers.map((tier) => (
                     <div key={tier._id}
-                      className="grid items-center gap-3 bg-[#FDFAF6] rounded-xl px-3 py-2.5 border border-[#F0EBE3]"
+                      className="grid items-center gap-3 bg-canvas rounded-xl px-3 py-2.5 border border-line-soft"
                       style={{ gridTemplateColumns: '80px 1fr 1fr 1fr' }}>
-                      <span className="text-xs font-semibold text-[#5C5C5C]">{tier.tierName}</span>
+                      <span className="text-xs font-semibold text-ink-2">{tier.tierName}</span>
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-[#B0A898]">Từ</span>
-                        <span className="text-xs font-medium text-[#1C1C1E] bg-[#F5F0E8] rounded-lg px-2 py-1">{tier.minQty}</span>
+                        <span className="text-[10px] text-muted">Từ</span>
+                        <span className="text-xs font-medium text-ink bg-surface-2 rounded-lg px-2 py-1">{tier.minQty}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-[#B0A898]">Đến</span>
-                        <span className="text-xs font-medium text-[#1C1C1E] bg-[#F5F0E8] rounded-lg px-2 py-1">
+                        <span className="text-[10px] text-muted">Đến</span>
+                        <span className="text-xs font-medium text-ink bg-surface-2 rounded-lg px-2 py-1">
                           {tier.maxQty != null ? tier.maxQty : '∞'}
                         </span>
                       </div>
@@ -702,7 +703,7 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
                   if (p1 && p2 && p3) {
                     if (!(p1 > p2)) return <p className="text-[11px] text-red-500 mt-2">⚠ Sỉ 1 phải lớn hơn Sỉ 2</p>;
                     if (!(p2 > p3)) return <p className="text-[11px] text-red-500 mt-2">⚠ Sỉ 2 phải lớn hơn Sỉ 3</p>;
-                    return <p className="text-[11px] text-emerald-600 mt-2">✓ Giá hợp lệ</p>;
+                    return <p className="text-[11px] text-emerald-600 dark:text-emerald-300 mt-2">✓ Giá hợp lệ</p>;
                   }
                   return null;
                 })()}
@@ -711,29 +712,29 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           </div>
 
           {/* Nguyên liệu */}
-          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-[#FAF7F2]">
-              <span className="text-xs font-semibold text-[#5C5C5C]">Nguyên liệu ({form.ingredients.length})</span>
-              <button onClick={addIngredient} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:text-[#A07830] font-semibold">
+          <div className="rounded-xl border border-line overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-canvas">
+              <span className="text-xs font-semibold text-ink-2">Nguyên liệu ({form.ingredients.length})</span>
+              <button onClick={addIngredient} className="flex items-center gap-1 text-xs text-gold hover:text-gold-deep font-semibold">
                 <Plus size={12} /> Thêm
               </button>
             </div>
             <div className="px-4 py-3 space-y-2">
               {form.ingredients.map((ing) => (
                 <div key={ing._id}
-                  className="grid gap-2 items-center bg-[#FDFAF6] rounded-xl px-3 py-2 border border-[#F0EBE3]"
+                  className="grid gap-2 items-center bg-canvas rounded-xl px-3 py-2 border border-line-soft"
                   style={{ gridTemplateColumns: '1fr 80px auto 28px' }}>
                   <IngredientSelect ingredients={ingredients} value={ing.ingredientId}
                     onChange={val => setIng(ing._id, { ingredientId: val })} />
                   <input type="number" step="0.001" value={ing.quantity}
                     onChange={e => setIng(ing._id, { quantity: e.target.value })}
-                    className="text-xs text-center rounded-lg border border-[#E8DDD0] py-1.5 focus:outline-none focus:border-[#C9A84C]" />
+                    className="text-xs text-center rounded-lg border border-line py-1.5 focus:outline-none focus:border-gold" />
                   <label className="flex justify-center">
                     <input type="checkbox" checked={ing.canOverride}
                       onChange={e => setIng(ing._id, { canOverride: e.target.checked })}
-                      className="accent-[#C9A84C]" />
+                      className="accent-gold" />
                   </label>
-                  <button onClick={() => removeIngredient(ing._id)} className="text-red-400 hover:text-red-600">
+                  <button onClick={() => removeIngredient(ing._id)} className="text-red-400 hover:text-red-600 dark:text-red-300">
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -743,13 +744,13 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-6 py-4 border-t border-[#F0EBE3] flex gap-3">
+        <div className="flex-shrink-0 px-6 py-4 border-t border-line-soft flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#FAF7F2]">
+            className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-canvas">
             Huỷ
           </button>
           <button onClick={handleSubmit} disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#A07830] text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+            className="flex-1 py-2.5 rounded-xl bg-gold hover:bg-gold-deep text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
             {submitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {submitting ? 'Đang lưu...' : (form.existingProductId ? 'Cập nhật' : 'Tạo sản phẩm')}
           </button>
@@ -766,14 +767,14 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
   const hasBox = product.unitsPerBox && product.unitsPerBox > 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-[#EDE8E0] shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
+    <div className="bg-surface rounded-2xl border border-line-soft shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
       <div className="flex gap-4 p-4">
         {/* Ảnh */}
-        <div className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-[#F0EBE3] bg-[#FAF7F2]">
+        <div className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-line-soft bg-canvas">
           {imgSrc(product.imageUrl)
             ? <img src={imgSrc(product.imageUrl)} alt={product.name} className="w-full h-full object-cover" />
             : <div className="w-full h-full flex items-center justify-center">
-              <Package size={20} className="text-[#D3CFC8]" />
+              <Package size={20} className="text-faint" />
             </div>}
         </div>
 
@@ -781,21 +782,21 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#1C1C1E] truncate">{product.name}</p>
-              <p className="text-xs text-[#8E8878] mt-0.5">
+              <p className="text-sm font-semibold text-ink truncate">{product.name}</p>
+              <p className="text-xs text-muted mt-0.5">
                 {product.category && <span>{product.category} · </span>}
                 {product.unit}
-                {product.sku && <span className="ml-1.5 font-mono bg-[#F5F0E8] text-[#C9A84C] rounded px-1.5 py-0.5 text-[10px]">{product.sku}</span>}
+                {product.sku && <span className="ml-1.5 font-mono bg-surface-2 text-gold rounded px-1.5 py-0.5 text-[10px]">{product.sku}</span>}
               </p>
             </div>
             {/* Action buttons - visible on hover */}
             <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => onEdit(product)}
-                className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all">
+                className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-line text-ink-2 hover:border-gold hover:text-gold transition-all">
                 <Edit2 size={10} /> Sửa
               </button>
               <button onClick={() => onDelete(product)}
-                className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-transparent text-[#C4B9A8] hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all">
+                className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-transparent text-faint hover:border-red-200 dark:border-red-500/28 hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 transition-all">
                 <Trash2 size={10} /> Xóa
               </button>
             </div>
@@ -803,21 +804,21 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
 
           {/* Price row */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-sm font-bold text-[#C9A84C]">
+            <span className="text-sm font-bold text-gold">
               {Number(product.basePrice || 0).toLocaleString('vi-VN')}đ
             </span>
             {hasBox && (
-              <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 flex items-center gap-1">
+              <span className="text-[10px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28 rounded-full px-2 py-0.5 flex items-center gap-1">
                 <Box size={9} /> {product.unitsPerBox} {product.unit}/thùng
               </span>
             )}
             {hasTiers && (
-              <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-200 rounded-full px-2 py-0.5">
+              <span className="text-[10px] bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28 rounded-full px-2 py-0.5">
                 Có giá sỉ
               </span>
             )}
             {product.maxDiscountRate > 0 && (
-              <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5">
+              <span className="text-[10px] bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/28 rounded-full px-2 py-0.5">
                 CK {product.maxDiscountRate}%
               </span>
             )}
@@ -827,7 +828,7 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
           {hasTiers && (
             <div className="flex gap-1.5 mt-2 flex-wrap">
               {product.tiers.map((t, i) => (
-                <span key={i} className="text-[10px] bg-[#FAF7F2] border border-[#EDE8E0] rounded-lg px-2 py-0.5 text-[#5C5C5C]">
+                <span key={i} className="text-[10px] bg-canvas border border-line-soft rounded-lg px-2 py-0.5 text-ink-2">
                   {t.tierName}: {Number(t.price || 0).toLocaleString('vi-VN')}đ
                 </span>
               ))}
@@ -838,12 +839,12 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
           {product.ingredients && product.ingredients.length > 0 && (
             <div className="flex gap-1 mt-2 flex-wrap">
               {product.ingredients.slice(0, 3).map((ing, i) => (
-                <span key={i} className="text-[10px] bg-[#F0F9F0] border border-[#C8E6C9] text-[#4CAF50] rounded-full px-2 py-0.5">
+                <span key={i} className="text-[10px] bg-canvas border border-success/30 text-success rounded-full px-2 py-0.5">
                   {ing.ingredientName}
                 </span>
               ))}
               {product.ingredients.length > 3 && (
-                <span className="text-[10px] text-[#8E8878]">+{product.ingredients.length - 3} khác</span>
+                <span className="text-[10px] text-muted">+{product.ingredients.length - 3} khác</span>
               )}
             </div>
           )}
@@ -979,28 +980,28 @@ export default function OperatorProductBatchPage() {
   }, [products]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#F9F6F1]">
+    <div className="h-full flex flex-col overflow-hidden bg-canvas">
       {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-[#EDE8E0]">
+      <div className="flex-shrink-0 px-6 py-4 bg-surface border-b border-line-soft">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-lg font-bold text-[#1C1C1E]">Sản phẩm</h1>
-            <p className="text-xs text-[#8E8878] mt-0.5">{filtered.length}/{products.length} sản phẩm</p>
+            <h1 className="text-lg font-bold text-ink">Sản phẩm</h1>
+            <p className="text-xs text-muted mt-0.5">{filtered.length}/{products.length} sản phẩm</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Filter danh mục */}
             <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-              className="px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] text-[#5C5C5C]">
+              className="px-3 py-2 text-sm rounded-xl border border-line bg-canvas focus:outline-none focus:border-gold text-ink-2">
               <option value="">Tất cả danh mục</option>
               {catOptions.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
 
             {/* Search */}
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Tìm tên sản phẩm..."
-                className="pl-8 pr-3 py-2 text-sm rounded-xl border border-[#E8DDD0] bg-[#FAF7F2] focus:outline-none focus:border-[#C9A84C] w-48" />
+                className="pl-8 pr-3 py-2 text-sm rounded-xl border border-line bg-canvas focus:outline-none focus:border-gold w-48" />
             </div>
 
             <button
@@ -1008,30 +1009,30 @@ export default function OperatorProductBatchPage() {
               title={sortOrder === 'asc' ? 'Đang sort A→Z' : sortOrder === 'desc' ? 'Đang sort Z→A' : 'Sort theo tên'}
               className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all
     ${sortOrder
-                  ? 'border-[#C9A84C] text-[#C9A84C] bg-[#C9A84C]/10'
-                  : 'border-[#E8DDD0] text-[#5C5C5C] hover:border-[#C9A84C]'}`}>
+                  ? 'border-gold text-gold bg-gold/10'
+                  : 'border-line text-ink-2 hover:border-gold'}`}>
               {sortOrder === 'desc' ? <ArrowDownAZ size={14} /> : <ArrowUpAZ size={14} />}
               {sortOrder === 'asc' ? 'A → Z' : sortOrder === 'desc' ? 'Z → A' : 'Sort tên'}
             </button>
 
             {/* Import */}
             <button onClick={() => setImportModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line text-sm text-ink-2 hover:border-gold transition-all">
               <Upload size={14} /> Import
             </button>
 
             {/* Export */}
             <button onClick={handleExportProducts} disabled={exporting}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line text-sm text-ink-2 hover:border-gold transition-all disabled:opacity-60">
               {exporting
-                ? <span className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                ? <span className="w-3.5 h-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                 : <Download size={14} />}
               Export
             </button>
 
             {/* Tạo mới */}
             <button onClick={handleCreate}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#A07830] text-white text-sm font-semibold transition-colors">
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gold hover:bg-gold-deep text-white text-sm font-semibold transition-colors">
               <Plus size={15} /> Tạo mới
             </button>
           </div>
@@ -1042,17 +1043,17 @@ export default function OperatorProductBatchPage() {
       <div className="flex-1 overflow-auto p-5">
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-[#B0A898]">
+          <div className="flex flex-col items-center justify-center h-40 text-muted">
             <Package size={36} className="mb-2 opacity-30" />
             <p className="text-sm italic">
               {products.length === 0 ? 'Chưa có sản phẩm nào' : 'Không tìm thấy sản phẩm'}
             </p>
             {products.length === 0 && (
               <button onClick={handleCreate}
-                className="mt-3 px-4 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-medium">
+                className="mt-3 px-4 py-2 rounded-xl bg-gold text-white text-sm font-medium">
                 Tạo sản phẩm đầu tiên
               </button>
             )}

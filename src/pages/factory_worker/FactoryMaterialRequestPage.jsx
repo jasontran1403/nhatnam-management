@@ -27,19 +27,19 @@ function CountdownBadge({ targetMs, label }) {
     return () => clearInterval(t2);
   }, [targetMs]);
   if (!info) return null;
-  const cls = { red: 'bg-red-100 text-red-700', yellow: 'bg-amber-100 text-amber-700', normal: 'bg-emerald-50 text-emerald-700' }[info.color];
+  const cls = { red: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300', yellow: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300', normal: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' }[info.color];
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cls}`}>{effectiveLabel}: {info.label}</span>;
 }
 
 function cardBg(req) {
-  if (req.status === 'PARTIALLY_RECEIVED') return 'bg-amber-50 border-amber-200';
-  if (req.status === 'RECEIVED' || req.status === 'COMPLETED') return 'bg-white';
-  if (!req.estimatedDelivery) return 'bg-white';
+  if (req.status === 'PARTIALLY_RECEIVED') return 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28';
+  if (req.status === 'RECEIVED' || req.status === 'COMPLETED') return 'bg-surface';
+  if (!req.estimatedDelivery) return 'bg-surface';
   const info = countdownInfo(req.estimatedDelivery);
-  if (!info) return 'bg-white';
-  if (info.color === 'red') return 'bg-red-50 border-red-200';
-  if (info.color === 'yellow') return 'bg-amber-50 border-amber-200';
-  return 'bg-white';
+  if (!info) return 'bg-surface';
+  if (info.color === 'red') return 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/28';
+  if (info.color === 'yellow') return 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28';
+  return 'bg-surface';
 }
 
 // ── Material search dropdown — dùng Portal để không bị clip bởi Modal ─────────
@@ -111,22 +111,22 @@ function MaterialSearchInput({ value, onChange, availableMaterials }) {
         width: dropPos.width,
         zIndex: 99999,
       }}
-      className="bg-white border border-[#E8DDD0] rounded-xl shadow-xl max-h-52 overflow-y-auto"
+      className="bg-surface border border-line rounded-xl shadow-xl max-h-52 overflow-y-auto"
     >
       {availableMaterials.length === 0 && !q ? (
-        <div className="px-3 py-2 text-xs text-[#8E8878] italic">{t('production', 'mr_all_materials_selected')}</div>
+        <div className="px-3 py-2 text-xs text-muted italic">{t('production', 'mr_all_materials_selected')}</div>
       ) : filtered.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-[#8E8878] italic">{t('production', 'mr_material_not_in_catalog')}</div>
+        <div className="px-3 py-2 text-xs text-muted italic">{t('production', 'mr_material_not_in_catalog')}</div>
       ) : (
         filtered.map((m) => (
           <button
             key={m.id}
-            className="w-full text-left px-3 py-2.5 hover:bg-[#FAF7F2] transition-colors border-b border-black/5 last:border-0"
+            className="w-full text-left px-3 py-2.5 hover:bg-canvas transition-colors border-b border-hairline last:border-0"
             onMouseDown={e => e.preventDefault()}
             onClick={() => select(m)}
           >
-            <p className="text-sm text-[#1C1C1E] font-medium">{m.name}</p>
-            <p className="text-xs text-[#8E8878]">
+            <p className="text-sm text-ink font-medium">{m.name}</p>
+            <p className="text-xs text-muted">
               {m.unit}{m.orderUnit && m.orderUnit !== m.unit ? ` · ĐVT đặt: ${m.orderUnit}` : ''}
             </p>
           </button>
@@ -159,50 +159,50 @@ function RequestCard({ req, onReceive }) {
   const bg = cardBg(req);
 
   return (
-    <div className={`rounded-2xl border ${bg} border-black/5 shadow-sm overflow-hidden`}>
+    <div className={`rounded-2xl border ${bg} border-hairline shadow-sm overflow-hidden`}>
       <button className="w-full text-left px-5 py-4" onClick={() => setExpanded(e => !e)}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-sm font-bold text-[#1C1C1E]">{req.requestCode}</span>
+              <span className="font-mono text-sm font-bold text-ink">{req.requestCode}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.cls}`}>{cfg.label}</span>
               {req.productionFactoryName && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
                   {req.productionFactoryName}
                 </span>
               )}
             </div>
-            <p className="text-xs text-[#8E8878] mt-1">{req.itemCount} {t('production', 'mr_item_count_suffix')} · {t('production', 'mr_created_at_prefix')} {fmtTs(req.createdAt)}</p>
+            <p className="text-xs text-muted mt-1">{req.itemCount} {t('production', 'mr_item_count_suffix')} · {t('production', 'mr_created_at_prefix')} {fmtTs(req.createdAt)}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
-              {req.requiredBy && <span className="text-xs text-[#8E8878]">{t('production', 'mr_required_by_label')}: {fmtDateTime(req.requiredBy)}</span>}
+              {req.requiredBy && <span className="text-xs text-muted">{t('production', 'mr_required_by_label')}: {fmtDateTime(req.requiredBy)}</span>}
               {req.status === 'ORDERED' && req.estimatedDelivery && <CountdownBadge targetMs={req.estimatedDelivery} />}
             </div>
           </div>
-          {expanded ? <ChevronUp size={16} className="text-[#8E8878] flex-shrink-0 mt-1" /> : <ChevronDown size={16} className="text-[#8E8878] flex-shrink-0 mt-1" />}
+          {expanded ? <ChevronUp size={16} className="text-muted flex-shrink-0 mt-1" /> : <ChevronDown size={16} className="text-muted flex-shrink-0 mt-1" />}
         </div>
       </button>
 
       {expanded && req.items && (
-        <div className="px-5 pb-4 border-t border-black/5">
+        <div className="px-5 pb-4 border-t border-hairline">
           <div className="mt-3 space-y-2">
             {req.items.map((item, i) => (
               <div key={item.id || i} className="flex items-start justify-between text-sm gap-2">
-                <span className="text-[#1C1C1E]">{item.materialName}</span>
+                <span className="text-ink">{item.materialName}</span>
                 <div className="text-right">
                   <div>
-                    <span className="text-[#1C1C1E] font-medium">{item.qtyRequested} {item.unit}</span>
+                    <span className="text-ink font-medium">{item.qtyRequested} {item.unit}</span>
                     {item.qtyReceived != null && (
-                      <span className="ml-2 text-emerald-600 text-xs">({t('production', 'mr_actual_received_label')}: {item.qtyReceived} {item.unit})</span>
+                      <span className="ml-2 text-emerald-600 dark:text-emerald-300 text-xs">({t('production', 'mr_actual_received_label')}: {item.qtyReceived} {item.unit})</span>
                     )}
                     {Number(item.qtyOutstanding) > 0 && item.receiveStatus === 'PARTIAL' && (
-                      <span className="ml-2 text-amber-600 text-xs font-medium">còn {item.qtyOutstanding} {item.unit}</span>
+                      <span className="ml-2 text-amber-600 dark:text-amber-300 text-xs font-medium">còn {item.qtyOutstanding} {item.unit}</span>
                     )}
                     {item.receiveStatus === 'CLOSED_SHORT' && (
                       <span className="ml-2 text-red-500 text-xs font-medium">chốt thiếu</span>
                     )}
                   </div>
                   {item.weighingLogs?.length > 0 && (
-                    <p className="text-[11px] text-[#8E8878] mt-0.5">
+                    <p className="text-[11px] text-muted mt-0.5">
                       {item.weighingLogs.length} {t('production', 'mr_weighing_count_suffix')}: {item.weighingLogs.join(' + ')} = {item.qtyReceived} {item.unit}
                     </p>
                   )}
@@ -211,15 +211,15 @@ function RequestCard({ req, onReceive }) {
             ))}
           </div>
           {req.vendors?.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-black/5">
-              <p className="text-xs font-medium text-[#8E8878] mb-1">{t('production', 'mr_vendor_section_label')}</p>
+            <div className="mt-3 pt-3 border-t border-hairline">
+              <p className="text-xs font-medium text-muted mb-1">{t('production', 'mr_vendor_section_label')}</p>
               {req.vendors.map((v, i) => (
-                <div key={v.id || i} className="text-xs text-[#1C1C1E] py-0.5">
+                <div key={v.id || i} className="text-xs text-ink py-0.5">
                   <div>{v.vendorName}{v.contactPhone ? ` · ${v.contactPhone}` : ''}</div>
                   {(v.importReceiptInfo || v.serialImei) && (
-                    <div className="flex flex-wrap gap-x-3 mt-0.5 text-[11px] text-[#8E8878]">
-                      {v.importReceiptInfo && <span>Phiếu nhập: <span className="text-[#1C1C1E]">{v.importReceiptInfo}</span></span>}
-                      {v.serialImei && <span>Serial/IMEI: <span className="text-[#1C1C1E]">{v.serialImei}</span></span>}
+                    <div className="flex flex-wrap gap-x-3 mt-0.5 text-[11px] text-muted">
+                      {v.importReceiptInfo && <span>Phiếu nhập: <span className="text-ink">{v.importReceiptInfo}</span></span>}
+                      {v.serialImei && <span>Serial/IMEI: <span className="text-ink">{v.serialImei}</span></span>}
                     </div>
                   )}
                 </div>
@@ -238,7 +238,7 @@ function RequestCard({ req, onReceive }) {
           )}
           {req.status === 'RECEIVED' && (
             <>
-              <p className="mt-3 text-xs text-emerald-600 font-medium">
+              <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-300 font-medium">
                 ✓ {t('production', 'mr_received_at_prefix')} {fmtDateTime(req.receivedAt)}
                 {req.receipts?.length > 1 ? ` · ${req.receipts.length} đợt` : ''}
                 {req.receiveNotes ? ` · ${req.receiveNotes}` : ''}
@@ -279,36 +279,36 @@ function WeighingInput({ qtyRequested, unit, weighings, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'mr_weighing_count_label')} ({unit})</p>
+        <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t('production', 'mr_weighing_count_label')} ({unit})</p>
         <button type="button" onClick={setMax}
-          className="text-xs font-semibold text-[#C9A84C] hover:underline px-2 py-0.5">
+          className="text-xs font-semibold text-gold hover:underline px-2 py-0.5">
           {t('production', 'mr_max_btn')} ({qtyRequested})
         </button>
       </div>
       <div className="space-y-1.5">
         {weighings.map((w, idx) => (
           <div key={idx} className="flex items-center gap-1.5">
-            <span className="text-xs text-[#8E8878] w-5 flex-shrink-0 text-center">{idx + 1}.</span>
+            <span className="text-xs text-muted w-5 flex-shrink-0 text-center">{idx + 1}.</span>
             <input
               type="number" min="0" step="0.001" value={w}
               onChange={e => setWeighing(idx, e.target.value)}
               className={inputCls + ' flex-1'} placeholder={`${t('production', 'mr_weighing_row_placeholder')} ${idx + 1}`} />
             <button type="button" onClick={() => removeRow(idx)}
-              className="text-[#8E8878] hover:text-red-500 flex-shrink-0 p-1">
+              className="text-muted hover:text-red-500 flex-shrink-0 p-1">
               <X size={14} />
             </button>
           </div>
         ))}
       </div>
       <button type="button" onClick={addRow}
-        className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-[#1A2B1A] bg-[#E8F0E8] px-2.5 py-1.5 rounded-lg hover:bg-[#D8E8D8] transition-colors">
+        className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-forest bg-surface-2 px-2.5 py-1.5 rounded-lg hover:bg-surface-3 transition-colors">
         <Plus size={12} /> {t('production', 'mr_add_weighing_row')}
       </button>
-      <div className="mt-2 flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-[#E8DDD0]">
-        <span className="text-xs text-[#8E8878]">
+      <div className="mt-2 flex items-center justify-between bg-surface rounded-lg px-3 py-2 border border-line">
+        <span className="text-xs text-muted">
           {t('production', 'mr_total_label')} {validCount > 0 ? `(${validCount} ${t('production', 'mr_weighing_count_suffix')})` : ''}
         </span>
-        <span className="text-sm font-bold text-[#1C1C1E]">{total.toFixed(3).replace(/\.?0+$/, '')} {unit}</span>
+        <span className="text-sm font-bold text-ink">{total.toFixed(3).replace(/\.?0+$/, '')} {unit}</span>
       </div>
     </div>
   );
@@ -448,8 +448,8 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
     <Modal open onClose={close} title={`Nhận hàng — ${req.requestCode}`} size="lg">
       <div className="space-y-4" style={{ minHeight: 520 }}>
 
-        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-          <p className="text-xs text-amber-800">
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/18 rounded-xl px-3 py-2">
+          <p className="text-xs text-amber-800 dark:text-amber-300">
             Nhập số lượng <b>vừa nhận ở đợt này</b>. NCC giao thiếu thì cứ lưu, đợt sau giao bù lưu tiếp.
             Chỉ bấm <b>Xác nhận đã giao xong</b> khi không còn hàng về nữa.
           </p>
@@ -457,26 +457,26 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
 
         {/* ── Lịch sử các đợt đã nhận ───────────────────────────────────────── */}
         {req.receipts?.length > 0 && (
-          <div className="rounded-xl border border-[#E8DDD0] overflow-hidden">
-            <p className="px-3 py-2 bg-[#F0EBE3] text-xs font-semibold text-[#5C4E3D]">
+          <div className="rounded-xl border border-line overflow-hidden">
+            <p className="px-3 py-2 bg-surface-2 text-xs font-semibold text-ink-2">
               Đã nhận {req.receipts.length} đợt
             </p>
-            <div className="divide-y divide-black/5">
+            <div className="divide-y divide-hairline">
               {req.receipts.map(r => (
                 <div key={r.id} className="px-3 py-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#1C1C1E]">Đợt {r.sequenceNo}</span>
-                    <span className="text-[11px] text-[#8E8878]">
+                    <span className="text-xs font-bold text-ink">Đợt {r.sequenceNo}</span>
+                    <span className="text-[11px] text-muted">
                       {fmtDateTime(r.receivedAt)}{r.receivedByName ? ` · ${r.receivedByName}` : ''}
                     </span>
                   </div>
                   {r.items?.map(li => (
-                    <div key={li.id} className="flex justify-between text-[11px] text-[#5C4E3D] mt-0.5">
+                    <div key={li.id} className="flex justify-between text-[11px] text-ink-2 mt-0.5">
                       <span>{li.materialName}{li.vendorName ? ` · ${li.vendorName}` : ''}</span>
                       <span className="font-medium">+{fmtQty(li.qty)} {li.receivedUnit}</span>
                     </div>
                   ))}
-                  {r.notes && <p className="text-[11px] text-[#8E8878] italic mt-1">{r.notes}</p>}
+                  {r.notes && <p className="text-[11px] text-muted italic mt-1">{r.notes}</p>}
                 </div>
               ))}
             </div>
@@ -484,11 +484,11 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
         )}
 
         {/* ── Form nhập đợt mới, nhóm theo NCC ──────────────────────────────── */}
-        <p className="text-sm font-semibold text-[#1C1C1E]">Đợt {nextSeq} — nhập hàng vừa về</p>
+        <p className="text-sm font-semibold text-ink">Đợt {nextSeq} — nhập hàng vừa về</p>
 
         {groups.map(g => (
           <div key={g.key} className="space-y-2">
-            <p className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider">{g.name}</p>
+            <p className="text-xs font-bold text-gold uppercase tracking-wider">{g.name}</p>
 
             {g.rows.map(({ it: item, idx }) => {
               const done = num(item.qtyReceived);
@@ -509,26 +509,26 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
               const overNoLeft = batch > 0 && left <= 0;
 
               return (
-                <div key={item.id || idx} className={`rounded-xl p-3 ${closed ? 'bg-red-50/60' : 'bg-[#FAF7F2]'}`}>
+                <div key={item.id || idx} className={`rounded-xl p-3 ${closed ? 'bg-red-50/60 dark:bg-red-500/6' : 'bg-canvas'}`}>
                   <div className="flex items-center justify-between mb-1 gap-2">
-                    <span className="text-sm font-medium text-[#1C1C1E]">{item.materialName}</span>
-                    {full && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Đã đủ</span>}
-                    {closed && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">Chốt thiếu</span>}
+                    <span className="text-sm font-medium text-ink">{item.materialName}</span>
+                    {full && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 font-semibold">Đã đủ</span>}
+                    {closed && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300 font-semibold">Chốt thiếu</span>}
                   </div>
 
                   {/* Đặt / Đã nhận / Còn lại */}
                   <div className="grid grid-cols-3 gap-2 mb-2 text-center">
-                    <div className="bg-white rounded-lg py-1 border border-[#E8DDD0]">
-                      <p className="text-[10px] text-[#8E8878]">Đặt</p>
-                      <p className="text-xs font-bold text-[#1C1C1E]">{fmtQty(item.qtyRequested)} {item.unit}</p>
+                    <div className="bg-surface rounded-lg py-1 border border-line">
+                      <p className="text-[10px] text-muted">Đặt</p>
+                      <p className="text-xs font-bold text-ink">{fmtQty(item.qtyRequested)} {item.unit}</p>
                     </div>
-                    <div className="bg-white rounded-lg py-1 border border-[#E8DDD0]">
-                      <p className="text-[10px] text-[#8E8878]">Đã nhận</p>
-                      <p className="text-xs font-bold text-emerald-600">{done ? fmtQty(done) : '—'}</p>
+                    <div className="bg-surface rounded-lg py-1 border border-line">
+                      <p className="text-[10px] text-muted">Đã nhận</p>
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-300">{done ? fmtQty(done) : '—'}</p>
                     </div>
-                    <div className="bg-white rounded-lg py-1 border border-[#E8DDD0]">
-                      <p className="text-[10px] text-[#8E8878]">Còn lại</p>
-                      <p className={`text-xs font-bold ${left > 0 ? 'text-amber-600' : 'text-[#8E8878]'}`}>
+                    <div className="bg-surface rounded-lg py-1 border border-line">
+                      <p className="text-[10px] text-muted">Còn lại</p>
+                      <p className={`text-xs font-bold ${left > 0 ? 'text-amber-600 dark:text-amber-300' : 'text-muted'}`}>
                         {left > 0 ? fmtQty(left) : '—'}
                       </p>
                     </div>
@@ -540,9 +540,9 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
                     <>
                       {hasOrderUnit && (
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs text-[#8E8878]">{t('production', 'mr_received_unit')}:</span>
+                          <span className="text-xs text-muted">{t('production', 'mr_received_unit')}:</span>
                           <select
-                            className="text-xs px-2 py-1 rounded-lg border border-[#E8DDD0] bg-white text-[#1C1C1E] disabled:opacity-60"
+                            className="text-xs px-2 py-1 rounded-lg border border-line bg-surface text-ink disabled:opacity-60"
                             value={item.receivedUnitType}
                             disabled={item.unitLocked}
                             onChange={e => setItem(idx, 'receivedUnitType', e.target.value)}>
@@ -550,10 +550,10 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
                             <option value="ORDER">{fm.orderUnit} (đặt hàng)</option>
                           </select>
                           {item.unitLocked && (
-                            <span className="text-[10px] text-[#8E8878] italic">đã khoá theo đợt 1</span>
+                            <span className="text-[10px] text-muted italic">đã khoá theo đợt 1</span>
                           )}
                           {stockQty != null && batch > 0 && (
-                            <span className="text-xs text-[#C9A84C] font-medium">
+                            <span className="text-xs text-gold font-medium">
                               → {fmtQty(stockQty)} {fm.unit} vào kho
                             </span>
                           )}
@@ -568,7 +568,7 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
                       />
 
                       {(over || overNoLeft) && (
-                        <p className="mt-1.5 text-xs font-medium text-amber-600">
+                        <p className="mt-1.5 text-xs font-medium text-amber-600 dark:text-amber-300">
                           Giao dư {fmtQty(batch - Math.max(left, 0))} {displayUnit} so với số còn lại — vẫn lưu được.
                         </p>
                       )}
@@ -579,7 +579,7 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
                             <DatePicker value={item.expiryDate} onChange={v => setItem(idx, 'expiryDate', v)}
                               placeholder={t('production', 'mr_expiry_placeholder')} minDate={new Date()} />
                           </Field>
-                          <p className="text-[10px] text-[#8E8878] mt-0.5">HSD của riêng lô đợt này.</p>
+                          <p className="text-[10px] text-muted mt-0.5">HSD của riêng lô đợt này.</p>
                         </div>
                       )}
                     </>
@@ -597,8 +597,8 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
 
         {/* ── Lý do nhận thiếu (chỉ khi chốt mà còn thiếu) ──────────────────── */}
         {askShortage && !allFulfilled && (
-          <div className="bg-red-50 border border-red-100 rounded-xl p-3 space-y-2">
-            <p className="text-xs font-semibold text-red-600">
+          <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-red-600 dark:text-red-300">
               Còn thiếu: {shortNames.join(', ')}
             </p>
             <textarea rows={2} value={shortageReason} onChange={e => setShortageReason(e.target.value)}
@@ -616,7 +616,7 @@ function ReceiveModal({ req: initialReq, allMaterials = [], onClose, onDone }) {
           </PrimaryButton>
         </div>
         {(req.receipts?.length || 0) === 0 && (
-          <p className="text-[11px] text-[#8E8878] text-center">
+          <p className="text-[11px] text-muted text-center">
             Phải lưu ít nhất 1 đợt nhận trước khi xác nhận đã giao xong.
           </p>
         )}
@@ -702,7 +702,7 @@ function CreateModal({ onClose, onDone, allMaterials }) {
       <div className="space-y-4" style={{ minHeight: 420 }}>
         <Field label={t('production', 'dash_plan_factory')} required>
           {factories.length <= 1 ? (
-            <div className={`${inputCls} bg-[#FAF7F2] text-[#8E8878]`} style={{ cursor: 'default' }}>
+            <div className={`${inputCls} bg-canvas text-muted`} style={{ cursor: 'default' }}>
               {factories[0]?.name || 'Bạn chưa được gán xưởng nào'}
             </div>
           ) : (
@@ -720,16 +720,16 @@ function CreateModal({ onClose, onDone, allMaterials }) {
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-[#1C1C1E]">{t('production', 'mr_material_list_label')}</p>
+            <p className="text-sm font-medium text-ink">{t('production', 'mr_material_list_label')}</p>
             <button onClick={addItem}
-              className="flex items-center gap-1 text-xs text-[#1A2B1A] font-semibold bg-[#E8F0E8] px-2.5 py-1.5 rounded-lg hover:bg-[#D8E8D8] transition-colors">
+              className="flex items-center gap-1 text-xs text-forest font-semibold bg-surface-2 px-2.5 py-1.5 rounded-lg hover:bg-surface-3 transition-colors">
               <Plus size={12} /> {t('production', 'mr_add_row')}
             </button>
           </div>
 
           <div className="space-y-2">
             {items.map((item, i) => (
-              <div key={i} className="bg-[#FAF7F2] rounded-xl p-3">
+              <div key={i} className="bg-canvas rounded-xl p-3">
                 <div className="flex items-center gap-2" style={{ paddingRight: 10 }}>
                   {/* Tên nguyên liệu — chiếm hết space */}
                   <div className="flex-1 min-w-0">
@@ -751,7 +751,7 @@ function CreateModal({ onClose, onDone, allMaterials }) {
                   {/* Chọn ĐVT: lưu kho hoặc đặt hàng */}
                   {item.material?.orderUnit && item.material.orderUnit !== item.material.unit ? (
                     <select
-                      className="text-xs px-1.5 py-1 rounded-lg border border-[#E8DDD0] bg-white text-[#1C1C1E] flex-shrink-0"
+                      className="text-xs px-1.5 py-1 rounded-lg border border-line bg-surface text-ink flex-shrink-0"
                       style={{ width: 64 }}
                       value={item.orderUnitType}
                       onChange={e => setItemField(i, 'orderUnitType', e.target.value)}>
@@ -759,12 +759,12 @@ function CreateModal({ onClose, onDone, allMaterials }) {
                       <option value="ORDER">{item.material.orderUnit}</option>
                     </select>
                   ) : item.material?.unit ? (
-                    <span className="text-xs text-[#8E8878] font-medium flex-shrink-0 w-7">
+                    <span className="text-xs text-muted font-medium flex-shrink-0 w-7">
                       {item.material.unit}
                     </span>
                   ) : null}
                   {items.length > 1 && (
-                    <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 flex-shrink-0">
+                    <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 dark:text-red-300 flex-shrink-0">
                       <X size={16} />
                     </button>
                   )}
@@ -827,22 +827,22 @@ export default function FactoryMaterialRequestPage() {
   const requests = data?.content || [];
 
   return (
-    <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
+    <div className="p-4 space-y-4 bg-surface-2 min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production', 'mr_page_title')}</h1>
+        <h1 className="text-xl font-bold text-ink">{t('production', 'mr_page_title')}</h1>
         {canCreate && (
           <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-[#1A2B1A] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#243524] transition-colors">
+            className="flex items-center gap-2 bg-forest-deep text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-forest-mid transition-colors">
             <Plus size={16} /> {t('production', 'mr_create_btn')}
           </button>
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 space-y-3">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 space-y-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-canvas placeholder-muted"
             placeholder={t('production', 'mr_search_placeholder')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
@@ -858,7 +858,7 @@ export default function FactoryMaterialRequestPage() {
           ].map(s => (
             <button key={s.val} onClick={() => { setStatusFilter(s.val); setPage(0); }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
-                ${statusFilter === s.val ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#1A2B1A]'}`}>
+                ${statusFilter === s.val ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-line hover:border-forest-deep'}`}>
               {s.label}
             </button>
           ))}
@@ -870,9 +870,9 @@ export default function FactoryMaterialRequestPage() {
       {loading
         ? <div className="space-y-3">{[1,2,3].map(i => <CardSkeleton key={i} />)}</div>
         : requests.length === 0
-          ? <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-              <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">{t('production', 'mr_empty')}</p>
+          ? <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+              <Package size={32} className="mx-auto text-muted mb-2" />
+              <p className="text-muted text-sm">{t('production', 'mr_empty')}</p>
             </div>
           : <div className="space-y-3">
               {requests.map(req => <RequestCard key={req.id} req={req} onReceive={setReceiveTarget} />)}
@@ -882,10 +882,10 @@ export default function FactoryMaterialRequestPage() {
       {data?.totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production', 'mr_prev_page')}</button>
-          <span className="px-4 py-2 text-sm text-[#8E8878]">{page + 1} / {data.totalPages}</span>
+            className="px-4 py-2 rounded-xl border border-line text-sm disabled:opacity-40 hover:bg-surface-2">{t('production', 'mr_prev_page')}</button>
+          <span className="px-4 py-2 text-sm text-muted">{page + 1} / {data.totalPages}</span>
           <button disabled={page >= data.totalPages - 1} onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production', 'mr_next_page')}</button>
+            className="px-4 py-2 rounded-xl border border-line text-sm disabled:opacity-40 hover:bg-surface-2">{t('production', 'mr_next_page')}</button>
         </div>
       )}
 

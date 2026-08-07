@@ -43,17 +43,17 @@ function DeadlineBadge({ deadlineMillis, deadlineStr, onExtend }) {
 
   let bg, label;
   if (days < 0) {
-    bg = 'bg-red-100 text-red-700 border-red-300';
+    bg = 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/35';
     label = `Quá hạn ${Math.abs(days)} ngày`;
   } else if (days <= 3) {
-    bg = 'bg-red-50 text-red-600 border-red-200';
+    bg = 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28';
     label = `Còn ${days} ngày (${deadlineStr})`;
   } else if (days <= 6) {
-    bg = 'bg-orange-50 text-orange-600 border-orange-200';
+    bg = 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 border-orange-200 dark:border-orange-500/28';
     label = `Còn ${days} ngày (${deadlineStr})`;
   } else {
     // 👉 đổi từ xám → xanh dương
-    bg = 'bg-blue-50 text-blue-600 border-blue-200';
+    bg = 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-500/28';
     label = `Còn ${days} ngày (${deadlineStr})`;
   }
 
@@ -72,24 +72,24 @@ function DeadlineBadge({ deadlineMillis, deadlineStr, onExtend }) {
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, accent = 'gold', sub }) {
   const colors = {
-    gold: { bg: 'bg-[#C9A84C]/10', icon: 'text-[#C9A84C]' },
-    green: { bg: 'bg-emerald-50', icon: 'text-emerald-500' },
-    blue: { bg: 'bg-blue-50', icon: 'text-blue-500' },
-    orange: { bg: 'bg-orange-50', icon: 'text-orange-500' },
-    purple: { bg: 'bg-purple-50', icon: 'text-purple-500' },
-    red: { bg: 'bg-red-50', icon: 'text-red-500' },
+    gold: { bg: 'bg-gold/10', icon: 'text-gold' },
+    green: { bg: 'bg-emerald-50 dark:bg-emerald-500/10', icon: 'text-emerald-500' },
+    blue: { bg: 'bg-blue-50 dark:bg-blue-500/10', icon: 'text-blue-500' },
+    orange: { bg: 'bg-orange-50 dark:bg-orange-500/10', icon: 'text-orange-500' },
+    purple: { bg: 'bg-purple-50 dark:bg-purple-500/10', icon: 'text-purple-500' },
+    red: { bg: 'bg-red-50 dark:bg-red-500/10', icon: 'text-red-500' },
   };
   const c = colors[accent] || colors.gold;
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm p-4">
+    <div className="bg-surface rounded-2xl border border-line-soft shadow-sm p-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] sm:text-xs text-[#8E8878] font-medium">{label}</p>
+        <p className="text-[10px] sm:text-xs text-muted font-medium">{label}</p>
         <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${c.bg}`}>
           <Icon size={13} className={c.icon} />
         </div>
       </div>
-      <p className="text-xl sm:text-2xl font-bold text-[#1C1C1E] tabular-nums">{value}</p>
-      {sub && <p className="text-[10px] text-[#8E8878] mt-0.5">{sub}</p>}
+      <p className="text-xl sm:text-2xl font-bold text-ink tabular-nums">{value}</p>
+      {sub && <p className="text-[10px] text-muted mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -104,15 +104,15 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
 
   // ── Status config ─────────────────────────────────────────────────────────────
   const STATUS_MAP = {
-    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50   text-amber-600   border-amber-200', icon: Clock },
-    CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50     text-sky-600     border-sky-200', icon: CheckCircle2 },
-    PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50    text-blue-600    border-blue-200', icon: Package },
-    READY: { label: t('status', 'ready'), bg: 'bg-indigo-50  text-indigo-600  border-indigo-200', icon: CheckCircle2 },
-    DELIVERING: { label: t('status', 'delivering_short'), bg: 'bg-purple-50  text-purple-600  border-purple-200', icon: Truck },
-    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50  text-orange-600  border-orange-200', icon: CardIcon },
-    COMPLETED: { label: t('status', 'completed'), bg: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle2 },
-    CANCELLED: { label: t('status', 'cancelled'), bg: 'bg-red-50     text-red-500     border-red-200', icon: XCircle },
-    FAILED: { label: t('status', 'rejected_short'), bg: 'bg-red-50     text-red-700     border-red-300', icon: XCircle },
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50 dark:bg-amber-500/10   text-amber-600 dark:text-amber-300   border-amber-200 dark:border-amber-500/28', icon: Clock },
+    CONFIRMED: { label: t('status', 'confirmed'), bg: 'bg-sky-50 dark:bg-sky-500/10     text-sky-600 dark:text-sky-300     border-sky-200 dark:border-sky-500/28', icon: CheckCircle2 },
+    PREPARING: { label: t('status', 'preparing'), bg: 'bg-blue-50 dark:bg-blue-500/10    text-blue-600 dark:text-blue-300    border-blue-200 dark:border-blue-500/28', icon: Package },
+    READY: { label: t('status', 'ready'), bg: 'bg-indigo-50 dark:bg-indigo-500/10  text-indigo-600 dark:text-indigo-300  border-indigo-200 dark:border-indigo-500/28', icon: CheckCircle2 },
+    DELIVERING: { label: t('status', 'delivering_short'), bg: 'bg-purple-50 dark:bg-purple-500/10  text-purple-600 dark:text-purple-300  border-purple-200 dark:border-purple-500/28', icon: Truck },
+    PENDING_PAYMENT: { label: t('status', 'pending_payment'), bg: 'bg-orange-50 dark:bg-orange-500/10  text-orange-600 dark:text-orange-300  border-orange-200 dark:border-orange-500/28', icon: CardIcon },
+    COMPLETED: { label: t('status', 'completed'), bg: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: CheckCircle2 },
+    CANCELLED: { label: t('status', 'cancelled'), bg: 'bg-red-50 dark:bg-red-500/10     text-red-500     border-red-200 dark:border-red-500/28', icon: XCircle },
+    FAILED: { label: t('status', 'rejected_short'), bg: 'bg-red-50 dark:bg-red-500/10     text-red-700 dark:text-red-300     border-red-300 dark:border-red-500/35', icon: XCircle },
   };
 
   const PAYMENT_METHOD_LABELS = {
@@ -137,7 +137,7 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
 
     // PAID → xanh lá, PARTIAL → xanh dương
     const isPaid = paymentStatus === 'PAID';
-    const bgColor = isPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200';
+    const bgColor = isPaid ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/28';
 
     return (
       <div className="flex flex-wrap gap-1">
@@ -244,16 +244,16 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
 
   if (loading) return (
     <div className="flex justify-center py-20">
-      <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   if (error) return (
     <div className="p-6">
-      <button onClick={onBack} className="flex items-center gap-2 text-sm text-[#8E8878] hover:text-[#1C1C1E] mb-4">
+      <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted hover:text-ink mb-4">
         <ArrowLeft size={16} /> Quay lại
       </button>
-      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-red-600 text-sm">{error}</div>
+      <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-2xl p-4 text-red-600 dark:text-red-300 text-sm">{error}</div>
     </div>
   );
 
@@ -268,8 +268,8 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
           position: 'fixed',
           top: 24,
           right: 12,
-          background: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          color: '#fff',
+          background: toast.type === 'error' ? 'var(--c-danger)' : 'var(--c-success)',
+          color: 'var(--c-surface)',
           padding: '10px 20px',
           borderRadius: 8,
           fontSize: 13,
@@ -294,13 +294,13 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
 
             {/* modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-[#F0EBE3] p-5">
+              <div className="bg-surface w-full max-w-sm rounded-2xl shadow-xl border border-line-soft p-5">
 
-                <h3 className="text-lg font-bold text-[#1C1C1E] mb-3">
+                <h3 className="text-lg font-bold text-ink mb-3">
                   Gia hạn thanh toán
                 </h3>
 
-                <p className="text-sm text-[#8E8878] mb-4">
+                <p className="text-sm text-muted mb-4">
                   Nhập số ngày muốn gia hạn thêm
                 </p>
 
@@ -315,8 +315,8 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
                     }))
                   }
                   onFocus={(e) => e.target.select()} // 👈 (yêu cầu 4 luôn)
-                  className="w-full border border-[#E8DDD0] rounded-xl px-3 py-2 text-sm
-    focus:outline-none focus:border-[#C9A84C]
+                  className="w-full border border-line rounded-xl px-3 py-2 text-sm
+    focus:outline-none focus:border-gold
     appearance-none [&::-webkit-outer-spin-button]:appearance-none
     [&::-webkit-inner-spin-button]:appearance-none"
                 />
@@ -324,8 +324,8 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
                 <div className="flex justify-end gap-2 mt-5">
                   <button
                     onClick={() => setExtendModal({ open: false })}
-                    className="px-4 py-2 text-sm rounded-xl border border-[#E8DDD0] text-[#8E8878]
-              hover:bg-[#F0EBE3]"
+                    className="px-4 py-2 text-sm rounded-xl border border-line text-muted
+              hover:bg-surface-2"
                   >
                     Huỷ
                   </button>
@@ -333,8 +333,8 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
                   <button
                     onClick={submitExtendDeadline}
                     disabled={extendModal.loading}
-                    className="px-4 py-2 text-sm rounded-xl bg-[#C9A84C] text-white
-              hover:bg-[#b8953f] disabled:opacity-50"
+                    className="px-4 py-2 text-sm rounded-xl bg-gold text-white
+              hover:bg-gold-strong disabled:opacity-50"
                   >
                     {extendModal.loading ? 'Đang xử lý...' : t('common', 'confirm')}
                   </button>
@@ -348,17 +348,17 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
       {/* Back + Header */}
       <div>
         <button onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] transition-colors mb-3">
+          className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors mb-3">
           <ArrowLeft size={15} /> Quay lại danh sách
         </button>
         <div className="flex items-center gap-3">
           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg
-            ${data.customerType === 'COMPANY' ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+            ${data.customerType === 'COMPANY' ? 'bg-blue-500' : 'bg-gold'}`}>
             {(data.customerName || '?')[0]?.toUpperCase()}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]">{data.customerName}</h1>
-            <p className="text-xs text-[#8E8878]">
+            <h1 className="text-xl font-bold text-ink">{data.customerName}</h1>
+            <p className="text-xs text-muted">
               {data.customerPhone}
               {data.customerCode && <span> · #{data.customerCode}</span>}
               {data.debtDays > 0 && <span className="ml-2 text-orange-500">📋 Công nợ {data.debtDays} ngày</span>}
@@ -378,13 +378,13 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
       </div>
 
       {/* Orders table */}
-      <div className="bg-white rounded-2xl border border-[#F0EBE3] shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#F0EBE3]">
-          <h2 className="font-bold text-[#1C1C1E]">Lịch sử đơn hàng ({orders.length})</h2>
+      <div className="bg-surface rounded-2xl border border-line-soft shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-line-soft">
+          <h2 className="font-bold text-ink">Lịch sử đơn hàng ({orders.length})</h2>
         </div>
 
         {orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-[#8E8878] gap-2">
+          <div className="flex flex-col items-center justify-center py-12 text-muted gap-2">
             <ShoppingBag size={32} strokeWidth={1} />
             <p className="text-sm">Chưa có đơn hàng nào</p>
           </div>
@@ -393,10 +393,10 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
             {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
+                <thead className="bg-canvas border-b border-line-soft">
                   <tr>
                     {[t('order', 'order_code'), 'Thời gian', 'Người đặt', t('order', 'total_amount'), t('payment', 'payment'), t('common', 'status'), 'Hạn TT', 'Phiếu thu'].map(h => (
-                      <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
+                      <th key={h} className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3 whitespace-nowrap">
                         {h}
                       </th>
                     ))}
@@ -404,20 +404,20 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
                 </thead>
                 <tbody>
                   {orders.map(o => (
-                    <tr key={o.id} className="border-b border-[#F0EBE3] last:border-0 hover:bg-[#FAF7F2] transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-[#C9A84C] whitespace-nowrap">
+                    <tr key={o.id} className="border-b border-line-soft last:border-0 hover:bg-canvas transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-gold whitespace-nowrap">
                         {o.orderCode}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">
                         {formatDate(o.createdAt)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#1C1C1E] whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-ink whitespace-nowrap">
                         {o.orderedByName || '—'}
                       </td>
-                      <td className="px-4 py-3 text-xs font-bold text-[#1C1C1E] whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs font-bold text-ink whitespace-nowrap">
                         {formatPrice(o.finalAmount)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">
                         {PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod || '—'}
                       </td>
                       <td className="px-4 py-3">
@@ -443,21 +443,21 @@ export default function CustomerOrderHistory({ customerId, apiPrefix = '/api/adm
             </div>
 
             {/* Mobile cards */}
-            <div className="md:hidden divide-y divide-[#F0EBE3]">
+            <div className="md:hidden divide-y divide-line-soft">
               {orders.map(o => (
                 <div key={o.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between">
-                    <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
-                    <p className="text-xs font-bold text-[#1C1C1E]">{formatPrice(o.finalAmount)}</p>
+                    <p className="font-mono text-xs font-bold text-gold">{o.orderCode}</p>
+                    <p className="text-xs font-bold text-ink">{formatPrice(o.finalAmount)}</p>
                   </div>
-                  <p className="text-[10px] text-[#8E8878]">{formatDate(o.createdAt)}</p>
+                  <p className="text-[10px] text-muted">{formatDate(o.createdAt)}</p>
                   {o.orderedByName && (
-                    <p className="text-[10px] text-[#8E8878]">Bởi: {o.orderedByName}</p>
+                    <p className="text-[10px] text-muted">Bởi: {o.orderedByName}</p>
                   )}
                   <div className="flex flex-wrap gap-1.5">
                     <StatusBadge status={o.status} />
                     {o.paymentMethod && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0]">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border bg-surface-2 text-muted border-line">
                         {PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}
                       </span>
                     )}

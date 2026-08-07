@@ -24,9 +24,9 @@ export default function HrSalaryApprovalPage() {
   const [detail, setDetail] = useState(null);
 
   const STATUS_MAP = {
-    PENDING:  { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200',      icon: Clock },
-    APPROVED: { label: t('status', 'approved'),  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-    REJECTED: { label: t('status', 'rejected_short'),   cls: 'bg-red-50 text-red-600 border-red-200',             icon: XCircle },
+    PENDING:  { label: t('status', 'pending'), cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28',      icon: Clock },
+    APPROVED: { label: t('status', 'approved'),  cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: CheckCircle },
+    REJECTED: { label: t('status', 'rejected_short'),   cls: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28',             icon: XCircle },
   };
 
   const load = useCallback(async (p = 0) => {
@@ -56,8 +56,8 @@ export default function HrSalaryApprovalPage() {
           <button key={val} onClick={() => { setStatusFilter(val); setPage(0); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
               ${statusFilter === val
-                ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                : 'bg-white text-[#5C4E3D] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+                ? 'bg-gold text-white border-gold'
+                : 'bg-surface text-ink-2 border-line hover:border-gold'}`}>
             {label}
           </button>
         ))}
@@ -66,12 +66,12 @@ export default function HrSalaryApprovalPage() {
       {loading ? <TableSkeleton cols={5} rows={10} /> : items.length === 0 ? (
         <EmptyState icon={Receipt} title={t('common','no_data')} />
       ) : (
-        <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">
+        <div className="bg-surface rounded-2xl border border-line overflow-x-auto">
           <table className="w-full text-sm min-w-[700px]">
             <thead>
-              <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
+              <tr className="bg-canvas border-b border-line">
                 {[t('employee','employee'),t('employee','department'),'Lương trước thuế',t('common','status'),'Ngày tạo',''].map(h => (
-                  <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase">{h}</th>
+                  <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted uppercase">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -80,18 +80,18 @@ export default function HrSalaryApprovalPage() {
                 const st = STATUS_MAP[s.status] || STATUS_MAP.PENDING;
                 const Icon = st.icon;
                 return (
-                  <tr key={s.id} className="border-b border-[#FAF7F2] hover:bg-[#FAF7F2]/50 cursor-pointer"
+                  <tr key={s.id} className="border-b border-canvas hover:bg-canvas/50 cursor-pointer"
                     onClick={() => setDetail(s)}>
-                    <td className="px-3 py-3 font-medium text-[#1C1C1E]">{s.userFullName}</td>
-                    <td className="px-3 py-3 text-xs text-[#5C4E3D]">{s.department}</td>
+                    <td className="px-3 py-3 font-medium text-ink">{s.userFullName}</td>
+                    <td className="px-3 py-3 text-xs text-ink-2">{s.department}</td>
                     <td className="px-3 py-3 text-xs">{fmtCur(s.baseSalary)}</td>
                     <td className="px-3 py-3">
                       <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border w-fit ${st.cls}`}>
                         <Icon size={11} /> {st.label}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-xs text-[#8E8878]">{formatDateTime(s.createdAt)}</td>
-                    <td className="px-3 py-3 text-xs text-[#C9A84C] font-medium">Chi tiết ↗</td>
+                    <td className="px-3 py-3 text-xs text-muted">{formatDateTime(s.createdAt)}</td>
+                    <td className="px-3 py-3 text-xs text-gold font-medium">Chi tiết ↗</td>
                   </tr>
                 );
               })}
@@ -132,15 +132,15 @@ function SalaryDetail({ s, statusMap, t }) {
           ['Owner duyệt', s.approvedByName || '—'],
         ].map(([label, value]) => (
           <div key={label}>
-            <p className="text-xs font-semibold text-[#8E8878] mb-0.5">{label}</p>
-            <p className="text-[#1C1C1E]">{value}</p>
+            <p className="text-xs font-semibold text-muted mb-0.5">{label}</p>
+            <p className="text-ink">{value}</p>
           </div>
         ))}
       </div>
       {s.rejectReason && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-          <p className="text-xs font-semibold text-red-600 mb-1">LÝ DO TỪ CHỐI</p>
-          <p className="text-sm text-red-700">{s.rejectReason}</p>
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl p-3">
+          <p className="text-xs font-semibold text-red-600 dark:text-red-300 mb-1">LÝ DO TỪ CHỐI</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{s.rejectReason}</p>
         </div>
       )}
     </div>

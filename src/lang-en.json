@@ -170,13 +170,13 @@
     "history": "History",
     "suppliers": "Suppliers",
     "vendor_debts": "Suppliers",
-    "supplier_management": "Supplier Management",
+    "supplier_management": "Supplier",
     "hr_manage": "HR Management",
     "salaries": "Payslips",
     "factory_batches": "Enter Production Batch",
     "batch_history": "Batch History",
     "warehouse_receipts": "Warehouse Receipts",
-    "cameras": "Camera Management",
+    "cameras": "Camera",
     "lot_pricing": "Lot Pricing",
     "quotation": "Quotation",
     "delivering": "Orders",
@@ -193,7 +193,7 @@
     "packaging_loss_reports": "Packaging Loss Reports",
     "pricing": "Pricing",
     "cashflow": "Cash Flow",
-    "materials": "Materials",
+    "materials": "Consumption",
     "my_requests": "My Requests",
     "my_payroll": "Payroll",
     "attendance_sheets": "Timesheets",
@@ -2028,7 +2028,7 @@
     "oinv_preset_month": "This month",
     "oinv_preset_year": "This year",
     "oinv_custom_range": "Custom",
-    "oinv_title": "Materials",
+    "oinv_title": "Consumption",
     "oinv_btn_confirm": "Confirm quantities",
     "oinv_search_ph": "Search materials...",
     "oinv_select_warehouse": "Select warehouse",
@@ -2421,6 +2421,15 @@
     "fw_batch_history": "Batch production history",
     "fw_all_your_batches": "All batches you created",
     "fw_material_detail": "Material details",
-    "dash_create_product_title": "Create Production Product"
+    "dash_create_product_title": "Create Production Product",
+    "oinv_pick_parent_first": "Please select a parent category"
+  },
+  "theme": {
+    "appearance": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "switch_to_dark": "Switch to dark mode",
+    "switch_to_light": "Switch to light mode"
   }
 }

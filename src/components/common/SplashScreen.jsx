@@ -14,8 +14,9 @@
  */
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { BRAND } from '../../config/brand';
 
-const STYLE_ID = 'nhatnam-splash-style';
+const STYLE_ID = `${BRAND.slug}-splash-style`;
 const SPLASH_CSS = `
   @keyframes nn-bgMove {
     0%   { transform: scale(1) rotate(0deg); }
@@ -169,7 +170,7 @@ export default function SplashScreen({ onDone }) {
             German Sausage House
           </div>
           <h1 style={{
-            margin: 0, color: '#fff', fontSize: 52,
+            margin: 0, color: 'var(--c-surface)', fontSize: 52,
             lineHeight: 1, fontWeight: 900, letterSpacing: '-0.06em',
           }}>
             NHẤT NAM

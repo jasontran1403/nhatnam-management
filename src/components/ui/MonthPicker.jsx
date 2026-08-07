@@ -84,17 +84,17 @@ export default function MonthPicker({ value, onChange, placeholder = 'Chọn th�
         zIndex: 99999,
         filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.15))',
       }}
-      className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden w-[280px]"
+      className="bg-surface rounded-2xl shadow-2xl border border-line overflow-hidden w-[280px]"
     >
       {/* Header: chuyển năm */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE3]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line-soft">
         <button type="button" onClick={() => setViewYear(y => y - 1)}
-          className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+          className="p-1.5 rounded-lg text-muted hover:bg-canvas hover:text-ink transition-colors">
           <ChevronLeft size={16} />
         </button>
-        <span className="text-sm font-bold text-[#1C1C1E]">{viewYear}</span>
+        <span className="text-sm font-bold text-ink">{viewYear}</span>
         <button type="button" onClick={() => setViewYear(y => y + 1)}
-          className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+          className="p-1.5 rounded-lg text-muted hover:bg-canvas hover:text-ink transition-colors">
           <ChevronRight size={16} />
         </button>
       </div>
@@ -108,8 +108,8 @@ export default function MonthPicker({ value, onChange, placeholder = 'Chọn th�
             <button key={m} type="button" onClick={() => pick(m)}
               className={`py-2 rounded-xl text-xs font-semibold transition-colors
                 ${isSelected
-                  ? 'bg-[#C9A84C] text-white shadow-sm'
-                  : 'bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#F0EBE3]'}`}>
+                  ? 'bg-gold text-white shadow-sm'
+                  : 'bg-canvas text-ink hover:bg-surface-2'}`}>
               {label}
             </button>
           );
@@ -117,18 +117,18 @@ export default function MonthPicker({ value, onChange, placeholder = 'Chọn th�
       </div>
 
       {/* Quick actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-[#F0EBE3] bg-[#FAF7F2]">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-line-soft bg-canvas">
         <button type="button" onClick={handleClear}
-          className="text-xs text-[#8E8878] hover:text-[#1C1C1E] transition-colors font-medium">
+          className="text-xs text-muted hover:text-ink transition-colors font-medium">
           Xoá
         </button>
         <div className="flex gap-2">
           <button type="button" onClick={setLastMonth}
-            className="px-3 py-1.5 text-xs text-[#8E8878] rounded-xl border border-[#E8DDD0] hover:bg-white transition-colors font-medium">
+            className="px-3 py-1.5 text-xs text-muted rounded-xl border border-line hover:bg-surface transition-colors font-medium">
             Tháng trước
           </button>
           <button type="button" onClick={setThisMonth}
-            className="px-3 py-1.5 text-xs font-semibold text-white bg-[#C9A84C] rounded-xl hover:bg-[#B8943C] transition-colors">
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-gold rounded-xl hover:bg-gold-strong transition-colors">
             Tháng này
           </button>
         </div>
@@ -145,20 +145,20 @@ export default function MonthPicker({ value, onChange, placeholder = 'Chọn th�
         className={`flex items-center gap-1.5 px-4 py-2.5 w-full rounded-xl text-sm font-medium
           transition-all border
           ${hasValue
-            ? 'bg-white text-[#1C1C1E] border-black/10'
-            : 'bg-white text-[#8E8878] border-black/10 hover:border-[#C9A84C]'
+            ? 'bg-surface text-ink border-hairline-2'
+            : 'bg-surface text-muted border-hairline-2 hover:border-gold'
           }`}
       >
-        <CalendarDays size={14} className="text-[#C9A84C] flex-shrink-0" />
+        <CalendarDays size={14} className="text-gold flex-shrink-0" />
         <span className="flex-1 text-left">{label}</span>
         {hasValue ? (
           <span onClick={handleClear}
-            className="w-4 h-4 rounded-full bg-[#F0EBE3] text-[#8E8878] flex items-center
-              justify-center hover:bg-[#E8DDD0] transition-colors text-[10px] font-bold leading-none cursor-pointer flex-shrink-0">
+            className="w-4 h-4 rounded-full bg-surface-2 text-muted flex items-center
+              justify-center hover:bg-surface-3 transition-colors text-[10px] font-bold leading-none cursor-pointer flex-shrink-0">
             ×
           </span>
         ) : (
-          <ChevronDown size={13} className={`text-[#8E8878] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown size={13} className={`text-muted transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
         )}
       </button>
       {dropdown}

@@ -38,8 +38,8 @@ function sortCerts(certs) {
 function ConfirmDialog({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <p className="text-[#1C1C1E] text-sm leading-relaxed">{message}</p>
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <p className="text-ink text-sm leading-relaxed">{message}</p>
         <div className="flex justify-end gap-2">
           <SecondaryButton onClick={onCancel}>Hủy</SecondaryButton>
           <DangerButton onClick={onConfirm}>Xóa</DangerButton>
@@ -112,15 +112,15 @@ function PdfViewer({ url }) {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <Loader2 size={32} className="animate-spin text-[#C9A84C]" />
+      <Loader2 size={32} className="animate-spin text-gold" />
     </div>
   );
   if (error) return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-[#8E8878]">
-      <FileText size={40} className="text-[#C9A84C]/40" />
+    <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
+      <FileText size={40} className="text-gold/40" />
       <p className="text-sm">{error}</p>
       <a href={url} target="_blank" rel="noopener noreferrer"
-        className="flex items-center gap-2 bg-[#C9A84C] text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-[#b8943e] transition-colors">
+        className="flex items-center gap-2 bg-gold text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-gold-strong transition-colors">
         <ExternalLink size={14} /> Mở PDF trong tab mới
       </a>
     </div>
@@ -129,14 +129,14 @@ function PdfViewer({ url }) {
     <div className="flex flex-col items-center gap-3 p-4 overflow-auto">
       <canvas ref={canvasRef} className="max-w-full shadow-md rounded" />
       {numPages > 1 && (
-        <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm border border-black/5 sticky bottom-2">
+        <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-2 shadow-sm border border-hairline sticky bottom-2">
           <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="text-sm text-[#5C5C5C] hover:text-[#1C1C1E] disabled:opacity-30 px-2">◀</button>
-          <span className="text-sm text-[#1C1C1E] font-medium">{currentPage} / {numPages}</span>
+            className="text-sm text-ink-2 hover:text-ink disabled:opacity-30 px-2">◀</button>
+          <span className="text-sm text-ink font-medium">{currentPage} / {numPages}</span>
           <button onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
             disabled={currentPage === numPages}
-            className="text-sm text-[#5C5C5C] hover:text-[#1C1C1E] disabled:opacity-30 px-2">▶</button>
+            className="text-sm text-ink-2 hover:text-ink disabled:opacity-30 px-2">▶</button>
         </div>
       )}
     </div>
@@ -150,17 +150,17 @@ function FilePreviewModal({ file, onClose }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"
       onClick={onClose}>
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col"
+      <div className="relative bg-surface rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-black/5 flex-shrink-0">
-          <p className="font-semibold text-[#1C1C1E] truncate pr-4">{file.originalName || 'File'}</p>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-hairline flex-shrink-0">
+          <p className="font-semibold text-ink truncate pr-4">{file.originalName || 'File'}</p>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-black/5 text-[#8E8878]">
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hairline text-muted">
               <X size={18} />
             </button>
           </div>
         </div>
-        <div className="flex-1 min-h-0 overflow-auto bg-[#FAF7F2]">
+        <div className="flex-1 min-h-0 overflow-auto bg-canvas">
           {file.fileType === 'pdf' ? (
             <PdfViewer url={url} />
           ) : (
@@ -227,16 +227,16 @@ function AddCertModal({ productId, productName, products, onClose, onSuccess }) 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
           <div>
-            <h2 className="font-bold text-[#1C1C1E]">Thêm giấy chứng nhận</h2>
+            <h2 className="font-bold text-ink">Thêm giấy chứng nhận</h2>
             {productName && (
-              <p className="text-xs text-[#8E8878] mt-0.5">cho {productName}</p>
+              <p className="text-xs text-muted mt-0.5">cho {productName}</p>
             )}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-black/5 text-[#8E8878]">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hairline text-muted">
             <X size={18} />
           </button>
         </div>
@@ -246,7 +246,7 @@ function AddCertModal({ productId, productName, products, onClose, onSuccess }) 
           {!productId && (
             <Field label="Sản phẩm" required>
               <select
-                className="w-full h-10 rounded-lg border border-black/10 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                className="w-full h-10 rounded-lg border border-hairline-2 px-3 text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-gold/30"
                 value={form.productId}
                 onChange={e => set('productId', e.target.value)}>
                 <option value="">— Chọn sản phẩm —</option>
@@ -278,14 +278,14 @@ function AddCertModal({ productId, productName, products, onClose, onSuccess }) 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">
-              File chứng nhận <span className="font-normal text-[#8E8878]">(ảnh hoặc PDF, nhiều file)</span>
+            <label className="block text-xs font-semibold text-ink-2 mb-1.5">
+              File chứng nhận <span className="font-normal text-muted">(ảnh hoặc PDF, nhiều file)</span>
             </label>
             <input ref={fileInputRef} type="file" multiple className="hidden"
               accept="image/*,.pdf" onChange={handleFiles} />
             <button type="button" onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-[#C9A84C]/40 rounded-xl py-3.5 flex items-center justify-center gap-2 text-[#8E8878] hover:border-[#C9A84C]/70 hover:bg-[#C9A84C]/5 transition-colors">
-              <Upload size={16} className="text-[#C9A84C] flex-shrink-0" />
+              className="w-full border-2 border-dashed border-gold/40 rounded-xl py-3.5 flex items-center justify-center gap-2 text-muted hover:border-gold/70 hover:bg-gold/5 transition-colors">
+              <Upload size={16} className="text-gold flex-shrink-0" />
               <span className="text-sm">
                 {selectedFiles.length > 0
                   ? `Thêm file (đã chọn ${selectedFiles.length})`
@@ -295,16 +295,16 @@ function AddCertModal({ productId, productName, products, onClose, onSuccess }) 
             {selectedFiles.length > 0 && (
               <div className="mt-2 space-y-1.5">
                 {selectedFiles.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-[#FAF7F2] rounded-lg px-3 py-2">
+                  <div key={i} className="flex items-center gap-2 bg-canvas rounded-lg px-3 py-2">
                     {f.type === 'application/pdf'
                       ? <FileText size={14} className="text-red-500 flex-shrink-0" />
                       : <ImageIcon size={14} className="text-blue-500 flex-shrink-0" />}
-                    <span className="text-xs text-[#1C1C1E] flex-1 truncate">{f.name}</span>
-                    <span className="text-xs text-[#8E8878] flex-shrink-0">
+                    <span className="text-xs text-ink flex-1 truncate">{f.name}</span>
+                    <span className="text-xs text-muted flex-shrink-0">
                       {f.size > 1024*1024 ? (f.size/1024/1024).toFixed(1)+'MB' : Math.round(f.size/1024)+'KB'}
                     </span>
                     <button onClick={() => setSelectedFiles(prev => prev.filter((_, j) => j !== i))}
-                      className="text-[#8E8878] hover:text-red-500 flex-shrink-0">
+                      className="text-muted hover:text-red-500 flex-shrink-0">
                       <X size={14} />
                     </button>
                   </div>
@@ -314,7 +314,7 @@ function AddCertModal({ productId, productName, products, onClose, onSuccess }) 
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-black/5">
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-hairline">
           <SecondaryButton onClick={onClose}>Hủy</SecondaryButton>
           <PrimaryButton loading={saving} onClick={handleSubmit}>Tạo chứng nhận</PrimaryButton>
         </div>
@@ -398,7 +398,7 @@ function ProductCertPanel({ product, allProducts, onBack, onRefresh }) {
       <div className="space-y-5">
         {/* Back */}
         <button onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
+          className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors">
           <ChevronLeft size={16} /> Quay lại
         </button>
 
@@ -407,15 +407,15 @@ function ProductCertPanel({ product, allProducts, onBack, onRefresh }) {
           <div className="flex items-center gap-3 min-w-0">
             {product.imageUrl ? (
               <img src={fileUrl(product.imageUrl)} alt={product.productName}
-                className="w-12 h-12 rounded-xl object-cover border border-black/5 flex-shrink-0" />
+                className="w-12 h-12 rounded-xl object-cover border border-hairline flex-shrink-0" />
             ) : (
-              <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
-                <Package size={20} className="text-[#C9A84C]" />
+              <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center flex-shrink-0">
+                <Package size={20} className="text-gold" />
               </div>
             )}
             <div className="min-w-0">
-              <h2 className="font-bold text-[#1C1C1E] truncate">{product.productName}</h2>
-              <p className="text-sm text-[#8E8878]">{certs.length} chứng nhận</p>
+              <h2 className="font-bold text-ink truncate">{product.productName}</h2>
+              <p className="text-sm text-muted">{certs.length} chứng nhận</p>
             </div>
           </div>
           <PrimaryButton onClick={() => setShowAddCert(true)} className="flex-shrink-0">
@@ -435,19 +435,19 @@ function ProductCertPanel({ product, allProducts, onBack, onRefresh }) {
               const expired = cert.expiredAt && cert.expiredAt < Date.now();
               const noExpiry = !cert.expiredAt;
               return (
-                <div key={cert.id} className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+                <div key={cert.id} className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
                   {/* Cert header */}
-                  <div className="flex items-start justify-between gap-3 px-5 py-4 bg-[#FAF7F2] border-b border-black/5">
+                  <div className="flex items-start justify-between gap-3 px-5 py-4 bg-canvas border-b border-hairline">
                     <div className="min-w-0">
-                      <p className="font-semibold text-[#1C1C1E] truncate">{cert.certName}</p>
+                      <p className="font-semibold text-ink truncate">{cert.certName}</p>
                       <div className="flex flex-wrap gap-3 mt-1">
-                        <span className="flex items-center gap-1 text-xs text-[#5C5C5C]">
+                        <span className="flex items-center gap-1 text-xs text-ink-2">
                           <Calendar size={11} /> Ngày cấp: {fmtDate(cert.issuedAt)}
                         </span>
                         {noExpiry ? (
-                          <span className="text-xs text-emerald-600 font-medium">Không có hạn</span>
+                          <span className="text-xs text-emerald-600 dark:text-emerald-300 font-medium">Không có hạn</span>
                         ) : (
-                          <span className={`flex items-center gap-1 text-xs font-medium ${expired ? 'text-red-500' : 'text-[#5C5C5C]'}`}>
+                          <span className={`flex items-center gap-1 text-xs font-medium ${expired ? 'text-red-500' : 'text-ink-2'}`}>
                             {expired && <AlertTriangle size={11} />}
                             Hạn: {fmtDate(cert.expiredAt)}
                             {expired && ' — Hết hạn'}
@@ -457,7 +457,7 @@ function ProductCertPanel({ product, allProducts, onBack, onRefresh }) {
                     </div>
                     <button
                       onClick={() => handleDeleteCert(cert)}
-                      className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">
+                      className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/18 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">
                       <Trash2 size={13} /> Xóa
                     </button>
                   </div>
@@ -468,22 +468,22 @@ function ProductCertPanel({ product, allProducts, onBack, onRefresh }) {
                       <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 gap-2">
                         {cert.files.map(file => (
                           <div key={file.id}
-                            className="flex items-center gap-2 bg-[#FAF7F2] rounded-xl px-3 py-2.5">
+                            className="flex items-center gap-2 bg-canvas rounded-xl px-3 py-2.5">
                             {file.fileType === 'pdf'
                               ? <FileText size={16} className="text-red-500 flex-shrink-0" />
                               : <ImageIcon size={16} className="text-blue-500 flex-shrink-0" />}
-                            <span className="text-xs text-[#1C1C1E] flex-1 truncate min-w-0">
+                            <span className="text-xs text-ink flex-1 truncate min-w-0">
                               {file.originalName || 'file'}
                             </span>
                             <button onClick={() => setPreviewFile(file)}
-                              className="flex-shrink-0 p-1 rounded hover:bg-[#C9A84C]/10 text-[#8E8878] hover:text-[#C9A84C] transition-colors"
+                              className="flex-shrink-0 p-1 rounded hover:bg-gold/10 text-muted hover:text-gold transition-colors"
                               title="Xem file">
                               <Eye size={14} />
                             </button>
                             <button
                               disabled={deletingFile === file.id}
                               onClick={() => handleDeleteFile(cert, file)}
-                              className="flex-shrink-0 p-1 rounded hover:bg-red-50 text-[#8E8878] hover:text-red-500 transition-colors disabled:opacity-50"
+                              className="flex-shrink-0 p-1 rounded hover:bg-red-50 dark:bg-red-500/10 text-muted hover:text-red-500 transition-colors disabled:opacity-50"
                               title="Xóa file">
                               {deletingFile === file.id
                                 ? <Loader2 size={14} className="animate-spin" />
@@ -493,7 +493,7 @@ function ProductCertPanel({ product, allProducts, onBack, onRefresh }) {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-[#8E8878] italic text-center py-2">
+                      <p className="text-xs text-muted italic text-center py-2">
                         Chứng nhận này chưa có file đính kèm
                       </p>
                     )}
@@ -602,15 +602,15 @@ export default function CertificatePage() {
         {/* Search bar */}
         {!loading && products.length > 0 && (
           <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
             <input
-              className="w-full sm:max-w-sm h-10 pl-9 pr-9 rounded-xl border border-black/10 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 placeholder:text-[#8E8878]"
+              className="w-full sm:max-w-sm h-10 pl-9 pr-9 rounded-xl border border-hairline-2 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-muted"
               placeholder="Tìm theo tên sản phẩm hoặc tên chứng nhận..."
               value={keyword}
               onChange={e => setKeyword(e.target.value)} />
             {keyword && (
               <button onClick={() => setKeyword('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
                 <X size={14} />
               </button>
             )}
@@ -628,16 +628,16 @@ export default function CertificatePage() {
               </PrimaryButton>
             } />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-[#8E8878]">
+          <div className="text-center py-16 text-muted">
             <Search size={32} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Không tìm thấy kết quả cho <span className="font-medium text-[#1C1C1E]">"{keyword}"</span></p>
-            <button onClick={() => setKeyword('')} className="mt-2 text-xs text-[#C9A84C] hover:underline">Xóa bộ lọc</button>
+            <p className="text-sm">Không tìm thấy kết quả cho <span className="font-medium text-ink">"{keyword}"</span></p>
+            <button onClick={() => setKeyword('')} className="mt-2 text-xs text-gold hover:underline">Xóa bộ lọc</button>
           </div>
         ) : (
           <>
             {keyword && (
-              <p className="text-xs text-[#8E8878]">
-                Tìm thấy <span className="font-semibold text-[#1C1C1E]">{filtered.length}</span> chứng nhận
+              <p className="text-xs text-muted">
+                Tìm thấy <span className="font-semibold text-ink">{filtered.length}</span> chứng nhận
               </p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 gap-3">
@@ -648,28 +648,28 @@ export default function CertificatePage() {
                   : [];
                 return (
                   <button key={p.productId} onClick={() => setSelected(p)}
-                    className="w-full flex items-center gap-4 bg-white rounded-2xl border border-black/5 shadow-sm px-4 py-3.5 text-left hover:shadow-md hover:border-[#C9A84C]/30 transition-all group">
+                    className="w-full flex items-center gap-4 bg-surface rounded-2xl border border-hairline shadow-sm px-4 py-3.5 text-left hover:shadow-md hover:border-gold/30 transition-all group">
                     {p.imageUrl ? (
                       <img src={fileUrl(p.imageUrl)} alt={p.productName}
-                        className="w-11 h-11 rounded-xl object-cover border border-black/5 flex-shrink-0" />
+                        className="w-11 h-11 rounded-xl object-cover border border-hairline flex-shrink-0" />
                     ) : (
-                      <div className="w-11 h-11 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
-                        <Package size={18} className="text-[#C9A84C]" />
+                      <div className="w-11 h-11 rounded-xl bg-gold/10 flex items-center justify-center flex-shrink-0">
+                        <Package size={18} className="text-gold" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[#1C1C1E] truncate group-hover:text-[#C9A84C] transition-colors">
+                      <p className="font-semibold text-ink truncate group-hover:text-gold transition-colors">
                         {p.productName}
                       </p>
-                      <p className="text-xs text-[#8E8878] mt-0.5">{p.certCount} chứng nhận</p>
+                      <p className="text-xs text-muted mt-0.5">{p.certCount} chứng nhận</p>
                       {matchedCerts.length > 0 && (
-                        <p className="text-xs text-[#C9A84C] mt-0.5 truncate">
+                        <p className="text-xs text-gold mt-0.5 truncate">
                           {matchedCerts.slice(0, 2).join(', ')}
                           {matchedCerts.length > 2 && ` +${matchedCerts.length - 2}`}
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 bg-[#C9A84C]/10 text-[#C9A84C] rounded-full px-3 py-1 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 bg-gold/10 text-gold rounded-full px-3 py-1 flex-shrink-0">
                       <Award size={13} />
                       <span className="text-xs font-semibold">{p.certCount}</span>
                     </div>

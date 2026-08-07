@@ -4,31 +4,36 @@
 import {
   LayoutDashboard, ShoppingCart, Users, UserCog,
   Warehouse, Package, LogOut, Receipt, TrendingUp,
-  TrendingDown, BarChart2, Factory, ClipboardList,
-  FileText, Layers, Globe, Tags, FlaskConical, UserCheck,
+  TrendingDown, Factory, ClipboardList,
+  FileText, Layers, Globe, Tags, FlaskConical,
   FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
-  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Activity, Wallet, Calculator, Building2,
-  ClipboardSignature, Boxes, Video, ShieldAlert,
+  Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Wallet, Calculator, Building2,
+  Boxes, Video, ShieldAlert,
 } from 'lucide-react';
 
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+// Dòng tiền / KPI Sale / Phân tích mở bằng nút trên trang Dashboard;
+// Phiếu thu / Phiếu chi mở bằng nút trên trang Dòng tiền;
+// Tài xế mở bằng nút trên trang Nhân viên. Xem components/common/SubPageNav.jsx.
 export const adminNavRaw = [
   { to: '/admin/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/admin/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/admin/customers', labelKey: 'customers', icon: Users },
   { to: '/admin/users', labelKey: 'employees', icon: UserCog },
   { to: '/admin/warehouses', labelKey: 'warehouses', icon: Warehouse },
-  { to: '/admin/drivers', labelKey: 'drivers', icon: Gauge },
-  { to: '/admin/expenses', labelKey: 'expenses', icon: TrendingDown },
-  { to: '/admin/incomes', labelKey: 'incomes', icon: TrendingUp },
-  { to: '/admin/cashflow', labelKey: 'cashflow', icon: Activity },
   { to: '/admin/inventory', labelKey: 'materials', icon: Package },
   { to: '/admin/suppliers', labelKey: 'supplier_management', icon: Building2 },
-  { to: '/admin/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
-  { to: '/admin/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/admin/production', labelKey: 'production', icon: Factory },
   { to: '/admin/cameras', labelKey: 'cameras', icon: Video },
 ];
 
+// ── OWNER ─────────────────────────────────────────────────────────────────────
+// Đã gom vào nút trên trang chính (không còn ở sidebar):
+//   Dashboard   → Dòng tiền, Quản lý sales, Dự báo
+//   Dòng tiền   → Phiếu thu, Phiếu chi
+//   Nhân viên   → Duyệt lương, Tài xế, Bảng chấm công (mở khoá xem lương
+//                 nằm ngay cột Thao tác của từng dòng)
+//   Kho hàng    → Lượng tiêu thụ, Kho văn phòng phẩm
 export const ownerNavRaw = [
   { to: '/owner/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/owner/pos', labelKey: 'pos', icon: ShoppingCart },
@@ -36,21 +41,10 @@ export const ownerNavRaw = [
   { to: '/owner/orders', labelKey: 'orders', icon: ClipboardList },
   { to: '/owner/customers', labelKey: 'customers', icon: Users },
   { to: '/owner/users', labelKey: 'employees', icon: UserCog },
-  { to: '/owner/employees', labelKey: 'staff', icon: UserCheck },
   { to: '/owner/warehouses', labelKey: 'warehouses', icon: Warehouse },
-  { to: '/owner/drivers', labelKey: 'drivers', icon: Gauge },
-  { to: '/owner/expenses', labelKey: 'expenses', icon: TrendingDown },
-  { to: '/owner/incomes', labelKey: 'incomes', icon: TrendingUp },
-  { to: '/owner/cashflow', labelKey: 'cashflow', icon: Activity },
   { to: '/owner/inventory', labelKey: 'materials', icon: Package },
   { to: '/owner/production/suppliers', labelKey: 'supplier_management', icon: Building2 },
-  // ── Kho Văn phòng phẩm (Owner xem cả 2 kho, read-only + gán kho + gộp vật dụng) ──
-  { to: '/owner/supply-warehouse', labelKey: 'supply_warehouse', icon: Archive },
-  { to: '/owner/sale-kpi', labelKey: 'sale_kpi', icon: Receipt },
-  { to: '/owner/analytics', labelKey: 'analytics', icon: BarChart2 },
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
-  { to: '/owner/attendance', labelKey: 'attendance_sheets', icon: ClipboardSignature },
-  { to: '/owner/payroll-passcode', labelKey: 'payroll_passcode', icon: ShieldAlert },
   { to: '/owner/production', labelKey: 'production', icon: Factory },
   { to: '/owner/cameras', labelKey: 'cameras', icon: Video },
 ];
@@ -108,6 +102,8 @@ export const accountantNavRaw = [
   { to: '/accountant/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/accountant/orders', labelKey: 'orders', icon: ShoppingCart },
   { to: '/accountant/customers', labelKey: 'customers', icon: Users },
+  // Kho hàng CHỈ XEM — Kho văn phòng phẩm mở bằng nút trong trang này.
+  { to: '/accountant/warehouses', labelKey: 'warehouses', icon: Warehouse },
   { to: '/accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
   { to: '/accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
   { to: '/accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
@@ -120,6 +116,8 @@ export const superAccountantNavRaw = [
   { to: '/super-accountant/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { to: '/super-accountant/history', labelKey: 'orders', icon: ShoppingCart },
   { to: '/super-accountant/customers', labelKey: 'customers', icon: Users },
+  // Kho hàng CHỈ XEM — Kho văn phòng phẩm mở bằng nút trong trang này.
+  { to: '/super-accountant/warehouses', labelKey: 'warehouses', icon: Warehouse },
   { to: '/super-accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
   { to: '/super-accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-accountant/incomes', labelKey: 'incomes', icon: TrendingUp },

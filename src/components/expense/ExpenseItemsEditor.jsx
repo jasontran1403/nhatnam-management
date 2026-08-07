@@ -27,8 +27,8 @@ import { Pencil, Check, X, ChevronDown, Search, Plus, Trash2 } from 'lucide-reac
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
 import { expenseApi } from '../../api/services';
+import { fmtVND } from '../../utils/format.js';
 
-const fmtVND = (n) => new Intl.NumberFormat('vi-VN').format(Number(n) || 0) + ' đ';
 const parseVND = (s) => Number(String(s ?? '').replace(/[^0-9]/g, '')) || 0;
 
 /**
@@ -89,16 +89,16 @@ function CategoryDropdown({ categories, value, placeholder, onChange }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[#C9A84C]/50 bg-white text-sm text-left hover:border-[#C9A84C] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-gold/50 bg-surface text-sm text-left hover:border-gold focus:outline-none focus:ring-2 focus:ring-gold/40"
       >
-        <span className={`truncate ${selected ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}`}>{label}</span>
-        <ChevronDown size={14} className="text-[#8E8878] flex-shrink-0" />
+        <span className={`truncate ${selected ? 'text-ink' : 'text-muted'}`}>{label}</span>
+        <ChevronDown size={14} className="text-muted flex-shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-[#E8DDD0] shadow-xl max-h-60 overflow-hidden flex flex-col">
-          <div className="p-2 border-b border-[#F0EBE3] flex items-center gap-2">
-            <Search size={13} className="text-[#8E8878] flex-shrink-0" />
+        <div className="absolute z-50 mt-1 w-full bg-surface rounded-xl border border-line shadow-xl max-h-60 overflow-hidden flex flex-col">
+          <div className="p-2 border-b border-line-soft flex items-center gap-2">
+            <Search size={13} className="text-muted flex-shrink-0" />
             <input
               autoFocus
               value={q}
@@ -109,17 +109,17 @@ function CategoryDropdown({ categories, value, placeholder, onChange }) {
           </div>
           <div className="overflow-y-auto">
             {filtered.length === 0 && (
-              <p className="px-3 py-3 text-xs text-[#8E8878]">Không tìm thấy khoản chi phù hợp</p>
+              <p className="px-3 py-3 text-xs text-muted">Không tìm thấy khoản chi phù hợp</p>
             )}
             {filtered.map(c => (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => { onChange(c.id); setOpen(false); setQ(''); }}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] transition ${
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-canvas transition ${
                   String(c.id) === String(value)
-                    ? 'bg-[#C9A84C]/10 font-semibold text-[#B8923E]'
-                    : 'text-[#1C1C1E]'
+                    ? 'bg-gold/10 font-semibold text-gold-strong'
+                    : 'text-ink'
                 }`}
               >
                 {c.name}
@@ -224,8 +224,8 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className={compact
-          ? 'text-xs font-semibold text-[#8E8878] uppercase'
-          : 'text-sm font-semibold text-[#1C1C1E]'}>
+          ? 'text-xs font-semibold text-muted uppercase'
+          : 'text-sm font-semibold text-ink'}>
           Các khoản chi
         </p>
 
@@ -233,7 +233,7 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); startEdit(); }}
-            className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:underline"
+            className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline"
           >
             <Pencil size={12} /> Sửa
           </button>
@@ -245,7 +245,7 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
               type="button"
               onClick={(e) => { e.stopPropagation(); addRow(); }}
               disabled={saving || catLoading}
-              className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:underline disabled:opacity-50"
+              className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline disabled:opacity-50"
             >
               <Plus size={12} /> Thêm khoản
             </button>
@@ -253,7 +253,7 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
               type="button"
               onClick={(e) => { e.stopPropagation(); cancelEdit(); }}
               disabled={saving}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-[#E8DDD0] text-[#8E8878] hover:bg-[#F5F0EB] disabled:opacity-50"
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-line text-muted hover:bg-surface-2 disabled:opacity-50"
             >
               <X size={12} /> Huỷ
             </button>
@@ -261,7 +261,7 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
               type="button"
               onClick={(e) => { e.stopPropagation(); doSave(); }}
               disabled={saving || catLoading}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-[#1A2B1A] text-white hover:bg-[#2a3b2a] disabled:opacity-50"
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-forest-deep text-white hover:bg-forest-mid disabled:opacity-50"
             >
               <Check size={12} /> {saving ? 'Đang lưu...' : 'Lưu'}
             </button>
@@ -270,21 +270,21 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
       </div>
 
       {editing && hint && (
-        <p className="text-[11px] text-[#8E8878] bg-[#FAF7F2] rounded-lg px-3 py-1.5 mb-2">{hint}</p>
+        <p className="text-[11px] text-muted bg-canvas rounded-lg px-3 py-1.5 mb-2">{hint}</p>
       )}
 
       {editing ? (
         catLoading ? (
-          <p className="text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">Đang tải danh mục khoản chi...</p>
+          <p className="text-xs text-muted bg-canvas rounded-xl p-3">Đang tải danh mục khoản chi...</p>
         ) : (
           <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
             {draft.length === 0 && (
-              <p className="text-xs text-red-500 bg-red-50 rounded-xl p-3">
+              <p className="text-xs text-red-500 bg-red-50 dark:bg-red-500/10 rounded-xl p-3">
                 Phiếu chi phải còn ít nhất 1 khoản chi — bấm "Thêm khoản" để thêm lại.
               </p>
             )}
             {draft.map(d => (
-              <div key={d.key} className="bg-white border border-[#E8DDD0] rounded-xl p-2.5 space-y-2">
+              <div key={d.key} className="bg-surface border border-line rounded-xl p-2.5 space-y-2">
                 <div className="flex gap-2">
                   <CategoryDropdown
                     categories={categories}
@@ -297,13 +297,13 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
                     onChange={e => patchRow(d.key, 'amount', String(parseVND(e.target.value)))}
                     placeholder="Số tiền"
                     inputMode="numeric"
-                    className="w-32 flex-shrink-0 px-3 py-2 rounded-lg border border-[#C9A84C]/50 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white"
+                    className="w-32 flex-shrink-0 px-3 py-2 rounded-lg border border-gold/50 text-sm text-right focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface"
                   />
                   <button
                     type="button"
                     onClick={() => removeRow(d.key)}
                     title="Xoá khoản chi khỏi phiếu"
-                    className="p-2 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition flex-shrink-0"
+                    className="p-2 rounded-lg hover:bg-red-50 dark:bg-red-500/10 text-red-400 hover:text-red-600 dark:text-red-300 transition flex-shrink-0"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -312,14 +312,14 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
                   value={d.note}
                   onChange={e => patchRow(d.key, 'note', e.target.value)}
                   placeholder="Ghi chú (tuỳ chọn)..."
-                  className="w-full px-3 py-1.5 rounded-lg border border-black/10 text-xs focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white"
+                  className="w-full px-3 py-1.5 rounded-lg border border-hairline-2 text-xs focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface"
                 />
               </div>
             ))}
           </div>
         )
       ) : items.length === 0 ? (
-        <p className="text-xs text-[#8E8878]">Không có khoản chi nào</p>
+        <p className="text-xs text-muted">Không có khoản chi nào</p>
       ) : (
         <div className={compact ? 'space-y-1' : 'space-y-2'}>
           {items.map((item, i) => (
@@ -327,19 +327,19 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
               key={item.id || i}
               className={compact
                 ? 'flex justify-between text-sm'
-                : 'flex items-start justify-between bg-[#FAF7F2] rounded-xl px-4 py-3'}
+                : 'flex items-start justify-between bg-canvas rounded-xl px-4 py-3'}
             >
               <div className="min-w-0">
-                <p className={compact ? 'text-[#5C4E3D]' : 'text-sm font-medium text-[#1C1C1E]'}>
+                <p className={compact ? 'text-ink-2' : 'text-sm font-medium text-ink'}>
                   {item.itemName}
                 </p>
                 {!compact && item.note && (
-                  <p className="text-xs text-[#8E8878] mt-0.5">{item.note}</p>
+                  <p className="text-xs text-muted mt-0.5">{item.note}</p>
                 )}
               </div>
               <p className={compact
-                ? 'font-semibold text-[#1C1C1E] flex-shrink-0 ml-3'
-                : 'text-sm font-bold text-[#1C1C1E] flex-shrink-0 ml-3'}>
+                ? 'font-semibold text-ink flex-shrink-0 ml-3'
+                : 'text-sm font-bold text-ink flex-shrink-0 ml-3'}>
                 {fmtVND(item.amount)}
               </p>
             </div>
@@ -347,9 +347,9 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
         </div>
       )}
 
-      <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/5">
-        <span className="text-sm font-semibold text-[#8E8878]">Tổng cộng</span>
-        <span className="text-base font-bold text-[#C9A84C]">{fmtVND(total)}</span>
+      <div className="flex justify-between items-center mt-3 pt-3 border-t border-hairline">
+        <span className="text-sm font-semibold text-muted">Tổng cộng</span>
+        <span className="text-base font-bold text-gold">{fmtVND(total)}</span>
       </div>
     </div>
   );

@@ -66,26 +66,26 @@ export default function DatePicker({ value, onChange, placeholder = 'Chọn ngà
         zIndex: 99999,
         filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.15))',
       }}
-      className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden"
+      className="bg-surface rounded-2xl shadow-2xl border border-line overflow-hidden"
     >
       <Calendar
         date={selected}
         onChange={date => setSelected(date)}
         locale={vi}
-        color="#C9A84C"
+        color="var(--c-gold)"
         weekStartsOn={1}
         minDate={minDate}
         maxDate={maxDate}
       />
-      <div className="flex items-center justify-between px-4 py-3 border-t border-[#F0EBE3] bg-[#FAF7F2]">
-        <span className="text-xs text-[#C9A84C]">{format(selected, 'dd/MM/yyyy')}</span>
+      <div className="flex items-center justify-between px-4 py-3 border-t border-line-soft bg-canvas">
+        <span className="text-xs text-gold">{format(selected, 'dd/MM/yyyy')}</span>
         <div className="flex gap-2">
           <button onClick={() => setOpen(false)}
-            className="px-3 py-1.5 text-xs text-[#8E8878] rounded-xl border border-[#E8DDD0] hover:bg-[#F0EBE3] transition-colors">
+            className="px-3 py-1.5 text-xs text-muted rounded-xl border border-line hover:bg-surface-2 transition-colors">
             Huỷ
           </button>
           <button onClick={handleApply}
-            className="px-4 py-1.5 text-xs font-semibold text-white bg-[#C9A84C] rounded-xl hover:bg-[#B8943C] transition-colors">
+            className="px-4 py-1.5 text-xs font-semibold text-white bg-gold rounded-xl hover:bg-gold-strong transition-colors">
             Xác nhận
           </button>
         </div>
@@ -102,8 +102,8 @@ export default function DatePicker({ value, onChange, placeholder = 'Chọn ngà
         className={`flex items-center gap-1.5 px-3 h-[38px] rounded-xl text-xs font-semibold
           transition-all border whitespace-nowrap
           ${hasValue
-            ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'
-            : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C] hover:text-[#C9A84C]'
+            ? 'bg-gold text-white border-gold shadow-sm'
+            : 'bg-surface text-muted border-line hover:border-gold hover:text-gold'
           }`}
       >
         <CalendarDays size={12} />

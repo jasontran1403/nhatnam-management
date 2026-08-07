@@ -20,17 +20,17 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 //   EXPIRED_OR_CRITICAL: đỏ cam · NEAR_EXPIRY: vàng · NEWLY_STOCKED: xanh dương nhạt
 const FRESHNESS = {
   EXPIRED_OR_CRITICAL: {
-    row: 'bg-orange-50 hover:bg-orange-100/70',
+    row: 'bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100/70 dark:bg-orange-500/13',
     dot: 'bg-orange-500',
     label: 'Có lô đã/sắp hết hạn (dưới 7 ngày)',
   },
   NEAR_EXPIRY: {
-    row: 'bg-amber-50 hover:bg-amber-100/70',
+    row: 'bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100/70 dark:bg-amber-500/13',
     dot: 'bg-amber-400',
     label: 'Có lô gần hết hạn (trong 1 tháng)',
   },
   NEWLY_STOCKED: {
-    row: 'bg-sky-50 hover:bg-sky-100/70',
+    row: 'bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100/70 dark:bg-sky-500/13',
     dot: 'bg-sky-400',
     label: 'Có lô mới nhập (dưới 1 tháng)',
   },
@@ -71,14 +71,14 @@ function LotDetailModal({ open, onClose, item }) {
     <Modal open={open} onClose={onClose}
       title={`Chi tiết lô — ${item.ingredientName}`} size="lg">
       {lots.length === 0 ? (
-        <p className="text-sm text-[#8E8878] text-center py-8">
+        <p className="text-sm text-muted text-center py-8">
           Nguyên liệu này chưa có lô nào còn hàng.
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-[#8E8878] border-b border-black/5">
+              <tr className="text-[11px] uppercase tracking-wider text-muted border-b border-hairline">
                 <th className="px-3 py-2 text-left">Thời gian nhập</th>
                 <th className="px-3 py-2 text-right">Số lượng tồn</th>
                 <th className="px-3 py-2 text-right">Giá vốn</th>
@@ -89,24 +89,24 @@ function LotDetailModal({ open, onClose, item }) {
               {lots.map((lot, i) => {
                 const d = daysUntil(lot.expiryDate);
                 // Cùng ngưỡng với badge: <7 đỏ cam, ≤30 vàng, còn lại thường.
-                const expCls = d == null ? 'text-[#8E8878]'
-                  : d < 7 ? 'text-orange-600 font-semibold'
-                  : d <= 30 ? 'text-amber-600 font-medium'
-                  : 'text-[#1C1C1E]';
+                const expCls = d == null ? 'text-muted'
+                  : d < 7 ? 'text-orange-600 dark:text-orange-300 font-semibold'
+                  : d <= 30 ? 'text-amber-600 dark:text-amber-300 font-medium'
+                  : 'text-ink';
                 const importedText = fmtDateTime(lot.importedAt);
                 const expText = lot.expiryDate
                   ? `${fmtDate(lot.expiryDate)}${d != null ? (d < 0 ? ' (đã hết hạn)' : ` (còn ${d} ngày)`) : ''}`
                   : (lot.tracked === false ? '—' : 'Không có hạn');
                 return (
-                  <tr key={i} className="border-b border-black/5 last:border-0">
-                    <td className="px-3 py-2.5 text-[#1C1C1E] whitespace-nowrap">
-                      {importedText || <span className="text-[#8E8878] italic">Không rõ</span>}
+                  <tr key={i} className="border-b border-hairline last:border-0">
+                    <td className="px-3 py-2.5 text-ink whitespace-nowrap">
+                      {importedText || <span className="text-muted italic">Không rõ</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-right font-medium text-[#1C1C1E]">
+                    <td className="px-3 py-2.5 text-right font-medium text-ink">
                       {formatNumber(lot.quantity)}
-                      <span className="text-xs text-[#8E8878] font-normal ml-1">{item.unit}</span>
+                      <span className="text-xs text-muted font-normal ml-1">{item.unit}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-right text-[#C9A84C] font-medium whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-gold font-medium whitespace-nowrap">
                       {lot.lotCost != null ? formatCurrency(lot.lotCost) : '—'}
                     </td>
                     <td className={`px-3 py-2.5 whitespace-nowrap ${expCls}`}>{expText}</td>
@@ -115,20 +115,20 @@ function LotDetailModal({ open, onClose, item }) {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-black/10 font-semibold">
-                <td className="px-3 py-2.5 text-right text-[#8E8878]">Tổng</td>
-                <td className="px-3 py-2.5 text-right text-[#1C1C1E]">
+              <tr className="border-t border-hairline-2 font-semibold">
+                <td className="px-3 py-2.5 text-right text-muted">Tổng</td>
+                <td className="px-3 py-2.5 text-right text-ink">
                   {formatNumber(lots.reduce((sum, l) => sum + Number(l.quantity || 0), 0))}
-                  <span className="text-xs text-[#8E8878] font-normal ml-1">{item.unit}</span>
+                  <span className="text-xs text-muted font-normal ml-1">{item.unit}</span>
                 </td>
-                <td className="px-3 py-2.5 text-right text-[#C9A84C]">
+                <td className="px-3 py-2.5 text-right text-gold">
                   {formatCurrency(lots.reduce((sum, l) => sum + Number(l.lotCost || 0), 0))}
                 </td>
                 <td />
               </tr>
             </tfoot>
           </table>
-          <p className="text-[11px] text-[#8E8878] mt-2">
+          <p className="text-[11px] text-muted mt-2">
             Sắp theo hạn sử dụng gần nhất trước; lô không có hạn xếp cuối.
             {lots.some(l => l.tracked === false) && ' Dòng "Không rõ" là phần tồn chưa gắn lô (nhập trước khi theo dõi lô hoặc điều chỉnh tồn tay).'}
           </p>
@@ -144,39 +144,39 @@ function IngredientRow({ item }) {
   const lotCount = (item.lots || []).length;
   return (
     <div title={fresh?.label}
-      className={`flex items-center gap-3 px-4 py-3 border-b border-[#F0EBE3] last:border-0 transition-colors
-        ${fresh ? fresh.row : 'hover:bg-[#FAF7F2]'}`}>
+      className={`flex items-center gap-3 px-4 py-3 border-b border-line-soft last:border-0 transition-colors
+        ${fresh ? fresh.row : 'hover:bg-canvas'}`}>
       {fresh
         ? <span className={`w-1.5 h-8 rounded-full flex-shrink-0 ${fresh.dot}`} />
         : null}
       {item.imageUrl
         ? <img src={imgUrl(item.imageUrl)} alt={item.ingredientName}
-            className="w-8 h-8 rounded-lg object-cover border border-[#E8DDD0] flex-shrink-0" />
-        : <div className="w-8 h-8 rounded-lg bg-[#F0EBE3] flex items-center justify-center text-sm flex-shrink-0">🧂</div>
+            className="w-8 h-8 rounded-lg object-cover border border-line flex-shrink-0" />
+        : <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center text-sm flex-shrink-0">🧂</div>
       }
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-[#1C1C1E] text-sm truncate">{item.ingredientName}</p>
-        <p className="text-xs text-[#8E8878]">{item.unit}</p>
+        <p className="font-medium text-ink text-sm truncate">{item.ingredientName}</p>
+        <p className="text-xs text-muted">{item.unit}</p>
       </div>
       <div className="text-right flex-shrink-0 min-w-[80px]">
         <p className={`font-semibold text-sm ${
           Number(item.stockQuantity) <= 0 ? 'text-red-500'
           : Number(item.stockQuantity) <= 5 ? 'text-amber-500'
-          : 'text-[#1C1C1E]'}`}>
+          : 'text-ink'}`}>
           {formatNumber(item.stockQuantity)}
-          <span className="text-xs text-[#8E8878] font-normal ml-1">{item.unit}</span>
+          <span className="text-xs text-muted font-normal ml-1">{item.unit}</span>
         </p>
-        <p className="text-xs font-medium text-[#C9A84C]">
+        <p className="text-xs font-medium text-gold">
           {Number(item.totalCostValue) > 0 ? formatCurrency(item.totalCostValue) : '—'}
         </p>
       </div>
       <button type="button" onClick={() => setLotOpen(true)}
         className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold
-          text-[#C9A84C] hover:text-[#B69842] px-2 py-1 rounded-lg hover:bg-[#C9A84C]/10 transition-colors"
+          text-gold hover:text-gold-strong px-2 py-1 rounded-lg hover:bg-gold/10 transition-colors"
         title="Xem chi tiết lô">
         <Layers size={13} />
         <span className="hidden sm:inline">Chi tiết</span>
-        {lotCount > 0 && <span className="text-[10px] text-[#8E8878]">({lotCount})</span>}
+        {lotCount > 0 && <span className="text-[10px] text-muted">({lotCount})</span>}
       </button>
       <LotDetailModal open={lotOpen} onClose={() => setLotOpen(false)} item={item} />
     </div>
@@ -189,28 +189,31 @@ function SubCategorySection({ name, items }) {
   const [open, setOpen] = useState(true);
   const totalCost = items.reduce((s, i) => s + Number(i.totalCostValue || 0), 0);
 
+  // Danh mục con rỗng không hiện lên giao diện.
+  if (!items || items.length === 0) return null;
+
   return (
-    <div className="ml-4 border-l-2 border-[#F0EBE3] mb-1">
+    <div className="ml-4 border-l-2 border-line-soft mb-1">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#FAF7F2] transition text-left"
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-canvas transition text-left"
       >
         {open
-          ? <ChevronDown  size={13} className="text-[#C4B9A8] flex-shrink-0" />
-          : <ChevronRight size={13} className="text-[#C4B9A8] flex-shrink-0" />}
-        <span className="text-xs font-semibold text-[#5C5C5C] flex-1 truncate">
+          ? <ChevronDown  size={13} className="text-faint flex-shrink-0" />
+          : <ChevronRight size={13} className="text-faint flex-shrink-0" />}
+        <span className="text-xs font-semibold text-ink-2 flex-1 truncate">
           {name || t('warehouse','uncategorized')}
         </span>
-        <span className="text-[10px] text-[#8E8878] flex-shrink-0 mr-2">{items.length} NL</span>
+        <span className="text-[10px] text-muted flex-shrink-0 mr-2">{items.length} NL</span>
         {totalCost > 0 && (
-          <span className="text-[10px] text-[#C9A84C] font-semibold flex-shrink-0">
+          <span className="text-[10px] text-gold font-semibold flex-shrink-0">
             {formatCurrency(totalCost)}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="bg-white rounded-xl mx-2 mb-2 border border-black/5 overflow-hidden">
+        <div className="bg-surface rounded-xl mx-2 mb-2 border border-hairline overflow-hidden">
           {items.map(item => <IngredientRow key={item.ingredientId} item={item} />)}
         </div>
       )}
@@ -223,39 +226,45 @@ function CategorySection({ name, items }) {
   const { t } = useLang();
   const [open, setOpen] = useState(true);
 
-  // Group by subCategory
+  // Group by subCategory — nhóm rỗng bị loại luôn ở đây.
   const subGroups = useMemo(() => {
     const map = new Map();
-    items.forEach(item => {
+    (items || []).forEach(item => {
       const key = item.subCategoryName || '__none__';
       if (!map.has(key)) map.set(key, { name: item.subCategoryName || null, items: [] });
       map.get(key).items.push(item);
     });
-    return Array.from(map.values()).sort((a, b) => {
-      if (!a.name && b.name) return 1;
-      if (a.name && !b.name) return -1;
-      return (a.name || '').localeCompare(b.name || '', 'vi');
-    });
+    return Array.from(map.values())
+      .filter(g => g.items.length > 0)
+      .sort((a, b) => {
+        if (!a.name && b.name) return 1;
+        if (a.name && !b.name) return -1;
+        return (a.name || '').localeCompare(b.name || '', 'vi');
+      });
   }, [items]);
+
+  // Danh mục không còn nguyên liệu nào (VD: bị lọc hết do tìm kiếm, hoặc mọi
+  // nguyên liệu đã gỡ khỏi kho) thì không dựng khối nào cả.
+  if (!items || items.length === 0) return null;
 
   const totalCost  = items.reduce((s, i) => s + Number(i.totalCostValue || 0), 0);
   const hasSubCats = subGroups.length > 1 || subGroups[0]?.name;
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden mb-3">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden mb-3">
       {/* Category header */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2.5 px-4 py-3 bg-[#FAF7F2] hover:bg-[#F0EBE3]
-          transition text-left border-b border-black/5"
+        className="w-full flex items-center gap-2.5 px-4 py-3 bg-canvas hover:bg-surface-2
+          transition text-left border-b border-hairline"
       >
         {open
-          ? <ChevronDown  size={15} className="text-[#C9A84C] flex-shrink-0" />
-          : <ChevronRight size={15} className="text-[#C9A84C] flex-shrink-0" />}
-        <span className="font-bold text-[#1C1C1E] flex-1 truncate">{name}</span>
-        <span className="text-xs text-[#8E8878] flex-shrink-0 mr-3">{t('warehouse','ingredient_count').replace('{n}',items.length)}</span>
+          ? <ChevronDown  size={15} className="text-gold flex-shrink-0" />
+          : <ChevronRight size={15} className="text-gold flex-shrink-0" />}
+        <span className="font-bold text-ink flex-1 truncate">{name}</span>
+        <span className="text-xs text-muted flex-shrink-0 mr-3">{t('warehouse','ingredient_count').replace('{n}',items.length)}</span>
         {totalCost > 0 && (
-          <span className="text-sm font-bold text-[#C9A84C] flex-shrink-0">
+          <span className="text-sm font-bold text-gold flex-shrink-0">
             {formatCurrency(totalCost)}
           </span>
         )}
@@ -319,11 +328,13 @@ export default function AdminWarehouseStock() {
       if (!map.has(key)) map.set(key, { id: key, name, items: [] });
       map.get(key).items.push(item);
     });
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.id === '__none__') return 1;
-      if (b.id === '__none__') return -1;
-      return a.name.localeCompare(b.name, 'vi');
-    });
+    return Array.from(map.values())
+      .filter(g => g.items.length > 0)
+      .sort((a, b) => {
+        if (a.id === '__none__') return 1;
+        if (b.id === '__none__') return -1;
+        return a.name.localeCompare(b.name, 'vi');
+      });
   }, [filteredItems]);
 
   // Grand total of currently visible items
@@ -337,7 +348,7 @@ export default function AdminWarehouseStock() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)}
-          className="p-2 rounded-xl bg-[#F0EBE3] hover:bg-[#E8DDD0] text-[#5C4E3D] transition-colors">
+          className="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-ink-2 transition-colors">
           <ArrowLeft size={18} />
         </button>
         <PageHeader
@@ -348,19 +359,19 @@ export default function AdminWarehouseStock() {
       </div>
 
       {/* Tổng giá vốn */}
-      <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-4">
-        <div className="p-3 bg-amber-100 rounded-xl">
-          <DollarSign size={22} className="text-amber-600" />
+      <div className="bg-gradient-to-br from-amber-50 dark:from-amber-500/10 to-orange-50 dark:to-orange-500/10 border border-amber-200 dark:border-amber-500/28 rounded-2xl p-4 flex items-center gap-4">
+        <div className="p-3 bg-amber-100 dark:bg-amber-500/18 rounded-xl">
+          <DollarSign size={22} className="text-amber-600 dark:text-amber-300" />
         </div>
         <div>
-          <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Tổng giá vốn tồn kho</p>
-          <p className="text-2xl font-bold text-amber-700">{formatCurrency(grandTotal)}</p>
+          <p className="text-xs text-amber-600 dark:text-amber-300 font-medium uppercase tracking-wide">Tổng giá vốn tồn kho</p>
+          <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{formatCurrency(grandTotal)}</p>
         </div>
       </div>
 
       {/* Chú thích màu tình trạng lô */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#8E8878]">
-        <span className="font-medium text-[#5C4E3D]">Tình trạng lô:</span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
+        <span className="font-medium text-ink-2">Tình trạng lô:</span>
         {[
           ['bg-orange-500', 'Đã/sắp hết hạn (dưới 7 ngày)'],
           ['bg-amber-400', 'Gần hết hạn (trong 1 tháng)'],
@@ -375,17 +386,17 @@ export default function AdminWarehouseStock() {
 
       {/* Search */}
       <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
           {...{placeholder: t("ingredient","search_placeholder")}}
-          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-black/10 text-sm
-            bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-hairline-2 text-sm
+            bg-surface focus:outline-none focus:ring-2 focus:ring-gold/40"
         />
         {q && (
           <button onClick={() => setQ('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
             <X size={14} />
           </button>
         )}
@@ -393,9 +404,9 @@ export default function AdminWarehouseStock() {
 
       {/* Result info */}
       {q && (
-        <p className="text-xs text-[#8E8878]">
+        <p className="text-xs text-muted">
           Tìm thấy <strong>{filteredItems.length}</strong> / {t('warehouse','ingredient_count').replace('{n}',items.length)}
-          {visibleTotal > 0 && <> · Giá vốn hiển thị: <strong className="text-[#C9A84C]">{formatCurrency(visibleTotal)}</strong></>}
+          {visibleTotal > 0 && <> · Giá vốn hiển thị: <strong className="text-gold">{formatCurrency(visibleTotal)}</strong></>}
         </p>
       )}
 

@@ -21,11 +21,11 @@ function ToastItem({ t, onRemove }) {
   }, [duration]);
 
   const borderColor = {
-    success: '#10b981',
-    error: '#ef4444',
-    warning: '#f59e0b',
-    info: '#3b82f6',
-  }[t.type] || '#10b981';
+    success: 'var(--c-success)',
+    error: 'var(--c-danger)',
+    warning: 'var(--c-warning)',
+    info: 'var(--c-info)',
+  }[t.type] || 'var(--c-success)';
 
   const icons = {
     success: <CheckCircle size={18} className="text-emerald-500 shrink-0" />,
@@ -37,15 +37,15 @@ function ToastItem({ t, onRemove }) {
   return (
     <div
       onClick={() => onRemove(t.id)}
-      className="animate-fadeIn cursor-pointer bg-white rounded-xl shadow-xl overflow-hidden"
+      className="animate-fadeIn cursor-pointer bg-surface rounded-xl shadow-xl overflow-hidden"
       style={{ border: `1.5px solid ${borderColor}20` }}
     >
       <div className="flex items-start gap-3 px-4 py-3">
         {icons[t.type] || icons.success}
-        <span className="text-sm text-[#1C1C1E] flex-1">{t.message}</span>
+        <span className="text-sm text-ink flex-1">{t.message}</span>
       </div>
       {/* Progress bar */}
-      <div className="h-[3px] w-full bg-gray-100">
+      <div className="h-[3px] w-full bg-surface-2">
         <div
           className="h-full transition-none"
           style={{

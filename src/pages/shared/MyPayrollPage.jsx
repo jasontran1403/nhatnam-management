@@ -34,10 +34,10 @@ const fmtNum = (v, d = 2) =>
 
 /** Mức độ chạy xe trong ngày của tài xế — tô màu ô lịch theo số km. */
 const KM_LEVEL = [
-  { min: 120, cls: 'bg-[#8B5A00] text-white border-[#8B5A00]', label: 'Trên 120 km' },
-  { min: 60,  cls: 'bg-[#C9A84C] text-white border-[#C9A84C]', label: '60 – 120 km' },
-  { min: 1,   cls: 'bg-[#C9A84C]/20 text-[#8B5A00] border-[#C9A84C]/40', label: 'Dưới 60 km' },
-  { min: 0,   cls: 'bg-[#FAF7F2] text-[#C4B9A8] border-black/5', label: 'Không chạy' },
+  { min: 120, cls: 'bg-gold-deep text-white border-gold-deep', label: 'Trên 120 km' },
+  { min: 60,  cls: 'bg-gold text-white border-gold', label: '60 – 120 km' },
+  { min: 1,   cls: 'bg-gold/20 text-gold-deep border-gold/40', label: 'Dưới 60 km' },
+  { min: 0,   cls: 'bg-canvas text-faint border-hairline', label: 'Không chạy' },
 ];
 const kmLevel = (km) => KM_LEVEL.find(l => (km || 0) >= l.min) || KM_LEVEL[KM_LEVEL.length - 1];
 
@@ -70,16 +70,16 @@ function PeriodPicker({ periods, value, onChange, loading }) {
         disabled={loading || !periods.length}
         className="
           flex items-center gap-2.5 w-full sm:w-auto min-w-0 sm:min-w-[190px]
-          px-4 py-2.5 rounded-2xl bg-white border border-black/10 shadow-sm
-          hover:border-[#C9A84C]/50 transition-colors disabled:opacity-50
+          px-4 py-2.5 rounded-2xl bg-surface border border-hairline-2 shadow-sm
+          hover:border-gold/50 transition-colors disabled:opacity-50
         "
       >
-        <Calendar size={16} className="text-[#C9A84C] shrink-0" />
-        <span className="flex-1 text-left text-sm font-bold text-[#1C1C1E]">
+        <Calendar size={16} className="text-gold shrink-0" />
+        <span className="flex-1 text-left text-sm font-bold text-ink">
           {current?.label || 'Chọn tháng'}
         </span>
         <ChevronDown size={15}
-          className={`text-[#8E8878] transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+          className={`text-muted transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -89,12 +89,12 @@ function PeriodPicker({ periods, value, onChange, loading }) {
           <div className="
             absolute left-0 right-auto sm:left-auto sm:right-0 z-50 mt-2
             w-full sm:w-[260px] max-w-[calc(100vw-2rem)] max-h-[380px]
-            overflow-y-auto overscroll-contain bg-white rounded-2xl
-            border border-black/10 shadow-xl p-2
+            overflow-y-auto overscroll-contain bg-surface rounded-2xl
+            border border-hairline-2 shadow-xl p-2
           ">
             {grouped.map(([year, items]) => (
               <div key={year} className="mb-1 last:mb-0">
-                <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#8E8878]">
+                <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted">
                   Năm {year}
                 </p>
 
@@ -109,8 +109,8 @@ function PeriodPicker({ periods, value, onChange, loading }) {
                         w-full flex items-center justify-between gap-2 px-3 py-2
                         rounded-xl text-sm transition-colors
                         ${active
-                          ? 'bg-[#C9A84C] text-white font-bold'
-                          : 'text-[#1C1C1E] hover:bg-[#FAF7F2]'}
+                          ? 'bg-gold text-white font-bold'
+                          : 'text-ink hover:bg-canvas'}
                       `}
                     >
                       <span>Tháng {p.month}</span>
@@ -120,7 +120,7 @@ function PeriodPicker({ periods, value, onChange, loading }) {
                         <span className={`
                           shrink-0 whitespace-nowrap text-[10px] font-semibold
                           px-1.5 py-0.5 rounded-md
-                          ${active ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'}
+                          ${active ? 'bg-white/20 text-white' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'}
                         `}>
                           Đang xử lý
                         </span>
@@ -145,12 +145,12 @@ function ProcessingState({ label, departmentLabel }) {
   return (
     <SectionCard>
       <div className="flex flex-col items-center gap-4 py-16 px-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
           <Loader2 size={26} className="text-amber-500 animate-spin" />
         </div>
         <div className="space-y-1.5">
-          <p className="text-lg font-bold text-[#1C1C1E]">Đang xử lý lương</p>
-          <p className="text-sm text-[#8E8878] max-w-sm leading-relaxed">
+          <p className="text-lg font-bold text-ink">Đang xử lý lương</p>
+          <p className="text-sm text-muted max-w-sm leading-relaxed">
             Lương <strong>{label}</strong>
             {departmentLabel ? <> của bộ phận <strong>{departmentLabel}</strong></> : null}
             {' '}chưa được chốt. Phiếu lương sẽ hiển thị ngay khi ban quản lý hoàn tất xử lý.
@@ -187,41 +187,41 @@ function DriverDayDetail({ day, month, year, kmPerTrip, onClose }) {
   const estimated = day.kmSource !== 'ODOMETER';
 
   return (
-    <div className="lg:h-full flex flex-col rounded-2xl border border-[#C9A84C]/30 overflow-hidden
-      bg-gradient-to-br from-[#C9A84C]/10 to-transparent">
+    <div className="lg:h-full flex flex-col rounded-2xl border border-gold/30 overflow-hidden
+      bg-gradient-to-br from-gold/10 to-transparent">
 
       <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3
-        border-b border-[#C9A84C]/20">
+        border-b border-gold/20">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${cfg.cls}`}>
             <Truck size={15} />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[#1C1C1E] leading-tight">
+            <p className="text-sm font-bold text-ink leading-tight">
               {dateStr} · Thứ {day.weekdayLabel}
             </p>
-            <p className="text-[11px] text-[#8E8878] mt-0.5">
+            <p className="text-[11px] text-muted mt-0.5">
               {day.orderCount ? `${day.orderCount} đơn · ${day.trips} chuyến` : 'Không có đơn được phân công'}
             </p>
           </div>
         </div>
         <button onClick={onClose}
-          className="p-1.5 rounded-lg text-[#8E8878] hover:text-[#1C1C1E]
-            hover:bg-white/60 transition-colors shrink-0">
+          className="p-1.5 rounded-lg text-muted hover:text-ink
+            hover:bg-surface/60 transition-colors shrink-0">
           <X size={15} />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Tổng km trong ngày */}
-        <div className="bg-white rounded-2xl border border-black/5 px-4 py-3.5">
-          <p className="text-[10px] uppercase tracking-wide text-[#8E8878] font-bold">
+        <div className="bg-surface rounded-2xl border border-hairline px-4 py-3.5">
+          <p className="text-[10px] uppercase tracking-wide text-muted font-bold">
             Tổng số km đã chạy
           </p>
-          <p className="text-3xl font-bold text-[#C9A84C] leading-none mt-1.5">
-            {fmtNum(day.totalKm, 1)} <span className="text-base font-semibold text-[#8E8878]">km</span>
+          <p className="text-3xl font-bold text-gold leading-none mt-1.5">
+            {fmtNum(day.totalKm, 1)} <span className="text-base font-semibold text-muted">km</span>
           </p>
-          <p className="text-[11px] text-[#8E8878] mt-2 leading-snug">
+          <p className="text-[11px] text-muted mt-2 leading-snug">
             {estimated
               ? `Ước tính từ các đơn được phân công: ${day.trips || 0} chuyến × ${fmtNum(kmPerTrip, 0)} km/chuyến.`
               : 'Số liệu thật, lấy từ chốt odo vào ca / kết ca của ngày này.'}
@@ -231,42 +231,42 @@ function DriverDayDetail({ day, month, year, kmPerTrip, onClose }) {
         {/* Danh sách đơn */}
         {day.orders?.length ? (
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide font-bold text-[#8E8878]">
+            <p className="text-[11px] uppercase tracking-wide font-bold text-muted">
               Đơn hàng trong ngày
             </p>
             {day.orders.map(o => (
               <div key={o.orderId}
-                className="bg-white rounded-xl border border-black/5 px-3.5 py-2.5 space-y-1">
+                className="bg-surface rounded-xl border border-hairline px-3.5 py-2.5 space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#1C1C1E] truncate">{o.orderCode}</p>
-                    <p className="text-[11px] text-[#8E8878] truncate">{o.customerName || '—'}</p>
+                    <p className="text-xs font-bold text-ink truncate">{o.orderCode}</p>
+                    <p className="text-[11px] text-muted truncate">{o.customerName || '—'}</p>
                   </div>
-                  <span className="text-[11px] font-bold text-[#C9A84C] shrink-0 whitespace-nowrap">
+                  <span className="text-[11px] font-bold text-gold shrink-0 whitespace-nowrap">
                     {fmtNum(o.km, 1)} km
                   </span>
                 </div>
                 {o.deliveryAddress && (
-                  <p className="flex items-start gap-1 text-[10px] text-[#8E8878] leading-snug">
+                  <p className="flex items-start gap-1 text-[10px] text-muted leading-snug">
                     <MapPin size={11} className="shrink-0 mt-0.5" />
                     <span className="truncate">{o.deliveryAddress}</span>
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md
-                    bg-[#FAF7F2] text-[#5A5548]">{o.statusLabel}</span>
+                    bg-canvas text-ink-2">{o.statusLabel}</span>
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md
-                    bg-[#FAF7F2] text-[#5A5548]">{o.trips} chuyến</span>
+                    bg-canvas text-ink-2">{o.trips} chuyến</span>
                   {o.warehouseName && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md
-                      bg-[#FAF7F2] text-[#5A5548]">{o.warehouseName}</span>
+                      bg-canvas text-ink-2">{o.warehouseName}</span>
                   )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[#8E8878] text-center py-3">
+          <p className="text-sm text-muted text-center py-3">
             Ngày này không có đơn hàng nào được phân công cho bạn.
           </p>
         )}
@@ -295,12 +295,12 @@ function DriverCalendar({ driver, month, year }) {
 
   return (
     <SectionCard>
-      <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
         <div className="flex items-center gap-2">
-          <Route size={16} className="text-[#C9A84C]" />
-          <h3 className="text-sm font-bold text-[#1C1C1E]">Chi tiết số km theo ngày</h3>
+          <Route size={16} className="text-gold" />
+          <h3 className="text-sm font-bold text-ink">Chi tiết số km theo ngày</h3>
         </div>
-        <span className="text-xs font-semibold text-[#8E8878]">
+        <span className="text-xs font-semibold text-muted">
           {fmtNum(driver.totalKm, 1)} km · {driver.totalOrders ?? 0} đơn
         </span>
       </div>
@@ -310,13 +310,13 @@ function DriverCalendar({ driver, month, year }) {
 
           {/* CỘT TRÁI — lưới ngày trong tháng */}
           <div>
-            <p className="text-[11px] text-[#8E8878] mb-3 lg:hidden">
+            <p className="text-[11px] text-muted mb-3 lg:hidden">
               Bấm vào một ngày để xem số km và các đơn đã giao trong ngày đó.
             </p>
 
             <div className="grid grid-cols-[repeat(7,44px)] gap-1.5 mb-1.5">
               {[2, 3, 4, 5, 6, 7, 8].map(w => (
-                <div key={w} className="text-center text-[10px] font-bold text-[#8E8878]">
+                <div key={w} className="text-center text-[10px] font-bold text-muted">
                   {WEEKDAY_LABEL[w]}
                 </div>
               ))}
@@ -336,7 +336,7 @@ function DriverCalendar({ driver, month, year }) {
                     className={`h-11 rounded-lg border flex flex-col items-center justify-center
                       leading-none transition-all ${cfg.cls}
                       ${clickable ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
-                      ${isSelected ? 'ring-2 ring-[#C9A84C] ring-offset-1 scale-110' : ''}`}
+                      ${isSelected ? 'ring-2 ring-gold ring-offset-1 scale-110' : ''}`}
                   >
                     <span className="text-[12px] font-bold">{d.day}</span>
                     {(d.totalKm || 0) > 0 && (
@@ -349,12 +349,12 @@ function DriverCalendar({ driver, month, year }) {
               })}
             </div>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-black/5
+            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-hairline
               max-w-[340px]">
               {usedLevels.map(l => (
                 <div key={l.label} className="flex items-center gap-1.5">
                   <span className={`w-3.5 h-3.5 rounded-md border ${l.cls}`} />
-                  <span className="text-[11px] text-[#8E8878] font-medium">{l.label}</span>
+                  <span className="text-[11px] text-muted font-medium">{l.label}</span>
                 </div>
               ))}
             </div>
@@ -373,24 +373,24 @@ function DriverCalendar({ driver, month, year }) {
         </div>
 
         {/* Tổng kết tháng */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-5 border-t border-black/5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-5 border-t border-hairline">
           {[
-            { label: 'Tổng km trong tháng', value: fmtNum(driver.totalKm, 1), color: 'text-[#C9A84C]' },
-            { label: 'Số ngày có chạy', value: driver.activeDays ?? 0, color: 'text-emerald-600' },
-            { label: 'Tổng số đơn', value: driver.totalOrders ?? 0, color: 'text-[#1C1C1E]' },
+            { label: 'Tổng km trong tháng', value: fmtNum(driver.totalKm, 1), color: 'text-gold' },
+            { label: 'Số ngày có chạy', value: driver.activeDays ?? 0, color: 'text-emerald-600 dark:text-emerald-300' },
+            { label: 'Tổng số đơn', value: driver.totalOrders ?? 0, color: 'text-ink' },
             {
-              label: 'Km trung bình / ngày chạy', color: 'text-blue-600',
+              label: 'Km trung bình / ngày chạy', color: 'text-blue-600 dark:text-blue-300',
               value: driver.activeDays ? fmtNum(driver.totalKm / driver.activeDays, 1) : '—',
             },
           ].map(st => (
-            <div key={st.label} className="bg-[#FAF7F2] rounded-xl px-3 py-2.5">
-              <p className="text-[11px] text-[#8E8878] font-medium">{st.label}</p>
+            <div key={st.label} className="bg-canvas rounded-xl px-3 py-2.5">
+              <p className="text-[11px] text-muted font-medium">{st.label}</p>
               <p className={`text-lg font-bold mt-0.5 leading-tight ${st.color}`}>{st.value}</p>
             </div>
           ))}
         </div>
 
-        <p className="text-[11px] text-[#8E8878] mt-3 leading-relaxed">
+        <p className="text-[11px] text-muted mt-3 leading-relaxed">
           Số km được ước tính từ các đơn hàng <strong>đã và đang giao</strong> mà bạn được phân công
           trong ngày ({fmtNum(driver.kmPerTrip, 0)} km/chuyến). Ngày nào kho có chốt odo vào ca /
           kết ca thì hệ thống lấy đúng số km thật thay cho ước tính.
@@ -443,30 +443,30 @@ function KpiBreakdown({ kpi, amount }) {
 
   return (
     <SectionCard>
-      <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
         <div className="flex items-center gap-2">
-          <Award size={16} className="text-[#C9A84C]" />
-          <h3 className="text-sm font-bold text-[#1C1C1E]">Thưởng KPI sản xuất</h3>
+          <Award size={16} className="text-gold" />
+          <h3 className="text-sm font-bold text-ink">Thưởng KPI sản xuất</h3>
         </div>
-        <span className="text-base font-bold text-[#C9A84C]">{fmtVnd(amount)}</span>
+        <span className="text-base font-bold text-gold">{fmtVnd(amount)}</span>
       </div>
 
       <div className="p-5 grid lg:grid-cols-2 gap-5">
         <div>
-          <p className="text-[11px] uppercase tracking-wide font-bold text-[#8E8878] mb-2.5">
+          <p className="text-[11px] uppercase tracking-wide font-bold text-muted mb-2.5">
             Quỹ thưởng chung
           </p>
           <div className="space-y-2">
             {steps.map((s, i) => (
               <div key={i}
                 className={`flex items-start justify-between gap-3 px-3.5 py-2.5 rounded-xl
-                  ${s.highlight ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/25' : 'bg-[#FAF7F2]'}`}>
+                  ${s.highlight ? 'bg-gold/10 border border-gold/25' : 'bg-canvas'}`}>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-[#1C1C1E] leading-snug">{s.label}</p>
-                  {s.sub && <p className="text-[11px] text-[#8E8878] mt-0.5 leading-snug">{s.sub}</p>}
+                  <p className="text-[13px] font-medium text-ink leading-snug">{s.label}</p>
+                  {s.sub && <p className="text-[11px] text-muted mt-0.5 leading-snug">{s.sub}</p>}
                 </div>
                 <span className={`text-sm font-bold shrink-0 whitespace-nowrap
-                  ${s.highlight ? 'text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+                  ${s.highlight ? 'text-gold' : 'text-ink'}`}>
                   {s.value}
                 </span>
               </div>
@@ -475,22 +475,22 @@ function KpiBreakdown({ kpi, amount }) {
         </div>
 
         <div>
-          <p className="text-[11px] uppercase tracking-wide font-bold text-[#8E8878] mb-2.5">
+          <p className="text-[11px] uppercase tracking-wide font-bold text-muted mb-2.5">
             Phần của bạn
           </p>
 
-          <div className="bg-gradient-to-br from-[#C9A84C]/15 to-[#C9A84C]/5
-            border border-[#C9A84C]/30 rounded-2xl px-4 py-4">
-            <p className="text-[13px] text-[#5A5548]">
+          <div className="bg-gradient-to-br from-gold/15 to-gold/5
+            border border-gold/30 rounded-2xl px-4 py-4">
+            <p className="text-[13px] text-ink-2">
               Vị trí <strong>{kpi.myRoleLabel || '—'}</strong>
               {kpi.myFixedRole && ' — hưởng mức thưởng KPI cố định hàng tháng'}
             </p>
-            <p className="text-3xl font-bold text-[#C9A84C] mt-2 leading-none">{fmtVnd(amount)}</p>
-            <p className="text-[11px] text-[#8E8878] mt-2">Thưởng KPI thực nhận tháng này</p>
+            <p className="text-3xl font-bold text-gold mt-2 leading-none">{fmtVnd(amount)}</p>
+            <p className="text-[11px] text-muted mt-2">Thưởng KPI thực nhận tháng này</p>
           </div>
 
           {kpi.carryOverOut > 0 && (
-            <p className="text-[11px] text-[#8E8878] bg-[#FAF7F2] rounded-xl px-3.5 py-2.5 mt-2 leading-relaxed">
+            <p className="text-[11px] text-muted bg-canvas rounded-xl px-3.5 py-2.5 mt-2 leading-relaxed">
               Phần chưa chia hết <strong>{fmtVnd(kpi.carryOverOut)}</strong> được
               chuyển sang quỹ thưởng của tháng sau.
             </p>
@@ -512,7 +512,7 @@ function PayslipCard({ slip }) {
   return (
     <SectionCard className="overflow-hidden">
       {/* Header tối */}
-      <div className="bg-gradient-to-br from-[#1C1C1E] to-[#2E2A24] px-6 py-5 text-white">
+      <div className="bg-gradient-to-br from-chrome to-chrome px-6 py-5 text-white">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-white/45 font-bold">Phiếu lương</p>
@@ -529,7 +529,7 @@ function PayslipCard({ slip }) {
 
         <div className="mt-5 pt-4 border-t border-white/10 flex items-end justify-between gap-4">
           <span className="text-sm font-semibold text-white/70">Lương NET thực nhận</span>
-          <span className="text-3xl font-bold text-[#C9A84C] leading-none">
+          <span className="text-3xl font-bold text-gold leading-none">
             {fmtVnd(netSalary != null ? netSalary : slip.totalPay)}
           </span>
         </div>
@@ -539,7 +539,7 @@ function PayslipCard({ slip }) {
             <span className="text-[11px] text-white/50">
               Thưởng KPI sản xuất (chi riêng ngoài bảng lương)
             </span>
-            <span className="text-sm font-bold text-[#C9A84C]">+ {fmtVnd(slip.kpiBonus)}</span>
+            <span className="text-sm font-bold text-gold">+ {fmtVnd(slip.kpiBonus)}</span>
           </div>
         )}
       </div>
@@ -549,9 +549,9 @@ function PayslipCard({ slip }) {
         {detail ? (
           <PayslipBreakdownCards row={detail} />
         ) : (
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-            <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-800">
+          <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-4 py-3">
+            <AlertCircle size={16} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800 dark:text-amber-300">
               Bạn chưa có hồ sơ lương trong hệ thống nên chưa hiển thị được chi tiết lương.
               Vui lòng liên hệ bộ phận nhân sự.
             </p>
@@ -560,7 +560,7 @@ function PayslipCard({ slip }) {
       </div>
 
       {slip.finalizedAt && (
-        <p className="px-5 pb-4 text-[11px] text-[#A8A090]">
+        <p className="px-5 pb-4 text-[11px] text-muted">
           Lương tháng này đã được chốt ngày{' '}
           {new Date(slip.finalizedAt).toLocaleDateString('vi-VN')}.
         </p>
@@ -647,9 +647,9 @@ function MyPayrollContent({ onNeedPasscode }) {
             type="button"
             onClick={onNeedPasscode}
             title="Khoá lại màn hình lương"
-            className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-white
-                       border border-black/10 shadow-sm text-[#8E8878]
-                       hover:border-[#C9A84C]/50 hover:text-[#C9A84C] transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-surface
+                       border border-hairline-2 shadow-sm text-muted
+                       hover:border-gold/50 hover:text-gold transition-colors"
           >
             <Lock size={15} />
             <span className="hidden sm:inline text-xs font-semibold">Khoá lại</span>
@@ -658,9 +658,9 @@ function MyPayrollContent({ onNeedPasscode }) {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3">
           <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-600 font-medium">{error}</p>
+          <p className="text-sm text-red-600 dark:text-red-300 font-medium">{error}</p>
         </div>
       )}
 
@@ -669,9 +669,9 @@ function MyPayrollContent({ onNeedPasscode }) {
       ) : !periods.length ? (
         <SectionCard>
           <div className="flex flex-col items-center gap-3 py-14 px-6 text-center">
-            <Calendar size={28} className="text-[#C4B9A8]" />
-            <p className="text-sm font-semibold text-[#1C1C1E]">Chưa có tháng nào để xem</p>
-            <p className="text-xs text-[#8E8878]">Phiếu lương chỉ hiển thị cho các tháng đã kết thúc.</p>
+            <Calendar size={28} className="text-faint" />
+            <p className="text-sm font-semibold text-ink">Chưa có tháng nào để xem</p>
+            <p className="text-xs text-muted">Phiếu lương chỉ hiển thị cho các tháng đã kết thúc.</p>
           </div>
         </SectionCard>
       ) : loadingSlip ? (
@@ -680,11 +680,11 @@ function MyPayrollContent({ onNeedPasscode }) {
         : slip.status === 'NO_DEPARTMENT' ? (
           <SectionCard>
             <div className="flex flex-col items-center gap-3 py-14 px-6 text-center">
-              <AlertCircle size={28} className="text-[#C4B9A8]" />
-              <p className="text-sm font-semibold text-[#1C1C1E]">
+              <AlertCircle size={28} className="text-faint" />
+              <p className="text-sm font-semibold text-ink">
                 Tài khoản của bạn chưa được xếp vào bộ phận tính lương
               </p>
-              <p className="text-xs text-[#8E8878] max-w-sm leading-relaxed">
+              <p className="text-xs text-muted max-w-sm leading-relaxed">
                 Vui lòng liên hệ bộ phận nhân sự để cập nhật role nhận lương.
               </p>
             </div>
@@ -696,11 +696,11 @@ function MyPayrollContent({ onNeedPasscode }) {
           <div className="space-y-5">
             {/* Thông tin nhân viên */}
             <SectionCard>
-              <div className="flex items-center gap-2 px-5 py-4 border-b border-black/5">
+              <div className="flex items-center gap-2 px-5 py-4 border-b border-hairline">
                 {isDriver
-                  ? <Truck size={16} className="text-[#C9A84C]" />
-                  : <Factory size={16} className="text-[#C9A84C]" />}
-                <h3 className="text-sm font-bold text-[#1C1C1E]">Thông tin nhân viên</h3>
+                  ? <Truck size={16} className="text-gold" />
+                  : <Factory size={16} className="text-gold" />}
+                <h3 className="text-sm font-bold text-ink">Thông tin nhân viên</h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-5">
                 {[
@@ -709,17 +709,17 @@ function MyPayrollContent({ onNeedPasscode }) {
                   { label: 'Vị trí', value: slip.roleLabel || slip.position },
                 ].map(f => (
                   <div key={f.label}>
-                    <p className="text-[11px] uppercase tracking-wide text-[#8E8878] font-semibold">{f.label}</p>
-                    <p className="text-sm font-medium text-[#1C1C1E] mt-1">{f.value || '—'}</p>
+                    <p className="text-[11px] uppercase tracking-wide text-muted font-semibold">{f.label}</p>
+                    <p className="text-sm font-medium text-ink mt-1">{f.value || '—'}</p>
                   </div>
                 ))}
               </div>
             </SectionCard>
 
             {slip.status === 'NO_SALARY' && (
-              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800">
+              <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-4 py-3">
+                <AlertCircle size={16} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800 dark:text-amber-300">
                   Bạn chưa có hồ sơ lương được duyệt nên phiếu lương chưa đầy đủ.
                   Vui lòng liên hệ bộ phận nhân sự.
                 </p>
@@ -744,14 +744,14 @@ function MyPayrollContent({ onNeedPasscode }) {
             {!slip.hasKpiBonus && !isDriver && (
               <SectionCard>
                 <div className="flex items-center gap-3 px-5 py-6">
-                  <span className="w-10 h-10 rounded-xl bg-[#FAF7F2] flex items-center justify-center shrink-0">
-                    <Package size={17} className="text-[#C4B9A8]" />
+                  <span className="w-10 h-10 rounded-xl bg-canvas flex items-center justify-center shrink-0">
+                    <Package size={17} className="text-faint" />
                   </span>
                   <div>
-                    <p className="text-sm font-bold text-[#1C1C1E]">
+                    <p className="text-sm font-bold text-ink">
                       Bảng thưởng của bộ phận {slip.payrollDepartmentLabel}
                     </p>
-                    <p className="text-xs text-[#8E8878] mt-0.5 leading-relaxed">
+                    <p className="text-xs text-muted mt-0.5 leading-relaxed">
                       Bộ phận này không áp dụng thưởng KPI sản xuất. Bảng thưởng riêng
                       sẽ được bổ sung trong bản cập nhật tiếp theo.
                     </p>

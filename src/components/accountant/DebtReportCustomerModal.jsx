@@ -158,26 +158,26 @@ export default function DebtReportCustomerModal({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !exporting && onClose?.()} />
 
       {/* Panel */}
-      <div className="relative bg-white w-full sm:max-w-5xl xl:max-w-6xl
+      <div className="relative bg-surface w-full sm:max-w-5xl xl:max-w-6xl
                       h-[94vh] md:h-[86vh] md:max-h-[820px] md:min-h-[600px]
                       rounded-t-3xl sm:rounded-2xl shadow-2xl
                       flex flex-col animate-[slideUpDR_.18s_ease-out]">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-black/5 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-hairline flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center shrink-0">
-              <FileText size={18} className="text-[#C9A84C]" />
+            <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
+              <FileText size={18} className="text-gold" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-[#1C1C1E] text-base truncate">{title}</h3>
-              <p className="text-xs text-[#8E8878]">
+              <h3 className="font-bold text-ink text-base truncate">{title}</h3>
+              <p className="text-xs text-muted">
                 Chọn một hoặc nhiều khách hàng để đưa vào báo cáo công nợ
               </p>
             </div>
           </div>
           <button onClick={() => !exporting && onClose?.()}
-            className="text-[#8E8878] hover:text-[#1C1C1E] p-2 rounded-lg hover:bg-[#FAF7F2] transition-colors shrink-0">
+            className="text-muted hover:text-ink p-2 rounded-lg hover:bg-canvas transition-colors shrink-0">
             <X size={18} />
           </button>
         </div>
@@ -189,24 +189,24 @@ export default function DebtReportCustomerModal({
           <div className="flex flex-col min-h-0 md:w-[38%] md:max-w-[440px] flex-shrink-0
                           h-[38%] md:h-auto">
             <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">
+              <p className="text-xs font-bold text-muted uppercase tracking-wider">
                 Khách hàng đã chọn
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-md bg-[#C9A84C]/15 text-[#C9A84C] font-bold">
+                <span className="ml-1.5 px-1.5 py-0.5 rounded-md bg-gold/15 text-gold font-bold">
                   {selected.size}
                 </span>
               </p>
               {selected.size > 0 && (
                 <button onClick={clearAll}
-                  className="text-xs text-[#8E8878] hover:text-red-500 transition-colors">
+                  className="text-xs text-muted hover:text-red-500 transition-colors">
                   Bỏ chọn tất cả
                 </button>
               )}
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-[#E8DDD0]
-                            bg-[#FAF7F2]/50 p-2">
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-line
+                            bg-canvas/50 p-2">
               {selected.size === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center gap-2 text-[#C4B9A8] px-4 text-center">
+                <div className="h-full flex flex-col items-center justify-center gap-2 text-faint px-4 text-center">
                   <Users size={26} strokeWidth={1.5} />
                   <p className="text-xs">Chưa chọn khách hàng nào</p>
                   <p className="text-[11px]">Tìm và chọn khách hàng ở cột bên phải</p>
@@ -217,28 +217,28 @@ export default function DebtReportCustomerModal({
                     const isCompany = c.customerType === 'COMPANY';
                     return (
                       <div key={c.id}
-                        className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-white
-                                   border border-[#E8DDD0] shadow-sm">
+                        className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-surface
+                                   border border-line shadow-sm">
                         <span className={`w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0
-                          ${isCompany ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+                          ${isCompany ? 'bg-blue-500' : 'bg-gold'}`}>
                           {isCompany ? <Building2 size={13} /> : <UserIcon size={13} />}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-medium text-[#1C1C1E] truncate">
+                          <span className="block text-sm font-medium text-ink truncate">
                             {displayName(c)}
                           </span>
-                          <span className="block text-[11px] text-[#8E8878] truncate">
+                          <span className="block text-[11px] text-muted truncate">
                             {c.customerCode ? `#${c.customerCode}` : '—'}
                             {c.phone ? ` · ${c.phone}` : ''}
                           </span>
                         </span>
                         {c.unpaidDebt > 0 && (
-                          <span className="text-[11px] font-bold text-red-600 shrink-0">
+                          <span className="text-[11px] font-bold text-red-600 dark:text-red-300 shrink-0">
                             {fmtMoney(c.unpaidDebt)} đ
                           </span>
                         )}
                         <button onClick={() => toggle(c)} title="Bỏ chọn"
-                          className="text-[#8E8878] hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-colors shrink-0">
+                          className="text-muted hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 p-1 rounded-lg transition-colors shrink-0">
                           <X size={13} />
                         </button>
                       </div>
@@ -253,7 +253,7 @@ export default function DebtReportCustomerModal({
           <div className="flex-1 flex flex-col min-h-0 gap-2.5">
             {/* Ô search */}
             <div className="relative flex-shrink-0">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               <input
                 ref={inputRef}
                 type="text"
@@ -262,42 +262,42 @@ export default function DebtReportCustomerModal({
                 onFocus={() => setListOpen(true)}
                 onClick={() => setListOpen(true)}
                 placeholder="Bấm để tìm & thêm khách hàng (tên, công ty, mã KH, SĐT)..."
-                className="w-full h-11 border border-[#E8DDD0] rounded-xl pl-10 pr-20 text-sm bg-white
-                           focus:outline-none focus:border-[#C9A84C] transition-colors"
+                className="w-full h-11 border border-line rounded-xl pl-10 pr-20 text-sm bg-surface
+                           focus:outline-none focus:border-gold transition-colors"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                 {q && (
                   <button onClick={() => { setQ(''); inputRef.current?.focus(); }}
-                    className="text-[#8E8878] hover:text-[#1C1C1E] p-0.5">
+                    className="text-muted hover:text-ink p-0.5">
                     <X size={15} />
                   </button>
                 )}
                 <button onClick={() => setListOpen(v => !v)} title={listOpen ? 'Thu gọn' : 'Mở danh sách'}
-                  className="text-[#8E8878] hover:text-[#1C1C1E] p-0.5">
+                  className="text-muted hover:text-ink p-0.5">
                   <ChevronDown size={16} className={`transition-transform ${listOpen ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </div>
 
             {/* Vùng danh sách — chiếm trọn chiều cao còn lại của modal */}
-            <div className="flex-1 min-h-0 rounded-xl border border-[#E8DDD0] bg-white overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0 rounded-xl border border-line bg-surface overflow-hidden flex flex-col">
               {!listOpen ? (
                 // Đóng: cả vùng là nút mở danh sách
                 <button onClick={() => { setListOpen(true); inputRef.current?.focus(); }}
-                  className="flex-1 w-full flex flex-col items-center justify-center gap-2 text-[#C4B9A8]
-                             hover:bg-[#FAF7F2] transition-colors">
+                  className="flex-1 w-full flex flex-col items-center justify-center gap-2 text-faint
+                             hover:bg-canvas transition-colors">
                   <Search size={26} strokeWidth={1.5} />
                   <p className="text-xs">Bấm để mở danh sách khách hàng</p>
                   {!loading && totalElements > 0 && (
-                    <p className="text-[11px] text-[#8E8878]">{totalElements} khách hàng khả dụng</p>
+                    <p className="text-[11px] text-muted">{totalElements} khách hàng khả dụng</p>
                   )}
                 </button>
               ) : (
                 <>
                   {/* Thanh công cụ */}
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#FAF7F2]
-                                  border-b border-[#F0EBE3] flex-shrink-0">
-                    <span className="text-xs text-[#8E8878]">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-canvas
+                                  border-b border-line-soft flex-shrink-0">
+                    <span className="text-xs text-muted">
                       {loading
                         ? 'Đang tải...'
                         : <>
@@ -308,24 +308,24 @@ export default function DebtReportCustomerModal({
                     </span>
                     <div className="flex items-center gap-3">
                       <button onClick={selectAllVisible} disabled={!list.length}
-                        className="text-xs font-semibold text-[#C9A84C] hover:underline disabled:opacity-40">
+                        className="text-xs font-semibold text-gold hover:underline disabled:opacity-40">
                         Chọn tất cả ({list.length})
                       </button>
                       <button onClick={() => setListOpen(false)}
-                        className="text-xs text-[#8E8878] hover:text-[#1C1C1E]">Thu gọn</button>
+                        className="text-xs text-muted hover:text-ink">Thu gọn</button>
                     </div>
                   </div>
 
                   {/* Danh sách cuộn — không phân trang */}
                   <div className="flex-1 min-h-0 overflow-y-auto">
                     {loading ? (
-                      <div className="h-full flex items-center justify-center gap-2 text-[#8E8878] text-xs">
+                      <div className="h-full flex items-center justify-center gap-2 text-muted text-xs">
                         <Loader2 size={15} className="animate-spin" /> Đang tải danh sách...
                       </div>
                     ) : error ? (
                       <div className="h-full flex items-center justify-center text-xs text-red-500">{error}</div>
                     ) : list.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-xs text-[#8E8878]">
+                      <div className="h-full flex items-center justify-center text-xs text-muted">
                         Không tìm thấy khách hàng phù hợp
                       </div>
                     ) : (
@@ -339,21 +339,21 @@ export default function DebtReportCustomerModal({
                               type="button"
                               onClick={() => toggle(c)}
                               className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors
-                                border-b border-[#F0EBE3] last:border-0
-                                ${checked ? 'bg-[#C9A84C]/10' : 'hover:bg-[#FAF7F2]'}`}>
+                                border-b border-line-soft last:border-0
+                                ${checked ? 'bg-gold/10' : 'hover:bg-canvas'}`}>
                               <span className={`w-[18px] h-[18px] rounded border flex items-center justify-center shrink-0
-                                ${checked ? 'bg-[#C9A84C] border-[#C9A84C]' : 'border-[#E8DDD0] bg-white'}`}>
+                                ${checked ? 'bg-gold border-gold' : 'border-line bg-surface'}`}>
                                 {checked && <Check size={12} className="text-white" strokeWidth={3} />}
                               </span>
                               <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0
-                                ${isCompany ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+                                ${isCompany ? 'bg-blue-500' : 'bg-gold'}`}>
                                 {isCompany ? <Building2 size={14} /> : <UserIcon size={14} />}
                               </span>
                               <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-semibold text-[#1C1C1E] truncate">
+                                <span className="block text-sm font-semibold text-ink truncate">
                                   {displayName(c)}
                                 </span>
-                                <span className="block text-xs text-[#8E8878] truncate">
+                                <span className="block text-xs text-muted truncate">
                                   {c.customerCode ? `#${c.customerCode}` : '—'}
                                   {c.phone ? ` · ${c.phone}` : ''}
                                 </span>
@@ -361,11 +361,11 @@ export default function DebtReportCustomerModal({
                               <span className="shrink-0 text-right">
                                 {c.unpaidDebt > 0 ? (
                                   <>
-                                    <span className="block text-xs font-bold text-red-600">{fmtMoney(c.unpaidDebt)} đ</span>
-                                    <span className="block text-[10px] text-[#8E8878]">công nợ</span>
+                                    <span className="block text-xs font-bold text-red-600 dark:text-red-300">{fmtMoney(c.unpaidDebt)} đ</span>
+                                    <span className="block text-[10px] text-muted">công nợ</span>
                                   </>
                                 ) : (
-                                  <span className="block text-xs text-[#C4B9A8]">—</span>
+                                  <span className="block text-xs text-faint">—</span>
                                 )}
                               </span>
                             </button>
@@ -373,7 +373,7 @@ export default function DebtReportCustomerModal({
                         })}
 
                         {fetchingRest && (
-                          <div className="flex items-center justify-center gap-2 py-3 text-[11px] text-[#8E8878]">
+                          <div className="flex items-center justify-center gap-2 py-3 text-[11px] text-muted">
                             <Loader2 size={13} className="animate-spin" /> Đang tải thêm khách hàng...
                           </div>
                         )}
@@ -387,22 +387,22 @@ export default function DebtReportCustomerModal({
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <div className="px-6 py-4 border-t border-black/5 bg-[#FAF7F2]/60 flex items-center gap-3 flex-shrink-0
+        <div className="px-6 py-4 border-t border-hairline bg-canvas/60 flex items-center gap-3 flex-shrink-0
                         sm:rounded-b-2xl">
           {onExportAll && (
             <button onClick={onExportAll} disabled={exporting}
-              className="text-xs text-[#8E8878] hover:text-[#C9A84C] hover:underline disabled:opacity-50">
+              className="text-xs text-muted hover:text-gold hover:underline disabled:opacity-50">
               Xuất tất cả khách hàng
             </button>
           )}
           <div className="flex-1" />
           <button onClick={() => !exporting && onClose?.()} disabled={exporting}
-            className="px-5 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-50">
+            className="px-5 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:border-gold transition-all disabled:opacity-50">
             Hủy
           </button>
           <button onClick={handleConfirm} disabled={!selected.size || exporting}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold
-                       hover:bg-[#B8963F] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold
+                       hover:bg-gold-strong transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             {exporting
               ? <><Loader2 size={15} className="animate-spin" /> Đang xuất...</>
               : <><FileText size={15} /> Xuất báo cáo{selected.size ? ` (${selected.size})` : ''}</>}

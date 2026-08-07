@@ -27,7 +27,7 @@ function LockShell({ children }) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 w-full flex justify-center">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl border border-black/10 shadow-sm overflow-hidden">
+        <div className="bg-surface rounded-3xl border border-hairline-2 shadow-sm overflow-hidden">
           {children}
         </div>
       </div>
@@ -38,20 +38,20 @@ function LockShell({ children }) {
 /** Dải màu vàng trên đỉnh thẻ — đồng bộ với gradient avatar / nút chính của app. */
 function ShellHeader({ icon: Icon, title, subtitle, danger = false }) {
   return (
-    <div className="px-6 pt-8 pb-6 text-center border-b border-black/5">
+    <div className="px-6 pt-8 pb-6 text-center border-b border-hairline">
       <div
         className={`
           w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4
           ${danger
-            ? 'bg-red-50 border border-red-100'
-            : 'bg-gradient-to-br from-[#C9A84C] to-[#A07830] shadow-lg shadow-[#C9A84C]/25'}
+            ? 'bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18'
+            : 'bg-gradient-to-br from-gold to-gold-deep shadow-lg shadow-gold/25'}
         `}
       >
         <Icon size={28} className={danger ? 'text-red-500' : 'text-white'} />
       </div>
 
-      <h2 className="text-lg font-bold text-[#1C1C1E]">{title}</h2>
-      <p className="text-xs text-[#8E8878] mt-1.5 leading-relaxed px-2">{subtitle}</p>
+      <h2 className="text-lg font-bold text-ink">{title}</h2>
+      <p className="text-xs text-muted mt-1.5 leading-relaxed px-2">{subtitle}</p>
     </div>
   );
 }
@@ -76,18 +76,18 @@ function LockedState({ user }) {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="w-12 h-[3.75rem] sm:w-14 sm:h-16 rounded-2xl border-2 border-dashed border-black/15
-                         bg-[#F5F1EA] flex items-center justify-center"
+              className="w-12 h-[3.75rem] sm:w-14 sm:h-16 rounded-2xl border-2 border-dashed border-hairline-3
+                         bg-surface-2 flex items-center justify-center"
             >
-              <Lock size={15} className="text-[#C4B9A8]" />
+              <Lock size={15} className="text-faint" />
             </div>
           ))}
         </div>
 
-        <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3.5">
+        <div className="flex items-start gap-2.5 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-2xl px-4 py-3.5">
           <Phone size={16} className="text-red-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-red-700">Liên hệ quản trị viên để mở khoá</p>
+            <p className="text-sm font-bold text-red-700 dark:text-red-300">Liên hệ quản trị viên để mở khoá</p>
             <p className="text-xs text-red-600/90 mt-1 leading-relaxed">
               Vui lòng liên hệ bộ phận Nhân sự hoặc quản trị viên hệ thống. Sau khi
               được mở khoá, mật khẩu xem lương sẽ đặt lại về <b>000000</b> và bạn nên
@@ -97,11 +97,11 @@ function LockedState({ user }) {
         </div>
 
         {user?.username && (
-          <div className="rounded-2xl bg-[#FAF7F2] border border-black/5 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wide text-[#8E8878] font-semibold">
+          <div className="rounded-2xl bg-canvas border border-hairline px-4 py-3">
+            <p className="text-[11px] uppercase tracking-wide text-muted font-semibold">
               Mã tài khoản cần cung cấp cho quản trị viên
             </p>
-            <p className="text-sm font-bold text-[#1C1C1E] mt-1">
+            <p className="text-sm font-bold text-ink mt-1">
               {user.fullName ? `${user.fullName} — ` : ''}@{user.username}
             </p>
           </div>
@@ -201,8 +201,8 @@ export default function PayrollLockPage({ onUnlocked }) {
     return (
       <LockShell>
         <div className="flex flex-col items-center justify-center gap-3 py-20">
-          <Loader2 size={26} className="animate-spin text-[#C9A84C]" />
-          <p className="text-sm text-[#8E8878]">Đang kiểm tra quyền xem lương...</p>
+          <Loader2 size={26} className="animate-spin text-gold" />
+          <p className="text-sm text-muted">Đang kiểm tra quyền xem lương...</p>
         </div>
       </LockShell>
     );
@@ -234,15 +234,15 @@ export default function PayrollLockPage({ onUnlocked }) {
         {/* Vùng thông báo chiều cao cố định → không nhảy layout khi hiện/ẩn lỗi */}
         <div className="min-h-[3.25rem] flex items-center justify-center">
           {verifying ? (
-            <div className="flex items-center gap-2 text-sm text-[#8E8878]">
-              <Loader2 size={15} className="animate-spin text-[#C9A84C]" />
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <Loader2 size={15} className="animate-spin text-gold" />
               Đang xác thực...
             </div>
           ) : error ? (
-            <div className="w-full flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3.5 py-2.5">
+            <div className="w-full flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl px-3.5 py-2.5">
               <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-red-600 leading-snug">{error}</p>
+                <p className="text-xs font-semibold text-red-600 dark:text-red-300 leading-snug">{error}</p>
                 {remaining > 0 && (
                   <p className="text-[11px] text-red-500/80 mt-0.5">
                     Còn {remaining} lần thử. Sai hết sẽ bị khoá và phải liên hệ quản trị viên.
@@ -251,7 +251,7 @@ export default function PayrollLockPage({ onUnlocked }) {
               </div>
             </div>
           ) : (
-            <p className="text-xs text-[#8E8878] text-center leading-relaxed">
+            <p className="text-xs text-muted text-center leading-relaxed">
               Nhập đủ 6 số, hệ thống sẽ tự kiểm tra.
             </p>
           )}
@@ -259,18 +259,18 @@ export default function PayrollLockPage({ onUnlocked }) {
 
         {/* Nhắc đổi mật khẩu nếu vẫn đang dùng 000000 */}
         {usingDefault && !error && (
-          <div className="flex items-start gap-2.5 bg-[#FDF8ED] border border-[#C9A84C]/30 rounded-2xl px-4 py-3">
-            <KeyRound size={15} className="text-[#C9A84C] shrink-0 mt-0.5" />
-            <p className="text-xs text-[#8B6F2E] leading-relaxed">
+          <div className="flex items-start gap-2.5 bg-gold-tint border border-gold/30 rounded-2xl px-4 py-3">
+            <KeyRound size={15} className="text-gold shrink-0 mt-0.5" />
+            <p className="text-xs text-gold-deep leading-relaxed">
               Bạn đang dùng mật khẩu mặc định <b>000000</b>. Hãy đổi tại{' '}
               <b>Thông tin tài khoản → Mật khẩu xem lương</b> để bảo mật hơn.
             </p>
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-1.5 border-t border-black/5 pt-4">
-          <ShieldCheck size={13} className="text-[#C4B9A8]" />
-          <p className="text-[11px] text-[#C4B9A8]">
+        <div className="flex items-center justify-center gap-1.5 border-t border-hairline pt-4">
+          <ShieldCheck size={13} className="text-faint" />
+          <p className="text-[11px] text-faint">
             Mỗi lần vào trang lương đều cần nhập lại mật khẩu
           </p>
         </div>

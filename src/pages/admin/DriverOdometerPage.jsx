@@ -15,13 +15,14 @@ import {
   ChevronRight, AlertCircle, Settings2, EyeOff, Eye, Plus, Pencil,
 } from 'lucide-react';
 import { adminDriverOdometerApi } from '../../api/adminApi';
+import { BackButton } from '../../components/common/SubPageNav';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import { driverAdminApi } from '../../api/driverApi';
 import { useToast } from '../../components/common/Toast';
+import { fmtVND } from '../../utils/format.js';
 
 const fmtKm = (n) =>
   n === null || n === undefined ? '—' : new Intl.NumberFormat('vi-VN').format(n);
-const fmtVND = (n) => new Intl.NumberFormat('vi-VN').format(Number(n) || 0) + ' đ';
 
 /** yyyy-MM-dd → dd/MM */
 const shortDate = (s) => {
@@ -82,54 +83,54 @@ function DriverOrdersModal({ driver, from, to, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-black/5">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-hairline">
           <div>
-            <p className="font-bold text-[#1C1C1E]">{driver.driverName}</p>
-            <p className="text-xs text-[#8E8878] mt-0.5">
+            <p className="font-bold text-ink">{driver.driverName}</p>
+            <p className="text-xs text-muted mt-0.5">
               {orders.length} đơn · {shortDate(from)} – {shortDate(to)}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted transition">
             <X size={20} />
           </button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           {loading ? (
-            <p className="text-sm text-[#8E8878] text-center py-8">Đang tải...</p>
+            <p className="text-sm text-muted text-center py-8">Đang tải...</p>
           ) : orders.length === 0 ? (
-            <p className="text-sm text-[#8E8878] text-center py-8">
+            <p className="text-sm text-muted text-center py-8">
               Không có đơn nào được gán cho tài xế này trong khoảng đã chọn
             </p>
           ) : grouped.map(([date, list]) => (
             <div key={date}>
-              <p className="text-xs font-semibold text-[#C9A84C] uppercase mb-2">
+              <p className="text-xs font-semibold text-gold uppercase mb-2">
                 {shortDate(date)} · {list.length} đơn
               </p>
               <div className="space-y-2">
                 {list.map(o => (
-                  <div key={o.orderId} className="bg-[#FAF7F2] rounded-xl px-4 py-3">
+                  <div key={o.orderId} className="bg-canvas rounded-xl px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</span>
-                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-white text-[#8E8878]">
+                          <span className="font-mono text-xs font-bold text-gold">{o.orderCode}</span>
+                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface text-muted">
                             {STATUS_LABEL[o.status] || o.status}
                           </span>
                           {o.trips > 1 && (
-                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#C9A84C]/15 text-[#B8923E] font-semibold">
+                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-gold/15 text-gold-strong font-semibold">
                               {o.trips} chuyến
                             </span>
                           )}
                         </div>
-                        <p className="text-sm font-medium text-[#1C1C1E] mt-1">{o.customerName}</p>
-                        <p className="text-xs text-[#8E8878] mt-0.5 flex items-start gap-1">
+                        <p className="text-sm font-medium text-ink mt-1">{o.customerName}</p>
+                        <p className="text-xs text-muted mt-0.5 flex items-start gap-1">
                           <MapPin size={11} className="mt-0.5 flex-shrink-0" />
                           <span>{o.deliveryAddress || 'Chưa có địa chỉ giao'}</span>
                         </p>
                       </div>
-                      <span className="text-sm font-bold text-[#1C1C1E] whitespace-nowrap">
+                      <span className="text-sm font-bold text-ink whitespace-nowrap">
                         {fmtVND(o.finalAmount)}
                       </span>
                     </div>
@@ -140,9 +141,9 @@ function DriverOrdersModal({ driver, from, to, onClose }) {
           ))}
         </div>
 
-        <div className="p-5 border-t border-black/5">
+        <div className="p-5 border-t border-hairline">
           <button onClick={onClose}
-            className="w-full py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+            className="w-full py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
             Đóng
           </button>
         </div>
@@ -159,22 +160,22 @@ function DriverCard({ d, onDetail }) {
   const hasData = vehicles.length > 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 hover:shadow-md transition">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 hover:shadow-md transition">
       <div className="flex flex-col lg:flex-row lg:items-center gap-4">
 
         {/* Tài xế + tổng km */}
         <div className="flex items-center gap-4 lg:w-64 flex-shrink-0">
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-[#1C1C1E] truncate">{d.driverName}</p>
-            <p className="text-xs text-[#8E8878]">
+            <p className="font-bold text-ink truncate">{d.driverName}</p>
+            <p className="text-xs text-muted">
               {d.vehicleType === 'BOTH' ? 'Xe máy + Xe tải'
                 : (VEHICLE_CFG[d.vehicleType]?.label || d.vehicleType || '—')}
               {!d.active && <span className="text-red-500"> · Đã ngưng</span>}
             </p>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="text-2xl font-bold text-[#C9A84C] leading-none">{fmtKm(d.totalKm)}</p>
-            <p className="text-[11px] text-[#8E8878] mt-1">km</p>
+            <p className="text-2xl font-bold text-gold leading-none">{fmtKm(d.totalKm)}</p>
+            <p className="text-[11px] text-muted mt-1">km</p>
           </div>
         </div>
 
@@ -182,30 +183,30 @@ function DriverCard({ d, onDetail }) {
             không gộp số vì trừ odo xe máy cho xe tải sẽ ra kết quả vô nghĩa */}
         <div className="flex-1 min-w-0">
           {!hasData ? (
-            <div className="bg-[#FAF7F2] rounded-xl px-3 py-3 flex items-center gap-2">
-              <AlertCircle size={14} className="text-[#8E8878] flex-shrink-0" />
-              <p className="text-xs text-[#8E8878]">Không có điểm danh ODO trong khoảng này</p>
+            <div className="bg-canvas rounded-xl px-3 py-3 flex items-center gap-2">
+              <AlertCircle size={14} className="text-muted flex-shrink-0" />
+              <p className="text-xs text-muted">Không có điểm danh ODO trong khoảng này</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {vehicles.map(v => {
                 const Icon = VEHICLE_CFG[v.vehicleType]?.icon || Gauge;
                 return (
-                  <div key={v.vehicleType} className="bg-[#FAF7F2] rounded-xl px-3 py-2.5">
+                  <div key={v.vehicleType} className="bg-canvas rounded-xl px-3 py-2.5">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-semibold text-[#5C4E3D] flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-ink-2 flex items-center gap-1.5">
                         <Icon size={13} /> {VEHICLE_CFG[v.vehicleType]?.label || v.vehicleType}
                       </span>
-                      <span className="text-sm font-bold text-[#1C1C1E]">{fmtKm(v.km)} km</span>
+                      <span className="text-sm font-bold text-ink">{fmtKm(v.km)} km</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-[#8E8878]">
+                    <div className="flex items-center gap-2 text-[11px] text-muted">
                       <span className="truncate">
-                        Đầu <b className="text-[#5C4E3D]">{fmtKm(v.startOdometer)}</b>
+                        Đầu <b className="text-ink-2">{fmtKm(v.startOdometer)}</b>
                         {v.startDate && <span className="ml-1">({shortDate(v.startDate)})</span>}
                       </span>
                       <ChevronRight size={11} className="flex-shrink-0" />
                       <span className="truncate">
-                        Cuối <b className="text-[#5C4E3D]">{fmtKm(v.endOdometer)}</b>
+                        Cuối <b className="text-ink-2">{fmtKm(v.endOdometer)}</b>
                         {v.endDate && <span className="ml-1">({shortDate(v.endDate)})</span>}
                       </span>
                     </div>
@@ -218,13 +219,13 @@ function DriverCard({ d, onDetail }) {
 
         {/* Đơn hàng */}
         <div className="flex lg:flex-col items-center lg:items-end justify-between gap-2 lg:w-32 flex-shrink-0
-                        border-t lg:border-t-0 lg:border-l border-black/5 pt-3 lg:pt-0 lg:pl-4">
-          <span className="text-xs text-[#8E8878] flex items-center gap-1.5">
-            <Package size={13} /> <b className="text-[#1C1C1E]">{d.orderCount || 0}</b> đơn
+                        border-t lg:border-t-0 lg:border-l border-hairline pt-3 lg:pt-0 lg:pl-4">
+          <span className="text-xs text-muted flex items-center gap-1.5">
+            <Package size={13} /> <b className="text-ink">{d.orderCount || 0}</b> đơn
           </span>
           <button onClick={() => onDetail(d)}
             disabled={!d.orderCount}
-            className="text-xs font-semibold text-[#C9A84C] hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap">
+            className="text-xs font-semibold text-gold hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap">
             Xem chi tiết
           </button>
         </div>
@@ -319,7 +320,7 @@ function ManageDriversModal({ onClose, onSaved }) {
 
   const TypeSelect = ({ value, onChange }) => (
     <select value={value} onChange={e => onChange(e.target.value)}
-      className="px-2 py-1.5 rounded-lg border border-[#E8DDD0] text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40">
+      className="px-2 py-1.5 rounded-lg border border-line text-xs bg-surface focus:outline-none focus:ring-2 focus:ring-gold/40">
       <option value="BOTH">Xe máy + Xe tải</option>
       <option value="MOTORBIKE">Xe máy</option>
       <option value="TRUCK">Xe tải</option>
@@ -328,35 +329,35 @@ function ManageDriversModal({ onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-black/5">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-hairline">
           <div>
-            <p className="font-bold text-[#1C1C1E]">Quản lý tài xế</p>
-            <p className="text-xs text-[#8E8878] mt-0.5">
+            <p className="font-bold text-ink">Quản lý tài xế</p>
+            <p className="text-xs text-muted mt-0.5">
               Tài xế "không xử lý" (Grab, Giao tại kho…) vẫn gán được cho đơn nhưng
               không hiện ở điểm danh ODO và báo cáo
             </p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted transition">
             <X size={20} />
           </button>
         </div>
 
         {/* Thêm mới */}
-        <div className="p-4 border-b border-black/5 bg-[#FAF7F2]">
+        <div className="p-4 border-b border-hairline bg-canvas">
           <div className="flex flex-wrap items-center gap-2">
             <input value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && doCreate()}
               placeholder="Tên tài xế mới..."
-              className="flex-1 min-w-[140px] px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+              className="flex-1 min-w-[140px] px-3 py-1.5 rounded-lg border border-line text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-gold/40" />
             <TypeSelect value={newType} onChange={setNewType} />
-            <label className="flex items-center gap-1.5 text-xs text-[#8E8878] cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
               <input type="checkbox" checked={newSystem} onChange={e => setNewSystem(e.target.checked)}
-                className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40" />
+                className="w-4 h-4 rounded border-gold/60 text-gold focus:ring-gold/40" />
               Không xử lý
             </label>
             <button onClick={doCreate} disabled={creating}
-              className="px-3 py-1.5 rounded-lg bg-[#1A2B1A] text-white text-xs font-bold hover:bg-[#2a3b2a] transition disabled:opacity-50 flex items-center gap-1">
+              className="px-3 py-1.5 rounded-lg bg-forest-deep text-white text-xs font-bold hover:bg-forest-mid transition disabled:opacity-50 flex items-center gap-1">
               <Plus size={12} /> Thêm
             </button>
           </div>
@@ -364,39 +365,39 @@ function ManageDriversModal({ onClose, onSaved }) {
 
         <div className="overflow-y-auto flex-1 p-5 space-y-2">
           {loading ? (
-            <p className="text-sm text-[#8E8878] text-center py-8">Đang tải...</p>
+            <p className="text-sm text-muted text-center py-8">Đang tải...</p>
           ) : drivers.length === 0 ? (
-            <p className="text-sm text-[#8E8878] text-center py-8">Chưa có tài xế nào</p>
+            <p className="text-sm text-muted text-center py-8">Chưa có tài xế nào</p>
           ) : drivers.map(d => editId === d.id ? (
             // ── Chế độ sửa ──────────────────────────────────────────────
-            <div key={d.id} className="bg-white border border-[#C9A84C]/50 rounded-xl p-3 space-y-2">
+            <div key={d.id} className="bg-surface border border-gold/50 rounded-xl p-3 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <input value={editDraft.name}
                   onChange={e => setEditDraft(p => ({ ...p, name: e.target.value }))}
-                  className="flex-1 min-w-[140px] px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+                  className="flex-1 min-w-[140px] px-3 py-1.5 rounded-lg border border-line text-sm focus:outline-none focus:ring-2 focus:ring-gold/40" />
                 <TypeSelect value={editDraft.vehicleType}
                   onChange={v => setEditDraft(p => ({ ...p, vehicleType: v }))} />
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-1.5 text-xs text-[#8E8878] cursor-pointer select-none">
+                <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
                   <input type="checkbox" checked={editDraft.systemDriver}
                     onChange={e => setEditDraft(p => ({ ...p, systemDriver: e.target.checked }))}
-                    className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40" />
+                    className="w-4 h-4 rounded border-gold/60 text-gold focus:ring-gold/40" />
                   Không xử lý
                 </label>
-                <label className="flex items-center gap-1.5 text-xs text-[#8E8878] cursor-pointer select-none">
+                <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
                   <input type="checkbox" checked={editDraft.active}
                     onChange={e => setEditDraft(p => ({ ...p, active: e.target.checked }))}
-                    className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40" />
+                    className="w-4 h-4 rounded border-gold/60 text-gold focus:ring-gold/40" />
                   Còn hoạt động
                 </label>
                 <div className="ml-auto flex gap-2">
                   <button onClick={() => setEditId(null)} disabled={busyId === d.id}
-                    className="px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-xs font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition disabled:opacity-50">
+                    className="px-3 py-1.5 rounded-lg border border-line text-xs font-semibold text-muted hover:bg-canvas transition disabled:opacity-50">
                     Huỷ
                   </button>
                   <button onClick={saveEdit} disabled={busyId === d.id}
-                    className="px-3 py-1.5 rounded-lg bg-[#1A2B1A] text-white text-xs font-bold hover:bg-[#2a3b2a] transition disabled:opacity-50">
+                    className="px-3 py-1.5 rounded-lg bg-forest-deep text-white text-xs font-bold hover:bg-forest-mid transition disabled:opacity-50">
                     Lưu
                   </button>
                 </div>
@@ -406,13 +407,13 @@ function ManageDriversModal({ onClose, onSaved }) {
             // ── Chế độ xem ──────────────────────────────────────────────
             <div key={d.id}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
-                d.systemDriver ? 'bg-[#F5F0EB]' : 'bg-[#FAF7F2]'}`}>
+                d.systemDriver ? 'bg-surface-2' : 'bg-canvas'}`}>
               <div className="min-w-0 flex-1">
                 <p className={`text-sm font-medium truncate ${
-                  d.systemDriver ? 'text-[#8E8878]' : 'text-[#1C1C1E]'}`}>
+                  d.systemDriver ? 'text-muted' : 'text-ink'}`}>
                   {d.name}
                 </p>
-                <p className="text-[11px] text-[#8E8878]">
+                <p className="text-[11px] text-muted">
                   {d.vehicleType === 'BOTH' ? 'Xe máy + Xe tải'
                     : (VEHICLE_CFG[d.vehicleType]?.label || d.vehicleType)}
                   {d.systemDriver ? ' · Không xử lý' : ' · Theo dõi ODO'}
@@ -423,21 +424,21 @@ function ManageDriversModal({ onClose, onSaved }) {
                 title={d.systemDriver ? 'Bật theo dõi ODO' : 'Đánh dấu không xử lý'}
                 className={`p-1.5 rounded-lg transition disabled:opacity-50 ${
                   d.systemDriver
-                    ? 'text-[#8E8878] hover:bg-white'
-                    : 'text-amber-600 hover:bg-amber-50'}`}>
+                    ? 'text-muted hover:bg-surface'
+                    : 'text-amber-600 dark:text-amber-300 hover:bg-amber-50 dark:bg-amber-500/10'}`}>
                 {d.systemDriver ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
               <button onClick={() => startEdit(d)}
-                className="p-1.5 rounded-lg text-[#C9A84C] hover:bg-white transition">
+                className="p-1.5 rounded-lg text-gold hover:bg-surface transition">
                 <Pencil size={14} />
               </button>
             </div>
           ))}
         </div>
 
-        <div className="p-5 border-t border-black/5">
+        <div className="p-5 border-t border-hairline">
           <button onClick={onClose}
-            className="w-full py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+            className="w-full py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
             Đóng
           </button>
         </div>
@@ -475,18 +476,20 @@ export default function DriverOdometerPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4">
+      <BackButton fallback={window.location.pathname.startsWith('/owner') ? '/owner/users' : '/admin/users'} />
+
       <div className="flex items-center gap-3">
-        <Gauge size={22} className="text-[#C9A84C]" />
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Quản lý tài xế</h1>
-        <span className="text-sm text-[#8E8878]">{data.length} tài xế</span>
+        <Gauge size={22} className="text-gold" />
+        <h1 className="text-xl font-bold text-ink">Quản lý tài xế</h1>
+        <span className="text-sm text-muted">{data.length} tài xế</span>
         <button onClick={() => setManageOpen(true)}
-          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#E8DDD0] text-xs font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:bg-canvas transition">
           <Settings2 size={13} /> Danh sách tài xế
         </button>
       </div>
 
       {/* Bộ lọc khoảng ngày */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
         <div className="flex flex-wrap items-center gap-3">
           <DateRangePicker
             from={dateStrToMs(from)}
@@ -501,20 +504,20 @@ export default function DriverOdometerPage() {
           />
 
           <button onClick={load} disabled={loading}
-            className="px-4 py-2 rounded-lg bg-[#1A2B1A] text-white text-sm font-bold hover:bg-[#2a3b2a] transition disabled:opacity-50 flex items-center gap-2">
+            className="px-4 py-2 rounded-lg bg-forest-deep text-white text-sm font-bold hover:bg-forest-mid transition disabled:opacity-50 flex items-center gap-2">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             {loading ? 'Đang tải...' : 'Xem báo cáo'}
           </button>
 
-          <label className="flex items-center gap-2 text-xs text-[#8E8878] cursor-pointer select-none ml-auto">
+          <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={includeInactive}
               onChange={e => setIncludeInactive(e.target.checked)}
-              className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40" />
+              className="w-4 h-4 rounded border-gold/60 text-gold focus:ring-gold/40" />
             Hiện cả tài xế đã ngưng
           </label>
         </div>
 
-        <p className="text-[11px] text-[#8E8878] mt-3 flex items-start gap-1.5">
+        <p className="text-[11px] text-muted mt-3 flex items-start gap-1.5">
           <Calendar size={12} className="mt-0.5 flex-shrink-0" />
           <span>
             ODO đầu kỳ lấy từ lần điểm danh sớm nhất có trong khoảng, ODO cuối kỳ lấy từ lần
@@ -526,11 +529,11 @@ export default function DriverOdometerPage() {
 
       {/* Danh sách tài xế */}
       {loading ? (
-        <p className="text-sm text-[#8E8878] text-center py-12">Đang tải báo cáo...</p>
+        <p className="text-sm text-muted text-center py-12">Đang tải báo cáo...</p>
       ) : data.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-12 text-center">
-          <Truck size={28} className="text-[#E8DDD0] mx-auto mb-2" />
-          <p className="text-sm text-[#8E8878]">Chưa có tài xế nào</p>
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-12 text-center">
+          <Truck size={28} className="text-line mx-auto mb-2" />
+          <p className="text-sm text-muted">Chưa có tài xế nào</p>
         </div>
       ) : (
         <div className="space-y-3">

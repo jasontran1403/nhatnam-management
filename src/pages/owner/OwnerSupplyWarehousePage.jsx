@@ -4,6 +4,7 @@ import { ownerSupplyApi, fmtQty } from '../../api/supplyApi';
 import { StockTable, HistoryTable } from '../shared/SupplyWarehousePage';
 import { useToast } from '../../components/common/Toast';
 import Modal from '../../components/ui/Modal';
+import { BackButton } from '../../components/common/SubPageNav';
 import {
   PageHeader, SectionCard, SecondaryButton, DangerButton, Field,
   selectCls, LoadingSpinner, EmptyState, TabBar,
@@ -24,7 +25,21 @@ import {
 /* ══════════════════════════════════════════════════════════════════════════
    Gán kho cho nhân viên
    ══════════════════════════════════════════════════════════════════════════ */
-function AssignmentSection({ warehouses }) {
+/**
+ * Dòng phụ dưới tên nhân viên: "Phòng ban · Chức vụ".
+ *
+ * <p>Thay cho username — người quản lý nhận ra nhân viên qua bộ phận họ làm,
+ * còn tên đăng nhập chỉ có ý nghĩa với người cấp tài khoản.
+ */
+function staffSubtitle(r) {
+  const parts = [r.department, r.position].filter(x => x && String(x).trim());
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/**
+ * @param readOnly  kế toán chỉ được XEM — bỏ hết radio, chỉ hiện kho đang gán.
+ */
+function AssignmentSection({ warehouses, readOnly = false }) {
   const toast = useToast();
   const [rows, setRows] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -59,18 +74,20 @@ function AssignmentSection({ warehouses }) {
 
   return (
     <SectionCard>
-      <div className="px-4 py-3 bg-[#FAF7F2] flex items-center gap-2">
-        <Users size={15} className="text-[#C9A84C]" />
-        <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
-          Phân quyền kho cho nhân viên
+      <div className="px-4 py-3 bg-canvas flex items-center gap-2">
+        <Users size={15} className="text-gold" />
+        <span className="text-xs font-semibold text-muted uppercase tracking-wider">
+          {readOnly ? 'Nhân viên & kho được gán' : 'Phân quyền kho cho nhân viên'}
         </span>
       </div>
 
-      <div className="px-4 py-3 border-b border-black/5">
-        <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
+      <div className="px-4 py-3 border-b border-hairline">
+        <p className="flex items-start gap-1.5 text-xs text-muted">
           <Info size={13} className="mt-0.5 flex-shrink-0" />
-          Mỗi nhân viên chỉ được gán <b className="mx-1">MỘT kho</b>. Kho này quyết định 2 việc:
-          nhân viên tạo phiếu cho kho nào, và rút được hàng ở kho nào — hệ thống tự chọn sẵn khi lập phiếu.
+          {readOnly
+            ? <>Danh sách nhân viên và kho đang được gán. Chỉ Owner/Admin mới thay đổi được phân quyền này.</>
+            : <>Mỗi nhân viên chỉ được gán <b className="mx-1">MỘT kho</b>. Kho này quyết định 2 việc:
+              nhân viên tạo phiếu cho kho nào, và rút được hàng ở kho nào — hệ thống tự chọn sẵn khi lập phiếu.</>}
         </p>
       </div>
 
@@ -82,41 +99,63 @@ function AssignmentSection({ warehouses }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs uppercase text-[#8E8878] bg-[#FAF7F2]/50">
+                <tr className="text-xs uppercase text-muted bg-canvas/50">
                   <th className="px-4 py-2.5 text-left">Nhân viên</th>
-                  <th className="px-4 py-2.5 text-left">Vai trò</th>
-                  {warehouses.map(w => (
-                    <th key={w.id} className="px-4 py-2.5 text-center whitespace-nowrap">{w.name}</th>
-                  ))}
-                  <th className="px-4 py-2.5 text-center whitespace-nowrap">Không gán</th>
+                  {/* Chỉ xem: một cột tên kho, gọn hơn hẳn lưới radio.
+                      Có quyền sửa: giữ lưới radio mỗi kho một cột. */}
+                  {readOnly ? (
+                    <th className="px-4 py-2.5 text-left whitespace-nowrap">Kho được gán</th>
+                  ) : (
+                    <>
+                      {warehouses.map(w => (
+                        <th key={w.id} className="px-4 py-2.5 text-center whitespace-nowrap">{w.name}</th>
+                      ))}
+                      <th className="px-4 py-2.5 text-center whitespace-nowrap">Không gán</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.userId} className="border-t border-black/5 hover:bg-[#FAF7F2]/40">
+                  <tr key={r.userId} className="border-t border-hairline hover:bg-canvas/40">
                     <td className="px-4 py-2.5">
-                      <div className="text-[#1C1C1E]">{r.fullName}</div>
-                      <div className="text-xs text-[#8E8878]">{r.username}</div>
+                      <div className="text-ink">{r.fullName}</div>
+                      {staffSubtitle(r) && (
+                        <div className="text-xs text-muted">{staffSubtitle(r)}</div>
+                      )}
                     </td>
-                    <td className="px-4 py-2.5 text-[#8E8878] text-xs whitespace-nowrap">{r.role}</td>
-                    {warehouses.map(w => (
-                      <td key={w.id} className="px-4 py-2.5 text-center">
-                        <input type="radio"
-                          name={`wh-${r.userId}`}
-                          disabled={busyId === r.userId}
-                          checked={r.warehouseIds.includes(w.id)}
-                          onChange={() => pick(r, w.id)}
-                          className="border-black/20 text-[#C9A84C] focus:ring-[#C9A84C] w-4 h-4 cursor-pointer disabled:opacity-40" />
+                    {readOnly ? (
+                      <td className="px-4 py-2.5">
+                        {r.warehouseIds.length === 0
+                          ? <span className="text-xs text-faint italic">Chưa gán kho</span>
+                          : <span className="text-xs text-ink">
+                              {warehouses
+                                .filter(w => r.warehouseIds.includes(w.id))
+                                .map(w => w.name).join(', ')}
+                            </span>}
                       </td>
-                    ))}
-                    <td className="px-4 py-2.5 text-center">
-                      <input type="radio"
-                        name={`wh-${r.userId}`}
-                        disabled={busyId === r.userId}
-                        checked={r.warehouseIds.length === 0}
-                        onChange={() => pick(r, null)}
-                        className="border-black/20 text-[#8E8878] focus:ring-[#8E8878] w-4 h-4 cursor-pointer disabled:opacity-40" />
-                    </td>
+                    ) : (
+                      <>
+                        {warehouses.map(w => (
+                          <td key={w.id} className="px-4 py-2.5 text-center">
+                            <input type="radio"
+                              name={`wh-${r.userId}`}
+                              disabled={busyId === r.userId}
+                              checked={r.warehouseIds.includes(w.id)}
+                              onChange={() => pick(r, w.id)}
+                              className="border-hairline-3 text-gold focus:ring-gold w-4 h-4 cursor-pointer disabled:opacity-40" />
+                          </td>
+                        ))}
+                        <td className="px-4 py-2.5 text-center">
+                          <input type="radio"
+                            name={`wh-${r.userId}`}
+                            disabled={busyId === r.userId}
+                            checked={r.warehouseIds.length === 0}
+                            onChange={() => pick(r, null)}
+                            className="border-hairline-3 text-muted focus:ring-muted w-4 h-4 cursor-pointer disabled:opacity-40" />
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -161,15 +200,15 @@ function SupplyItemSection() {
 
   return (
     <SectionCard>
-      <div className="px-4 py-3 bg-[#FAF7F2] flex items-center gap-2">
-        <Package size={15} className="text-[#C9A84C]" />
-        <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+      <div className="px-4 py-3 bg-canvas flex items-center gap-2">
+        <Package size={15} className="text-gold" />
+        <span className="text-xs font-semibold text-muted uppercase tracking-wider">
           Danh mục vật dụng
         </span>
       </div>
 
-      <div className="px-4 py-3 border-b border-black/5">
-        <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
+      <div className="px-4 py-3 border-b border-hairline">
+        <p className="flex items-start gap-1.5 text-xs text-muted">
           <Info size={13} className="mt-0.5 flex-shrink-0" />
           Tồn kho gộp theo bộ ba <b className="mx-1">tên · quy cách · đơn vị tính</b> và
           không phụ thuộc nhà cung cấp — mua từ 10 NCC vẫn chỉ có 1 dòng tồn. Nếu
@@ -185,7 +224,7 @@ function SupplyItemSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs uppercase text-[#8E8878] bg-[#FAF7F2]/50">
+                <tr className="text-xs uppercase text-muted bg-canvas/50">
                   <th className="px-4 py-2.5 text-left">Tên</th>
                   <th className="px-4 py-2.5 text-left">Quy cách</th>
                   <th className="px-4 py-2.5 text-left">ĐVT</th>
@@ -195,14 +234,14 @@ function SupplyItemSection() {
               </thead>
               <tbody>
                 {items.map(i => (
-                  <tr key={i.id} className="border-t border-black/5">
-                    <td className="px-4 py-2.5 text-[#1C1C1E]">{i.name}</td>
-                    <td className="px-4 py-2.5 text-[#8E8878]">{i.specification || '—'}</td>
-                    <td className="px-4 py-2.5 text-[#8E8878]">{i.unit}</td>
+                  <tr key={i.id} className="border-t border-hairline">
+                    <td className="px-4 py-2.5 text-ink">{i.name}</td>
+                    <td className="px-4 py-2.5 text-muted">{i.specification || '—'}</td>
+                    <td className="px-4 py-2.5 text-muted">{i.unit}</td>
                     <td className="px-4 py-2.5 text-right">{fmtQty(i.totalQuantity)}</td>
                     <td className="px-4 py-2.5 text-right">
                       <button onClick={() => { setMerging(i); setTargetId(''); }}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#8E8878] hover:text-[#C9A84C]">
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-gold">
                         <Merge size={13} /> Gộp
                       </button>
                     </td>
@@ -216,9 +255,9 @@ function SupplyItemSection() {
       <Modal open={!!merging} onClose={() => setMerging(null)} title="Gộp vật dụng" size="md">
         {merging && (
           <div className="space-y-4">
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-              <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-amber-800">
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28">
+              <AlertTriangle size={16} className="text-amber-600 dark:text-amber-300 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-300">
                 Toàn bộ tồn kho của <b>{label(merging)}</b> sẽ được cộng dồn sang vật
                 dụng đích <b>theo từng kho</b>, lịch sử nhập/rút được chuyển theo, và
                 bản ghi nguồn bị ẩn đi. Thao tác này không hoàn tác được.
@@ -251,6 +290,12 @@ function SupplyItemSection() {
    PAGE
    ══════════════════════════════════════════════════════════════════════════ */
 export default function OwnerSupplyWarehousePage() {
+  // Trang dùng chung cho OWNER/ADMIN và hai role kế toán. Kế toán CHỈ XEM:
+  // không phân quyền kho, không gộp danh mục vật dụng.
+  const readOnly = typeof window !== 'undefined'
+    && (window.location.pathname.startsWith('/accountant')
+      || window.location.pathname.startsWith('/super-accountant'));
+
   const [warehouses, setWarehouses] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [tab, setTab] = useState('STOCK');
@@ -274,6 +319,13 @@ export default function OwnerSupplyWarehousePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
+      <BackButton fallback={
+        typeof window !== 'undefined' && window.location.pathname.startsWith('/super-accountant')
+          ? '/super-accountant/warehouses'
+          : typeof window !== 'undefined' && window.location.pathname.startsWith('/accountant')
+            ? '/accountant/warehouses'
+            : '/owner/warehouses'} />
+
       <PageHeader
         icon={Archive}
         title="Kho văn phòng phẩm"
@@ -291,10 +343,10 @@ export default function OwnerSupplyWarehousePage() {
               chồng trần trên nền, trông như hai hàng nút rời rạc mà không cho
               biết cái nào chọn KHO, cái nào chọn KIỂU XEM.
               Mỗi kho một bộ số liệu riêng — không có chỗ nào cộng gộp 2 kho. */}
-          <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-3
+          <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-3
                           flex flex-col lg:flex-row lg:items-center gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-[11px] font-semibold text-[#8E8878] uppercase tracking-wider flex-shrink-0">
+              <span className="text-[11px] font-semibold text-muted uppercase tracking-wider flex-shrink-0">
                 Kho
               </span>
               <div className="min-w-0 overflow-x-auto">
@@ -322,8 +374,9 @@ export default function OwnerSupplyWarehousePage() {
         </>
       )}
 
-      <AssignmentSection warehouses={warehouses} />
-      <SupplyItemSection />
+      <AssignmentSection warehouses={warehouses} readOnly={readOnly} />
+      {/* Gộp danh mục vật dụng là thao tác ghi, không mở cho kế toán. */}
+      {!readOnly && <SupplyItemSection />}
     </div>
   );
 }

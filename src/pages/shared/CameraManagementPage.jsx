@@ -23,14 +23,14 @@ import { useToast } from '../../components/common/Toast';
 import Modal from '../../components/ui/Modal';
 
 const inputCls =
-  'w-full px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40';
-const labelCls = 'block text-xs font-semibold text-[#555] mb-1.5';
+  'w-full px-3 py-2 rounded-lg border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40';
+const labelCls = 'block text-xs font-semibold text-ink-2 mb-1.5';
 
 const STATUS = {
-  ONLINE:      { label: 'Đang kết nối', cls: 'bg-green-100 text-green-700',   Icon: Wifi },
-  OFFLINE:     { label: 'Mất kết nối',  cls: 'bg-red-100 text-red-700',       Icon: WifiOff },
-  AUTH_FAILED: { label: 'Sai tài khoản', cls: 'bg-orange-100 text-orange-700', Icon: WifiOff },
-  UNKNOWN:     { label: 'Chưa kiểm tra', cls: 'bg-gray-100 text-gray-600',    Icon: HelpCircle },
+  ONLINE:      { label: 'Đang kết nối', cls: 'bg-green-100 dark:bg-green-500/18 text-green-700 dark:text-green-300',   Icon: Wifi },
+  OFFLINE:     { label: 'Mất kết nối',  cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300',       Icon: WifiOff },
+  AUTH_FAILED: { label: 'Sai tài khoản', cls: 'bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300', Icon: WifiOff },
+  UNKNOWN:     { label: 'Chưa kiểm tra', cls: 'bg-surface-2 text-ink-2',    Icon: HelpCircle },
 };
 
 const fmtTime = (ms) => (ms ? new Date(Number(ms)).toLocaleString('vi-VN') : '—');
@@ -104,7 +104,7 @@ function DeviceModal({ device, onClose, onDone }) {
     <Modal open onClose={onClose} size="lg"
       title={editing ? `Sửa thiết bị — ${device.name}` : 'Thêm thiết bị camera'}>
       <div className="space-y-4">
-        <div className="bg-[#FAF7F2] border border-black/5 rounded-xl p-3 text-xs text-[#8E8878] leading-relaxed">
+        <div className="bg-canvas border border-hairline rounded-xl p-3 text-xs text-muted leading-relaxed">
           Nhập địa chỉ IP/domain và tài khoản đăng nhập của đầu ghi hoặc camera IP.
           Hệ thống sẽ lưu lại và dựng danh sách các camera gắn trong thiết bị đó.
         </div>
@@ -147,7 +147,7 @@ function DeviceModal({ device, onClose, onDone }) {
 
           <div>
             <label className={labelCls}>
-              Mật khẩu {editing ? <span className="font-normal text-[#8E8878]">(bỏ trống = giữ nguyên)</span> : '*'}
+              Mật khẩu {editing ? <span className="font-normal text-muted">(bỏ trống = giữ nguyên)</span> : '*'}
             </label>
             <input className={inputCls} type="password" autoComplete="new-password"
               placeholder={editing ? '••••••••' : 'Mật khẩu thiết bị'}
@@ -181,11 +181,11 @@ function DeviceModal({ device, onClose, onDone }) {
 
         <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-black/10 text-[#555] hover:bg-gray-50 font-medium transition">
+            className="flex-1 py-2.5 rounded-xl border border-hairline-2 text-ink-2 hover:bg-canvas font-medium transition">
             Huỷ
           </button>
           <button onClick={handleSave} disabled={!canSubmit || saving}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2">
+            className="flex-1 py-2.5 rounded-xl bg-gold text-white font-semibold hover:bg-gold-strong transition disabled:opacity-50 flex items-center justify-center gap-2">
             {saving
               ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               : <CameraIcon size={16} />}
@@ -203,8 +203,8 @@ function DeviceModal({ device, onClose, onDone }) {
 function VideoTile({ channel }) {
   const off = !channel.enabled;
   return (
-    <div className="rounded-xl overflow-hidden border border-black/5 bg-white">
-      <div className="relative aspect-video bg-[#1C1C1E] flex flex-col items-center justify-center gap-1.5">
+    <div className="rounded-xl overflow-hidden border border-hairline bg-surface">
+      <div className="relative aspect-video bg-chrome flex flex-col items-center justify-center gap-1.5">
         {off ? (
           <VideoOff size={26} className="text-white/30" />
         ) : (
@@ -222,8 +222,8 @@ function VideoTile({ channel }) {
         }`} />
       </div>
       <div className="px-2.5 py-2">
-        <p className="text-xs font-semibold text-[#1C1C1E] truncate">{channel.name}</p>
-        <p className="text-[10px] text-[#8E8878] truncate font-mono">{channel.streamUrl || '—'}</p>
+        <p className="text-xs font-semibold text-ink truncate">{channel.name}</p>
+        <p className="text-[10px] text-muted truncate font-mono">{channel.streamUrl || '—'}</p>
       </div>
     </div>
   );
@@ -274,36 +274,36 @@ function DeviceCard({ device, onEdit, onDeleted, onChanged }) {
   const channels = device.channels || [];
 
   return (
-    <div className={`bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden transition ${
+    <div className={`bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden transition ${
       device.active ? '' : 'opacity-60'
     }`}>
       {/* Header */}
       <div className="p-4 flex items-start gap-3 flex-wrap">
         <button onClick={() => setOpen((v) => !v)}
-          className="mt-0.5 text-[#8E8878] hover:text-[#1C1C1E] transition flex-shrink-0">
+          className="mt-0.5 text-muted hover:text-ink transition flex-shrink-0">
           {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-[#1C1C1E] truncate">{device.name}</p>
+            <p className="font-bold text-ink truncate">{device.name}</p>
             <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold ${st.cls}`}>
               <StatusIcon size={11} /> {st.label}
             </span>
             {!device.active && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-600">
+              <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-surface-2 text-ink-2">
                 Đã tắt
               </span>
             )}
           </div>
 
-          <p className="flex items-center gap-1.5 text-xs text-[#8E8878] mt-1 font-mono truncate">
+          <p className="flex items-center gap-1.5 text-xs text-muted mt-1 font-mono truncate">
             <Server size={12} className="flex-shrink-0" />
             {device.protocol?.toLowerCase()}://{device.host}:{device.port}
             <span className="font-sans">· {device.username}</span>
           </p>
 
-          <p className="flex items-center gap-3 text-xs text-[#8E8878] mt-1 flex-wrap">
+          <p className="flex items-center gap-3 text-xs text-muted mt-1 flex-wrap">
             <span className="flex items-center gap-1">
               <CameraIcon size={12} /> {channels.length} camera
             </span>
@@ -339,9 +339,9 @@ function DeviceCard({ device, onEdit, onDeleted, onChanged }) {
       {open && (
         <div className="px-4 pb-4">
           {channels.length === 0 ? (
-            <div className="text-center py-8 bg-[#FAF7F2] rounded-xl">
-              <VideoOff size={28} className="mx-auto mb-2 text-[#8E8878]" />
-              <p className="text-sm text-[#8E8878]">Chưa có camera nào — bấm nạp lại để dò thiết bị</p>
+            <div className="text-center py-8 bg-canvas rounded-xl">
+              <VideoOff size={28} className="mx-auto mb-2 text-muted" />
+              <p className="text-sm text-muted">Chưa có camera nào — bấm nạp lại để dò thiết bị</p>
             </div>
           ) : (
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
@@ -349,7 +349,7 @@ function DeviceCard({ device, onEdit, onDeleted, onChanged }) {
             </div>
           )}
 
-          <p className="text-[11px] text-[#8E8878] mt-3">
+          <p className="text-[11px] text-muted mt-3">
             Cập nhật lần cuối: {fmtTime(device.lastSyncedAt)}
             {device.note && <> · {device.note}</>}
           </p>
@@ -362,8 +362,8 @@ function DeviceCard({ device, onEdit, onDeleted, onChanged }) {
 function IconBtn({ children, title, onClick, disabled, danger }) {
   return (
     <button title={title} onClick={onClick} disabled={disabled}
-      className={`p-2 rounded-lg border border-black/10 transition disabled:opacity-40 ${
-        danger ? 'text-red-600 hover:bg-red-50' : 'text-[#555] hover:bg-[#FAF7F2]'
+      className={`p-2 rounded-lg border border-hairline-2 transition disabled:opacity-40 ${
+        danger ? 'text-red-600 dark:text-red-300 hover:bg-red-50 dark:bg-red-500/10' : 'text-ink-2 hover:bg-canvas'
       }`}>
       {children}
     </button>
@@ -400,10 +400,10 @@ export default function CameraManagementPage() {
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <Video size={24} className="text-[#C9A84C] flex-shrink-0" />
+          <Video size={24} className="text-gold flex-shrink-0" />
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1E]">Quản lý camera</h1>
-            <p className="text-sm text-[#8E8878]">
+            <h1 className="text-xl sm:text-2xl font-bold text-ink">Quản lý camera</h1>
+            <p className="text-sm text-muted">
               {devices.length} thiết bị · {totalChannels} camera
             </p>
           </div>
@@ -411,19 +411,19 @@ export default function CameraManagementPage() {
 
         <div className="flex items-center gap-2">
           <button onClick={load} disabled={loading} title="Làm mới"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-black/10 text-sm text-[#555] hover:bg-[#FAF7F2] transition disabled:opacity-50">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-hairline-2 text-sm text-ink-2 hover:bg-canvas transition disabled:opacity-50">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Làm mới</span>
           </button>
           <button onClick={() => setModal({})}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#C9A84C] text-white rounded-xl text-sm font-semibold hover:bg-[#B8923E] transition">
+            className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold-strong transition">
             <Plus size={15} /> Thêm camera
           </button>
         </div>
       </div>
 
       {/* Ghi chú phạm vi hiện tại */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 leading-relaxed">
+      <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-4 py-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
         ℹ️ Camera chưa được lắp đặt nên phần xem trực tiếp hiện là ô giữ chỗ.
         Thông tin kết nối vẫn được lưu đầy đủ — khi camera sẵn sàng, hệ thống sẽ dùng
         chính dữ liệu này để kết nối và hiển thị luồng video.
@@ -432,17 +432,17 @@ export default function CameraManagementPage() {
       {/* Danh sách thiết bị */}
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
         </div>
       ) : devices.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm text-center py-16 px-4">
-          <VideoOff size={48} className="mx-auto mb-3 text-[#C9A84C]/40" />
-          <p className="text-lg font-semibold text-[#1C1C1E]">Chưa có camera nào</p>
-          <p className="text-sm text-[#8E8878] mt-1 mb-4">
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm text-center py-16 px-4">
+          <VideoOff size={48} className="mx-auto mb-3 text-gold/40" />
+          <p className="text-lg font-semibold text-ink">Chưa có camera nào</p>
+          <p className="text-sm text-muted mt-1 mb-4">
             Thêm địa chỉ IP/domain và tài khoản để kết nối thiết bị đầu tiên
           </p>
           <button onClick={() => setModal({})}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#C9A84C] text-white rounded-xl text-sm font-semibold hover:bg-[#B8923E] transition">
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold-strong transition">
             <Plus size={15} /> Thêm camera
           </button>
         </div>

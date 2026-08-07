@@ -24,25 +24,26 @@ import { useFmt } from '../../utils/useFmt';
 import { factoryProductApi } from '../../api/productionApi';
 import FactoryManagementModal from '../../components/production/FactoryManagement';
 import { Building2 } from 'lucide-react';
+import { WO_STATUS_COLOR, withAlpha } from '../../config/chartPalette';
 
-const BRAND = '#C9A84C';
+const BRAND = 'var(--c-gold)';
 
 export function StatusBadge({ status }) {
   const { t } = useLang();
-  const cfg = getStatusLabels(t)[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = getStatusLabels(t)[status] || { label: status, cls: 'bg-surface-2 text-ink-2' };
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
-export function KpiCard({ icon: Icon, label, value, sub, color = 'text-[#C9A84C]', iconBg = 'bg-[#C9A84C]/10' }) {
+export function KpiCard({ icon: Icon, label, value, sub, color = 'text-gold', iconBg = 'bg-gold/10' }) {
   const { t } = useLang();
   const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-[#8E8878] font-medium">{label}</p>
+          <p className="text-xs text-muted font-medium">{label}</p>
           <p className={`text-3xl font-bold mt-1.5 ${color}`}>{value}</p>
-          {sub && <p className="text-xs text-[#8E8878] mt-1">{sub}</p>}
+          {sub && <p className="text-xs text-muted mt-1">{sub}</p>}
         </div>
         <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
           <Icon size={20} className={color} />
@@ -87,34 +88,34 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
         tabIndex={0}
         onClick={handleOpen}
         className={`${inputCls} flex items-center gap-2 cursor-pointer min-h-[38px]
-          ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+          ${disabled ? 'opacity-50 cursor-not-allowed bg-canvas' : ''}`}
       >
-        <Search size={13} className="text-[#8E8878] flex-shrink-0" />
-        <span className={`flex-1 truncate text-sm ${selected ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}`}>
+        <Search size={13} className="text-muted flex-shrink-0" />
+        <span className={`flex-1 truncate text-sm ${selected ? 'text-ink' : 'text-muted'}`}>
           {selected ? `${selected.name}${selected.unit ? ` (${selected.unit})` : ''}` : placeholder}
         </span>
         {selected && !disabled && (
           <button
             type="button"
             onClick={e => { e.stopPropagation(); onChange(''); }}
-            className="text-[#8E8878] hover:text-red-500 flex-shrink-0"
+            className="text-muted hover:text-red-500 flex-shrink-0"
           >
             <X size={13} />
           </button>
         )}
         {!selected && (
-          <ChevronDown size={13} className={`text-[#8E8878] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown size={13} className={`text-muted transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
         )}
       </div>
 
       {open && !disabled && (
-        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#E8DDD0]
+        <div className="absolute top-full left-0 right-0 z-50 bg-surface border border-line
           rounded-xl shadow-lg mt-1 overflow-hidden">
-          <div className="p-2 border-b border-[#F0EBE3]">
+          <div className="p-2 border-b border-line-soft">
             <input
               ref={inputRef}
-              className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
-                focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+              className="w-full text-sm px-3 py-1.5 rounded-lg border border-line
+                focus:outline-none focus:border-gold bg-canvas placeholder-muted"
               placeholder="Tìm..."
               value={q}
               onChange={e => setQ(e.target.value)}
@@ -123,14 +124,14 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-[#8E8878] italic">Không tìm thấy</div>
+              <div className="px-3 py-2 text-sm text-muted italic">Không tìm thấy</div>
             ) : (
               filtered.map(item => (
                 <button
                   type="button"
                   key={item.id}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] active:bg-[#F0EBE3] transition-colors
-    ${value === item.id ? 'bg-[#F0EBE3] font-medium text-[#1C1C1E]' : 'text-[#1C1C1E]'}`}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-canvas active:bg-surface-2 transition-colors
+    ${value === item.id ? 'bg-surface-2 font-medium text-ink' : 'text-ink'}`}
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -146,8 +147,8 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder = 'T�
           {onCreateNew && (
             <button
               type="button"
-              className="w-full text-left px-3 py-2.5 text-sm text-[#C9A84C] font-semibold
-                border-t border-[#F0EBE3] hover:bg-[#FAF7F2] flex items-center gap-1.5"
+              className="w-full text-left px-3 py-2.5 text-sm text-gold font-semibold
+                border-t border-line-soft hover:bg-canvas flex items-center gap-1.5"
               onClick={() => { setOpen(false); onCreateNew(q); }}
             >
               <Plus size={13} /> Tạo sản phẩm mới{q ? `: "${q}"` : ''}
@@ -213,12 +214,12 @@ function MultiProductSelect({ allProducts, selected, onChange }) {
         <div className="flex flex-wrap gap-1.5 mb-2">
           {selectedItems.map(p => (
             <span key={p.id}
-              className="flex items-center gap-1 bg-[#1A2B1A] text-white text-xs pl-2.5 py-1 rounded-full">
+              className="flex items-center gap-1 bg-forest-deep text-white text-xs pl-2.5 py-1 rounded-full">
               <span>{p.name}{p.unit ? ` (${p.unit})` : ''}</span>
               <button
                 type="button"
                 onClick={() => removeTag(p.id)}
-                className="w-6 h-6 -mr-1 flex items-center justify-center hover:text-red-300 transition-colors flex-shrink-0"
+                className="w-6 h-6 -mr-1 flex items-center justify-center hover:text-red-300 dark:text-red-300 transition-colors flex-shrink-0"
                 aria-label={`Xoá ${p.name}`}
               >
                 <X size={11} />
@@ -238,22 +239,22 @@ function MultiProductSelect({ allProducts, selected, onChange }) {
           className={`${inputCls} w-full flex items-center gap-2 cursor-pointer min-h-[38px] text-left`}
           onClick={() => setOpen(o => !o)}
         >
-          <Search size={13} className="text-[#8E8878] flex-shrink-0" />
-          <span className="flex-1 text-sm text-[#8E8878]">
+          <Search size={13} className="text-muted flex-shrink-0" />
+          <span className="flex-1 text-sm text-muted">
             {selected.length === 0 ? 'Chọn sản phẩm...' : `Đã chọn ${selected.length} sản phẩm`}
           </span>
-          <ChevronDown size={13} className={`text-[#8E8878] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown size={13} className={`text-muted transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
         </button>
 
         {open && (
-          <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#E8DDD0]
+          <div className="absolute top-full left-0 right-0 z-50 bg-surface border border-line
             rounded-xl shadow-lg mt-1 overflow-hidden">
-            <div className="sticky top-0 z-20 bg-white p-2 border-b border-[#F0EBE3]">
+            <div className="sticky top-0 z-20 bg-surface p-2 border-b border-line-soft">
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}
-                  className="flex-1 min-w-0 text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
-        focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+                  className="flex-1 min-w-0 text-sm px-3 py-1.5 rounded-lg border border-line
+        focus:outline-none focus:border-gold bg-canvas placeholder-muted"
                   placeholder="Tìm sản phẩm..."
                   value={q}
                   onChange={e => setQ(e.target.value)}
@@ -268,8 +269,8 @@ function MultiProductSelect({ allProducts, selected, onChange }) {
                     setQ('');
                   }}
                   className="w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center
-        text-[#8E8878] bg-[#FAF7F2] border border-[#E8DDD0]
-        hover:text-red-500 hover:bg-red-50 active:bg-red-100"
+        text-muted bg-canvas border border-line
+        hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 active:bg-red-100 dark:bg-red-500/18"
                   aria-label="Đóng dropdown"
                 >
                   <X size={18} />
@@ -278,7 +279,7 @@ function MultiProductSelect({ allProducts, selected, onChange }) {
             </div>
             <div className="max-h-48 overflow-y-auto">
               {filtered.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-[#8E8878] italic">Không tìm thấy</div>
+                <div className="px-3 py-2 text-sm text-muted italic">Không tìm thấy</div>
               ) : (
                 filtered.map(item => {
                   const checked = selected.includes(item.id);
@@ -291,11 +292,11 @@ function MultiProductSelect({ allProducts, selected, onChange }) {
                         e.stopPropagation();
                         toggleProduct(item.id);
                       }}
-                      className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm transition-colors active:bg-[#F0EBE3]
-    ${checked ? 'bg-[#FAF7F2] text-[#1C1C1E] font-medium' : 'text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}
+                      className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm transition-colors active:bg-surface-2
+    ${checked ? 'bg-canvas text-ink font-medium' : 'text-ink hover:bg-canvas'}`}
                     >
                       <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0
-    ${checked ? 'bg-[#1A2B1A] border-[#1A2B1A]' : 'border-[#E8DDD0]'}`}>
+    ${checked ? 'bg-forest-deep border-forest-deep' : 'border-line'}`}>
                         {checked && <Check size={11} className="text-white" />}
                       </span>
                       <span className="flex-1">{item.name}{item.unit ? ` (${item.unit})` : ''}</span>
@@ -389,10 +390,6 @@ function DragScroll({ children, weeksBack, totalWeeks, className = '' }) {
 }
 
 // ── PRODUCTION GANTT ──────────────────────────────────────────────────────────
-const WO_STATUS_COLOR = {
-  SCHEDULED: '#6366f1', PENDING_PLAN: '#f59e0b', PLANNED: '#3b82f6',
-  IN_PROGRESS: '#f97316', COMPLETED: '#10b981', CANCELLED: '#9ca3af',
-};
 
 export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
   const { t } = useLang();
@@ -429,18 +426,18 @@ export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
                 {isPlan ? (
                   <div className="w-full">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold tracking-wide">KH</span>
-                      <span className="text-xs font-bold text-[#1C1C1E] truncate">{d.planCode}</span>
+                      <span className="text-[9px] bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-bold tracking-wide">KH</span>
+                      <span className="text-xs font-bold text-ink truncate">{d.planCode}</span>
                     </div>
-                    <p className="text-[10px] text-[#8E8878] truncate mt-0.5">{d.title}</p>
+                    <p className="text-[10px] text-muted truncate mt-0.5">{d.title}</p>
                   </div>
                 ) : (
                   <div className="pl-3 w-full">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-[#C9A84C] flex-shrink-0" />
-                      <span className="text-[11px] font-semibold text-[#1C1C1E] truncate">{d.workOrderCode}</span>
+                      <span className="w-1 h-1 rounded-full bg-gold flex-shrink-0" />
+                      <span className="text-[11px] font-semibold text-ink truncate">{d.workOrderCode}</span>
                     </div>
-                    <p className="text-[9px] text-[#8E8878] truncate pl-2.5">{d.productName}</p>
+                    <p className="text-[9px] text-muted truncate pl-2.5">{d.productName}</p>
                   </div>
                 )}
               </div>
@@ -449,15 +446,15 @@ export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
         </div>
         <DragScroll weeksBack={WEEKS_BACK} totalWeeks={WEEKS_TOTAL} className="flex-1 min-w-0">
           <div style={{ minWidth: WEEKS_TOTAL * COL_W, position: 'relative' }}>
-            <div className="flex sticky top-0 z-30" style={{ height: 32, background: 'white' }}>
+            <div className="flex sticky top-0 z-30" style={{ height: 32, background: 'var(--c-surface)' }}>
               {weeks.map((w, i) => {
                 const isNow = w <= today && today < new Date(w.getTime() + 7 * 86400000);
                 const isMonth = w.getDate() <= 7;
                 return (
                   <div key={i} style={{ flex: '0 0 ' + COL_W + 'px', width: COL_W }}
                     className={`flex-shrink-0 flex items-center justify-center border-l text-[10px] font-medium
-                      ${isNow ? 'text-[#C9A84C] font-bold' : 'text-[#8E8878]'}
-                      ${isMonth ? 'border-l-2 border-[#C9A84C]/30 bg-[#FAF7F2]' : 'border-black/5'}`}>
+                      ${isNow ? 'text-gold font-bold' : 'text-muted'}
+                      ${isMonth ? 'border-l-2 border-gold/30 bg-canvas' : 'border-hairline'}`}>
                     {isMonth ? <span className="font-bold">{w.toLocaleDateString(loc, { month: 'short' })}</span> : `${w.getDate()}/${w.getMonth() + 1}`}
                   </div>
                 );
@@ -471,7 +468,7 @@ export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
               const s = Number(isPlan ? d.startDate : d.scheduledStartDate); const e = Number(isPlan ? d.endDate : d.plannedEndDate);
               if (!s) return <div key={`row-${ri}`} style={{ height: h, marginBottom: 4 }} />;
               const left = pL(s); const width = pW(s, e);
-              const color = isPlan ? (cancelled ? '#9ca3af' : '#3b82f6') : (WO_STATUS_COLOR[d.status] || '#9ca3af');
+              const color = isPlan ? (cancelled ? 'var(--c-muted)' : 'var(--c-info)') : (WO_STATUS_COLOR[d.status] || 'var(--c-muted)');
               const isActive = d.status === 'IN_PROGRESS';
               return (
                 <div key={`row-${ri}`} style={{ height: h, marginBottom: 4, position: 'relative' }}>
@@ -480,8 +477,8 @@ export function ProductionGantt({ plans, orders, onPlanClick, onOrderClick }) {
                     style={{
                       position: 'absolute', top: isPlan ? 6 : 8, bottom: isPlan ? 6 : 8, left: `${left}%`, width: `${width}%`, minWidth: 3,
                       borderRadius: isPlan ? 6 : 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: 0,
-                      background: isPlan ? (cancelled ? '#d1d5db' : '#3b82f6') : (isActive ? `linear-gradient(90deg,${color}99 0%,${color}ff 40%,#ffffff44 50%,${color}ff 60%,${color}99 100%)` : cancelled ? color + '88' : color),
-                      borderLeft: isPlan ? `3px solid ${cancelled ? '#9ca3af' : '#2563eb'}` : undefined,
+                      background: isPlan ? (cancelled ? 'var(--c-line)' : 'var(--c-info)') : (isActive ? `linear-gradient(90deg,${withAlpha(color,60)} 0%,${color} 40%,rgba(255,255,255,.27) 50%,${color} 60%,${withAlpha(color,60)} 100%)` : cancelled ? withAlpha(color, 53) : color),
+                      borderLeft: isPlan ? `3px solid ${cancelled ? 'var(--c-muted)' : 'var(--c-info)'}` : undefined,
                       boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
                     }}
                     className={isActive ? 'gantt-shimmer' : ''}>
@@ -528,33 +525,33 @@ function MachineWeekModal({ machine, dayMs, maintenanceList, onClose }) {
     <Modal open title={`${machine.name} — ${dayDate.toLocaleDateString(loc, { weekday: 'long', day: '2-digit', month: '2-digit' })}`} onClose={onClose} size="md"
       footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
       <div className="space-y-4">
-        <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1.5">
-          <div className="flex justify-between"><span className="text-[#8E8878]">Tuần làm việc</span><span className="font-semibold">{fmt(weekStart)} → {fmt(weekEnd)}</span></div>
-          <div className="flex justify-between"><span className="text-[#8E8878]">Ca làm việc</span><span className="font-semibold text-emerald-600">08:00 – 18:00 (10 giờ/ngày)</span></div>
-          <div className="flex justify-between"><span className="text-[#8E8878]">Giờ thực tế hôm nay</span><span className={`font-bold ${workHours < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{workHours.toFixed(1)}h</span></div>
-          {totalDowntimeHours > 0 && <div className="flex justify-between"><span className="text-[#8E8878]">Giờ ngưng máy</span><span className="font-bold text-red-600">{totalDowntimeHours.toFixed(1)}h</span></div>}
+        <div className="bg-canvas rounded-xl px-4 py-3 text-xs space-y-1.5">
+          <div className="flex justify-between"><span className="text-muted">Tuần làm việc</span><span className="font-semibold">{fmt(weekStart)} → {fmt(weekEnd)}</span></div>
+          <div className="flex justify-between"><span className="text-muted">Ca làm việc</span><span className="font-semibold text-emerald-600 dark:text-emerald-300">08:00 – 18:00 (10 giờ/ngày)</span></div>
+          <div className="flex justify-between"><span className="text-muted">Giờ thực tế hôm nay</span><span className={`font-bold ${workHours < 10 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>{workHours.toFixed(1)}h</span></div>
+          {totalDowntimeHours > 0 && <div className="flex justify-between"><span className="text-muted">Giờ ngưng máy</span><span className="font-bold text-red-600 dark:text-red-300">{totalDowntimeHours.toFixed(1)}h</span></div>}
         </div>
         {dayMaints.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Lý do ngưng máy</p>
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider">Lý do ngưng máy</p>
             {dayMaints.map((mt, i) => {
               const ms2 = Number(mt.actualStart || mt.plannedStart); const me = Number(mt.actualEnd || mt.plannedEnd);
               return (
-                <div key={i} className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 space-y-1">
+                <div key={i} className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2.5 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${mt.maintenanceType === 'CORRECTIVE' ? 'bg-red-200 text-red-800' : 'bg-blue-100 text-blue-700'}`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${mt.maintenanceType === 'CORRECTIVE' ? 'bg-red-200 dark:bg-red-500/28 text-red-800 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300'}`}>
                       {mt.maintenanceType === 'CORRECTIVE' ? '🚨 Sự cố' : '🔧 Bảo trì'}
                     </span>
-                    <span className="text-sm font-semibold text-[#1C1C1E]">{mt.title}</span>
+                    <span className="text-sm font-semibold text-ink">{mt.title}</span>
                   </div>
-                  <p className="text-xs text-[#8E8878]">{fmtTime(ms2)} → {fmtTime(me)}</p>
-                  {mt.vendorName && <p className="text-xs text-[#8E8878]">Đơn vị: {mt.vendorName}</p>}
+                  <p className="text-xs text-muted">{fmtTime(ms2)} → {fmtTime(me)}</p>
+                  {mt.vendorName && <p className="text-xs text-muted">Đơn vị: {mt.vendorName}</p>}
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700 font-medium text-center">✓ Máy hoạt động bình thường cả ngày</div>
+          <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 font-medium text-center">✓ Máy hoạt động bình thường cả ngày</div>
         )}
       </div>
     </Modal>
@@ -621,11 +618,11 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
   });
   if (!machines || !machines.length) return <EmptyState icon={Settings2} title={t('production','dash_empty_machine')} />;
   const maintColor = item => {
-    if (item.status === 'COMPLETED') return '#22c55e';
-    if (item.status === 'MISSED') return '#6b7280';
-    if (item.maintenanceType === 'CORRECTIVE') return '#ef4444';
-    if (item.status === 'IN_PROGRESS') return '#eab308';
-    return '#3b82f6';
+    if (item.status === 'COMPLETED') return 'var(--c-success)';
+    if (item.status === 'MISSED') return 'var(--c-ink-2)';
+    if (item.maintenanceType === 'CORRECTIVE') return 'var(--c-danger)';
+    if (item.status === 'IN_PROGRESS') return 'var(--c-warning)';
+    return 'var(--c-info)';
   };
   const getDayMaintOverlap = (machineMaints, dayMs) => {
     const workStart = dayMs + WORK_START_H * 3600000, workEnd = dayMs + WORK_END_H * 3600000;
@@ -675,11 +672,11 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
               <div key={`lbl-${ri}`} style={{ height: ROW_H, marginBottom: 4 }} className="flex items-center pr-3">
                 {row.type === 'factory' ? (
                   <div className="flex items-center gap-1.5 w-full min-w-0">
-                    <Building2 size={12} className="flex-shrink-0 text-[#C9A84C]" />
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#1C1C1E] truncate">
+                    <Building2 size={12} className="flex-shrink-0 text-gold" />
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-ink truncate">
                       {d.factoryName}
                     </span>
-                    <span className="text-[10px] text-[#8E8878] flex-shrink-0">({d.machines.length})</span>
+                    <span className="text-[10px] text-muted flex-shrink-0">({d.machines.length})</span>
                   </div>
                 ) : isMachine ? (
                   <div className="flex items-center gap-2 w-full">
@@ -688,12 +685,12 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                       const inActiveMaint = machineMaintList.some(mt => { const ms2 = Number(mt.actualStart || mt.plannedStart), me = Number(mt.actualEnd || mt.plannedEnd); return ms2 && me && nowMs >= ms2 && nowMs <= me; });
                       const machineOccList = occByMachine[d.id] || [];
                       const inActiveOcc = machineOccList.some(o => { const ms2 = Number(o.startedAt), me = o.completedAt ? Number(o.completedAt) : nowMs; return ms2 && nowMs >= ms2 && nowMs <= me; });
-                      const dotCls = inActiveMaint ? 'bg-red-400 animate-pulse' : inActiveOcc ? 'bg-blue-400 animate-pulse' : d.status === 'ACTIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-300';
+                      const dotCls = inActiveMaint ? 'bg-red-400 animate-pulse' : inActiveOcc ? 'bg-blue-400 animate-pulse' : d.status === 'ACTIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-surface-3';
                       return <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotCls}`} />;
                     })()}
                     <div className="min-w-0">
                       <button onClick={() => onMachineClick?.(d.id)}
-                        className="text-xs font-bold text-[#1C1C1E] truncate hover:text-[#C9A84C] hover:underline transition-colors block text-left">
+                        className="text-xs font-bold text-ink truncate hover:text-gold hover:underline transition-colors block text-left">
                         {d.name}
                       </button>
                       {/* Mục 5: bỏ label nhỏ tên xưởng dưới máy — đã có dòng label xưởng ở trên */}
@@ -702,14 +699,14 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                 ) : row.type === 'occ' ? (
                   <div className="pl-4 flex items-center gap-1.5 w-full">
                     <span className="w-1 h-1 rounded-full flex-shrink-0 bg-blue-500" />
-                    <span className="text-[10px] text-[#8E8878] truncate block">
+                    <span className="text-[10px] text-muted truncate block">
                       {d.workOrderCode}{d.stepName ? ` — ${d.stepName}` : ''}
                     </span>
                   </div>
                 ) : (
                   <div className="pl-4 flex items-center gap-1.5 w-full">
-                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: d.maintenanceType === 'CORRECTIVE' ? '#ef4444' : '#3b82f6' }} />
-                    <span className="text-[10px] text-[#8E8878] truncate block">{d.title}</span>
+                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: d.maintenanceType === 'CORRECTIVE' ? 'var(--c-danger)' : 'var(--c-info)' }} />
+                    <span className="text-[10px] text-muted truncate block">{d.title}</span>
                   </div>
                 )}
               </div>
@@ -718,14 +715,14 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
         </div>
         <DragScroll weeksBack={DAYS_BACK} totalWeeks={DAYS_TOTAL} className="flex-1 min-w-0">
           <div style={{ minWidth: DAYS_TOTAL * COL_W, position: 'relative' }}>
-            <div className="flex sticky top-0 z-30" style={{ height: 32, background: 'white' }}>
+            <div className="flex sticky top-0 z-30" style={{ height: 32, background: 'var(--c-surface)' }}>
               {days.map((d, i) => {
                 const isToday = d.getTime() === today.getTime(); const isSun = d.getDay() === 0; const isSat = d.getDay() === 6; const isFirstOfMonth = d.getDate() === 1;
                 return (
                   <div key={i} style={{ flex: `0 0 ${COL_W}px`, width: COL_W }}
                     className={`flex-shrink-0 flex items-center justify-center border-l text-[10px] font-medium
-                      ${isToday ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-bold border-[#C9A84C]/30' : isSun || isSat ? 'bg-gray-50 text-gray-400 border-black/5' : 'text-[#8E8878] border-black/5'}
-                      ${isFirstOfMonth ? 'border-l-2 border-[#C9A84C]/40' : ''}`}>
+                      ${isToday ? 'bg-gold/10 text-gold font-bold border-gold/30' : isSun || isSat ? 'bg-canvas text-faint border-hairline' : 'text-muted border-hairline'}
+                      ${isFirstOfMonth ? 'border-l-2 border-gold/40' : ''}`}>
                     <div className="text-center leading-tight">
                       {isFirstOfMonth ? <><span className="font-bold block">{d.toLocaleDateString(loc, { month: 'short' })}</span><span className="text-[9px]">{d.getDate()}</span></>
                         : <><span className="block">{['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()]}</span><span className="font-semibold">{d.getDate()}</span></>}
@@ -758,12 +755,12 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                         const nowMs = Date.now();
                         const isDone = e < nowMs;
                         const isFuture = s > nowMs;
-                        const color = isDone ? '#10b981' : isFuture ? '#eab308' : '#2563eb';
+                        const color = isDone ? 'var(--c-success)' : isFuture ? 'var(--c-warning)' : 'var(--c-info)';
                         const barLeft = msToWorkLeft(s); const barW = msToWorkWidth(s, e);
                         return (
                           <button key={ii} onClick={() => setClickedOccupancy(o)}
                             title={`${o.workOrderCode || ''} — Mẻ ${o.batchCode || ''}\nBước: ${o.stepName || ''}\nBắt đầu: ${o.startedAt ? new Date(Number(o.startedAt)).toLocaleString(loc) : ''}\n${o.completedAt ? 'Hoàn thành' : 'Dự kiến hoàn thành'}: ${o.completedAt ? new Date(Number(o.completedAt)).toLocaleString(loc) : (o.estimatedEndAt != null ? new Date(Number(o.estimatedEndAt)).toLocaleString(loc) : '—')}`}
-                            style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: color + 'cc', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
+                            style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: withAlpha(color, 80), boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
                             <span className="text-white text-[9px] font-bold whitespace-nowrap truncate drop-shadow-sm">
                               {o.workOrderCode}{' '}{o.startedAt ? new Date(Number(o.startedAt)).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
@@ -816,7 +813,7 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                         const color = maintColor(item); const barLeft = msToWorkLeft(s); const barW = msToWorkWidth(s, e);
                         return (
                           <button key={ii} onClick={() => onItemClick(item)}
-                            style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: color + 'cc', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
+                            style={{ position: 'absolute', top: 6, bottom: 6, left: barLeft, width: Math.max(barW, 4), borderRadius: 4, overflow: 'hidden', cursor: 'pointer', border: 'none', padding: '0 6px', backgroundColor: withAlpha(color, 80), boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }}>
                             <span className="text-white text-[9px] font-bold whitespace-nowrap truncate drop-shadow-sm">
                               {item.title?.length > 10 ? item.title.slice(0, 8) + '…' : item.title}{' '}{item.plannedStart ? new Date(item.plannedStart).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
@@ -828,8 +825,8 @@ export function MaintenanceGantt({ machines, maintenanceList, occupancyList, onI
                 </div>
               );
             })}
-            <div className="flex flex-wrap gap-4 mt-3 px-1 pb-1 text-[10px] text-[#8E8878]">
-              {[['#10b981', 'Đang hoạt động'], ['#2563eb', 'Đang sản xuất (lệnh)'], ['#ef4444', 'Bảo trì/Sự cố'], ['#3b82f6', 'Theo lịch'], ['#eab308', 'Đang xử lý'], ['#22c55e', 'Hoàn thành']].map(([c, l]) => (
+            <div className="flex flex-wrap gap-4 mt-3 px-1 pb-1 text-[10px] text-muted">
+              {[['var(--c-success)', 'Đang hoạt động'], ['var(--c-info)', 'Đang sản xuất (lệnh)'], ['var(--c-danger)', 'Bảo trì/Sự cố'], ['var(--c-info)', 'Theo lịch'], ['var(--c-warning)', 'Đang xử lý'], ['var(--c-success)', 'Hoàn thành']].map(([c, l]) => (
                 <span key={l} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ backgroundColor: c }} />{l}</span>
               ))}
             </div>
@@ -855,15 +852,15 @@ export function MachineOccupancyModal({ occupancy, onClose }) {
     <Modal open title="Máy đang được sử dụng" onClose={onClose} size="sm"
       footer={<div className="flex justify-end"><SecondaryButton onClick={onClose}>Đóng</SecondaryButton></div>}>
       <div className="space-y-3">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-1.5">
-          <p className="text-sm font-semibold text-blue-700">{o.workOrderCode}</p>
-          <p className="text-sm text-blue-600">Mẻ {o.batchCode} — Bước: {o.stepName}</p>
+        <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 rounded-xl p-4 space-y-1.5">
+          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{o.workOrderCode}</p>
+          <p className="text-sm text-blue-600 dark:text-blue-300">Mẻ {o.batchCode} — Bước: {o.stepName}</p>
           <p className="text-xs text-blue-500">
             Bắt đầu: {new Date(Number(o.startedAt)).toLocaleString(loc)}
           </p>
           {isRunning ? (
             <>
-              <p className="text-xs font-semibold text-blue-600">⏳ Đang thực hiện</p>
+              <p className="text-xs font-semibold text-blue-600 dark:text-blue-300">⏳ Đang thực hiện</p>
               {endLabel && (
                 <p className="text-xs text-blue-500">Dự kiến hoàn thành: {endLabel}</p>
               )}
@@ -887,21 +884,21 @@ export function MaintenanceDetailModal({ item, onClose }) {
     <Modal open title={item.title} onClose={onClose} size="lg" footer={<SecondaryButton onClick={onClose}>Đóng</SecondaryButton>}>
       <div className="space-y-5">
         <div className="flex gap-3 flex-wrap">
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${item.status === 'COMPLETED' ? 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' : item.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300'}`}>
             {item.maintenanceType === 'CORRECTIVE' ? '🚨 Sự cố phát sinh' : '🔧 Bảo trì định kỳ'}
           </span>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-[#FAF7F2] text-[#8E8878]">{item.machineName}</span>
+          <span className="text-xs px-2.5 py-1 rounded-full bg-canvas text-muted">{item.machineName}</span>
           <StatusBadge status={item.status} />
         </div>
         <div className="grid grid-cols-2 gap-3 text-sm">
           {[{ label: 'Bắt đầu kế hoạch', value: fmtDate(item.plannedStart) }, { label: 'Kết thúc dự kiến', value: fmtDate(item.plannedEnd) }, { label: 'Thực tế hoàn thành', value: fmtDate(item.actualEnd) || '—' }, { label: 'Giờ downtime', value: item.actualDowntimeHours ? `${item.actualDowntimeHours}h` : `${item.plannedDowntimeHours || 0}h (KH)` }, { label: 'Chi phí', value: item.actualCost ? fmtCurrency(item.actualCost) : item.estimatedCost ? `~${fmtCurrency(item.estimatedCost)}` : '—' }, { label: 'Đơn vị thi công', value: item.vendorName || '—' }].map(s => (
-            <div key={s.label} className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-0.5">{s.label}</p><p className="font-semibold text-[#1C1C1E]">{s.value}</p></div>
+            <div key={s.label} className="bg-canvas rounded-xl p-3"><p className="text-xs text-muted mb-0.5">{s.label}</p><p className="font-semibold text-ink">{s.value}</p></div>
           ))}
         </div>
-        {item.description && <div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Nội dung</p><p className="text-sm">{item.description}</p></div>}
-        {item.completionNotes && <div className="bg-[#FAF7F2] rounded-xl p-3"><p className="text-xs text-[#8E8878] mb-1">Ghi chú hoàn thành</p><p className="text-sm">{item.completionNotes}</p></div>}
+        {item.description && <div className="bg-canvas rounded-xl p-3"><p className="text-xs text-muted mb-1">Nội dung</p><p className="text-sm">{item.description}</p></div>}
+        {item.completionNotes && <div className="bg-canvas rounded-xl p-3"><p className="text-xs text-muted mb-1">Ghi chú hoàn thành</p><p className="text-sm">{item.completionNotes}</p></div>}
         {[['Ảnh trước bảo trì', item.beforeImages], ['Ảnh sau bảo trì', item.afterImages], ['Chứng từ', item.receiptImages]].map(([label, imgs]) => imgs?.length > 0 && (
-          <div key={label}><p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}</p><div className="flex gap-2 flex-wrap">{imgs.map((url, i) => <a key={i} href={img(url)} target="_blank" rel="noreferrer"><img src={img(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-black/10 hover:scale-105 transition-transform" /></a>)}</div></div>
+          <div key={label}><p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{label}</p><div className="flex gap-2 flex-wrap">{imgs.map((url, i) => <a key={i} href={img(url)} target="_blank" rel="noreferrer"><img src={img(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-hairline-2 hover:scale-105 transition-transform" /></a>)}</div></div>
         ))}
       </div>
     </Modal>
@@ -939,7 +936,7 @@ export function CreateProductModal({ onClose, onSaved }) {
         </div>
       }>
       <div className="space-y-3">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
         <Field label={t('production','wo_field_product_name')} required>
           <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder={t('production','wo_ph_product_name')} autoFocus />
         </Field>
@@ -1008,7 +1005,7 @@ export function CreatePlanModal({ products, factories = [], onClose, onSaved }) 
         </div>
       }>
       <div className="space-y-4">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
         <Field label={t('production','dash_plan_title')} required>
           <input className={inputCls} value={form.title} onChange={e => set('title', e.target.value)} placeholder="VD: Kế hoạch Q3 2026" />
@@ -1147,7 +1144,7 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
           </div>
         }>
         <div className="space-y-4">
-          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+          {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
           {/* Kế hoạch — search dropdown */}
           <Field label={t('production','dash_plan')} required>
@@ -1161,22 +1158,22 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
 
           {/* Summary kế hoạch */}
           {selectedPlan && (
-            <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1">
+            <div className="bg-canvas rounded-xl px-4 py-3 text-xs space-y-1">
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">{t('production','dash_plan_products')}</span>
+                <span className="text-muted">{t('production','dash_plan_products')}</span>
                 <span className="font-medium">{planProducts.map(p => p.name).join(', ') || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">{t('production','dash_plan_target_qty')}</span>
+                <span className="text-muted">{t('production','dash_plan_target_qty')}</span>
                 <span className="font-medium">{fmtNum(planTgt)} {selectedPlan.outputUnit}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">{t('production','dash_plan_in_progress')}</span>
-                <span className={`font-medium ${planAcc >= planTgt ? 'text-red-500' : 'text-emerald-600'}`}>{fmtNum(planAcc)}</span>
+                <span className="text-muted">{t('production','dash_plan_in_progress')}</span>
+                <span className={`font-medium ${planAcc >= planTgt ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-300'}`}>{fmtNum(planAcc)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8878]">{t('production','dash_plan_remaining')}</span>
-                <span className={`font-bold ${planTgt - planAcc <= 0 ? 'text-red-500' : 'text-[#C9A84C]'}`}>
+                <span className="text-muted">{t('production','dash_plan_remaining')}</span>
+                <span className={`font-bold ${planTgt - planAcc <= 0 ? 'text-red-500' : 'text-gold'}`}>
                   {planTgt - planAcc <= 0 ? 'Đã đủ' : fmtNum(planTgt - planAcc)}
                 </span>
               </div>
@@ -1186,14 +1183,14 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
           {/* Sản phẩm — chỉ hiện khi đã chọn kế hoạch, chỉ cho chọn sản phẩm trong kế hoạch */}
           <Field label={t('production','dash_plan_products')} required>
             {noPlanSelected ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#E8DDD0] bg-gray-50">
-                <Search size={13} className="text-[#8E8878]" />
-                <span className="text-sm text-[#8E8878]">{t('production','dash_select_plan')}</span>
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-line bg-canvas">
+                <Search size={13} className="text-muted" />
+                <span className="text-sm text-muted">{t('production','dash_select_plan')}</span>
               </div>
             ) : planProducts.length === 0 ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50">
-                <AlertTriangle size={13} className="text-amber-600" />
-                <span className="text-sm text-amber-700">{t('production','dash_plan_no_products')}</span>
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 dark:border-amber-500/28 bg-amber-50 dark:bg-amber-500/10">
+                <AlertTriangle size={13} className="text-amber-600 dark:text-amber-300" />
+                <span className="text-sm text-amber-700 dark:text-amber-300">{t('production','dash_plan_no_products')}</span>
               </div>
             ) : (
               <SearchDropdown
@@ -1232,14 +1229,14 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
             </Field>
           )}
 
-          <div className="flex items-center justify-between bg-[#FAF7F2] rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between bg-canvas rounded-xl px-4 py-3">
             <div>
               <p className="text-sm font-medium">{t('production','dash_scheduled_cutting')}</p>
-              <p className="text-xs text-[#8E8878]">{t('production','dash_scheduled_cutting_desc')}</p>
+              <p className="text-xs text-muted">{t('production','dash_scheduled_cutting_desc')}</p>
             </div>
             <button onClick={() => set('scheduledMode', !form.scheduledMode)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${form.scheduledMode ? 'bg-[#C9A84C]' : 'bg-black/15'}`}>
-              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${form.scheduledMode ? 'left-6' : 'left-0.5'}`} />
+              className={`w-12 h-6 rounded-full transition-colors relative ${form.scheduledMode ? 'bg-gold' : 'bg-hairline-3'}`}>
+              <div className={`w-5 h-5 bg-surface rounded-full shadow absolute top-0.5 transition-all ${form.scheduledMode ? 'left-6' : 'left-0.5'}`} />
             </button>
           </div>
         </div>
@@ -1253,9 +1250,9 @@ export function CreateWorkOrderModal({ plans, products, factories, prefilledPlan
               <PrimaryButton onClick={() => doSubmit(true)} loading={saving}>Vẫn tạo lệnh</PrimaryButton>
             </div>
           }>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-3">
-            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl p-3 flex gap-3">
+            <AlertTriangle size={18} className="text-amber-600 dark:text-amber-300 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-800 dark:text-amber-300">
               <p className="font-semibold">Tổng sản lượng sẽ vượt kế hoạch!</p>
               <p className="mt-1">Tổng: <b>{fmtNum(overPlanConfirm.newTotal)}</b> / Mục tiêu: <b>{fmtNum(overPlanConfirm.targetQty)}</b></p>
             </div>
@@ -1286,7 +1283,7 @@ export function AddMachineModal({ factories, onClose, onSaved }) {
     <Modal open title={t('production', 'add_machine')} onClose={onClose} size="md"
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>Huỷ</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>Thêm máy</PrimaryButton></div>}>
       <div className="space-y-4">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
         <Field label={t('production', 'machine_name')} required><input className={inputCls} placeholder="VD: Máy xay thịt A" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
         {factories?.length > 0 && (
           <Field label={t('production', 'factory')}>
@@ -1406,7 +1403,7 @@ export default function OwnerProductionDashboard() {
               deploy lên môi trường có dữ liệu thật. Xem ProductionResetController backend. */}
           <button onClick={handleResetTestData} disabled={resetting}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl
-              bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50">
+              bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/28 hover:bg-red-100 dark:bg-red-500/18 disabled:opacity-50">
             <RotateCcw size={13} /> {resetting ? 'Resetting...' : 'Reset data (test)'}
           </button>
           <SecondaryButton onClick={() => navigate('/owner/production/loss-reports')}>
@@ -1427,12 +1424,12 @@ export default function OwnerProductionDashboard() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {[
-          { icon: CalendarRange, label: t('production','dash_kpi_active_plans'), value: d.totalActivePlans || 0, color: 'text-blue-600', iconBg: 'bg-blue-50' },
-          { icon: ClipboardList, label: t('production','dash_kpi_total_wo'), value: d.totalWorkOrders || 0, color: 'text-[#1C1C1E]', iconBg: 'bg-[#FAF7F2]' },
-          { icon: Factory, label: t('production','dash_kpi_in_progress'), value: d.inProgressOrders || 0, color: 'text-orange-600', iconBg: 'bg-orange-50' },
-          { icon: Clock, label: t('production','dash_kpi_pending_plan'), value: d.pendingPlanOrders || 0, color: d.pendingPlanOrders > 0 ? 'text-amber-600' : 'text-[#8E8878]', iconBg: 'bg-amber-50' },
-          { icon: CheckCircle2, label: t('production','dash_kpi_completed'), value: d.completedOrders || 0, color: 'text-emerald-600', iconBg: 'bg-emerald-50' },
-          { icon: Settings2, label: t('production','dash_kpi_active_machines'), value: `${d.activeMachines || 0}/${d.totalMachines || 0}`, color: 'text-[#C9A84C]', iconBg: 'bg-[#C9A84C]/10' },
+          { icon: CalendarRange, label: t('production','dash_kpi_active_plans'), value: d.totalActivePlans || 0, color: 'text-blue-600 dark:text-blue-300', iconBg: 'bg-blue-50 dark:bg-blue-500/10' },
+          { icon: ClipboardList, label: t('production','dash_kpi_total_wo'), value: d.totalWorkOrders || 0, color: 'text-ink', iconBg: 'bg-canvas' },
+          { icon: Factory, label: t('production','dash_kpi_in_progress'), value: d.inProgressOrders || 0, color: 'text-orange-600 dark:text-orange-300', iconBg: 'bg-orange-50 dark:bg-orange-500/10' },
+          { icon: Clock, label: t('production','dash_kpi_pending_plan'), value: d.pendingPlanOrders || 0, color: d.pendingPlanOrders > 0 ? 'text-amber-600 dark:text-amber-300' : 'text-muted', iconBg: 'bg-amber-50 dark:bg-amber-500/10' },
+          { icon: CheckCircle2, label: t('production','dash_kpi_completed'), value: d.completedOrders || 0, color: 'text-emerald-600 dark:text-emerald-300', iconBg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+          { icon: Settings2, label: t('production','dash_kpi_active_machines'), value: `${d.activeMachines || 0}/${d.totalMachines || 0}`, color: 'text-gold', iconBg: 'bg-gold/10' },
           {
             icon: Scale,
             label: 'Tổng sản lượng hoàn thành',
@@ -1440,23 +1437,23 @@ export default function OwnerProductionDashboard() {
             sub: d.completedOutputThisMonth != null
               ? `Tháng này: ${fmtNum(d.completedOutputThisMonth)} kg`
               : undefined,
-            color: 'text-teal-600',
-            iconBg: 'bg-teal-50',
+            color: 'text-teal-600 dark:text-teal-300',
+            iconBg: 'bg-teal-50 dark:bg-teal-500/10',
           },
         ].map(kpi => <KpiCard key={kpi.label} {...kpi} />)}
       </div>
 
       {d.pendingPlanOrders > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-          <AlertTriangle size={18} className="text-amber-600 flex-shrink-0" />
-          <p className="text-sm text-amber-800 font-medium">{d.pendingPlanOrders} {t('production', 'dash_pending_plans')}</p>
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-2xl p-4 flex items-center gap-3">
+          <AlertTriangle size={18} className="text-amber-600 dark:text-amber-300 flex-shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">{d.pendingPlanOrders} {t('production', 'dash_pending_plans')}</p>
         </div>
       )}
 
-      <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
+      <div className="flex gap-1 bg-surface border border-hairline rounded-xl p-1 w-fit shadow-sm">
         {[{ id: 'orders', label: t('production','dash_tab_orders'), icon: ClipboardList }, { id: 'machines', label: t('production','dash_tab_machines'), icon: Settings2 }].map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-chrome text-white' : 'text-muted hover:text-ink'}`}>
             <s.icon size={14} />{s.label}
           </button>
         ))}
@@ -1477,7 +1474,7 @@ export default function OwnerProductionDashboard() {
       {activeSection === 'machines' && (
         <SectionCard>
           <SectionHeader title={t('production','dash_machines_gantt_title')}
-            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12} />{t('production','dash_add_machine')}</button>} />
+            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-gold font-semibold hover:underline"><Plus size={12} />{t('production','dash_add_machine')}</button>} />
           <div className="p-4">
             <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy}
               onItemClick={setSelectedMaint}

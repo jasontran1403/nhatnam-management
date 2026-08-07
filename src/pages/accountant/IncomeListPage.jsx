@@ -10,11 +10,9 @@ import {
 import IncomeCreateModal from './IncomeCreateModal';
 import IncomeDetailModal from './IncomeDetailModal';
 import { VOUCHER_PAGE_SIZE } from '../../constants/pagination';
+import { formatVND } from '../../utils/format.js';
+import { BackButton, useSubPageNav } from '../../components/common/SubPageNav';
 
-function formatVND(n) {
-  if (!n && n !== 0) return '0 đ';
-  return new Intl.NumberFormat('vi-VN').format(n) + ' đ';
-}
 function formatDate(ms) {
   if (!ms) return '';
   const d = new Date(ms);
@@ -33,6 +31,8 @@ function todayStr() {
 const PAGE_SIZE = VOUCHER_PAGE_SIZE;
 
 export default function IncomeListPage({ adminMode = false }) {
+  // Mở từ nút trên trang Dòng tiền → có state.from để quay lại.
+  const { from: subFrom } = useSubPageNav();
   const toast = useToast();
   const searchDebounce = useRef(null);
   const searchTextRef = useRef('');
@@ -163,33 +163,36 @@ export default function IncomeListPage({ adminMode = false }) {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
+      {/* Trang dùng chung nhiều role — chỉ hiện nút Quay lại khi vào từ Dòng tiền. */}
+      {subFrom && <BackButton fallback={subFrom} />}
+
       <div className="flex items-center gap-3">
-        <TrendingUp size={22} className="text-[#C9A84C]" />
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Phiếu thu</h1>
-        <span className="text-xs text-[#8E8878] ml-1">{totalElements} phiếu</span>
+        <TrendingUp size={22} className="text-gold" />
+        <h1 className="text-xl font-bold text-ink">Phiếu thu</h1>
+        <span className="text-xs text-muted ml-1">{totalElements} phiếu</span>
       </div>
 
       <div className="bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 rounded-2xl p-4 flex items-center justify-between">
         <div>
-          <p className="text-xs text-[#8E8878] font-medium">
+          <p className="text-xs text-muted font-medium">
             {searchText ? `Tìm "${searchText}" trong kỳ` : 'Tổng thu trong kỳ'}
           </p>
-          <p className="text-2xl font-bold text-emerald-600 mt-0.5">{formatVND(totalAmount)}</p>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-300 mt-0.5">{formatVND(totalAmount)}</p>
         </div>
         <TrendingUp size={28} className="text-emerald-400/40" />
       </div>
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={searchText}
             onChange={e => handleSearchChange(e.target.value)}
             placeholder="Tìm số phiếu thu, lý do, người nộp, số tiền..."
-            className="w-full pl-9 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]"
+            className="w-full pl-9 pr-8 py-2 rounded-xl border border-line text-sm bg-surface focus:outline-none focus:border-gold"
           />
           {searchText && (
-            <button onClick={clearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+            <button onClick={clearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
               <X size={13} />
             </button>
           )}
@@ -198,13 +201,13 @@ export default function IncomeListPage({ adminMode = false }) {
           <DateRangePicker from={currentRange.from} to={currentRange.to} onChange={handleDateRangeChange} placeholder="Chọn ngày" align="right" />
         </div>
         {dateRange && (
-          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-[#E8DDD0] text-[#8E8878] hover:bg-[#FAF7F2] transition flex-shrink-0" title={adminMode ? 'Xem tất cả' : 'Về hôm nay'}>
+          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0" title={adminMode ? 'Xem tất cả' : 'Về hôm nay'}>
             <X size={14} />
           </button>
         )}
         <button
           onClick={() => setShowExport(true)}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs font-medium text-[#5C5C5C] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all"
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs font-medium text-ink-2 hover:border-gold hover:text-gold transition-all"
           title="Xuất báo cáo"
         >
           <Download size={13} /> Export
@@ -212,9 +215,9 @@ export default function IncomeListPage({ adminMode = false }) {
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+        <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-surface-2 rounded-2xl animate-pulse" />)}</div>
       ) : vouchers.length === 0 ? (
-        <div className="text-center py-16 text-[#8E8878]">
+        <div className="text-center py-16 text-muted">
           <TrendingUp size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">Không có phiếu thu nào</p>
           <p className="text-sm mt-1">{searchText ? 'Thử từ khoá khác' : 'Trong khoảng thời gian này'}</p>
@@ -227,17 +230,17 @@ export default function IncomeListPage({ adminMode = false }) {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
-          <button disabled={page === 0} onClick={() => load(page - 1)} className="p-2 rounded-lg border border-black/10 hover:bg-[#FAF7F2] disabled:opacity-30 transition"><ChevronLeft size={16} /></button>
+          <button disabled={page === 0} onClick={() => load(page - 1)} className="p-2 rounded-lg border border-hairline-2 hover:bg-canvas disabled:opacity-30 transition"><ChevronLeft size={16} /></button>
           {[...Array(Math.min(totalPages, 7))].map((_, i) => (
-            <button key={i} onClick={() => load(i)} className={`w-9 h-9 rounded-lg text-sm font-semibold transition ${i === page ? 'bg-[#C9A84C] text-white' : 'border border-black/10 hover:bg-[#FAF7F2] text-[#1C1C1E]'}`}>{i + 1}</button>
+            <button key={i} onClick={() => load(i)} className={`w-9 h-9 rounded-lg text-sm font-semibold transition ${i === page ? 'bg-gold text-white' : 'border border-hairline-2 hover:bg-canvas text-ink'}`}>{i + 1}</button>
           ))}
-          <button disabled={page >= totalPages - 1} onClick={() => load(page + 1)} className="p-2 rounded-lg border border-black/10 hover:bg-[#FAF7F2] disabled:opacity-30 transition"><ChevronRight size={16} /></button>
+          <button disabled={page >= totalPages - 1} onClick={() => load(page + 1)} className="p-2 rounded-lg border border-hairline-2 hover:bg-canvas disabled:opacity-30 transition"><ChevronRight size={16} /></button>
         </div>
       )}
 
       <button
         onClick={() => setShowCreate(true)}
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-[#C9A84C] hover:bg-[#B8923E] shadow-xl flex items-center justify-center transition-all"
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gold hover:bg-gold-strong shadow-xl flex items-center justify-center transition-all"
       >
         <Plus size={26} className="text-white" />
       </button>
@@ -256,7 +259,7 @@ export default function IncomeListPage({ adminMode = false }) {
       {/* ── Export Modal ── */}
       {showExport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -276,9 +279,9 @@ export default function IncomeListPage({ adminMode = false }) {
 
             <div className="p-5 space-y-3">
               {/* Khoảng thời gian đang chọn */}
-              <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
-                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Khoảng thời gian</p>
-                <p className="text-sm font-semibold text-emerald-700">
+              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 px-4 py-3">
+                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-300 uppercase tracking-wider mb-1">Khoảng thời gian</p>
+                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                   {formatDate(currentRange.from).split(' ').slice(1).join(' ')}
                   {' — '}
                   {formatDate(currentRange.to).split(' ').slice(1).join(' ')}
@@ -288,7 +291,7 @@ export default function IncomeListPage({ adminMode = false }) {
 
               {/* Phương thức thanh toán */}
               <div>
-                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Phương thức thanh toán</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Phương thức thanh toán</p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
                     { key: 'CASH', label: 'Tiền mặt' },
@@ -301,7 +304,7 @@ export default function IncomeListPage({ adminMode = false }) {
                       className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${
                         exportPaymentType === opt.key
                           ? 'bg-emerald-500 text-white border-emerald-500'
-                          : 'bg-white text-[#5C5C5C] border-[#E8DDD0] hover:bg-[#F0EBE3]'
+                          : 'bg-surface text-ink-2 border-line hover:bg-surface-2'
                       }`}>
                       {opt.label}
                     </button>
@@ -314,7 +317,7 @@ export default function IncomeListPage({ adminMode = false }) {
 
               {/* Các cột sẽ có */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">Nội dung file</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Nội dung file</p>
                 {[
                   'Thời gian tạo phiếu thu',
                   'Số phiếu thu',
@@ -322,7 +325,7 @@ export default function IncomeListPage({ adminMode = false }) {
                   ...(exportPaymentType === 'ALL' ? ['Phương thức thanh toán'] : []),
                   'Tổng tiền thu',
                 ].map(col => (
-                  <div key={col} className="flex items-center gap-2 text-xs text-[#5C4E3D]">
+                  <div key={col} className="flex items-center gap-2 text-xs text-ink-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                     {col}
                   </div>
@@ -332,7 +335,7 @@ export default function IncomeListPage({ adminMode = false }) {
 
             <div className="flex gap-2 px-5 pb-5">
               <button onClick={() => setShowExport(false)}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3] transition-colors font-medium">
+                className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-surface-2 transition-colors font-medium">
                 Hủy
               </button>
               <button onClick={handleExport} disabled={exporting}
@@ -352,31 +355,31 @@ export default function IncomeListPage({ adminMode = false }) {
 function IncomeCard({ v, onClick }) {
   const isBankTransfer = v.paymentType === 'BANK_TRANSFER';
   return (
-    <div onClick={onClick} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 hover:border-[#C9A84C]/40 hover:shadow-md transition cursor-pointer">
+    <div onClick={onClick} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 hover:border-gold/40 hover:shadow-md transition cursor-pointer">
       {/* Row 1: mã + badge + tiền */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold text-[#C9A84C]">Số phiếu thu {v.receiptNumber || v.voucherCode}</span>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isBankTransfer ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+          <span className="font-mono text-xs font-bold text-gold">Số phiếu thu {v.receiptNumber || v.voucherCode}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isBankTransfer ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300' : 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-300'}`}>
             {isBankTransfer ? 'CK' : 'TM'}
           </span>
         </div>
-        <p className="font-bold text-[#1C1C1E] text-sm">{new Intl.NumberFormat('vi-VN').format(v.totalAmount || 0)} đ</p>
+        <p className="font-bold text-ink text-sm">{new Intl.NumberFormat('vi-VN').format(v.totalAmount || 0)} đ</p>
       </div>
       {/* Row 2: lý do */}
-      <p className="text-sm font-semibold text-[#1C1C1E] truncate mb-1.5">{v.reason}</p>
+      <p className="text-sm font-semibold text-ink truncate mb-1.5">{v.reason}</p>
       {/* Row 3: meta info */}
-      <div className="flex items-center justify-between text-xs text-[#8E8878]">
+      <div className="flex items-center justify-between text-xs text-muted">
         <div className="flex items-center gap-1.5 min-w-0">
           {v.payerName && <span className="truncate max-w-[110px]">{v.payerName}</span>}
-          {v.linkedOrderCodes?.length > 0 && <span className="text-[#C9A84C] flex-shrink-0">· {v.linkedOrderCodes.length} đơn</span>}
+          {v.linkedOrderCodes?.length > 0 && <span className="text-gold flex-shrink-0">· {v.linkedOrderCodes.length} đơn</span>}
         </div>
         <span className="flex-shrink-0">{formatDate(v.createdAt)}</span>
       </div>
       {isBankTransfer && v.bankName && <p className="text-xs text-blue-500 mt-1">{v.bankName} · {v.bankRef}</p>}
-      <p className="text-xs text-[#8E8878] mt-0.5">Bởi {v.createdByName}</p>
+      <p className="text-xs text-muted mt-0.5">Bởi {v.createdByName}</p>
       {v.lastEditedAt && (
-        <p className="text-[11px] text-amber-600 mt-0.5 italic">
+        <p className="text-[11px] text-amber-600 dark:text-amber-300 mt-0.5 italic">
           Lần chỉnh sửa gần nhất bởi {v.lastEditedByName} vào lúc {formatDate(v.lastEditedAt)}
         </p>
       )}

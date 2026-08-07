@@ -1,11 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 
 <head>
   <meta charset="UTF-8" />
+  <script>
+  (function(){try{
+    var s=localStorage.getItem('app_theme');
+    var d=s==='dark'||((!s||s==='system')&&matchMedia('(prefers-color-scheme: dark)').matches);
+    if(d){document.documentElement.classList.add('dark');}
+    document.documentElement.style.colorScheme=d?'dark':'light';
+  }catch(e){}})();
+  </script>
+  <meta name="theme-color" content="#FAF7F2" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#14110D" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nhatnam Finefoods</title>
+  <title>Nhất Nam Fine Foods</title>
 </head>
 
 <body>

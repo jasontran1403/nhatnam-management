@@ -31,7 +31,7 @@ export default function LangToggle({ variant = 'default', compact = false }) {
       <button
         onClick={toggle}
         title={isVi ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-        className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-black/5 transition text-[#5C5C5C] hover:text-[#1C1C1E] text-xs font-semibold select-none"
+        className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-hairline transition text-ink-2 hover:text-ink text-xs font-semibold select-none"
       >
         <span className="text-sm leading-none">{isVi ? '🇻🇳' : '🇬🇧'}</span>
         <span>{isVi ? 'VI' : 'EN'}</span>
@@ -44,7 +44,7 @@ export default function LangToggle({ variant = 'default', compact = false }) {
     <button
       onClick={toggle}
       title={isVi ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-black/10 bg-white hover:bg-[#FAF7F2] shadow-sm transition text-[#1C1C1E] text-xs font-semibold select-none"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-hairline-2 bg-surface hover:bg-canvas shadow-sm transition text-ink text-xs font-semibold select-none"
     >
       <span className="text-sm leading-none">{isVi ? '🇻🇳' : '🇬🇧'}</span>
       <span>{isVi ? 'Tiếng Việt' : 'English'}</span>

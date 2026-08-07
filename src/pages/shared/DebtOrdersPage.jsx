@@ -34,14 +34,14 @@ function DaysBadge({ daysOverdue, type }) {
   if (type === 'NEARING') {
     const days = -Number(daysOverdue); // daysOverdue âm = còn N ngày
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 whitespace-nowrap">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300 whitespace-nowrap">
         <Clock size={10} /> Còn {days} ngày
       </span>
     );
   }
   const days = Number(daysOverdue);
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600 whitespace-nowrap">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300 whitespace-nowrap">
       <AlertTriangle size={10} /> Quá {days} ngày
     </span>
   );
@@ -57,17 +57,17 @@ function OrderRow({ order, checked, onCheck, type }) {
   return (
     <>
       <tr
-        className={`border-b border-[#F0EBE3] transition-colors ${
-          checked ? 'bg-amber-50' : 'hover:bg-[#FAF7F2]'
+        className={`border-b border-line-soft transition-colors ${
+          checked ? 'bg-amber-50 dark:bg-amber-500/10' : 'hover:bg-canvas'
         }`}
       >
         {/* Checkbox */}
         <td className="px-3 py-3 w-8">
           <button
             onClick={() => onCheck(order.id)}
-            className="text-[#C9A84C] hover:scale-110 transition-transform"
+            className="text-gold hover:scale-110 transition-transform"
           >
-            {checked ? <CheckSquare size={18} /> : <Square size={18} className="text-[#C4B9A8]" />}
+            {checked ? <CheckSquare size={18} /> : <Square size={18} className="text-faint" />}
           </button>
         </td>
 
@@ -75,7 +75,7 @@ function OrderRow({ order, checked, onCheck, type }) {
         <td className="px-3 py-3 whitespace-nowrap">
           <button
             onClick={() => setOpen(o => !o)}
-            className="font-mono text-xs text-[#C9A84C] font-bold hover:underline"
+            className="font-mono text-xs text-gold font-bold hover:underline"
           >
             {order.orderCode}
           </button>
@@ -83,30 +83,30 @@ function OrderRow({ order, checked, onCheck, type }) {
 
         {/* Khách hàng */}
         <td className="px-3 py-3 max-w-[160px]">
-          <p className="text-sm font-semibold text-[#1C1C1E] truncate">{order.customerName || '—'}</p>
+          <p className="text-sm font-semibold text-ink truncate">{order.customerName || '—'}</p>
           {order.customerPhone && (
-            <p className="text-xs text-[#8E8878]">{order.customerPhone}</p>
+            <p className="text-xs text-muted">{order.customerPhone}</p>
           )}
         </td>
 
         {/* Hạn thanh toán */}
         <td className="px-3 py-3 whitespace-nowrap">
-          <p className="text-xs text-[#5C4E3D]">{order.paymentDeadline || '—'}</p>
+          <p className="text-xs text-ink-2">{order.paymentDeadline || '—'}</p>
           <DaysBadge daysOverdue={order.daysOverdue} type={type} />
         </td>
 
         {/* Tổng đơn */}
         <td className="px-3 py-3 text-right whitespace-nowrap">
-          <p className="text-sm font-semibold text-[#1C1C1E]">{formatVNDFull(final)}</p>
+          <p className="text-sm font-semibold text-ink">{formatVNDFull(final)}</p>
           {paid > 0 && (
-            <p className="text-xs text-emerald-600">Đã trả: {formatVNDFull(paid)}</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-300">Đã trả: {formatVNDFull(paid)}</p>
           )}
         </td>
 
         {/* Còn lại */}
         <td className="px-3 py-3 text-right whitespace-nowrap">
           <p className={`text-sm font-bold ${
-            type === 'OVERDUE' ? 'text-red-600' : 'text-amber-600'
+            type === 'OVERDUE' ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'
           }`}>
             {formatVNDFull(remaining)}
           </p>
@@ -114,15 +114,15 @@ function OrderRow({ order, checked, onCheck, type }) {
 
         {/* Người tạo / kho */}
         <td className="px-3 py-3 hidden md:table-cell whitespace-nowrap">
-          <p className="text-xs text-[#5C4E3D]">{order.orderedByName || '—'}</p>
+          <p className="text-xs text-ink-2">{order.orderedByName || '—'}</p>
           {order.warehouseName && (
-            <p className="text-xs text-[#8E8878]">{order.warehouseName}</p>
+            <p className="text-xs text-muted">{order.warehouseName}</p>
           )}
         </td>
 
         {/* Expand */}
         <td className="px-2 py-3 w-6">
-          <button onClick={() => setOpen(o => !o)} className="text-[#8E8878] hover:text-[#1C1C1E]">
+          <button onClick={() => setOpen(o => !o)} className="text-muted hover:text-ink">
             {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </td>
@@ -130,44 +130,44 @@ function OrderRow({ order, checked, onCheck, type }) {
 
       {/* Expand row detail */}
       {open && (
-        <tr className="bg-[#FAF7F2]">
+        <tr className="bg-canvas">
           <td colSpan={8} className="px-6 py-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Ngày tạo đơn</p>
-                <p className="text-[#1C1C1E]">{formatDate(order.createdAt)}</p>
+                <p className="text-muted font-semibold uppercase mb-0.5">Ngày tạo đơn</p>
+                <p className="text-ink">{formatDate(order.createdAt)}</p>
               </div>
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Ngày chờ TT</p>
-                <p className="text-[#1C1C1E]">{formatDate(order.pendingPaymentAt)}</p>
+                <p className="text-muted font-semibold uppercase mb-0.5">Ngày chờ TT</p>
+                <p className="text-ink">{formatDate(order.pendingPaymentAt)}</p>
               </div>
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Số ngày nợ</p>
-                <p className="text-[#1C1C1E]">{order.debtDays} ngày</p>
+                <p className="text-muted font-semibold uppercase mb-0.5">Số ngày nợ</p>
+                <p className="text-ink">{order.debtDays} ngày</p>
               </div>
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Loại KH</p>
-                <p className="text-[#1C1C1E]">
+                <p className="text-muted font-semibold uppercase mb-0.5">Loại KH</p>
+                <p className="text-ink">
                   {order.customerType === 'COMPANY' ? 'Doanh nghiệp' : 'Khách lẻ'}
                 </p>
               </div>
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Tổng đơn</p>
-                <p className="font-bold text-[#1C1C1E]">{formatVNDFull(order.finalAmount)}</p>
+                <p className="text-muted font-semibold uppercase mb-0.5">Tổng đơn</p>
+                <p className="font-bold text-ink">{formatVNDFull(order.finalAmount)}</p>
               </div>
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Đã thanh toán</p>
-                <p className="font-bold text-emerald-600">{formatVNDFull(order.paidAmount)}</p>
+                <p className="text-muted font-semibold uppercase mb-0.5">Đã thanh toán</p>
+                <p className="font-bold text-emerald-600 dark:text-emerald-300">{formatVNDFull(order.paidAmount)}</p>
               </div>
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Còn phải thu</p>
-                <p className={`font-bold ${type === 'OVERDUE' ? 'text-red-600' : 'text-amber-600'}`}>
+                <p className="text-muted font-semibold uppercase mb-0.5">Còn phải thu</p>
+                <p className={`font-bold ${type === 'OVERDUE' ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}`}>
                   {formatVNDFull(order.remainingAmount)}
                 </p>
               </div>
               <div>
-                <p className="text-[#8E8878] font-semibold uppercase mb-0.5">Hạn thanh toán</p>
-                <p className="font-bold text-[#1C1C1E]">{order.paymentDeadline}</p>
+                <p className="text-muted font-semibold uppercase mb-0.5">Hạn thanh toán</p>
+                <p className="font-bold text-ink">{order.paymentDeadline}</p>
               </div>
             </div>
           </td>
@@ -188,7 +188,7 @@ function SelectionSummary({ orders, selectedIds, onClear }) {
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-200">
-      <div className="bg-[#1C1C1E] text-white rounded-2xl shadow-2xl px-5 py-4 flex items-center gap-5 min-w-[340px] max-w-[600px]">
+      <div className="bg-chrome text-white rounded-2xl shadow-2xl px-5 py-4 flex items-center gap-5 min-w-[340px] max-w-[600px]">
         <div className="flex-1 min-w-0">
           <p className="text-xs text-white/60 mb-0.5">
             Đã chọn {selected.length} đơn hàng
@@ -196,7 +196,7 @@ function SelectionSummary({ orders, selectedIds, onClear }) {
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <div>
               <span className="text-xs text-white/50">Tổng giá trị: </span>
-              <span className="text-sm font-semibold text-[#C9A84C]">{formatVNDFull(totalFinal)}</span>
+              <span className="text-sm font-semibold text-gold">{formatVNDFull(totalFinal)}</span>
             </div>
             {totalPaid > 0 && (
               <div>
@@ -294,22 +294,22 @@ export default function DebtOrdersPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-xl hover:bg-[#F0EBE3] transition text-[#5C4E3D]"
+            className="p-2 rounded-xl hover:bg-surface-2 transition text-ink-2"
           >
             <ArrowLeft size={18} />
           </button>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            isOverdue ? 'bg-red-100' : 'bg-amber-100'
+            isOverdue ? 'bg-red-100 dark:bg-red-500/18' : 'bg-amber-100 dark:bg-amber-500/18'
           }`}>
             {isOverdue
-              ? <AlertTriangle size={20} className="text-red-600" />
-              : <Clock size={20} className="text-amber-600" />}
+              ? <AlertTriangle size={20} className="text-red-600 dark:text-red-300" />
+              : <Clock size={20} className="text-amber-600 dark:text-amber-300" />}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]">
+            <h1 className="text-xl font-bold text-ink">
               {isOverdue ? 'Công nợ quá hạn' : 'Sắp đến hạn thanh toán'}
             </h1>
-            <p className="text-sm text-[#8E8878]">
+            <p className="text-sm text-muted">
               {isOverdue
                 ? 'Các đơn hàng có công nợ đã vượt quá hạn thanh toán'
                 : 'Các đơn hàng có hạn thanh toán trong vòng 7 ngày tới'}
@@ -320,24 +320,24 @@ export default function DebtOrdersPage() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className={`rounded-2xl p-4 border ${
-            isOverdue ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'
+            isOverdue ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/28' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28'
           }`}>
             <p className={`text-xs font-semibold uppercase mb-1 ${
               isOverdue ? 'text-red-400' : 'text-amber-500'
             }`}>Số đơn</p>
             <p className={`text-3xl font-bold ${
-              isOverdue ? 'text-red-600' : 'text-amber-700'
+              isOverdue ? 'text-red-600 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'
             }`}>{loading ? '…' : orders.length}</p>
           </div>
-          <div className="rounded-2xl p-4 bg-white border border-[#E8DDD0]">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase mb-1">Tổng cần thu</p>
-            <p className="text-xl font-bold text-[#1C1C1E]">
+          <div className="rounded-2xl p-4 bg-surface border border-line">
+            <p className="text-xs font-semibold text-muted uppercase mb-1">Tổng cần thu</p>
+            <p className="text-xl font-bold text-ink">
               {loading ? '…' : formatVND(totalRemaining)}
             </p>
           </div>
-          <div className="rounded-2xl p-4 bg-white border border-[#E8DDD0] sm:block hidden">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase mb-1">Đang chọn</p>
-            <p className="text-xl font-bold text-[#C9A84C]">
+          <div className="rounded-2xl p-4 bg-surface border border-line sm:block hidden">
+            <p className="text-xs font-semibold text-muted uppercase mb-1">Đang chọn</p>
+            <p className="text-xl font-bold text-gold">
               {selectedIds.size} đơn
             </p>
           </div>
@@ -345,17 +345,17 @@ export default function DebtOrdersPage() {
 
         {/* Search */}
         <div className="relative">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Tìm theo mã đơn, tên khách hàng, số điện thoại..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E8DDD0] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-line bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
             >
               <X size={14} />
             </button>
@@ -364,51 +364,51 @@ export default function DebtOrdersPage() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
+          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 text-red-600 dark:text-red-300 rounded-xl px-4 py-3 text-sm">
             {error}
           </div>
         )}
 
         {/* Table */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-[#E8DDD0] p-8 flex items-center justify-center">
-            <div className="w-8 h-8 border-3 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
+          <div className="bg-surface rounded-2xl border border-line p-8 flex items-center justify-center">
+            <div className="w-8 h-8 border-3 border-gold/30 border-t-gold rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E8DDD0] p-12 flex flex-col items-center gap-3 text-[#8E8878]">
+          <div className="bg-surface rounded-2xl border border-line p-12 flex flex-col items-center gap-3 text-muted">
             {isOverdue
-              ? <AlertTriangle size={40} className="text-red-300" />
-              : <Clock size={40} className="text-amber-300" />}
+              ? <AlertTriangle size={40} className="text-red-300 dark:text-red-300" />
+              : <Clock size={40} className="text-amber-300 dark:text-amber-300" />}
             <p className="font-semibold">
               {search ? 'Không tìm thấy kết quả': (isOverdue ? 'Không có đơn quá hạn' : 'Không có đơn sắp đến hạn')}
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">
+          <div className="bg-surface rounded-2xl border border-line overflow-x-auto">
             <table className="w-full text-sm min-w-[720px]">
               <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
+                <tr className="bg-canvas border-b border-line">
                   {/* Select all */}
                   <th className="px-3 py-3 w-8">
                     <button
                       onClick={toggleAll}
-                      className="text-[#C9A84C] hover:scale-110 transition-transform"
+                      className="text-gold hover:scale-110 transition-transform"
                     >
                       {allChecked
                         ? <CheckSquare size={18} />
                         : someChecked
                         ? <CheckSquare size={18} className="opacity-50" />
-                        : <Square size={18} className="text-[#C4B9A8]" />}
+                        : <Square size={18} className="text-faint" />}
                     </button>
                   </th>
-                  <th className="px-3 py-3 text-left text-xs font-bold text-[#8E8878] uppercase whitespace-nowrap">Mã đơn</th>
-                  <th className="px-3 py-3 text-left text-xs font-bold text-[#8E8878] uppercase">Khách hàng</th>
-                  <th className="px-3 py-3 text-left text-xs font-bold text-[#8E8878] uppercase whitespace-nowrap">
+                  <th className="px-3 py-3 text-left text-xs font-bold text-muted uppercase whitespace-nowrap">Mã đơn</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold text-muted uppercase">Khách hàng</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold text-muted uppercase whitespace-nowrap">
                     {isOverdue ? 'Hạn TT / Số ngày QH' : 'Hạn TT / Còn lại'}
                   </th>
-                  <th className="px-3 py-3 text-right text-xs font-bold text-[#8E8878] uppercase whitespace-nowrap">Tổng đơn</th>
-                  <th className="px-3 py-3 text-right text-xs font-bold text-[#8E8878] uppercase whitespace-nowrap">Còn phải thu</th>
-                  <th className="px-3 py-3 text-left text-xs font-bold text-[#8E8878] uppercase whitespace-nowrap hidden md:table-cell">Người tạo / Kho</th>
+                  <th className="px-3 py-3 text-right text-xs font-bold text-muted uppercase whitespace-nowrap">Tổng đơn</th>
+                  <th className="px-3 py-3 text-right text-xs font-bold text-muted uppercase whitespace-nowrap">Còn phải thu</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold text-muted uppercase whitespace-nowrap hidden md:table-cell">Người tạo / Kho</th>
                   <th className="px-2 py-3 w-6" />
                 </tr>
               </thead>
@@ -426,15 +426,15 @@ export default function DebtOrdersPage() {
             </table>
 
             {/* Footer total */}
-            <div className="px-4 py-3 border-t border-[#F0EBE3] bg-[#FAF7F2] flex items-center justify-between">
-              <p className="text-xs text-[#8E8878]">
+            <div className="px-4 py-3 border-t border-line-soft bg-canvas flex items-center justify-between">
+              <p className="text-xs text-muted">
                 {filtered.length} đơn
                 {search && orders.length !== filtered.length
                   ? ` (lọc từ ${orders.length})`
                   : ''}
               </p>
-              <p className="text-sm font-bold text-[#1C1C1E]">
-                Tổng cần thu: <span className={isOverdue ? 'text-red-600' : 'text-amber-600'}>
+              <p className="text-sm font-bold text-ink">
+                Tổng cần thu: <span className={isOverdue ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}>
                   {formatVNDFull(totalRemaining)}
                 </span>
               </p>

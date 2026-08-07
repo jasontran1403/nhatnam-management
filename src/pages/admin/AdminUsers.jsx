@@ -5,8 +5,14 @@ import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check, AlertCircle, Trash2,
+  DollarSign, CalendarClock, ShieldAlert, Gauge, ClipboardSignature,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
+import { payrollPasscodeApi } from '../../api/payrollPasscodeApi';
+import { SubPageButtons } from '../../components/common/SubPageNav';
+import UserSalaryModal from '../../components/admin/UserSalaryModal';
+import UserRequestsModal from '../../components/admin/UserRequestsModal';
+import PayrollUnlockModal from '../../components/admin/PayrollUnlockModal';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/Toast';
 import useDebounce from '../../utils/useDebounce.js';
@@ -126,10 +132,10 @@ function RolePicker({ selected, onChange, availableRoles, ROLE_LABEL }) {
               title={disabledReason ?? undefined}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition
                 ${active
-                  ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
+                  ? 'bg-gold text-white border-gold'
                   : isDisabled
-                    ? 'bg-[#FAF7F2] text-[#C4B9A8] border-black/5 cursor-not-allowed opacity-60'
-                    : 'bg-white text-[#555] border-black/10 hover:border-[#C9A84C] hover:text-[#C9A84C]'
+                    ? 'bg-canvas text-faint border-hairline cursor-not-allowed opacity-60'
+                    : 'bg-surface text-ink-2 border-hairline-2 hover:border-gold hover:text-gold'
                 }`}
             >
               {active && <Check size={11} />}
@@ -140,14 +146,14 @@ function RolePicker({ selected, onChange, availableRoles, ROLE_LABEL }) {
       </div>
 
       {conflictMsg && (
-        <div className="flex items-start gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <div className="flex items-start gap-1.5 text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-lg px-3 py-2">
           <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
           <span>{conflictMsg}</span>
         </div>
       )}
 
       {selected.length > 1 && !conflictMsg && (
-        <p className="text-xs text-[#8E8878]">
+        <p className="text-xs text-muted">
           Khi đăng nhập, user sẽ được chọn role muốn sử dụng trong phiên đó.
         </p>
       )}
@@ -196,6 +202,31 @@ export default function AdminUsers() {
   }, [page, debouncedQ, filters.role, filters.locked]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── Trang phụ & modal gom về trang này ──────────────────────────────────
+  // Route con chỉ tồn tại cho OWNER; ADMIN dùng chung trang Tài xế.
+  const rolePrefix = window.location.pathname.startsWith('/owner') ? '/owner' : '/admin';
+  const isOwner = rolePrefix === '/owner';
+
+  const [salaryTarget, setSalaryTarget] = useState(null);
+  const [requestsTarget, setRequestsTarget] = useState(null);
+  const [unlockTarget, setUnlockTarget] = useState(null);
+
+  // Tập id nhân viên đang bị KHOÁ XEM LƯƠNG (sai mật khẩu 3 lần). Tải một lần
+  // cho cả trang thay vì hỏi trạng thái từng dòng — danh sách này rất ngắn.
+  const [payrollLockedIds, setPayrollLockedIds] = useState(() => new Set());
+
+  const loadPayrollLocks = useCallback(async () => {
+    try {
+      const list = await payrollPasscodeApi.lockedUsers();
+      setPayrollLockedIds(new Set((list || []).map(u => u.id)));
+    } catch {
+      // Không chặn cả trang chỉ vì thiếu badge khoá lương.
+      setPayrollLockedIds(new Set());
+    }
+  }, []);
+
+  useEffect(() => { loadPayrollLocks(); }, [loadPayrollLocks]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit   = (u) => { setEditing(u);   setFormOpen(true); };
@@ -248,7 +279,7 @@ export default function AdminUsers() {
   const renderRoleBadges = (u) => {
     const roles = u.roles?.length ? [...u.roles] : (u.role ? [u.role] : []);
     return roles.map(r => (
-      <Badge key={r} className="bg-slate-50 text-slate-700 ring-slate-200">
+      <Badge key={r} className="bg-canvas text-ink-2 ring-line">
         {ROLE_LABEL[r] || r}
       </Badge>
     ));
@@ -263,10 +294,19 @@ export default function AdminUsers() {
         action={<PrimaryButton onClick={openCreate}><Plus size={15} /> Thêm user</PrimaryButton>}
       />
 
+      {/* Các trang trước đây nằm ở sidebar, nay mở từ đây và có nút Quay lại. */}
+      <SubPageButtons
+        items={[
+          { to: '/owner/employees', label: 'Duyệt lương', icon: DollarSign, hidden: !isOwner },
+          { to: `${rolePrefix}/drivers`, label: 'Tài xế', icon: Gauge },
+          { to: '/owner/attendance', label: 'Bảng chấm công', icon: ClipboardSignature, hidden: !isOwner },
+        ]}
+      />
+
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row gap-3">
+      <div className="bg-surface rounded-2xl border border-hairline p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
           <input
             type="text"
             placeholder="Tìm username, họ tên, email..."
@@ -277,7 +317,7 @@ export default function AdminUsers() {
           />
           {filters.q && (
             <button type="button" onClick={() => { setFilters({ ...filters, q: '' }); setPage(0); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
               <X size={16} />
             </button>
           )}
@@ -298,7 +338,7 @@ export default function AdminUsers() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
         {loading ? (
           <TableSkeleton cols={5} rows={8} />
         ) : data.content.length === 0 ? (
@@ -309,7 +349,7 @@ export default function AdminUsers() {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#FAF7F2] text-[#8E8878]">
+                  <tr className="bg-canvas text-muted">
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">User</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Liên hệ</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Quyền</th>
@@ -320,67 +360,96 @@ export default function AdminUsers() {
                 </thead>
                 <tbody>
                   {data.content.map(u => (
-                    <tr key={u.id} className="border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors">
+                    <tr key={u.id} className="border-t border-hairline hover:bg-canvas/50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-deep flex items-center justify-center text-white text-xs font-bold shrink-0">
                             {(u.fullName || u.username || '?')[0]?.toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-[#1C1C1E] truncate">{u.fullName || u.username}</p>
-                            <p className="text-xs text-[#8E8878] truncate">@{u.username}</p>
+                            <p className="font-medium text-ink truncate">{u.fullName || u.username}</p>
+                            <p className="text-xs text-muted truncate">@{u.username}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-[#1C1C1E] text-xs truncate max-w-[180px]">{u.email || '—'}</p>
-                        <p className="text-xs text-[#8E8878]">{u.phoneNumber || '—'}</p>
+                        <p className="text-ink text-xs truncate max-w-[180px]">{u.email || '—'}</p>
+                        <p className="text-xs text-muted">{u.phoneNumber || '—'}</p>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {renderRoleBadges(u)}
                           {u.warehouses?.length > 0
                             ? u.warehouses.map(w => (
-                              <Badge key={w.id} className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
+                              <Badge key={w.id} className="bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 ring-sky-100 dark:ring-sky-500/18 text-[10px]">
                                 🏭 {w.name}
                               </Badge>
                             ))
                             : u.warehouseName && (
-                              <Badge className="bg-sky-50 text-sky-600 ring-sky-100 text-[10px]">
+                              <Badge className="bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 ring-sky-100 dark:ring-sky-500/18 text-[10px]">
                                 🏭 {u.warehouseName}
                               </Badge>
                             )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {u.isLockAccount
-                          ? <Badge className="bg-red-50 text-red-700 ring-red-200">Đã khóa</Badge>
-                          : <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>}
+                        <div className="flex flex-col items-center gap-1">
+                          {u.isLockAccount
+                            ? <Badge className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-500/28">Đã khóa</Badge>
+                            : <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Hoạt động</Badge>}
+                          {payrollLockedIds.has(u.id) && (
+                            <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28 text-[10px]">
+                              Khoá xem lương
+                            </Badge>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDateTime(u.timeCreate)}</td>
+                      <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{formatDateTime(u.timeCreate)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           {canManageUser(currentUser?.role, u) ? (
                             <>
-                              <button onClick={() => openEdit(u)} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E]" title="Sửa">
+                              <button onClick={() => openEdit(u)} className="p-2 rounded-lg text-muted hover:bg-canvas hover:text-ink" title="Sửa">
                                 <Edit2 size={15} />
                               </button>
-                              <button onClick={() => setPwdTarget(u)} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#C9A84C]/10 hover:text-[#C9A84C]" title="Đổi mật khẩu">
+                              <button onClick={() => setPwdTarget(u)} className="p-2 rounded-lg text-muted hover:bg-gold/10 hover:text-gold" title="Đổi mật khẩu">
                                 <KeyRound size={15} />
                               </button>
+                              <button onClick={() => setSalaryTarget(u)}
+                                className="p-2 rounded-lg text-muted hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-300"
+                                title="Xem lương / duyệt phiếu lương">
+                                <DollarSign size={15} />
+                              </button>
+                              <button onClick={() => setRequestsTarget(u)}
+                                className="p-2 rounded-lg text-muted hover:bg-sky-50 dark:hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-300"
+                                title="Duyệt phiếu nghỉ / phiếu OT">
+                                <CalendarClock size={15} />
+                              </button>
+                              {/* Mở khoá xem lương — luôn hiện để thao tác ngay tại
+                                  dòng nhân viên. Đỏ = đang bị khoá do nhập sai 3 lần. */}
+                              <button onClick={() => setUnlockTarget(u)}
+                                className={`p-2 rounded-lg transition-colors border
+                                  ${payrollLockedIds.has(u.id)
+                                    ? 'text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/28 hover:bg-red-100 dark:hover:bg-red-500/20'
+                                    : 'text-muted bg-surface border-hairline-2 hover:text-ink hover:bg-canvas'}`}
+                                title={payrollLockedIds.has(u.id)
+                                  ? 'Đang bị khoá xem lương (sai mật khẩu 3 lần) — bấm để mở khoá'
+                                  : 'Mở khoá / đặt lại mật khẩu xem lương'}>
+                                <ShieldAlert size={15} />
+                              </button>
                               <button onClick={() => setLockConfirm(u)}
-                                className={`p-2 rounded-lg transition-colors ${u.isLockAccount ? 'text-[#8E8878] hover:bg-emerald-50 hover:text-emerald-600' : 'text-[#8E8878] hover:bg-red-50 hover:text-red-600'}`}
+                                className={`p-2 rounded-lg transition-colors ${u.isLockAccount ? 'text-muted hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-emerald-600 dark:text-emerald-300' : 'text-muted hover:bg-red-50 dark:bg-red-500/10 hover:text-red-600 dark:text-red-300'}`}
                                 title={u.isLockAccount ? 'Mở khóa' : t('status', 'locked')}>
                                 {u.isLockAccount ? <Unlock size={15} /> : <Lock size={15} />}
                               </button>
                               <button onClick={() => setDeleteConfirm(u)}
-                                className="p-2 rounded-lg text-[#8E8878] hover:bg-red-50 hover:text-red-600 transition-colors"
+                                className="p-2 rounded-lg text-muted hover:bg-red-50 dark:bg-red-500/10 hover:text-red-600 dark:text-red-300 transition-colors"
                                 title="Xoá nhân viên">
                                 <Trash2 size={15} />
                               </button>
                             </>
                           ) : (
-                            <span className="text-xs text-[#C4B9A8] italic px-2">Không có quyền</span>
+                            <span className="text-xs text-faint italic px-2">Không có quyền</span>
                           )}
                         </div>
                       </td>
@@ -391,40 +460,60 @@ export default function AdminUsers() {
             </div>
 
             {/* Mobile */}
-            <div className="md:hidden divide-y divide-black/5">
+            <div className="md:hidden divide-y divide-hairline">
               {data.content.map(u => (
                 <div key={u.id} className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-deep flex items-center justify-center text-white text-sm font-bold shrink-0">
                       {(u.fullName || u.username)[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[#1C1C1E] truncate">{u.fullName || u.username}</p>
-                      <p className="text-xs text-[#8E8878] truncate">@{u.username} · {u.email}</p>
+                      <p className="font-medium text-ink truncate">{u.fullName || u.username}</p>
+                      <p className="text-xs text-muted truncate">@{u.username} · {u.email}</p>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {renderRoleBadges(u)}
                         {u.isLockAccount
-                          ? <Badge className="bg-red-50 text-red-700 ring-red-200">Đã khóa</Badge>
-                          : <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>}
+                          ? <Badge className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-500/28">Đã khóa</Badge>
+                          : <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Hoạt động</Badge>}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-3">
+                  {canManageUser(currentUser?.role, u) && (
+                    <div className="flex gap-2 mt-3">
+                      <button onClick={() => setSalaryTarget(u)}
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
+                        Xem lương
+                      </button>
+                      <button onClick={() => setRequestsTarget(u)}
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                        Duyệt nghỉ/OT
+                      </button>
+                      <button onClick={() => setUnlockTarget(u)}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border
+                          ${payrollLockedIds.has(u.id)
+                            ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28'
+                            : 'bg-surface text-muted border-hairline-2'}`}>
+                        <ShieldAlert size={13} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 mt-2">
                     {canManageUser(currentUser?.role, u) ? (
                       <>
-                        <button onClick={() => openEdit(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E]">Sửa</button>
-                        <button onClick={() => setPwdTarget(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#C9A84C]/10 text-[#C9A84C]">Mật khẩu</button>
+                        <button onClick={() => openEdit(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-canvas text-ink">Sửa</button>
+                        <button onClick={() => setPwdTarget(u)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-gold/10 text-gold">Mật khẩu</button>
                         <button onClick={() => setLockConfirm(u)}
-                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${u.isLockAccount ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${u.isLockAccount ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300'}`}>
                           {u.isLockAccount ? 'Mở khóa' : t('status', 'locked')}
                         </button>
                         <button onClick={() => setDeleteConfirm(u)}
-                          className="px-3 py-2 rounded-lg text-xs font-medium bg-red-50 text-red-600">
+                          className="px-3 py-2 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">
                           <Trash2 size={13} />
                         </button>
                       </>
                     ) : (
-                      <p className="text-xs text-[#C4B9A8] italic py-2">Không có quyền thao tác</p>
+                      <p className="text-xs text-faint italic py-2">Không có quyền thao tác</p>
                     )}
                   </div>
                 </div>
@@ -436,6 +525,27 @@ export default function AdminUsers() {
           <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />
         )}
       </div>
+
+      {salaryTarget && (
+        <UserSalaryModal
+          user={salaryTarget}
+          onClose={(changed) => { setSalaryTarget(null); if (changed) load(); }}
+        />
+      )}
+
+      {requestsTarget && (
+        <UserRequestsModal
+          user={requestsTarget}
+          onClose={() => setRequestsTarget(null)}
+        />
+      )}
+
+      {unlockTarget && (
+        <PayrollUnlockModal
+          user={unlockTarget}
+          onClose={(done) => { setUnlockTarget(null); if (done) loadPayrollLocks(); }}
+        />
+      )}
 
       {formOpen && (
         <UserFormModal
@@ -457,11 +567,11 @@ export default function AdminUsers() {
             <DangerButton onClick={doSoftDelete} loading={saving}>Xoá nhân viên</DangerButton>
           </div>
         }>
-        <p className="text-sm text-[#1C1C1E]">
+        <p className="text-sm text-ink">
           Xoá nhân viên <span className="font-semibold">{deleteConfirm?.fullName || deleteConfirm?.username}</span>{' '}
           (<span className="font-mono text-xs">{deleteConfirm?.username}</span>)?
         </p>
-        <div className="mt-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
+        <div className="mt-3 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
           Tài khoản sẽ bị <b>khoá và ẩn khỏi danh sách</b>, mọi phiên đăng nhập bị thu hồi.
           Lịch sử đơn hàng / phiếu kho do nhân viên này tạo <b>vẫn được giữ nguyên</b>.
           <br />
@@ -481,7 +591,7 @@ export default function AdminUsers() {
               : <DangerButton onClick={toggleLock} loading={saving}>Khóa</DangerButton>}
           </div>
         }>
-        <p className="text-sm text-[#1C1C1E]">
+        <p className="text-sm text-ink">
           Bạn có chắc muốn {lockConfirm?.isLockAccount ? 'mở khóa' : 'khóa'} user{' '}
           <span className="font-semibold">{lockConfirm?.username}</span>?
         </p>
@@ -496,7 +606,7 @@ export default function AdminUsers() {
             <PrimaryButton onClick={submitPwd} loading={saving}>Xác nhận</PrimaryButton>
           </div>
         }>
-        <p className="text-sm text-[#1C1C1E] mb-3">User: <span className="font-semibold">@{pwdTarget?.username}</span></p>
+        <p className="text-sm text-ink mb-3">User: <span className="font-semibold">@{pwdTarget?.username}</span></p>
         <Field label="Mật khẩu mới" required hint="Tối thiểu 6 ký tự">
           <input type="password" value={newPwd}
             onChange={e => { setNewPwd(e.target.value); setPwdErr(''); }}
@@ -618,7 +728,7 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
       }>
       <form onSubmit={submit} className="space-y-4">
         {err && (
-          <div className="flex items-start gap-2 bg-red-50 text-red-700 text-sm p-3 rounded-xl border border-red-200">
+          <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 text-sm p-3 rounded-xl border border-red-200 dark:border-red-500/28">
             <AlertCircle size={15} className="mt-0.5 flex-shrink-0" />
             <span>{err}</span>
           </div>
@@ -662,25 +772,25 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
             hint="Có thể chọn nhiều kho — tài khoản sẽ quản lý tất cả kho đã chọn">
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {warehouses.length === 0 && (
-                <p className="text-xs text-[#8E8878] italic py-1">Chưa có kho nào</p>
+                <p className="text-xs text-muted italic py-1">Chưa có kho nào</p>
               )}
               {warehouses.map(w => {
                 const checked = selectedWarehouseIds.includes(String(w.id));
                 return (
                   <label key={w.id}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-colors
-                      ${checked ? 'bg-amber-50 border border-amber-200' : 'bg-[#FAF7F2] border border-transparent hover:border-[#E8DDD0]'}`}>
+                      ${checked ? 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28' : 'bg-canvas border border-transparent hover:border-line'}`}>
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleWarehouse(w.id)}
                       className="w-4 h-4 accent-amber-500 rounded"
                     />
-                    <span className={`text-sm font-medium ${checked ? 'text-amber-700' : 'text-[#1C1C1E]'}`}>
+                    <span className={`text-sm font-medium ${checked ? 'text-amber-700 dark:text-amber-300' : 'text-ink'}`}>
                       {w.name}
                     </span>
                     {w.type === 'TRANSIT' && (
-                      <span className="ml-auto text-[10px] text-[#8E8878] bg-[#F0EBE3] px-1.5 py-0.5 rounded">Trung chuyển</span>
+                      <span className="ml-auto text-[10px] text-muted bg-surface-2 px-1.5 py-0.5 rounded">Trung chuyển</span>
                     )}
                   </label>
                 );

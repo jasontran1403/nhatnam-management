@@ -106,7 +106,7 @@ function WithdrawModal({ open, warehouse, onClose, onDone }) {
               {rows.map((r, idx) => {
                 const s = r.supplyItemId ? byId[r.supplyItemId] : null;
                 return (
-                  <div key={r.key} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end p-3 rounded-xl bg-[#FAF7F2]/60">
+                  <div key={r.key} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end p-3 rounded-xl bg-canvas/60">
                     <div className="sm:col-span-5">
                       <Field label={`Vật dụng #${idx + 1}`} required>
                         <select className={selectCls} value={r.supplyItemId}
@@ -137,7 +137,7 @@ function WithdrawModal({ open, warehouse, onClose, onDone }) {
                     <div className="sm:col-span-1 pb-2.5">
                       {rows.length > 1 && (
                         <button type="button" onClick={() => setRows(rs => rs.filter(x => x.key !== r.key))}
-                          className="text-[#8E8878] hover:text-red-600 p-2"><Trash2 size={14} /></button>
+                          className="text-muted hover:text-red-600 dark:text-red-300 p-2"><Trash2 size={14} /></button>
                       )}
                     </div>
                   </div>
@@ -146,7 +146,7 @@ function WithdrawModal({ open, warehouse, onClose, onDone }) {
             </div>
 
             <button type="button" onClick={() => setRows(rs => [...rs, emptyRow()])}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[#C9A84C] hover:text-[#B69842]">
+              className="inline-flex items-center gap-1 text-sm font-semibold text-gold hover:text-gold-strong">
               <Plus size={14} /> Thêm vật dụng
             </button>
 
@@ -227,7 +227,7 @@ export function HistoryTable({ warehouseId }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#FAF7F2] text-xs uppercase text-[#8E8878]">
+                  <tr className="bg-canvas text-xs uppercase text-muted">
                     <th className="px-4 py-2.5 text-left">Tên</th>
                     <th className="px-4 py-2.5 text-left">Đơn vị tính</th>
                     <th className="px-4 py-2.5 text-left">Quy cách</th>
@@ -240,17 +240,17 @@ export function HistoryTable({ warehouseId }) {
                 </thead>
                 <tbody>
                   {rows.map(r => (
-                    <tr key={r.id} className="border-t border-black/5">
-                      <td className="px-4 py-2.5 text-[#1C1C1E]">{r.name}</td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{r.unit || '—'}</td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{r.specification || '—'}</td>
-                      <td className={`px-4 py-2.5 text-right font-medium ${type === 'IN' ? 'text-emerald-700' : 'text-red-600'}`}>
+                    <tr key={r.id} className="border-t border-hairline">
+                      <td className="px-4 py-2.5 text-ink">{r.name}</td>
+                      <td className="px-4 py-2.5 text-muted">{r.unit || '—'}</td>
+                      <td className="px-4 py-2.5 text-muted">{r.specification || '—'}</td>
+                      <td className={`px-4 py-2.5 text-right font-medium ${type === 'IN' ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}`}>
                         {type === 'IN' ? '+' : '−'}{fmtQty(r.quantity)}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-[#8E8878]">{fmtQty(r.balanceAfter)}</td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{fmtDateTime(r.createdAt)}</td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{r.performedByName || '—'}</td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{r.note || '—'}</td>
+                      <td className="px-4 py-2.5 text-right text-muted">{fmtQty(r.balanceAfter)}</td>
+                      <td className="px-4 py-2.5 text-muted">{fmtDateTime(r.createdAt)}</td>
+                      <td className="px-4 py-2.5 text-muted">{r.performedByName || '—'}</td>
+                      <td className="px-4 py-2.5 text-muted">{r.note || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -282,7 +282,7 @@ export function StockTable({ warehouseId, refreshKey }) {
   return (
     <div className="space-y-3">
       <div className="relative max-w-sm">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Tìm vật dụng…" className={`${inputCls} pl-9`} />
       </div>
@@ -296,7 +296,7 @@ export function StockTable({ warehouseId, refreshKey }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#FAF7F2] text-xs uppercase text-[#8E8878]">
+                  <tr className="bg-canvas text-xs uppercase text-muted">
                     <th className="px-4 py-2.5 text-left">Tên vật dụng</th>
                     <th className="px-4 py-2.5 text-left">Quy cách</th>
                     <th className="px-4 py-2.5 text-left">Đơn vị tính</th>
@@ -306,14 +306,14 @@ export function StockTable({ warehouseId, refreshKey }) {
                 </thead>
                 <tbody>
                   {rows.map(r => (
-                    <tr key={r.supplyItemId} className="border-t border-black/5">
-                      <td className="px-4 py-2.5 text-[#1C1C1E]">{r.name}</td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{r.specification || '—'}</td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{r.unit}</td>
-                      <td className={`px-4 py-2.5 text-right font-semibold ${num(r.quantity) > 0 ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}`}>
+                    <tr key={r.supplyItemId} className="border-t border-hairline">
+                      <td className="px-4 py-2.5 text-ink">{r.name}</td>
+                      <td className="px-4 py-2.5 text-muted">{r.specification || '—'}</td>
+                      <td className="px-4 py-2.5 text-muted">{r.unit}</td>
+                      <td className={`px-4 py-2.5 text-right font-semibold ${num(r.quantity) > 0 ? 'text-ink' : 'text-muted'}`}>
                         {fmtQty(r.quantity)}
                       </td>
-                      <td className="px-4 py-2.5 text-[#8E8878]">{fmtDateTime(r.updatedAt)}</td>
+                      <td className="px-4 py-2.5 text-muted">{fmtDateTime(r.updatedAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -360,9 +360,9 @@ export default function SupplyWarehousePage() {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-5">
         <PageHeader icon={Archive} title="Kho văn phòng phẩm" />
-        <div className="flex items-start gap-2 p-4 rounded-xl bg-amber-50 border border-amber-200">
-          <AlertTriangle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-amber-800">
+        <div className="flex items-start gap-2 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28">
+          <AlertTriangle size={18} className="text-amber-600 dark:text-amber-300 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-300">
             Bạn chưa được gán kho văn phòng phẩm nào. Vui lòng liên hệ chủ doanh
             nghiệp để được phân quyền.
           </p>
@@ -386,11 +386,11 @@ export default function SupplyWarehousePage() {
 
       {/* Gom bộ chọn vào MỘT thẻ cho khỏi rời rạc.
           Số liệu TÁCH RIÊNG theo kho — đổi kho là đổi toàn bộ bảng bên dưới. */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-3
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-3
                       flex flex-col lg:flex-row lg:items-center gap-3">
         {warehouses.length > 1 && (
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-[11px] font-semibold text-[#8E8878] uppercase tracking-wider flex-shrink-0">
+            <span className="text-[11px] font-semibold text-muted uppercase tracking-wider flex-shrink-0">
               Kho
             </span>
             <div className="min-w-0 overflow-x-auto">

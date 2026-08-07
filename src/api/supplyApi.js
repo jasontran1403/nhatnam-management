@@ -9,25 +9,25 @@ const unwrap = (r) => r.data.data;
 /* ── Trạng thái phiếu ──────────────────────────────────────────────────────── */
 // PARTIALLY_RECEIVED là tên cột trong DB; nhãn hiển thị theo tài liệu là "Đang nhận hàng".
 export const SUPPLY_STATUS = {
-  NEW:                { label: 'Mới tạo',        cls: 'bg-gray-100 text-gray-700 ring-gray-200' },
-  ORDERED:            { label: 'Đã đặt hàng',    cls: 'bg-blue-50 text-blue-700 ring-blue-200' },
-  PARTIALLY_RECEIVED: { label: 'Đang nhận hàng', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
-  RECEIVED:           { label: 'Đã nhận hàng',   cls: 'bg-indigo-50 text-indigo-700 ring-indigo-200' },
-  COMPLETED:          { label: 'Hoàn thành',     cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-  REJECTED:           { label: 'Đã từ chối',     cls: 'bg-red-50 text-red-700 ring-red-200' },
+  NEW:                { label: 'Mới tạo',        cls: 'bg-surface-2 text-ink-2 ring-line' },
+  ORDERED:            { label: 'Đã đặt hàng',    cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-500/28' },
+  PARTIALLY_RECEIVED: { label: 'Đang nhận hàng', cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28' },
+  RECEIVED:           { label: 'Đã nhận hàng',   cls: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-500/28' },
+  COMPLETED:          { label: 'Hoàn thành',     cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28' },
+  REJECTED:           { label: 'Đã từ chối',     cls: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-500/28' },
 };
 
 export const RECEIVE_STATUS = {
-  PENDING:      { label: 'Chưa nhận',   cls: 'bg-gray-100 text-gray-500' },
-  PARTIAL:      { label: 'Nhận 1 phần', cls: 'bg-amber-100 text-amber-700' },
-  FULFILLED:    { label: 'Đã đủ',       cls: 'bg-emerald-100 text-emerald-700' },
-  CLOSED_SHORT: { label: 'Chốt thiếu',  cls: 'bg-red-100 text-red-600' },
+  PENDING:      { label: 'Chưa nhận',   cls: 'bg-surface-2 text-muted' },
+  PARTIAL:      { label: 'Nhận 1 phần', cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300' },
+  FULFILLED:    { label: 'Đã đủ',       cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
+  CLOSED_SHORT: { label: 'Chốt thiếu',  cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300' },
 };
 
 export const GROUP_STATUS = {
-  ORDERED:  { label: 'Đã đặt',      cls: 'bg-blue-50 text-blue-700' },
-  RECEIVED: { label: 'Đã nhận',     cls: 'bg-indigo-50 text-indigo-700' },
-  SETTLED:  { label: 'Đã tất toán', cls: 'bg-emerald-50 text-emerald-700' },
+  ORDERED:  { label: 'Đã đặt',      cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300' },
+  RECEIVED: { label: 'Đã nhận',     cls: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300' },
+  SETTLED:  { label: 'Đã tất toán', cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
 };
 
 /* ── Người tạo phiếu (SUPER_SELLER / SUPER_WAREHOUSE / SUPER_FACTORY_WORKER) ── */

@@ -18,10 +18,8 @@ import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 import { useToast } from '../../components/common/Toast.jsx';
 import { downloadBlob } from '../../utils/downloadBlob';
+import { fmtQty } from '../../utils/format.js';
 
-function fmtQty(v) {
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(Number(v || 0));
-}
 
 function fmtDateTime(ms) {
   if (!ms) return '—';
@@ -40,9 +38,9 @@ function SemiFinishedTab({ items, loading, onCreateTransfer }) {
   if (loading) return <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>;
   if (items.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-        <Package size={32} className="mx-auto text-[#8E8878] mb-2" />
-        <p className="text-[#8E8878] text-sm">{t('production','sfg_empty')}</p>
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+        <Package size={32} className="mx-auto text-muted mb-2" />
+        <p className="text-muted text-sm">{t('production','sfg_empty')}</p>
       </div>
     );
   }
@@ -52,36 +50,36 @@ function SemiFinishedTab({ items, loading, onCreateTransfer }) {
       {items.map((item, i) => {
         const expanded = expandedName === item.productName;
         return (
-          <div key={item.productName || i} className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+          <div key={item.productName || i} className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
             <button onClick={() => setExpandedName(expanded ? null : item.productName)}
-              className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#FAF7F2] transition-colors">
+              className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-canvas transition-colors">
               <div>
-                <p className="font-semibold text-[#1C1C1E]">{item.productName}</p>
-                <p className="text-sm text-[#8E8878] mt-0.5">
-                  Tồn: <span className="font-semibold text-[#1A2B1A]">{fmtQty(item.totalQuantity)} {item.unit}</span>
+                <p className="font-semibold text-ink">{item.productName}</p>
+                <p className="text-sm text-muted mt-0.5">
+                  Tồn: <span className="font-semibold text-forest">{fmtQty(item.totalQuantity)} {item.unit}</span>
                   {' · '}{item.lotCount || 0} mẻ
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={(e) => { e.stopPropagation(); onCreateTransfer(item); }}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[#1A2B1A] text-white hover:bg-[#243524]">
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-forest-deep text-white hover:bg-forest-mid">
                   <ArrowRightLeft size={13} /> Chuyển kho
                 </button>
-                {expanded ? <ChevronUp size={16} className="text-[#8E8878]" /> : <ChevronDown size={16} className="text-[#8E8878]" />}
+                {expanded ? <ChevronUp size={16} className="text-muted" /> : <ChevronDown size={16} className="text-muted" />}
               </div>
             </button>
 
             {expanded && (
-              <div className="px-5 pb-4 border-t border-black/10">
-                <p className="text-xs font-medium text-[#8E8878] mt-3 mb-2">Chi tiết theo mẻ sản xuất (FIFO — mẻ cũ nhất chuyển trước)</p>
+              <div className="px-5 pb-4 border-t border-hairline-2">
+                <p className="text-xs font-medium text-muted mt-3 mb-2">Chi tiết theo mẻ sản xuất (FIFO — mẻ cũ nhất chuyển trước)</p>
                 <div className="space-y-2">
                   {(item.lots || []).map((lot, idx) => (
-                    <div key={lot.id || idx} className="flex items-center justify-between text-sm px-3 py-2 rounded-xl bg-[#FAF7F2]">
+                    <div key={lot.id || idx} className="flex items-center justify-between text-sm px-3 py-2 rounded-xl bg-canvas">
                       <div>
-                        <p className="font-mono text-xs text-[#1C1C1E] font-semibold">{lot.batchCode || '—'}</p>
-                        <p className="text-xs text-[#8E8878] mt-0.5">SX: {fmtDateTime(lot.manufactureDate).split(' ')[0]}</p>
+                        <p className="font-mono text-xs text-ink font-semibold">{lot.batchCode || '—'}</p>
+                        <p className="text-xs text-muted mt-0.5">SX: {fmtDateTime(lot.manufactureDate).split(' ')[0]}</p>
                       </div>
-                      <p className="font-semibold text-[#1A2B1A]">{fmtQty(lot.quantity)} {lot.unit}</p>
+                      <p className="font-semibold text-forest">{fmtQty(lot.quantity)} {lot.unit}</p>
                     </div>
                   ))}
                 </div>
@@ -102,22 +100,22 @@ function ScrapTab({ items, loading }) {
   if (loading) return <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>;
   if (items.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-        <AlertTriangle size={32} className="mx-auto text-[#8E8878] mb-2" />
-        <p className="text-[#8E8878] text-sm">{t('production','sfg_scrap_empty')}</p>
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+        <AlertTriangle size={32} className="mx-auto text-muted mb-2" />
+        <p className="text-muted text-sm">{t('production','sfg_scrap_empty')}</p>
       </div>
     );
   }
   return (
     <div className="space-y-2">
       {items.map((s, i) => (
-        <div key={s.id || i} className="bg-white rounded-2xl border border-red-100 shadow-sm p-4">
+        <div key={s.id || i} className="bg-surface rounded-2xl border border-red-100 dark:border-red-500/18 shadow-sm p-4">
           <div className="flex items-center justify-between">
-            <p className="font-semibold text-[#1C1C1E]">{s.productName}</p>
-            <Badge className="bg-red-50 text-red-600 ring-red-200">{fmtQty(s.quantity)} {s.unit}</Badge>
+            <p className="font-semibold text-ink">{s.productName}</p>
+            <Badge className="bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 ring-red-200 dark:ring-red-500/28">{fmtQty(s.quantity)} {s.unit}</Badge>
           </div>
-          <p className="text-xs text-[#8E8878] mt-1">Mẻ: <span className="font-mono">{s.batchCode || '—'}</span> · {fmtDateTime(s.createdAt)}</p>
-          {s.reason && <p className="text-xs text-red-600 mt-1.5 bg-red-50 rounded-lg px-2 py-1.5">⚠ {s.reason}</p>}
+          <p className="text-xs text-muted mt-1">Mẻ: <span className="font-mono">{s.batchCode || '—'}</span> · {fmtDateTime(s.createdAt)}</p>
+          {s.reason && <p className="text-xs text-red-600 dark:text-red-300 mt-1.5 bg-red-50 dark:bg-red-500/10 rounded-lg px-2 py-1.5">⚠ {s.reason}</p>}
         </div>
       ))}
     </div>
@@ -146,26 +144,26 @@ function TransfersTab({ items, loading }) {
   if (loading) return <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>;
   if (items.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-        <FileText size={32} className="mx-auto text-[#8E8878] mb-2" />
-        <p className="text-[#8E8878] text-sm">{t('production','sfg_transfers_empty')}</p>
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+        <FileText size={32} className="mx-auto text-muted mb-2" />
+        <p className="text-muted text-sm">{t('production','sfg_transfers_empty')}</p>
       </div>
     );
   }
   return (
     <div className="space-y-3">
       {items.map((note) => (
-        <div key={note.id} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+        <div key={note.id} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="font-mono font-semibold text-sm text-[#1C1C1E]">{note.noteCode}</p>
+            <p className="font-mono font-semibold text-sm text-ink">{note.noteCode}</p>
             <div className="flex items-center gap-2">
               {note.status === 'PENDING' ? (
-                <Badge className="bg-amber-50 text-amber-700 ring-amber-200"><Clock size={11} className="inline mr-1" />Chờ xác nhận</Badge>
+                <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28"><Clock size={11} className="inline mr-1" />Chờ xác nhận</Badge>
               ) : (
-                <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200"><CheckCircle2 size={11} className="inline mr-1" />Đã nhận</Badge>
+                <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28"><CheckCircle2 size={11} className="inline mr-1" />Đã nhận</Badge>
               )}
               <button onClick={() => printTransferOut(note)} disabled={printingId === note.id}
-                className="flex items-center gap-1 text-[11px] font-semibold text-[#1A2B1A] bg-[#E8F0E8] px-2.5 py-1 rounded-lg hover:bg-[#D8E8D8] disabled:opacity-50">
+                className="flex items-center gap-1 text-[11px] font-semibold text-forest bg-surface-2 px-2.5 py-1 rounded-lg hover:bg-surface-3 disabled:opacity-50">
                 <Printer size={11} /> {printingId === note.id ? 'Đang xuất...' : 'In phiếu xuất BTP'}
               </button>
             </div>
@@ -173,15 +171,15 @@ function TransfersTab({ items, loading }) {
           <div className="space-y-1">
             {note.lines.map(l => (
               <div key={l.id} className="flex items-center justify-between text-sm">
-                <span className="text-[#1C1C1E]">{l.productName}</span>
-                <span className="text-[#8E8878]">
+                <span className="text-ink">{l.productName}</span>
+                <span className="text-muted">
                   {fmtQty(l.transferredQty)} {l.unit}
-                  {l.packagedQty != null && <span className="text-emerald-600"> → {fmtQty(l.packagedQty)} {l.packagedUnit}</span>}
+                  {l.packagedQty != null && <span className="text-emerald-600 dark:text-emerald-300"> → {fmtQty(l.packagedQty)} {l.packagedUnit}</span>}
                 </span>
               </div>
             ))}
           </div>
-          <p className="text-xs text-[#8E8878] mt-2">{note.createdByName} · {fmtDateTime(note.createdAt)}</p>
+          <p className="text-xs text-muted mt-2">{note.createdByName} · {fmtDateTime(note.createdAt)}</p>
         </div>
       ))}
     </div>
@@ -239,18 +237,18 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title={t('production','transfer_title')} size="lg">
       <div className="space-y-4">
-        <p className="text-sm text-[#8E8878]">{t('production','transfer_description')}</p>
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        <p className="text-sm text-muted">{t('production','transfer_description')}</p>
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
         <div className="space-y-3">
           {lines.map((line, idx) => {
             const available = semiItems.filter(s => !usedNames(idx).includes(s.productName));
             return (
-              <div key={idx} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
+              <div key={idx} className="bg-canvas rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#8E8878]">{t('production', 'product')} #{idx + 1}</span>
+                  <span className="text-xs font-semibold text-muted">{t('production', 'product')} #{idx + 1}</span>
                   {lines.length > 1 && (
-                    <button onClick={() => removeLine(idx)} className="text-[#8E8878] hover:text-red-500">
+                    <button onClick={() => removeLine(idx)} className="text-muted hover:text-red-500">
                       <Trash2 size={14} />
                     </button>
                   )}
@@ -266,7 +264,7 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
                       placeholder={`Số ${line.unit} muốn chuyển`} value={line.quantity}
                       onChange={e => setLine(idx, 'quantity', e.target.value)} />
                     <button type="button" onClick={() => setMax(idx)}
-                      className="text-xs font-semibold text-[#C9A84C] hover:underline px-2 whitespace-nowrap">
+                      className="text-xs font-semibold text-gold hover:underline px-2 whitespace-nowrap">
                       Tối đa ({fmtQty(line.maxQty)})
                     </button>
                   </div>
@@ -277,7 +275,7 @@ function CreateTransferModal({ initialProduct, semiItems, onClose, onSaved }) {
         </div>
 
         <button onClick={addLine}
-          className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:text-[#A07830]">
+          className="flex items-center gap-1 text-xs font-semibold text-gold hover:text-gold-deep">
           <Plus size={13} /> {t('production', 'add_product')}
         </button>
 
@@ -341,19 +339,19 @@ export default function FactorySemiFinishedGoodsPage() {
   const pendingCount = transferItems.filter(t => t.status === 'PENDING').length;
 
   return (
-    <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
+    <div className="p-4 space-y-4 bg-surface-2 min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','sfg_title')}</h1>
+        <h1 className="text-xl font-bold text-ink">{t('production','sfg_title')}</h1>
         <button onClick={() => setShowCreatePicker(true)}
-          className="flex items-center gap-2 bg-[#1A2B1A] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#243524] transition-colors">
+          className="flex items-center gap-2 bg-forest-deep text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-forest-mid transition-colors">
           <ArrowRightLeft size={16} /> {t('production','create_transfer')}
         </button>
       </div>
 
       {factories.length > 1 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
-          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+          <span className="text-xs text-muted font-medium">{t('production','mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-line bg-surface text-ink focus:outline-none focus:border-gold"
             value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">{t('common','all')}</option>
             {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -362,14 +360,14 @@ export default function FactorySemiFinishedGoodsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm overflow-x-auto">
+      <div className="flex gap-1 bg-surface border border-hairline rounded-xl p-1 w-fit shadow-sm overflow-x-auto">
         {[
           { id: 'semi', label: t('production','semi_finished_goods'), icon: Package },
           { id: 'scrap', label: t('production','scrap_inventory'), icon: AlertTriangle },
           { id: 'transfers', label: t('production','transfer_orders'), icon: FileText },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${tab === t.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${tab === t.id ? 'bg-chrome text-white' : 'text-muted hover:text-ink'}`}>
             <t.icon size={14} />{t.label}
           </button>
         ))}
@@ -378,10 +376,10 @@ export default function FactorySemiFinishedGoodsPage() {
       {tab === 'semi' && (
         <>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0]
-                focus:outline-none focus:border-[#C9A84C] bg-white placeholder-[#8E8878]"
+              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-line
+                focus:outline-none focus:border-gold bg-surface placeholder-muted"
               placeholder="Tìm tên thành phẩm..."
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>

@@ -23,11 +23,11 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const imgUrl = p => p?.startsWith('http') ? p : BASE_URL + '/api/auth' + p;
 
 const getMaintStatusCfg = (t) => ({
-  PLANNED:     { label: t('production', 'maint_status_planned'),     cls: 'bg-blue-100 text-blue-700' },
-  IN_PROGRESS: { label: t('production', 'maint_status_in_progress'), cls: 'bg-orange-100 text-orange-700' },
-  COMPLETED:   { label: t('production', 'maint_status_completed'),   cls: 'bg-emerald-100 text-emerald-700' },
-  ADJUSTED:    { label: t('production', 'maint_status_adjusted'),    cls: 'bg-purple-100 text-purple-700' },
-  MISSED:      { label: t('production', 'maint_status_missed'),      cls: 'bg-gray-100 text-gray-600' },
+  PLANNED:     { label: t('production', 'maint_status_planned'),     cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300' },
+  IN_PROGRESS: { label: t('production', 'maint_status_in_progress'), cls: 'bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300' },
+  COMPLETED:   { label: t('production', 'maint_status_completed'),   cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
+  ADJUSTED:    { label: t('production', 'maint_status_adjusted'),    cls: 'bg-purple-100 dark:bg-purple-500/18 text-purple-700 dark:text-purple-300' },
+  MISSED:      { label: t('production', 'maint_status_missed'),      cls: 'bg-surface-2 text-ink-2' },
 });
 
 function fmtMonthLabel(monthKey) {
@@ -38,16 +38,16 @@ function fmtMonthLabel(monthKey) {
 }
 
 // ── Metric overview card ──────────────────────────────────────────────────────
-function MetricCard({ icon: Icon, label, value, sub, color = '#C9A84C' }) {
+function MetricCard({ icon: Icon, label, value, sub, color = 'var(--c-gold)' }) {
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 flex items-start gap-3">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 flex items-start gap-3">
       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}1A` }}>
         <Icon size={18} style={{ color }} />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] text-[#8E8878] uppercase tracking-wide font-medium">{label}</p>
-        <p className="text-lg font-bold text-[#1C1C1E] mt-0.5 truncate">{value}</p>
-        {sub && <p className="text-[11px] text-[#8E8878] mt-0.5">{sub}</p>}
+        <p className="text-[11px] text-muted uppercase tracking-wide font-medium">{label}</p>
+        <p className="text-lg font-bold text-ink mt-0.5 truncate">{value}</p>
+        {sub && <p className="text-[11px] text-muted mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -57,13 +57,13 @@ function MetricCard({ icon: Icon, label, value, sub, color = '#C9A84C' }) {
 function MaintenanceDetailModal({ item, onClose }) {
   const { t } = useLang();
   const { fmtDate, fmtCurrency } = useFmt();
-  const cfg = getMaintStatusCfg(t)[item.status] || { label: item.status, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = getMaintStatusCfg(t)[item.status] || { label: item.status, cls: 'bg-surface-2 text-ink-2' };
   return (
     <Modal open title={item.title} onClose={onClose} size="lg"
       footer={<SecondaryButton onClick={onClose}>{t('common', 'close')}</SecondaryButton>}>
       <div className="space-y-5">
         <div className="flex gap-3 flex-wrap">
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${item.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${item.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300'}`}>
             {item.maintenanceType === 'CORRECTIVE'
               ? `🚨 ${t('production', 'metrics_type_corrective')}`
               : `🔧 ${t('production', 'metrics_type_preventive')}`}
@@ -100,22 +100,22 @@ function MaintenanceDetailModal({ item, onClose }) {
             { label: t('production', 'metrics_contact_person'), value: item.vendorContactPerson || '—' },
             { label: t('production', 'metrics_contact_phone'),  value: item.vendorPhone || '—' },
           ].map(s => (
-            <div key={s.label} className="bg-[#FAF7F2] rounded-xl p-3">
-              <p className="text-xs text-[#8E8878] mb-0.5">{s.label}</p>
-              <p className="font-semibold text-[#1C1C1E]">{s.value}</p>
+            <div key={s.label} className="bg-canvas rounded-xl p-3">
+              <p className="text-xs text-muted mb-0.5">{s.label}</p>
+              <p className="font-semibold text-ink">{s.value}</p>
             </div>
           ))}
         </div>
 
         {item.description && (
-          <div className="bg-[#FAF7F2] rounded-xl p-3">
-            <p className="text-xs text-[#8E8878] mb-1">{t('production', 'metrics_description')}</p>
+          <div className="bg-canvas rounded-xl p-3">
+            <p className="text-xs text-muted mb-1">{t('production', 'metrics_description')}</p>
             <p className="text-sm">{item.description}</p>
           </div>
         )}
         {item.completionNotes && (
-          <div className="bg-[#FAF7F2] rounded-xl p-3">
-            <p className="text-xs text-[#8E8878] mb-1">{t('production', 'metrics_completion_notes')}</p>
+          <div className="bg-canvas rounded-xl p-3">
+            <p className="text-xs text-muted mb-1">{t('production', 'metrics_completion_notes')}</p>
             <p className="text-sm">{item.completionNotes}</p>
           </div>
         )}
@@ -126,11 +126,11 @@ function MaintenanceDetailModal({ item, onClose }) {
           [t('production', 'metrics_receipt_images'), item.receiptImages],
         ].map(([label, imgs]) => imgs?.length > 0 && (
           <div key={label}>
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}</p>
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{label}</p>
             <div className="flex gap-2 flex-wrap">
               {imgs.map((url, i) => (
                 <a key={i} href={imgUrl(url)} target="_blank" rel="noreferrer">
-                  <img src={imgUrl(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-black/10 hover:scale-105 transition-transform" />
+                  <img src={imgUrl(url)} alt="" className="w-24 h-24 object-cover rounded-xl border border-hairline-2 hover:scale-105 transition-transform" />
                 </a>
               ))}
             </div>
@@ -145,22 +145,22 @@ function MaintenanceDetailModal({ item, onClose }) {
 function MaintenanceRow({ item, onOpen }) {
   const { t } = useLang();
   const { fmtDate, fmtCurrency } = useFmt();
-  const cfg = getMaintStatusCfg(t)[item.status] || { label: item.status, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = getMaintStatusCfg(t)[item.status] || { label: item.status, cls: 'bg-surface-2 text-ink-2' };
   const isOngoing = item.status === 'PLANNED' || item.status === 'IN_PROGRESS' || item.status === 'ADJUSTED';
   return (
     <button onClick={onOpen}
-      className="w-full text-left bg-white rounded-xl border border-black/5 hover:border-[#C9A84C]/40 hover:shadow-sm transition-all p-3 sm:p-4 flex items-center gap-3">
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${item.maintenanceType === 'CORRECTIVE' ? 'bg-red-50' : 'bg-blue-50'}`}>
+      className="w-full text-left bg-surface rounded-xl border border-hairline hover:border-gold/40 hover:shadow-sm transition-all p-3 sm:p-4 flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${item.maintenanceType === 'CORRECTIVE' ? 'bg-red-50 dark:bg-red-500/10' : 'bg-blue-50 dark:bg-blue-500/10'}`}>
         {item.maintenanceType === 'CORRECTIVE'
           ? <AlertTriangle size={16} className="text-red-500" />
           : <Wrench size={16} className="text-blue-500" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-semibold text-sm text-[#1C1C1E] truncate">{item.title}</p>
+          <p className="font-semibold text-sm text-ink truncate">{item.title}</p>
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
         </div>
-        <p className="text-xs text-[#8E8878] mt-0.5">
+        <p className="text-xs text-muted mt-0.5">
           {fmtDate(item.plannedStart)} → {isOngoing
             ? t('production', 'metrics_date_planned', { date: fmtDate(item.plannedEnd) })
             : fmtDate(item.actualEnd || item.plannedEnd)}
@@ -168,10 +168,10 @@ function MaintenanceRow({ item, onOpen }) {
         </p>
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="text-sm font-bold text-[#1C1C1E]">
+        <p className="text-sm font-bold text-ink">
           {item.actualCost ? fmtCurrency(item.actualCost) : item.estimatedCost ? `~${fmtCurrency(item.estimatedCost)}` : '—'}
         </p>
-        <p className="text-[10px] text-[#8E8878]">
+        <p className="text-[10px] text-muted">
           {item.status === 'COMPLETED' ? t('production', 'metrics_done') : t('production', 'metrics_expected')}
         </p>
       </div>
@@ -251,8 +251,8 @@ export default function FactoryMachineMetricsPage() {
       : t('production', 'machine_status_inactive');
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 bg-[#F5F0EB] min-h-full">
-      <div className="bg-[#1A2B1A] rounded-2xl p-5 text-white">
+    <div className="p-4 sm:p-6 space-y-4 bg-surface-2 min-h-full">
+      <div className="bg-forest-deep rounded-2xl p-5 text-white">
         <button onClick={() => navigate('/owner/production?tab=machines')}
           className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors mb-2">
           <ArrowLeft size={14} />
@@ -271,7 +271,7 @@ export default function FactoryMachineMetricsPage() {
         </p>
       </div>
 
-      {err && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+      {err && <p className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
       {loadingMetrics ? (
         <>
@@ -292,24 +292,24 @@ export default function FactoryMachineMetricsPage() {
             <MetricCard icon={Activity} label={t('production', 'metrics_last_production')}
               value={metrics.lastProductionAt ? fmtDate(metrics.lastProductionAt) : t('production', 'metrics_never_run')}
               sub={metrics.firstProductionAt ? t('production', 'metrics_since', { date: fmtDate(metrics.firstProductionAt) }) : null}
-              color="#10B981" />
-            <MetricCard icon={Wrench} label={t('production', 'metrics_total_production_hours')} value={fmtHours(metrics.totalProductionHours)} color="#F59E0B" />
-            <MetricCard icon={AlertTriangle} label={t('production', 'metrics_total_maintenance_hours')} value={fmtHours(metrics.totalMaintenanceHours)} color="#EF4444" />
+              color="var(--c-success)" />
+            <MetricCard icon={Wrench} label={t('production', 'metrics_total_production_hours')} value={fmtHours(metrics.totalProductionHours)} color="var(--c-warning)" />
+            <MetricCard icon={AlertTriangle} label={t('production', 'metrics_total_maintenance_hours')} value={fmtHours(metrics.totalMaintenanceHours)} color="var(--c-danger)" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <MetricCard icon={DollarSign} label={t('production', 'metrics_total_completed_cost')} value={fmtCurrency(metrics.totalCompletedMaintenanceCost)} color="#C9A84C" />
+            <MetricCard icon={DollarSign} label={t('production', 'metrics_total_completed_cost')} value={fmtCurrency(metrics.totalCompletedMaintenanceCost)} color="var(--c-gold)" />
             <MetricCard icon={TrendingUp} label={t('production', 'metrics_completed_count')} value={metrics.completedMaintenanceCount} color="#0EA5E9" />
             <MetricCard icon={Wrench} label={t('production', 'metrics_active_count')} value={metrics.activeMaintenanceCount} color="#A855F7" />
             <MetricCard icon={Settings2} label={t('production', 'metrics_machine_status')} value={machineStatusLabel}
-              color={metrics.status === 'ACTIVE' ? '#10B981' : metrics.status === 'UNDER_MAINTENANCE' ? '#EF4444' : '#9CA3AF'} />
+              color={metrics.status === 'ACTIVE' ? 'var(--c-success)' : metrics.status === 'UNDER_MAINTENANCE' ? 'var(--c-danger)' : 'var(--c-muted)'} />
           </div>
 
           {/* Chart: Sản xuất vs Bảo trì theo tháng */}
-          <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 sm:p-5">
-            <p className="text-sm font-semibold text-[#1C1C1E] mb-1">{t('production', 'metrics_chart_title')}</p>
-            <p className="text-xs text-[#8E8878] mb-4">{t('production', 'metrics_chart_desc')}</p>
+          <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 sm:p-5">
+            <p className="text-sm font-semibold text-ink mb-1">{t('production', 'metrics_chart_title')}</p>
+            <p className="text-xs text-muted mb-4">{t('production', 'metrics_chart_desc')}</p>
             {chartData.length === 0 ? (
-              <p className="text-sm text-[#8E8878] italic text-center py-10">{t('production', 'metrics_chart_empty')}</p>
+              <p className="text-sm text-muted italic text-center py-10">{t('production', 'metrics_chart_empty')}</p>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={chartData}>
@@ -318,8 +318,8 @@ export default function FactoryMachineMetricsPage() {
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey={labelProduction} fill="#10B981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey={labelMaintenance} fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey={labelProduction} fill="var(--c-success)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey={labelMaintenance} fill="var(--c-danger)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -327,7 +327,7 @@ export default function FactoryMachineMetricsPage() {
 
           {/* Lịch sử bảo trì */}
           <div>
-            <p className="text-sm font-semibold text-[#1C1C1E] mb-2 flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-ink mb-2 flex items-center gap-1.5">
               <FileText size={14} /> {t('production', 'metrics_history_title')} ({metrics.maintenanceHistory?.length || 0})
             </p>
             {(!metrics.maintenanceHistory || metrics.maintenanceHistory.length === 0) ? (

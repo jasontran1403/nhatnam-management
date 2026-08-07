@@ -170,13 +170,13 @@
     "history": "Lịch sử",
     "suppliers": "Nhà cung cấp",
     "vendor_debts": "Nhà cung cấp",
-    "supplier_management": "Quản lý nhà cung cấp",
+    "supplier_management": "Nhà cung cấp",
     "hr_manage": "Quản lý nhân sự",
     "salaries": "Phiếu lương",
     "factory_batches": "Nhập mẻ SX",
     "batch_history": "Lịch sử mẻ",
     "warehouse_receipts": "Phiếu nhập kho",
-    "cameras": "Quản lý camera",
+    "cameras": "Camera",
     "lot_pricing": "Điều chỉnh lô",
     "quotation": "Báo giá",
     "delivering": "Đơn hàng",
@@ -193,7 +193,7 @@
     "packaging_loss_reports": "Biên bản hao hụt đóng gói",
     "pricing": "Tính giá",
     "cashflow": "Dòng tiền",
-    "materials": "Nguyên liệu",
+    "materials": "Lượng tiêu thụ",
     "my_requests": "Phiếu của tôi",
     "my_payroll": "Quản lý lương",
     "attendance_sheets": "Bảng chấm công",
@@ -2028,7 +2028,7 @@
     "oinv_preset_month": "Tháng này",
     "oinv_preset_year": "Năm nay",
     "oinv_custom_range": "Tự chọn",
-    "oinv_title": "Nguyên liệu",
+    "oinv_title": "Lượng tiêu thụ",
     "oinv_btn_confirm": "Xác nhận số lượng",
     "oinv_search_ph": "Tìm nguyên liệu...",
     "oinv_select_warehouse": "Chọn kho",
@@ -2421,6 +2421,15 @@
     "fw_batch_history": "Lịch sử mẻ sản xuất",
     "fw_all_your_batches": "Tất cả các mẻ bạn đã tạo",
     "fw_material_detail": "Chi tiết NVL",
-    "dash_create_product_title": "Tạo sản phẩm sản xuất"
+    "dash_create_product_title": "Tạo sản phẩm sản xuất",
+    "oinv_pick_parent_first": "Vui lòng chọn danh mục cha"
+  },
+  "theme": {
+    "appearance": "Giao diện",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống",
+    "switch_to_dark": "Chuyển sang giao diện tối",
+    "switch_to_light": "Chuyển sang giao diện sáng"
   }
 }

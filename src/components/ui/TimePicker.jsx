@@ -71,16 +71,16 @@ function ClockFace({ mode, hour, minute, onPickHour, onPickMinute, minuteStep })
 
   return (
     <svg width={DIAL * 2} height={DIAL * 2} className="select-none touch-none">
-      <circle cx={DIAL} cy={DIAL} r={DIAL - 4} className="fill-[#FAF7F2]" />
+      <circle cx={DIAL} cy={DIAL} r={DIAL - 4} className="fill-canvas" />
 
       {/* Kim + đầu kim */}
       <line
         x1={DIAL} y1={DIAL}
         x2={DIAL + handLength * Math.cos((handAngle - 90) * Math.PI / 180)}
         y2={DIAL + handLength * Math.sin((handAngle - 90) * Math.PI / 180)}
-        stroke="#C9A84C" strokeWidth="2" strokeLinecap="round"
+        stroke="var(--c-gold)" strokeWidth="2" strokeLinecap="round"
       />
-      <circle cx={DIAL} cy={DIAL} r="4" fill="#C9A84C" />
+      <circle cx={DIAL} cy={DIAL} r="4" fill="var(--c-gold)" />
 
       {mode === 'hour' ? (
         <>
@@ -90,9 +90,9 @@ function ClockFace({ mode, hour, minute, onPickHour, onPickMinute, minuteStep })
             const active = hour === h;
             return (
               <g key={`h-${h}`} onClick={() => onPickHour(h)} className="cursor-pointer">
-                <circle cx={p.x} cy={p.y} r="17" className={active ? 'fill-[#C9A84C]' : 'fill-transparent hover:fill-[#C9A84C]/15'} />
+                <circle cx={p.x} cy={p.y} r="17" className={active ? 'fill-gold' : 'fill-transparent hover:fill-gold/15'} />
                 <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central"
-                  className={`text-[13px] font-semibold ${active ? 'fill-white' : 'fill-[#1C1C1E]'}`}>
+                  className={`text-[13px] font-semibold ${active ? 'fill-white' : 'fill-ink'}`}>
                   {h === 0 ? '00' : h}
                 </text>
               </g>
@@ -104,9 +104,9 @@ function ClockFace({ mode, hour, minute, onPickHour, onPickMinute, minuteStep })
             const active = hour === val;
             return (
               <g key={`h-${val}`} onClick={() => onPickHour(val)} className="cursor-pointer">
-                <circle cx={p.x} cy={p.y} r="15" className={active ? 'fill-[#C9A84C]' : 'fill-transparent hover:fill-[#C9A84C]/15'} />
+                <circle cx={p.x} cy={p.y} r="15" className={active ? 'fill-gold' : 'fill-transparent hover:fill-gold/15'} />
                 <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central"
-                  className={`text-[11px] font-medium ${active ? 'fill-white' : 'fill-[#8E8878]'}`}>
+                  className={`text-[11px] font-medium ${active ? 'fill-white' : 'fill-muted'}`}>
                   {val}
                 </text>
               </g>
@@ -119,9 +119,9 @@ function ClockFace({ mode, hour, minute, onPickHour, onPickMinute, minuteStep })
           const active = minute === m;
           return (
             <g key={`m-${m}`} onClick={() => onPickMinute(m)} className="cursor-pointer">
-              <circle cx={p.x} cy={p.y} r="17" className={active ? 'fill-[#C9A84C]' : 'fill-transparent hover:fill-[#C9A84C]/15'} />
+              <circle cx={p.x} cy={p.y} r="17" className={active ? 'fill-gold' : 'fill-transparent hover:fill-gold/15'} />
               <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central"
-                className={`text-[13px] font-semibold ${active ? 'fill-white' : 'fill-[#1C1C1E]'}`}>
+                className={`text-[13px] font-semibold ${active ? 'fill-white' : 'fill-ink'}`}>
                 {String(m).padStart(2, '0')}
               </text>
             </g>
@@ -250,8 +250,8 @@ export default function TimePicker({
         className={`flex items-center gap-1.5 px-3 h-[38px] rounded-xl text-xs font-semibold
           transition-all border whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed
           ${hasValue
-            ? 'bg-[#C9A84C] text-white border-[#C9A84C] shadow-sm'
-            : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}
+            ? 'bg-gold text-white border-gold shadow-sm'
+            : 'bg-surface text-muted border-line hover:border-gold hover:text-gold'}`}
       >
         <Clock size={12} />
         {label}
@@ -267,25 +267,25 @@ export default function TimePicker({
       </button>
 
       <AnchoredPanel anchorRef={btnRef} open={open} panelRef={panelRef} align={align}>
-        <div className="bg-white rounded-2xl shadow-2xl border border-[#E8DDD0] overflow-hidden"
+        <div className="bg-surface rounded-2xl shadow-2xl border border-line overflow-hidden"
           style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.12))' }}>
 
           {/* Ô số lớn — bấm để nhảy qua lại giữa bước giờ và bước phút */}
           <div className="flex items-center justify-center gap-1 px-5 pt-4 pb-3">
             <button type="button" onClick={() => setMode('hour')}
               className={`px-3 py-1.5 rounded-xl text-2xl font-bold tabular-nums transition-colors
-                ${mode === 'hour' ? 'bg-[#C9A84C]/15 text-[#C9A84C]' : 'text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
+                ${mode === 'hour' ? 'bg-gold/15 text-gold' : 'text-ink hover:bg-canvas'}`}>
               {String(hour).padStart(2, '0')}
             </button>
-            <span className="text-2xl font-bold text-[#C4B9A8]">:</span>
+            <span className="text-2xl font-bold text-faint">:</span>
             <button type="button" onClick={() => setMode('minute')}
               className={`px-3 py-1.5 rounded-xl text-2xl font-bold tabular-nums transition-colors
-                ${mode === 'minute' ? 'bg-[#C9A84C]/15 text-[#C9A84C]' : 'text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
+                ${mode === 'minute' ? 'bg-gold/15 text-gold' : 'text-ink hover:bg-canvas'}`}>
               {String(minute).padStart(2, '0')}
             </button>
           </div>
 
-          <p className="text-center text-[11px] text-[#8E8878] pb-2">
+          <p className="text-center text-[11px] text-muted pb-2">
             {mode === 'hour' ? 'Chọn giờ — vành trong là 12–23' : 'Chọn phút'}
           </p>
 
@@ -297,17 +297,17 @@ export default function TimePicker({
             />
           </div>
 
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[#F0EBE3] bg-[#FAF7F2]">
-            <span className="text-xs text-[#C9A84C] font-semibold tabular-nums">{toHHmm(draft)}</span>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-line-soft bg-canvas">
+            <span className="text-xs text-gold font-semibold tabular-nums">{toHHmm(draft)}</span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setOpen(false)}
-                className="px-3 py-1.5 text-xs text-[#8E8878] rounded-xl border border-[#E8DDD0]
-                  hover:bg-[#F0EBE3] transition-colors">
+                className="px-3 py-1.5 text-xs text-muted rounded-xl border border-line
+                  hover:bg-surface-2 transition-colors">
                 Huỷ
               </button>
               <button type="button" onClick={apply}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-[#C9A84C] rounded-xl
-                  hover:bg-[#B8943C] transition-colors">
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-gold rounded-xl
+                  hover:bg-gold-strong transition-colors">
                 Xác nhận
               </button>
             </div>

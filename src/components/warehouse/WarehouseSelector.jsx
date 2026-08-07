@@ -35,7 +35,7 @@ export default function WarehouseSelector({ compact = false, align = 'right' }) 
 
   if (!hasMultipleWarehouses) {
     return (
-      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-xs font-semibold">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold/10 text-gold text-xs font-semibold">
         <Warehouse size={13} />
         <span className="truncate max-w-[120px]">{activeWarehouseName || t('warehouse', 'warehouse')}</span>
       </div>
@@ -48,8 +48,8 @@ export default function WarehouseSelector({ compact = false, align = 'right' }) 
         onClick={() => setOpen(v => !v)}
         className={`flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-all
           ${open
-            ? 'bg-[#C9A84C]/20 text-[#C9A84C] border border-[#C9A84C]/40'
-            : 'bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 border border-transparent'}
+            ? 'bg-gold/20 text-gold border border-gold/40'
+            : 'bg-gold/10 text-gold hover:bg-gold/20 border border-transparent'}
           ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
       >
         <Warehouse size={13} />
@@ -58,10 +58,10 @@ export default function WarehouseSelector({ compact = false, align = 'right' }) 
       </button>
 
       {open && (
-        <div className={`absolute top-full mt-1 z-50 min-w-[180px] max-w-[70vw] bg-white
-          rounded-xl shadow-xl border border-[#E8DDD0] py-1 overflow-hidden
+        <div className={`absolute top-full mt-1 z-50 min-w-[180px] max-w-[70vw] bg-surface
+          rounded-xl shadow-xl border border-line py-1 overflow-hidden
           ${align === 'right' ? 'right-0' : 'left-0'}`}>
-          <p className="text-[10px] uppercase font-semibold text-[#8E8878] tracking-wider px-3 py-1.5">
+          <p className="text-[10px] uppercase font-semibold text-muted tracking-wider px-3 py-1.5">
             {t('warehouse', 'select_warehouse')}
           </p>
           {assignedWarehouses.map(w => (
@@ -70,8 +70,8 @@ export default function WarehouseSelector({ compact = false, align = 'right' }) 
               onClick={() => { setActiveWarehouseId(w.id); setOpen(false); }}
               className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors
                 ${w.id === activeWarehouseId
-                  ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-semibold'
-                  : 'text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}
+                  ? 'bg-gold/10 text-gold font-semibold'
+                  : 'text-ink hover:bg-canvas'}`}
             >
               <Warehouse size={14} />
               <span className="flex-1 truncate">{w.name}</span>

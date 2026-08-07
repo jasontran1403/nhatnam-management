@@ -125,7 +125,7 @@ export default function PasscodeInput({
   return (
     <div>
       {label && (
-        <p className="text-xs font-semibold text-[#8E8878] mb-2 text-center">{label}</p>
+        <p className="text-xs font-semibold text-muted mb-2 text-center">{label}</p>
       )}
 
       <div
@@ -142,14 +142,14 @@ export default function PasscodeInput({
               className={`
                 relative ${box} rounded-2xl border-2 transition-all duration-150
                 flex items-center justify-center select-none
-                ${disabled ? 'opacity-50 bg-[#F5F1EA] border-black/10' : 'bg-white'}
+                ${disabled ? 'opacity-50 bg-surface-2 border-hairline-2' : 'bg-surface'}
                 ${error
-                  ? 'border-red-400 bg-red-50/50'
+                  ? 'border-red-400 bg-red-50/50 dark:bg-red-500/5'
                   : active
-                    ? 'border-[#C9A84C] shadow-[0_0_0_4px_rgba(201,168,76,0.15)]'
+                    ? 'border-gold shadow-[0_0_0_4px_rgba(201,168,76,0.15)]'
                     : filled
-                      ? 'border-[#C9A84C]/60'
-                      : 'border-black/10'}
+                      ? 'border-gold/60'
+                      : 'border-hairline-2'}
               `}
             >
               {/* Input trong suốt phủ kín ô — bàn phím số bật lên trên mobile,
@@ -173,16 +173,16 @@ export default function PasscodeInput({
 
               {filled ? (
                 mask ? (
-                  <span className={`w-2.5 h-2.5 rounded-full ${error ? 'bg-red-500' : 'bg-[#1C1C1E]'}`} />
+                  <span className={`w-2.5 h-2.5 rounded-full ${error ? 'bg-red-500' : 'bg-chrome'}`} />
                 ) : (
-                  <span className={`font-bold ${error ? 'text-red-500' : 'text-[#1C1C1E]'}`}>
+                  <span className={`font-bold ${error ? 'text-red-500' : 'text-ink'}`}>
                     {digits[i]}
                   </span>
                 )
               ) : active ? (
-                <span className="passcode-caret w-[2px] h-6 bg-[#C9A84C] rounded-full" />
+                <span className="passcode-caret w-[2px] h-6 bg-gold rounded-full" />
               ) : (
-                <span className="w-2 h-2 rounded-full bg-[#E8DDD0]" />
+                <span className="w-2 h-2 rounded-full bg-surface-3" />
               )}
             </div>
           );

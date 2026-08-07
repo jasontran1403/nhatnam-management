@@ -55,7 +55,7 @@ function SupplyItemAutocomplete({ value, onPick, onManual, locked }) {
     <div ref={boxRef} className="relative">
       <div className="relative">
         <input
-          className={`${inputCls} ${locked ? 'bg-[#FAF7F2] pr-9' : ''}`}
+          className={`${inputCls} ${locked ? 'bg-canvas pr-9' : ''}`}
           value={q}
           readOnly={locked}
           placeholder="VD: Nước rửa chén"
@@ -63,22 +63,22 @@ function SupplyItemAutocomplete({ value, onPick, onManual, locked }) {
           onChange={e => { setQ(e.target.value); onManual(e.target.value); setOpen(true); }}
         />
         {locked && (
-          <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
         )}
       </div>
 
       {open && !locked && (
-        <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-black/10 shadow-lg max-h-56 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full bg-surface rounded-xl border border-hairline-2 shadow-lg max-h-56 overflow-y-auto">
           {options.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-[#8E8878] text-center">
+            <p className="px-3 py-3 text-xs text-muted text-center">
               Chưa có vật dụng nào khớp — cứ gõ tiếp để tạo mới.
             </p>
           ) : options.map(o => (
             <button key={o.id} type="button"
               onClick={() => { onPick(o); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] border-b border-black/5 last:border-0">
-              <div className="text-[#1C1C1E]">{o.name}</div>
-              <div className="text-xs text-[#8E8878]">
+              className="w-full text-left px-3 py-2 text-sm hover:bg-canvas border-b border-hairline last:border-0">
+              <div className="text-ink">{o.name}</div>
+              <div className="text-xs text-muted">
                 {o.specification || '(không có quy cách)'} · {o.unit}
               </div>
             </button>
@@ -168,15 +168,15 @@ function CategoryFormModal({ open, editing, onClose, onSaved }) {
                 onClick={() => setForm(f => ({ ...f, categoryKind: k }))}
                 className={`flex-1 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors
                   ${form.categoryKind === k
-                    ? 'bg-[#C9A84C]/10 border-[#C9A84C] text-[#1C1C1E]'
-                    : 'bg-white border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+                    ? 'bg-gold/10 border-gold text-ink'
+                    : 'bg-surface border-hairline-2 text-muted hover:bg-canvas'}`}>
                 {KIND_LABEL[k]}
               </button>
             ))}
           </div>
         </Field>
 
-        <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
+        <p className="flex items-start gap-1.5 text-xs text-muted">
           <Info size={13} className="mt-0.5 flex-shrink-0" />
           {isConsumable
             ? 'Đồ dùng tiêu hao sẽ được NHẬP KHO khi người tạo phiếu xác nhận nhận hàng. Tồn kho gộp theo tên + quy cách + ĐVT, không phụ thuộc nhà cung cấp.'
@@ -205,12 +205,12 @@ function CategoryFormModal({ open, editing, onClose, onSaved }) {
         {isConsumable && (
           <>
             {locked && (
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#FAF7F2] border border-black/5">
-                <span className="text-xs text-[#8E8878]">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-canvas border border-hairline">
+                <span className="text-xs text-muted">
                   Đang dùng vật dụng có sẵn — tên, quy cách, ĐVT đã khoá để không tách tồn kho.
                 </span>
                 <button type="button" onClick={unlock}
-                  className="text-xs font-semibold text-[#C9A84C] hover:text-[#B69842] whitespace-nowrap ml-2">
+                  className="text-xs font-semibold text-gold hover:text-gold-strong whitespace-nowrap ml-2">
                   Tạo mới
                 </button>
               </div>
@@ -218,13 +218,13 @@ function CategoryFormModal({ open, editing, onClose, onSaved }) {
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Quy cách" required>
-                <input className={`${inputCls} ${locked ? 'bg-[#FAF7F2]' : ''}`}
+                <input className={`${inputCls} ${locked ? 'bg-canvas' : ''}`}
                   readOnly={locked} value={form.specification}
                   onChange={e => setForm(f => ({ ...f, specification: e.target.value }))}
                   placeholder="VD: 4L/chai" />
               </Field>
               <Field label="Đơn vị tính" required>
-                <input className={`${inputCls} ${locked ? 'bg-[#FAF7F2]' : ''}`}
+                <input className={`${inputCls} ${locked ? 'bg-canvas' : ''}`}
                   readOnly={locked} value={form.unit}
                   onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
                   placeholder="VD: Chai" />
@@ -238,7 +238,7 @@ function CategoryFormModal({ open, editing, onClose, onSaved }) {
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
         </Field>
 
-        {err && <p className="text-xs text-red-600">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300">{err}</p>}
 
         <div className="flex items-center justify-end gap-2">
           <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
@@ -299,40 +299,40 @@ export default function ExpenseCategorySection({ canManage }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3.5">
         <div className="flex items-center gap-2">
-          <Tag size={16} className="text-[#C9A84C]" />
-          <span className="text-sm font-semibold text-[#1C1C1E]">Danh mục khoản chi</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30">
+          <Tag size={16} className="text-gold" />
+          <span className="text-sm font-semibold text-ink">Danh mục khoản chi</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/30">
             Dùng chung
           </span>
-          {cats && <span className="text-xs text-[#8E8878]">({activeCats.length} nhãn)</span>}
+          {cats && <span className="text-xs text-muted">({activeCats.length} nhãn)</span>}
         </div>
-        <span className="text-xs text-[#8E8878]">{open ? 'Thu gọn' : 'Mở rộng'}</span>
+        <span className="text-xs text-muted">{open ? 'Thu gọn' : 'Mở rộng'}</span>
       </button>
 
       {open && (
-        <div className="px-4 pb-4 border-t border-black/5 pt-3 space-y-3">
-          <p className="text-xs text-[#8E8878]">
+        <div className="px-4 pb-4 border-t border-hairline pt-3 space-y-3">
+          <p className="text-xs text-muted">
             {canManage
               ? 'Danh mục DÙNG CHUNG cho tất cả nhà cung cấp — tạo nhãn một lần, mọi NCC đều chọn được. Nhãn loại "Đồ dùng tiêu hao" sẽ được nhập kho văn phòng phẩm khi nhận hàng.'
               : 'Danh mục khoản chi dùng chung cho mọi nhà cung cấp (do chủ quản lý).'}
           </p>
 
-          {err && <p className="text-xs text-red-600">{err}</p>}
+          {err && <p className="text-xs text-red-600 dark:text-red-300">{err}</p>}
 
           {/* Ô tìm kiếm — chỉ hiện khi danh mục đủ dài để cần tìm */}
           {cats != null && cats.length > 0 && (
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 value={q} onChange={e => setQ(e.target.value)}
                 placeholder="Tìm nhãn, quy cách, ĐVT…"
                 className={`${inputCls} pl-9 pr-9`} />
               {q && (
                 <button type="button" onClick={() => setQ('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
                   title="Xoá tìm kiếm">
                   <X size={14} />
                 </button>
@@ -341,18 +341,18 @@ export default function ExpenseCategorySection({ canManage }) {
           )}
 
           {cats == null ? (
-            <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-10 bg-[#FAF7F2] rounded-xl animate-pulse" />)}</div>
+            <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-10 bg-canvas rounded-xl animate-pulse" />)}</div>
           ) : cats.length === 0 ? (
-            <p className="text-xs text-[#8E8878] py-2">Chưa có nhãn nào{canManage ? ' — hãy thêm nhãn đầu tiên.' : '.'}</p>
+            <p className="text-xs text-muted py-2">Chưa có nhãn nào{canManage ? ' — hãy thêm nhãn đầu tiên.' : '.'}</p>
           ) : filtered.length === 0 ? (
-            <p className="text-xs text-[#8E8878] py-3 text-center">
+            <p className="text-xs text-muted py-3 text-center">
               Không có nhãn nào khớp “{q}”.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs uppercase text-[#8E8878] bg-[#FAF7F2]/60">
+                  <tr className="text-xs uppercase text-muted bg-canvas/60">
                     <th className="px-3 py-2 text-left">Nhãn</th>
                     <th className="px-3 py-2 text-left">Loại</th>
                     <th className="px-3 py-2 text-left">Quy cách</th>
@@ -362,31 +362,31 @@ export default function ExpenseCategorySection({ canManage }) {
                 </thead>
                 <tbody>
                   {filtered.map(c => (
-                    <tr key={c.id} className={`border-t border-black/5 ${c.active ? '' : 'opacity-50'}`}>
+                    <tr key={c.id} className={`border-t border-hairline ${c.active ? '' : 'opacity-50'}`}>
                       <td className="px-3 py-2">
-                        <span className={c.active ? 'text-[#1C1C1E]' : 'line-through text-gray-400'}>{c.name}</span>
-                        {c.description && <div className="text-xs text-[#8E8878]">{c.description}</div>}
+                        <span className={c.active ? 'text-ink' : 'line-through text-faint'}>{c.name}</span>
+                        {c.description && <div className="text-xs text-muted">{c.description}</div>}
                       </td>
                       <td className="px-3 py-2">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium
                           ${c.categoryKind === 'CONSUMABLE'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-gray-100 text-gray-600'}`}>
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-surface-2 text-ink-2'}`}>
                           {KIND_LABEL[c.categoryKind] || 'Dịch vụ'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-[#8E8878]">{c.specification || '—'}</td>
-                      <td className="px-3 py-2 text-[#8E8878]">{c.unit || '—'}</td>
+                      <td className="px-3 py-2 text-muted">{c.specification || '—'}</td>
+                      <td className="px-3 py-2 text-muted">{c.unit || '—'}</td>
                       {canManage && (
                         <td className="px-3 py-2 text-right whitespace-nowrap">
                           <button onClick={() => { setEditing(c); setFormOpen(true); }} title="Sửa"
-                            className="text-[#8E8878] hover:text-[#C9A84C] p-1"><Pencil size={13} /></button>
+                            className="text-muted hover:text-gold p-1"><Pencil size={13} /></button>
                           <button onClick={() => toggleActive(c)} title={c.active ? 'Ẩn' : 'Bật lại'}
-                            className="text-[#8E8878] hover:text-amber-600 text-[11px] font-semibold px-1.5">
+                            className="text-muted hover:text-amber-600 dark:text-amber-300 text-[11px] font-semibold px-1.5">
                             {c.active ? 'Ẩn' : 'Bật'}
                           </button>
                           <button onClick={() => doDelete(c)} title="Xoá (ẩn)"
-                            className="text-[#8E8878] hover:text-red-600 p-1"><Trash2 size={13} /></button>
+                            className="text-muted hover:text-red-600 dark:text-red-300 p-1"><Trash2 size={13} /></button>
                         </td>
                       )}
                     </tr>
@@ -398,7 +398,7 @@ export default function ExpenseCategorySection({ canManage }) {
 
           {canManage && (
             <button onClick={() => { setEditing(null); setFormOpen(true); }}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#C9A84C] hover:text-[#B69842]">
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold hover:text-gold-strong">
               <Plus size={14} /> Thêm nhãn khoản chi
             </button>
           )}

@@ -10,19 +10,19 @@ export const PAYMENT_METHODS = [
 ];
 
 export const STATUS_CONFIG = {
-  NEW:                { label: 'Mới tạo',        cls: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-400' },
-  ORDERED:            { label: 'Đã đặt hàng',    cls: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-400' },
-  PARTIALLY_RECEIVED: { label: 'Đang nhận hàng', cls: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400' },
-  RECEIVED:           { label: 'Đã nhận hàng',   cls: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
-  COMPLETED:          { label: 'Hoàn thành',     cls: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-300' },
+  NEW:                { label: 'Mới tạo',        cls: 'bg-surface-2 text-ink-2',       dot: 'bg-gray-400' },
+  ORDERED:            { label: 'Đã đặt hàng',    cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300',       dot: 'bg-blue-400' },
+  PARTIALLY_RECEIVED: { label: 'Đang nhận hàng', cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300',     dot: 'bg-amber-400' },
+  RECEIVED:           { label: 'Đã nhận hàng',   cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-400' },
+  COMPLETED:          { label: 'Hoàn thành',     cls: 'bg-surface-2 text-muted',       dot: 'bg-surface-3' },
 };
 
 // Tiến độ nhận của từng dòng nguyên liệu
 export const RECEIVE_STATUS_CONFIG = {
-  PENDING:      { label: 'Chưa nhận',   cls: 'bg-gray-100 text-gray-500' },
-  PARTIAL:      { label: 'Nhận 1 phần', cls: 'bg-amber-100 text-amber-700' },
-  FULFILLED:    { label: 'Đã đủ',       cls: 'bg-emerald-100 text-emerald-700' },
-  CLOSED_SHORT: { label: 'Chốt thiếu',  cls: 'bg-red-100 text-red-600' },
+  PENDING:      { label: 'Chưa nhận',   cls: 'bg-surface-2 text-muted' },
+  PARTIAL:      { label: 'Nhận 1 phần', cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300' },
+  FULFILLED:    { label: 'Đã đủ',       cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
+  CLOSED_SHORT: { label: 'Chốt thiếu',  cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300' },
 };
 
 // ── Factory Worker ────────────────────────────────────────────────────────────

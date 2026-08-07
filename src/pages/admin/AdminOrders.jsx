@@ -80,39 +80,39 @@ function CustomerFilter({ value, onChange }) {
         type="button"
         onClick={handleOpen}
         className={`w-full flex items-center gap-2 px-3 h-[38px] rounded-xl border text-sm transition-colors
-          ${value ? 'border-[#C9A84C] bg-[#C9A84C]/5 text-[#1C1C1E]' : 'border-[#E8DDD0] bg-white text-[#8E8878]'}
-          hover:border-[#C9A84C]/60`}>
-        <Users size={14} className={value ? 'text-[#C9A84C]' : 'text-[#8E8878]'} />
+          ${value ? 'border-gold bg-gold/5 text-ink' : 'border-line bg-surface text-muted'}
+          hover:border-gold/60`}>
+        <Users size={14} className={value ? 'text-gold' : 'text-muted'} />
         <span className="flex-1 text-left truncate text-xs">
           {value?.name || 'Lọc theo khách hàng'}
         </span>
         {value
-          ? <X size={13} className="text-[#8E8878] hover:text-red-500 shrink-0" onClick={handleClear} />
-          : <Search size={13} className="text-[#C4B9A8] shrink-0" />}
+          ? <X size={13} className="text-muted hover:text-red-500 shrink-0" onClick={handleClear} />
+          : <Search size={13} className="text-faint shrink-0" />}
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-30 w-72 bg-white border border-[#E8DDD0] rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-2 border-b border-[#F0EBE3]">
+        <div className="absolute left-0 top-full mt-1 z-30 w-72 bg-surface border border-line rounded-2xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-line-soft">
             <div className="relative">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 autoFocus
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Tìm tên, SĐT khách hàng..."
-                className="w-full pl-8 pr-3 py-2 text-sm border border-[#E8DDD0] rounded-xl focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2]"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold bg-canvas"
               />
             </div>
           </div>
           <div className="max-h-64 overflow-y-auto">
             {fetching ? (
               <div className="flex justify-center py-5">
-                <div className="w-4 h-4 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               </div>
             ) : allOptions.length === 0 ? (
-              <p className="text-xs text-[#8E8878] text-center py-5">Không tìm thấy</p>
+              <p className="text-xs text-muted text-center py-5">Không tìm thấy</p>
             ) : (
               allOptions.map(c => {
                 const displayName = c.companyName || c.name || 'Khách lẻ';
@@ -122,20 +122,20 @@ function CustomerFilter({ value, onChange }) {
                 return (
                   <button key={c.id} type="button"
                     onClick={() => handleSelect(c)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-[#FAF7F2] transition-colors
-                      ${isSelected ? 'bg-[#C9A84C]/10' : ''}`}>
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-canvas transition-colors
+                      ${isSelected ? 'bg-gold/10' : ''}`}>
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold
-                      ${isCompany ? 'bg-[#C9A84C]/20 text-[#C9A84C]' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
+                      ${isCompany ? 'bg-gold/20 text-gold' : 'bg-surface-2 text-muted'}`}>
                       {initial}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#1C1C1E] truncate">{displayName}</p>
-                      {c.phone && <p className="text-[10px] text-[#8E8878]">{c.phone}</p>}
+                      <p className="text-xs font-semibold text-ink truncate">{displayName}</p>
+                      {c.phone && <p className="text-[10px] text-muted">{c.phone}</p>}
                     </div>
                     {isSelected
-                      ? <div className="w-2 h-2 rounded-full bg-[#C9A84C] shrink-0" />
+                      ? <div className="w-2 h-2 rounded-full bg-gold shrink-0" />
                       : <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0
-                          ${isCompany ? 'bg-sky-50 text-sky-700' : 'bg-[#F0EBE3] text-[#8E8878]'}`}>
+                          ${isCompany ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'bg-surface-2 text-muted'}`}>
                           {isCompany ? 'Cty' : 'Lẻ'}
                         </span>}
                   </button>
@@ -167,17 +167,17 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
       title={isCancelled ? 'Đơn đã huỷ' : 'Xuất hoá đơn PDF'}
       className={`relative p-1.5 rounded-lg border transition-all duration-200
         ${isCancelled
-          ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
+          ? 'bg-surface-2 text-faint border-line-soft cursor-not-allowed opacity-40'
           : isThisLoading
-            ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait ring-2 ring-[#C9A84C]/30 ring-offset-1'
+            ? 'bg-gold/15 text-gold border-gold/40 cursor-wait ring-2 ring-gold/30 ring-offset-1'
             : isOtherLoading
-              ? 'bg-[#F0EBE3] text-[#C4B9A8] border-[#F0EBE3] cursor-not-allowed opacity-40'
-              : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
+              ? 'bg-surface-2 text-faint border-line-soft cursor-not-allowed opacity-40'
+              : 'bg-gold/10 text-gold border-transparent hover:bg-gold/20 hover:scale-105 active:scale-95'}`}>
       {isThisLoading
-        ? <BtnSpinner size={13} colorClass="border-[#C9A84C] !border-t-transparent" />
+        ? <BtnSpinner size={13} colorClass="border-gold !border-t-transparent" />
         : <FileText size={13} />}
       {isThisLoading && (
-        <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1C1C1E] text-white px-2 py-0.5 rounded-md pointer-events-none z-10">
+        <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-chrome text-white px-2 py-0.5 rounded-md pointer-events-none z-10">
           Đang tạo...
         </span>
       )}
@@ -187,11 +187,11 @@ function InvoiceButton({ order, invoiceLoadingId, onInvoice }) {
 
 // ── Seller badge ──────────────────────────────────────────────────────────────
 function SellerBadge({ name }) {
-  if (!name) return <span className="text-[#C4B9A8] text-xs">—</span>;
+  if (!name) return <span className="text-faint text-xs">—</span>;
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="w-full h-6 px-2 rounded-full bg-[#C9A84C]/20 text-[#C9A84C] text-[10px] font-bold flex items-center justify-center shrink-0">
+      <span className="w-full h-6 px-2 rounded-full bg-gold/20 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">
         {name}
       </span>
     </span>
@@ -348,9 +348,9 @@ export default function AdminOrders() {
       <PageHeader icon={ShoppingCart} title="Đơn hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} đơn`} />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row gap-3">
+      <div className="bg-surface rounded-2xl border border-hairline p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
           <input type="text" placeholder="Tìm theo mã đơn, tên khách, SĐT..."
             value={filters.q}
             onChange={e => { setFilters({ ...filters, q: e.target.value }); setPage(0); }}
@@ -371,8 +371,8 @@ export default function AdminOrders() {
           value={selectedCustomer}
           onChange={c => { setSelectedCustomer(c); setPage(0); }} />
         <button onClick={handleExport} disabled={exporting}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200
-    hover:bg-emerald-100 transition-colors disabled:opacity-60 text-sm font-medium whitespace-nowrap"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28
+    hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 text-sm font-medium whitespace-nowrap"
           title="Xuất Excel">
           {exporting
             ? <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -380,15 +380,15 @@ export default function AdminOrders() {
           Xuất Excel
         </button>
         <button onClick={() => setShowReportModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30
-    hover:bg-[#C9A84C]/20 transition-colors text-sm font-medium whitespace-nowrap"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold border border-gold/30
+    hover:bg-gold/20 transition-colors text-sm font-medium whitespace-nowrap"
           title="Báo cáo KH × Sản phẩm">
           <FileBarChart size={15} /> Báo cáo KH×SP
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
         {loading ? (
           <TableSkeleton cols={5} rows={8} />
         ) : data.content.length === 0 ? (
@@ -399,7 +399,7 @@ export default function AdminOrders() {
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#FAF7F2] text-[#8E8878]">
+                  <tr className="bg-canvas text-muted">
                     <th className="px-4 py-3 text-left   text-xs font-bold uppercase tracking-wider">Mã đơn</th>
                     <th className="px-4 py-3 text-left   text-xs font-bold uppercase tracking-wider">Khách hàng</th>
                     <th className="px-4 py-3 text-left   text-xs font-bold uppercase tracking-wider">Seller</th>
@@ -412,25 +412,25 @@ export default function AdminOrders() {
                 </thead>
                 <tbody>
                   {data.content.map(o => (
-                    <tr key={o.id} className={`border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors ${o.status === 'CANCELLED' ? 'opacity-60' : ''}`}>
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-[#C9A84C] whitespace-nowrap">{o.orderCode}</td>
+                    <tr key={o.id} className={`border-t border-hairline hover:bg-canvas/50 transition-colors ${o.status === 'CANCELLED' ? 'opacity-60' : ''}`}>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-gold whitespace-nowrap">{o.orderCode}</td>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-[#1C1C1E]">{o.customerName || '—'}</p>
-                        {o.customerPhone && <p className="text-xs text-[#8E8878]">{o.customerPhone}</p>}
+                        <p className="font-medium text-ink">{o.customerName || '—'}</p>
+                        {o.customerPhone && <p className="text-xs text-muted">{o.customerPhone}</p>}
                       </td>
                       <td className="px-4 py-3"><SellerBadge name={o.fullName || o.userName} /></td>
-                      <td className="px-4 py-3 text-center font-semibold text-[#1C1C1E]">{formatCurrency(o.finalAmount)}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-ink">{formatCurrency(o.finalAmount)}</td>
                       <td className="px-4 py-3"><OrderStatusBadge status={o.status} /></td>
                       <td className="px-4 py-3">
                         <PaymentStatusBadge status={o.paymentStatus} paidAmount={o.paidAmount} finalAmount={o.finalAmount} orderStatus={o.status} />
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDateTime(o.createdAt)}</td>
+                      <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{formatDateTime(o.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                           <button
                             onClick={async (e) => { e.stopPropagation(); await openDetail(o.id); }}
-                            className="relative p-1.5 rounded-lg border bg-sky-50 text-sky-600 border-transparent hover:bg-sky-100 hover:scale-105 active:scale-95 transition-all duration-200"
+                            className="relative p-1.5 rounded-lg border bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 border-transparent hover:bg-sky-100 dark:bg-sky-500/18 hover:scale-105 active:scale-95 transition-all duration-200"
                             title="Xem chi tiết">
                             {detailLoading === o.id
                               ? <BtnSpinner size={13} colorClass="border-sky-400 !border-t-transparent" />
@@ -438,7 +438,7 @@ export default function AdminOrders() {
                           </button>
                           {o.status !== 'CANCELLED' && o.status !== 'COMPLETED' && (
                             <button onClick={() => openCancel(o)}
-                              className="p-2 rounded-lg text-[#8E8878] hover:bg-red-50 hover:text-red-600 transition-colors" title="Hủy đơn">
+                              className="p-2 rounded-lg text-muted hover:bg-red-50 dark:bg-red-500/10 hover:text-red-600 dark:text-red-300 transition-colors" title="Hủy đơn">
                               <Ban size={15} />
                             </button>
                           )}
@@ -451,27 +451,27 @@ export default function AdminOrders() {
             </div>
 
             {/* Mobile cards */}
-            <div className="lg:hidden divide-y divide-black/5">
+            <div className="lg:hidden divide-y divide-hairline">
               {data.content.map(o => (
                 <div key={o.id} className={`p-4 space-y-2.5 ${o.status === 'CANCELLED' ? 'opacity-60' : ''}`}>
 
                   {/* Row 1: mã đơn + ngày tạo */}
                   <div className="flex items-center justify-between">
-                    <p className="font-mono text-xs font-semibold text-[#C9A84C]">{o.orderCode}</p>
-                    <p className="text-[10px] text-[#8E8878]">{formatDateTime(o.createdAt)}</p>
+                    <p className="font-mono text-xs font-semibold text-gold">{o.orderCode}</p>
+                    <p className="text-[10px] text-muted">{formatDateTime(o.createdAt)}</p>
                   </div>
 
                   {/* Row 2: tên khách hàng */}
-                  <p className="font-semibold text-[#1C1C1E] leading-snug">{o.customerName || '—'}</p>
+                  <p className="font-semibold text-ink leading-snug">{o.customerName || '—'}</p>
 
                   {/* Row 3: SĐT khách */}
                   {o.customerPhone && (
-                    <p className="text-xs text-[#8E8878]">📞 {o.customerPhone}</p>
+                    <p className="text-xs text-muted">📞 {o.customerPhone}</p>
                   )}
 
                   {/* Row 4: Seller badge */}
                   <div className="flex items-center gap-1.5">
-                    <User size={11} className="text-[#8E8878]" />
+                    <User size={11} className="text-muted" />
                     <SellerBadge name={o.fullName || o.userName} />
                   </div>
 
@@ -482,20 +482,20 @@ export default function AdminOrders() {
                   </div>
 
                   {/* Row 6: tổng tiền + actions */}
-                  <div className="flex items-center justify-between pt-1 border-t border-black/5">
-                    <p className="font-bold text-[#1C1C1E]">{formatCurrency(o.finalAmount)}</p>
+                  <div className="flex items-center justify-between pt-1 border-t border-hairline">
+                    <p className="font-bold text-ink">{formatCurrency(o.finalAmount)}</p>
                     <div className="flex gap-1.5 items-center">
                       <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                       <button onClick={() => openDetail(o.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E] flex items-center gap-1">
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-canvas text-ink flex items-center gap-1">
                         {detailLoading === o.id
-                          ? <BtnSpinner size={11} colorClass="border-[#8E8878] !border-t-transparent" />
+                          ? <BtnSpinner size={11} colorClass="border-muted !border-t-transparent" />
                           : <Eye size={12} />}
                         Chi tiết
                       </button>
                       {o.status !== 'CANCELLED' && o.status !== 'COMPLETED' && (
                         <button onClick={() => openCancel(o)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-600">
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">
                           Hủy
                         </button>
                       )}
@@ -522,33 +522,33 @@ export default function AdminOrders() {
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-[#8E8878] uppercase tracking-wider">Xuất báo cáo</p>
-                <h2 className="font-bold text-[#1C1C1E]">Báo cáo KH × Sản phẩm</h2>
+                <p className="text-[10px] text-muted uppercase tracking-wider">Xuất báo cáo</p>
+                <h2 className="font-bold text-ink">Báo cáo KH × Sản phẩm</h2>
               </div>
-              <button onClick={() => setShowReportModal(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+              <button onClick={() => setShowReportModal(false)} className="p-1.5 rounded-lg text-muted hover:bg-surface-2"><X size={16} /></button>
             </div>
-            <p className="text-xs text-[#8E8878]">Tổng hợp sản lượng & doanh thu theo từng khách hàng, lọc theo danh mục sản phẩm.</p>
+            <p className="text-xs text-muted">Tổng hợp sản lượng & doanh thu theo từng khách hàng, lọc theo danh mục sản phẩm.</p>
             <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Khoảng thời gian</label>
+              <label className="block text-xs font-medium text-ink-2 mb-1">Khoảng thời gian</label>
               <DateRangePicker from={reportDateRange.from} to={reportDateRange.to} onChange={r => setReportDateRange(r)} placeholder="Chọn khoảng ngày" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#5C5C5C] mb-1">Danh mục sản phẩm</label>
+              <label className="block text-xs font-medium text-ink-2 mb-1">Danh mục sản phẩm</label>
               <select value={reportCategoryId} onChange={e => setReportCategoryId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]">
+                className="w-full px-3 py-2.5 rounded-xl border border-line text-sm bg-surface focus:outline-none focus:border-gold">
                 <option value="">-- Danh mục mặc định --</option>
                 {reportCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <p className="text-[11px] text-[#8E8878] mt-1">Để trống sẽ dùng danh mục mặc định (kem).</p>
+              <p className="text-[11px] text-muted mt-1">Để trống sẽ dùng danh mục mặc định (kem).</p>
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={() => { setShowReportModal(false); setReportDateRange({ from: null, to: null }); }}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878] hover:bg-[#F0EBE3]">Huỷ</button>
+                className="flex-1 py-2.5 rounded-xl border border-line text-sm text-muted hover:bg-surface-2">Huỷ</button>
               <button onClick={handleReportExport} disabled={exportingReport || !reportDateRange.from || !reportDateRange.to}
-                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8963E] disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong disabled:opacity-50 flex items-center justify-center gap-2">
                 {exportingReport ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" /> : <><Download size={14} /> Xuất báo cáo</>}
               </button>
             </div>
@@ -565,10 +565,10 @@ export default function AdminOrders() {
           </div>
         }
       >
-        <p className="text-sm text-[#1C1C1E]">
-          Bạn có chắc muốn hủy đơn <span className="font-semibold text-[#C9A84C]">{cancelTarget?.orderCode}</span>?
+        <p className="text-sm text-ink">
+          Bạn có chắc muốn hủy đơn <span className="font-semibold text-gold">{cancelTarget?.orderCode}</span>?
         </p>
-        <p className="text-xs text-[#8E8878] mt-1">Đơn sẽ lưu lại với trạng thái "Đã hủy".</p>
+        <p className="text-xs text-muted mt-1">Đơn sẽ lưu lại với trạng thái "Đã hủy".</p>
         <div className="mt-4">
           <Field label="Lý do hủy" hint="Không bắt buộc">
             <textarea rows={3} value={cancelReason} onChange={e => setCancelReason(e.target.value)}
@@ -583,15 +583,15 @@ export default function AdminOrders() {
 
 function PaymentStatusBadge({ status, paidAmount, finalAmount, orderStatus }) {
   if (orderStatus === 'CANCELLED') {
-    return <span className="text-xs text-[#C4B9A8]">—</span>;
+    return <span className="text-xs text-faint">—</span>;
   }
 
   const map = {
-    PAID: { label: 'Đã TT', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    UNPAID: { label: 'Chưa TT', cls: 'text-red-500 bg-red-50 border-red-200' },
-    PARTIAL: { label: 'TT 1 phần', cls: 'text-blue-600 bg-blue-50 border-blue-200' },
+    PAID: { label: 'Đã TT', cls: 'text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/28' },
+    UNPAID: { label: 'Chưa TT', cls: 'text-red-500 bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/28' },
+    PARTIAL: { label: 'TT 1 phần', cls: 'text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/28' },
   };
-  const cfg = map[status] || { label: status, cls: 'text-gray-500 bg-gray-50 border-gray-200' };
+  const cfg = map[status] || { label: status, cls: 'text-muted bg-canvas border-line' };
 
   if (status === 'PARTIAL' && paidAmount != null && finalAmount != null) {
     const remaining = Number(finalAmount) - Number(paidAmount);
@@ -600,7 +600,7 @@ function PaymentStatusBadge({ status, paidAmount, finalAmount, orderStatus }) {
         <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.cls}`}>
           {cfg.label}
         </span>
-        <span className={`inline-flex text-[10px] text-emerald-600 whitespace-nowrap items-center font-semibold px-2 py-0.5 rounded-full border ${cfg.cls}`}>
+        <span className={`inline-flex text-[10px] text-emerald-600 dark:text-emerald-300 whitespace-nowrap items-center font-semibold px-2 py-0.5 rounded-full border ${cfg.cls}`}>
           Đã thu: {new Intl.NumberFormat('vi-VN').format(Math.round(paidAmount))}đ
         </span>
       </div>

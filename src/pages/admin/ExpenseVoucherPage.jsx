@@ -12,6 +12,7 @@ import ExpenseBulkActionModal, { canApproveVoucher } from '../../components/expe
 import ExpenseVoucherLogList from '../../components/expense/ExpenseVoucherLogList';
 import { useToast } from '../../components/common/Toast';
 import { Receipt, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, DollarSign, FileText, X, ChevronLeft, ChevronRight, Download, Upload, Wallet, Search, Landmark, ShieldCheck, Settings2, Save, RotateCcw, ListChecks } from 'lucide-react';
+import { BackButton, useSubPageNav } from '../../components/common/SubPageNav';
 import {
   PageHeader, LoadingSpinner, EmptyState,
   formatCurrency, formatDateTime,
@@ -106,7 +107,7 @@ function Lightbox({ images, index, onClose, onPrev, onNext }) {
 }
 
 function StatusBadge({ status, statusMap }) {
-  const cfg = (statusMap || {})[status] || { label: status, cls: 'bg-gray-50 text-gray-600 border-gray-200', icon: Clock };
+  const cfg = (statusMap || {})[status] || { label: status, cls: 'bg-canvas text-ink-2 border-line', icon: Clock };
   const Icon = cfg.icon;
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${cfg.cls}`}>
@@ -117,16 +118,16 @@ function StatusBadge({ status, statusMap }) {
 
 function SummaryCard({ icon: Icon, label, value, accent }) {
   const colors = {
-    gold: { bg: 'bg-amber-50', icon: 'text-amber-600', val: 'text-amber-700' },
-    green: { bg: 'bg-emerald-50', icon: 'text-emerald-600', val: 'text-emerald-700' },
-    blue: { bg: 'bg-sky-50', icon: 'text-sky-600', val: 'text-sky-700' },
+    gold: { bg: 'bg-amber-50 dark:bg-amber-500/10', icon: 'text-amber-600 dark:text-amber-300', val: 'text-amber-700 dark:text-amber-300' },
+    green: { bg: 'bg-emerald-50 dark:bg-emerald-500/10', icon: 'text-emerald-600 dark:text-emerald-300', val: 'text-emerald-700 dark:text-emerald-300' },
+    blue: { bg: 'bg-sky-50 dark:bg-sky-500/10', icon: 'text-sky-600 dark:text-sky-300', val: 'text-sky-700 dark:text-sky-300' },
   };
   const c = colors[accent] || colors.gold;
   return (
     <div className={`${c.bg} rounded-2xl p-4 flex items-center gap-3 border border-white/60`}>
-      <div className={`p-2.5 bg-white/70 rounded-xl ${c.icon}`}><Icon size={20} /></div>
+      <div className={`p-2.5 bg-surface/70 rounded-xl ${c.icon}`}><Icon size={20} /></div>
       <div>
-        <p className="text-xs text-[#8E8878] font-medium">{label}</p>
+        <p className="text-xs text-muted font-medium">{label}</p>
         <p className={`text-xl font-bold ${c.val}`}>{value}</p>
       </div>
     </div>
@@ -180,7 +181,7 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
 
   return (
     <>
-      <tr className="border-b border-[#F0EBE3] hover:bg-[#FAF7F2] cursor-pointer"
+      <tr className="border-b border-line-soft hover:bg-canvas cursor-pointer"
         onClick={() => setOpen(o => !o)}>
         <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
           <input
@@ -189,50 +190,50 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
             disabled={!selectable}
             onChange={() => onToggleSelect(v)}
             title={selectable ? 'Chọn phiếu để duyệt/từ chối hàng loạt' : 'Chỉ chọn được phiếu đang chờ duyệt'}
-            className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+            className="w-4 h-4 rounded border-gold/60 text-gold focus:ring-gold/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
           />
         </td>
-        <td className="px-3 py-3 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{v.paymentNumber || v.voucherCode}</td>
+        <td className="px-3 py-3 font-mono text-xs text-gold whitespace-nowrap">{v.paymentNumber || v.voucherCode}</td>
         <td className="px-3 py-3 max-w-[180px]">
-          <p className="font-medium text-[#1C1C1E] text-sm truncate">{v.reason}</p>
-          {v.vendorName && <p className="text-xs text-[#8E8878] truncate">{v.vendorName}</p>}
+          <p className="font-medium text-ink text-sm truncate">{v.reason}</p>
+          {v.vendorName && <p className="text-xs text-muted truncate">{v.vendorName}</p>}
           {v.expenseDate ? (
-            <p className="text-[10px] text-[#8E8878] mt-0.5">
+            <p className="text-[10px] text-muted mt-0.5">
               Ngày chi: {(() => { const d = new Date(v.expenseDate); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}
             </p>
           ) : v.expensePeriod && (
-            <p className="text-[10px] text-[#8E8878] mt-0.5">
+            <p className="text-[10px] text-muted mt-0.5">
               Kỳ: {(() => { const [y, m] = v.expensePeriod.split('-'); return `Tháng ${Number(m)}/${y}`; })()}
             </p>
           )}
           {v.voucherType === 'VENDOR_DEBT_PAYMENT' && (
-            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 mt-1">
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 mt-1">
               <Wallet size={9} /> Trả công nợ NCC
             </span>
           )}
           <div className="flex items-center gap-1 mt-1 flex-wrap">
-            <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isBank ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>
+            <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isBank ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}>
               {isBank ? <Landmark size={9} /> : <Wallet size={9} />} {isBank ? 'Chuyển khoản' : 'Tiền mặt'}
             </span>
             {v.approvedByName && (
-              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[#C9A84C]/10 text-[#B8923E]">
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gold/10 text-gold-strong">
                 <ShieldCheck size={9} /> {v.approvedByName}
               </span>
             )}
           </div>
         </td>
-        <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.createdByName}</td>
-        <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.requestedByName || v.createdByName}</td>
-        <td className="px-3 py-3 text-right font-bold text-[#C9A84C] whitespace-nowrap">{formatCurrency(total)}</td>
+        <td className="px-3 py-3 text-sm text-ink-2 whitespace-nowrap">{v.createdByName}</td>
+        <td className="px-3 py-3 text-sm text-ink-2 whitespace-nowrap">{v.requestedByName || v.createdByName}</td>
+        <td className="px-3 py-3 text-right font-bold text-gold whitespace-nowrap">{formatCurrency(total)}</td>
         <td className="px-3 py-3 whitespace-nowrap"><StatusBadge status={v.status} statusMap={statusMap} /></td>
-        <td className="px-3 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDateTime(v.createdAt)}</td>
-        <td className="px-2 py-3 text-[#8E8878]">
+        <td className="px-3 py-3 text-xs text-muted whitespace-nowrap">{formatDateTime(v.createdAt)}</td>
+        <td className="px-2 py-3 text-muted">
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </td>
       </tr>
 
       {open && (
-        <tr className="bg-[#FAF7F2]">
+        <tr className="bg-canvas">
           <td colSpan={9} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Các khoản chi — Owner/Admin sửa được nhãn + số tiền
@@ -243,7 +244,7 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
 
               {(v.imageUrls || []).length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">
+                  <p className="text-xs font-semibold text-muted uppercase mb-2">
                     Ảnh chứng từ ({v.imageUrls.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -251,7 +252,7 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
                       <button
                         key={i}
                         onClick={(e) => { e.stopPropagation(); onOpenLightbox(v.imageUrls, i); }}
-                        className="w-20 h-20 rounded-lg overflow-hidden border border-[#E8DDD0] hover:border-[#C9A84C] hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-[#C9A84C]"
+                        className="w-20 h-20 rounded-lg overflow-hidden border border-line hover:border-gold hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-gold"
                       >
                         <img src={imgSrc(url)} alt={`ảnh ${i + 1}`} className="w-full h-full object-cover" />
                       </button>
@@ -261,27 +262,27 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
               )}
 
               {isBank && (
-                <div className="md:col-span-2 bg-sky-50 border border-sky-100 rounded-lg p-3 flex flex-wrap gap-6">
-                  <div><p className="text-[10px] text-[#8E8878] uppercase">Ngân hàng</p><p className="text-sm font-medium text-[#1C1C1E]">{v.bankName || '—'}</p></div>
-                  <div><p className="text-[10px] text-[#8E8878] uppercase">Mã tham chiếu</p><p className="text-sm font-mono text-[#1C1C1E]">{v.bankRef || '—'}</p></div>
-                  {v.vendorType && <div><p className="text-[10px] text-[#8E8878] uppercase">Danh mục</p><p className="text-sm text-[#1C1C1E]">{VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType}</p></div>}
+                <div className="md:col-span-2 bg-sky-50 dark:bg-sky-500/10 border border-sky-100 dark:border-sky-500/18 rounded-lg p-3 flex flex-wrap gap-6">
+                  <div><p className="text-[10px] text-muted uppercase">Ngân hàng</p><p className="text-sm font-medium text-ink">{v.bankName || '—'}</p></div>
+                  <div><p className="text-[10px] text-muted uppercase">Mã tham chiếu</p><p className="text-sm font-mono text-ink">{v.bankRef || '—'}</p></div>
+                  {v.vendorType && <div><p className="text-[10px] text-muted uppercase">Danh mục</p><p className="text-sm text-ink">{VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType}</p></div>}
                 </div>
               )}
 
               {v.status === 'REJECTED' && v.rejectReason && (
                 <div className="md:col-span-2">
                   <p className="text-xs font-semibold text-red-500 uppercase mb-1">Lý do từ chối</p>
-                  <p className="text-sm text-[#5C4E3D]">{v.rejectReason}</p>
+                  <p className="text-sm text-ink-2">{v.rejectReason}</p>
                 </div>
               )}
 
               {/* Duyệt / Từ chối (ADMIN & OWNER duyệt được mọi phiếu PENDING) */}
               {canApprove && (
-                <div className="md:col-span-2 border-t border-[#E8DDD0] pt-3" onClick={e => e.stopPropagation()}>
+                <div className="md:col-span-2 border-t border-line pt-3" onClick={e => e.stopPropagation()}>
                   {!rejecting ? (
                     <div className="flex gap-2 justify-end">
                       <button onClick={() => setRejecting(true)} disabled={busy}
-                        className="px-4 py-2 rounded-lg border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition disabled:opacity-50">
+                        className="px-4 py-2 rounded-lg border border-red-200 dark:border-red-500/28 text-sm font-semibold text-red-600 dark:text-red-300 hover:bg-red-50 dark:bg-red-500/10 transition disabled:opacity-50">
                         Từ chối
                       </button>
                       <button onClick={doApprove} disabled={busy}
@@ -291,12 +292,12 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <label className="block text-xs font-semibold text-red-600">Lý do từ chối *</label>
+                      <label className="block text-xs font-semibold text-red-600 dark:text-red-300">Lý do từ chối *</label>
                       <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={2}
-                        placeholder="Nhập lý do..." className="w-full px-3 py-2 rounded-lg border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 bg-white" />
+                        placeholder="Nhập lý do..." className="w-full px-3 py-2 rounded-lg border border-red-200 dark:border-red-500/28 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 dark:ring-red-500/28 bg-surface" />
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => { setRejecting(false); setRejectReason(''); }} disabled={busy}
-                          className="px-4 py-2 rounded-lg border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-white transition disabled:opacity-50">Huỷ</button>
+                          className="px-4 py-2 rounded-lg border border-hairline-2 text-sm font-semibold text-muted hover:bg-surface transition disabled:opacity-50">Huỷ</button>
                         <button onClick={doReject} disabled={busy}
                           className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition disabled:opacity-50">
                           {busy ? 'Đang xử lý...' : 'Xác nhận từ chối'}
@@ -309,27 +310,27 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
 
               {/* Chuyển phiếu đã duyệt / đã từ chối về lại CHỜ DUYỆT (OWNER/ADMIN) */}
               {canReopen && (
-                <div className="md:col-span-2 border-t border-[#E8DDD0] pt-3">
+                <div className="md:col-span-2 border-t border-line pt-3">
                   {!reopening ? (
                     <div className="flex justify-end">
                       <button onClick={() => setReopening(true)} disabled={busy}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition disabled:opacity-50">
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-500/35 text-sm font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:bg-amber-500/10 transition disabled:opacity-50">
                         <RotateCcw size={14} /> Chuyển về chờ duyệt
                       </button>
                     </div>
                   ) : (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs text-amber-800">
+                    <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-lg p-3 space-y-2">
+                      <p className="text-xs text-amber-800 dark:text-amber-300">
                         Phiếu sẽ quay lại trạng thái <b>Chờ duyệt</b>, xoá thông tin người duyệt/lý do
                         từ chối cũ và tính lại cấp duyệt theo tổng tiền hiện tại.
                         Thao tác này được ghi vào nhật ký kèm vai trò của bạn.
                       </p>
                       <textarea value={reopenNote} onChange={e => setReopenNote(e.target.value)} rows={2}
                         placeholder="Ghi chú lý do mở lại (tuỳ chọn)..."
-                        className="w-full px-3 py-2 rounded-lg border border-amber-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 bg-white" />
+                        className="w-full px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-500/28 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 dark:ring-amber-500/28 bg-surface" />
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => { setReopening(false); setReopenNote(''); }} disabled={busy}
-                          className="px-4 py-2 rounded-lg border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-white transition disabled:opacity-50">Huỷ</button>
+                          className="px-4 py-2 rounded-lg border border-hairline-2 text-sm font-semibold text-muted hover:bg-surface transition disabled:opacity-50">Huỷ</button>
                         <button onClick={doReopen} disabled={busy}
                           className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 transition disabled:opacity-50">
                           {busy ? 'Đang xử lý...' : 'Xác nhận mở lại'}
@@ -341,7 +342,7 @@ function VoucherRow({ v, onOpenLightbox, statusMap, onChanged, selected, onToggl
               )}
 
               {/* Nhật ký thao tác — tải khi mở rộng dòng */}
-              <div className="md:col-span-2 border-t border-[#E8DDD0] pt-3">
+              <div className="md:col-span-2 border-t border-line pt-3">
                 <ExpenseVoucherLogList voucherId={v.id} refreshKey={v.updatedAt} />
               </div>
             </div>
@@ -405,39 +406,39 @@ function ApprovalConfigPanel({ onApplied }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-line overflow-hidden">
       <button onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FAF7F2] transition">
-        <span className="flex items-center gap-2 text-sm font-semibold text-[#1C1C1E]">
-          <Settings2 size={16} className="text-[#C9A84C]" /> Cấu hình duyệt của Kế toán trưởng
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-canvas transition">
+        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <Settings2 size={16} className="text-gold" /> Cấu hình duyệt của Kế toán trưởng
         </span>
-        {open ? <ChevronUp size={16} className="text-[#8E8878]" /> : <ChevronDown size={16} className="text-[#8E8878]" />}
+        {open ? <ChevronUp size={16} className="text-muted" /> : <ChevronDown size={16} className="text-muted" />}
       </button>
       {open && (
-        <div className="p-4 border-t border-[#E8DDD0] space-y-4">
+        <div className="p-4 border-t border-line space-y-4">
           {loading ? (
-            <p className="text-sm text-[#8E8878]">Đang tải...</p>
+            <p className="text-sm text-muted">Đang tải...</p>
           ) : (
             <>
-              <p className="text-xs text-[#8E8878]">
+              <p className="text-xs text-muted">
                 Kế toán trưởng (SUPER_ACCOUNTANT) được tự duyệt / duyệt phiếu khi <b>tổng tiền &lt; ngưỡng</b> VÀ
                 <b> danh mục</b> nằm trong danh sách cho phép. Ngược lại phiếu sẽ chuyển Chủ/Quản trị duyệt.
               </p>
               <div>
-                <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Ngưỡng số tiền (đ)</label>
+                <label className="block text-xs font-semibold text-ink mb-1">Ngưỡng số tiền (đ)</label>
                 <input
                   value={threshold ? new Intl.NumberFormat('vi-VN').format(parseVND(threshold)) : ''}
                   onChange={e => setThreshold(String(parseVND(e.target.value)))}
-                  className="w-full sm:w-64 px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm text-right focus:outline-none focus:border-[#C9A84C]" />
+                  className="w-full sm:w-64 px-3 py-2 rounded-xl border border-line text-sm text-right focus:outline-none focus:border-gold" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#1C1C1E] mb-1.5">Danh mục cho phép</label>
+                <label className="block text-xs font-semibold text-ink mb-1.5">Danh mục cho phép</label>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(VENDOR_TYPE_LABELS).map(([k, label]) => {
                     const on = cats.includes(k);
                     return (
                       <button key={k} type="button" onClick={() => toggleCat(k)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${on ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${on ? 'bg-gold text-white border-gold' : 'bg-surface text-muted border-line hover:border-gold'}`}>
                         {label}
                       </button>
                     );
@@ -445,9 +446,9 @@ function ApprovalConfigPanel({ onApplied }) {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-[#8E8878]">{updatedByName ? `Cập nhật gần nhất bởi ${updatedByName}` : ''}</span>
+                <span className="text-[11px] text-muted">{updatedByName ? `Cập nhật gần nhất bởi ${updatedByName}` : ''}</span>
                 <button onClick={save} disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#B8923E] transition disabled:opacity-50">
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-strong transition disabled:opacity-50">
                   <Save size={15} /> {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
                 </button>
               </div>
@@ -461,6 +462,8 @@ function ApprovalConfigPanel({ onApplied }) {
 
 export default function ExpenseVoucherPage() {
   const { t } = useLang();
+  // Mở từ nút trên trang Dòng tiền → có state.from để quay lại.
+  const { from: subFrom } = useSubPageNav();
   const toast = useToast();
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useMinLoading();
@@ -471,9 +474,9 @@ export default function ExpenseVoucherPage() {
   const [search, setSearch] = useState('');
 
   const STATUS_MAP = {
-    PENDING: { label: t('status', 'pending'), cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-    APPROVED: { label: t('status', 'approved'), cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-    REJECTED: { label: t('status', 'rejected_short'), cls: 'bg-red-50 text-red-600 border-red-200', icon: XCircle },
+    PENDING: { label: t('status', 'pending'), cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28', icon: Clock },
+    APPROVED: { label: t('status', 'approved'), cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: CheckCircle },
+    REJECTED: { label: t('status', 'rejected_short'), cls: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28', icon: XCircle },
   };
 
   const { role } = useAuth();
@@ -562,6 +565,9 @@ export default function ExpenseVoucherPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
+      {/* Trang dùng chung nhiều role — chỉ hiện nút Quay lại khi vào từ Dòng tiền. */}
+      {subFrom && <BackButton fallback={subFrom} />}
+
       <PageHeader icon={Receipt} title="Phiếu chi phí"
         subtitle="Duyệt phiếu chi & cấu hình hạn mức, danh mục cho Kế toán trưởng" />
 
@@ -574,15 +580,15 @@ export default function ExpenseVoucherPage() {
 
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
             placeholder="Tìm số phiếu chi, lý do, nhà cung cấp..."
-            className="w-full pl-9 pr-8 py-2 rounded-xl border border-[#E8DDD0] text-xs bg-white focus:outline-none focus:border-[#C9A84C]"
+            className="w-full pl-9 pr-8 py-2 rounded-xl border border-line text-xs bg-surface focus:outline-none focus:border-gold"
           />
           {search && (
-            <button onClick={() => { setSearch(''); setPage(0); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+            <button onClick={() => { setSearch(''); setPage(0); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
               <X size={13} />
             </button>
           )}
@@ -593,7 +599,7 @@ export default function ExpenseVoucherPage() {
           placeholder="Lọc theo ngày" />
         <select value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(0); }}
-          className="border border-[#E8DDD0] rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:border-[#C9A84C]">
+          className="border border-line rounded-xl px-3 py-2 text-xs bg-surface focus:outline-none focus:border-gold">
           <option value="">Tất cả trạng thái</option>
           <option value="PENDING">Chờ duyệt</option>
           <option value="APPROVED">Đã duyệt</option>
@@ -601,14 +607,14 @@ export default function ExpenseVoucherPage() {
         </select>
         {/* FIX #3: Import / Export Phiếu chi */}
         <div className="flex items-center gap-2 ml-auto">
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
               if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
             }} />
           </label>
           <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold transition-all">
             <Download size={13} /> Export
           </button>
         </div>
@@ -619,10 +625,10 @@ export default function ExpenseVoucherPage() {
       ) : vouchers.length === 0
         ? <EmptyState icon={Receipt} title="Không có phiếu chi nào" />
         : (
-          <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">
+          <div className="bg-surface rounded-2xl border border-line overflow-x-auto">
             <table className="w-full text-sm min-w-[880px]">
               <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
+                <tr className="bg-canvas border-b border-line">
                   <th className="px-3 py-3 w-10">
                     <input
                       type="checkbox"
@@ -630,11 +636,11 @@ export default function ExpenseVoucherPage() {
                       disabled={selectableOnPage.length === 0}
                       onChange={togglePageAll}
                       title="Chọn tất cả phiếu chờ duyệt của trang này"
-                      className="w-4 h-4 rounded border-[#C9A84C]/60 text-[#C9A84C] focus:ring-[#C9A84C]/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                      className="w-4 h-4 rounded border-gold/60 text-gold focus:ring-gold/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                     />
                   </th>
                   {['Số phiếu', 'Lý do / Đơn vị', 'Người lập', 'Người yêu cầu', t('order', 'total_amount'), t('common', 'status'), 'Ngày tạo', ''].map(h => (
-                    <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted uppercase whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -658,8 +664,8 @@ export default function ExpenseVoucherPage() {
           {Array.from({ length: totalPages }, (_, i) => (
             <button key={i} onClick={() => load(i)}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${i === page
-                ? 'bg-[#C9A84C] text-white'
-                : 'bg-[#F0EBE3] text-[#5C4E3D] hover:bg-[#E8DDD0]'}`}>
+                ? 'bg-gold text-white'
+                : 'bg-surface-2 text-ink-2 hover:bg-surface-3'}`}>
               {i + 1}
             </button>
           ))}
@@ -669,8 +675,8 @@ export default function ExpenseVoucherPage() {
       {/* ── Thanh hành động hàng loạt — hiện khi đã chọn ít nhất 1 phiếu ─────── */}
       {selectedList.length > 0 && (
         <div className="sticky bottom-4 z-40 mx-auto max-w-3xl">
-          <div className="bg-[#1A2B1A] text-white rounded-2xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-3">
-            <ListChecks size={18} className="text-[#C9A84C] flex-shrink-0" />
+          <div className="bg-forest-deep text-white rounded-2xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-3">
+            <ListChecks size={18} className="text-gold flex-shrink-0" />
             <div className="flex-1 min-w-[140px]">
               <p className="text-sm font-bold">Đã chọn {selectedList.length} phiếu</p>
               <p className="text-xs text-white/60">Tổng {formatCurrency(selectedTotal)}</p>
@@ -684,7 +690,7 @@ export default function ExpenseVoucherPage() {
               Bỏ chọn hết
             </button>
             <button onClick={() => setBulkModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-[#C9A84C] hover:bg-[#B8923E] text-xs font-bold transition">
+              className="px-4 py-2 rounded-xl bg-gold hover:bg-gold-strong text-xs font-bold transition">
               Duyệt / Từ chối
             </button>
           </div>

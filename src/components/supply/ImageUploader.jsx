@@ -63,13 +63,13 @@ export default function ImageUploader({ value = [], onChange, onBusyChange, labe
 
   return (
     <div className="space-y-2">
-      <span className="block text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider">
+      <span className="block text-xs font-semibold text-ink uppercase tracking-wider">
         {label}
       </span>
 
       <div className="flex flex-wrap gap-2">
         {items.map(img => (
-          <div key={img.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-black/10">
+          <div key={img.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-hairline-2">
             <img src={img.url || img.preview} alt="" className="w-full h-full object-cover" />
             {img.uploading ? (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -85,7 +85,7 @@ export default function ImageUploader({ value = [], onChange, onBusyChange, labe
         ))}
 
         <button type="button" onClick={() => inputRef.current?.click()}
-          className="w-20 h-20 rounded-xl border-2 border-dashed border-black/15 flex flex-col items-center justify-center text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+          className="w-20 h-20 rounded-xl border-2 border-dashed border-hairline-3 flex flex-col items-center justify-center text-muted hover:border-gold hover:text-gold transition-colors">
           <ImagePlus size={18} />
           <span className="text-[10px] mt-1">Thêm ảnh</span>
         </button>

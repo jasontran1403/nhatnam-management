@@ -24,7 +24,7 @@ import { useFmt } from '../../utils/useFmt';
 // ── Status badge cho kế hoạch ────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const { t } = useLang();
-  const cfg = getStatusLabels(t)[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = getStatusLabels(t)[status] || { label: status, cls: 'bg-surface-2 text-ink-2' };
   return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
@@ -104,24 +104,24 @@ function CreateWorkOrderModal({ plan, products, factories, onClose, onSaved }) {
           </div>
         }>
         <div className="space-y-4">
-          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+          {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
-          <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs space-y-1">
+          <div className="bg-canvas rounded-xl px-4 py-3 text-xs space-y-1">
             <div className="flex justify-between">
-              <span className="text-[#8E8878]">{t('production', 'mps_plan_products')}</span>
+              <span className="text-muted">{t('production', 'mps_plan_products')}</span>
               <span className="font-medium">{planProducts.map(p => p.name).join(', ') || '—'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#8E8878]">{t('production', 'mps_target')}</span>
+              <span className="text-muted">{t('production', 'mps_target')}</span>
               <span className="font-medium">{fmtNum(planTgt)} {plan.outputUnit}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#8E8878]">{t('production', 'mps_ordered')}</span>
-              <span className={`font-medium ${planAcc >= planTgt ? 'text-red-500' : 'text-emerald-600'}`}>{fmtNum(planAcc)}</span>
+              <span className="text-muted">{t('production', 'mps_ordered')}</span>
+              <span className={`font-medium ${planAcc >= planTgt ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-300'}`}>{fmtNum(planAcc)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#8E8878]">{t('production', 'mps_remaining')}</span>
-              <span className={`font-bold ${planTgt - planAcc <= 0 ? 'text-red-500' : 'text-[#C9A84C]'}`}>
+              <span className="text-muted">{t('production', 'mps_remaining')}</span>
+              <span className={`font-bold ${planTgt - planAcc <= 0 ? 'text-red-500' : 'text-gold'}`}>
                 {planTgt - planAcc <= 0 ? t('production', 'mps_fulfilled') : fmtNum(planTgt - planAcc)}
               </span>
             </div>
@@ -129,9 +129,9 @@ function CreateWorkOrderModal({ plan, products, factories, onClose, onSaved }) {
 
           <Field label={t('production', 'mps_field_product')} required>
             {planProducts.length === 0 ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50">
-                <AlertTriangle size={13} className="text-amber-600" />
-                <span className="text-sm text-amber-700">{t('production', 'mps_no_product_in_plan')}</span>
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 dark:border-amber-500/28 bg-amber-50 dark:bg-amber-500/10">
+                <AlertTriangle size={13} className="text-amber-600 dark:text-amber-300" />
+                <span className="text-sm text-amber-700 dark:text-amber-300">{t('production', 'mps_no_product_in_plan')}</span>
               </div>
             ) : (
               <select className={inputCls} value={factoryProductId} onChange={e => setFactoryProductId(e.target.value)}>
@@ -167,14 +167,14 @@ function CreateWorkOrderModal({ plan, products, factories, onClose, onSaved }) {
             </Field>
           )}
 
-          <div className="flex items-center justify-between bg-[#FAF7F2] rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between bg-canvas rounded-xl px-4 py-3">
             <div>
               <p className="text-sm font-medium">{t('production', 'mps_strict_schedule')}</p>
-              <p className="text-xs text-[#8E8878]">{t('production', 'mps_strict_schedule_hint')}</p>
+              <p className="text-xs text-muted">{t('production', 'mps_strict_schedule_hint')}</p>
             </div>
             <button onClick={() => setScheduledMode(v => !v)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${scheduledMode ? 'bg-[#C9A84C]' : 'bg-black/15'}`}>
-              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${scheduledMode ? 'left-6' : 'left-0.5'}`} />
+              className={`w-12 h-6 rounded-full transition-colors relative ${scheduledMode ? 'bg-gold' : 'bg-hairline-3'}`}>
+              <div className={`w-5 h-5 bg-surface rounded-full shadow absolute top-0.5 transition-all ${scheduledMode ? 'left-6' : 'left-0.5'}`} />
             </button>
           </div>
         </div>
@@ -190,9 +190,9 @@ function CreateWorkOrderModal({ plan, products, factories, onClose, onSaved }) {
               </PrimaryButton>
             </div>
           }>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-3">
-            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl p-3 flex gap-3">
+            <AlertTriangle size={18} className="text-amber-600 dark:text-amber-300 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-800 dark:text-amber-300">
               <p className="font-semibold">{t('production', 'mps_over_plan_warning')}</p>
               <p className="mt-1">
                 {t('production', 'mps_total')}: <b>{fmtNum(overPlanConfirm.newTotal)}</b>
@@ -214,18 +214,18 @@ function PlanCard({ plan, onCreateWO, onOpen }) {
   const pct = Number(plan.progressPct || 0);
   const color = progressColor(pct);
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 sm:p-5 space-y-3">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 sm:p-5 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <button onClick={onOpen} className="text-left min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-[#1C1C1E] font-mono">{plan.planCode}</span>
+            <span className="font-bold text-ink font-mono">{plan.planCode}</span>
             <StatusBadge status={plan.status} />
           </div>
-          <p className="text-sm text-[#8E8878] mt-0.5 truncate">{plan.title}</p>
+          <p className="text-sm text-muted mt-0.5 truncate">{plan.title}</p>
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-xs text-[#8E8878]">
+      <div className="flex flex-wrap gap-2 text-xs text-muted">
         <span className="flex items-center gap-1">
           <Calendar size={11} /> {fmtDate(plan.startDate)} → {fmtDate(plan.endDate)}
         </span>
@@ -237,20 +237,20 @@ function PlanCard({ plan, onCreateWO, onOpen }) {
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <div className="flex justify-between mb-1 text-[10px]">
-            <span className="text-[#8E8878]">{fmtNum(plan.accumulatedQty)} / {fmtNum(plan.targetQty)} {plan.outputUnit}</span>
+            <span className="text-muted">{fmtNum(plan.accumulatedQty)} / {fmtNum(plan.targetQty)} {plan.outputUnit}</span>
             <span className="font-bold" style={{ color: color.hex }}>{pct.toFixed(0)}%</span>
           </div>
-          <div className="h-1.5 bg-black/5 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-hairline rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color.hex }} />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-[#8E8878]">
+      <div className="flex items-center justify-between text-xs text-muted">
         <span>{t('production', 'mps_wo_count', { n: plan.totalWorkOrders || 0 })}</span>
         {plan.status === 'ACTIVE' && (
           <button onClick={onCreateWO}
-            className="flex items-center gap-1 font-semibold text-[#C9A84C] hover:underline">
+            className="flex items-center gap-1 font-semibold text-gold hover:underline">
             <Plus size={12} /> {t('production', 'mps_create_wo')}
           </button>
         )}
@@ -293,23 +293,23 @@ export default function FactoryPlansPage() {
   );
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 bg-[#F5F0EB] min-h-full">
-      <div className="bg-[#1A2B1A] rounded-2xl p-5 text-white">
-        <p className="text-[#7CB87C] text-xs uppercase tracking-widest font-medium">
+    <div className="p-4 sm:p-6 space-y-4 bg-surface-2 min-h-full">
+      <div className="bg-forest-deep rounded-2xl p-5 text-white">
+        <p className="text-forest text-xs uppercase tracking-widest font-medium">
           {t('production', 'machine_page_factory_label')}
         </p>
         <h1 className="text-xl font-bold mt-0.5">{t('production', 'mps_title')}</h1>
         <p className="text-white/60 text-xs mt-1">{t('production', 'mps_subtitle')}</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-3 sm:p-4 flex items-center gap-3 flex-wrap">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-3 sm:p-4 flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
           <input className={inputCls + ' pl-8'} placeholder={t('production', 'mps_search_ph')}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <button onClick={load} disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 bg-[#FAF7F2] border border-[#E8DDD0] rounded-xl text-sm text-[#1C1C1E] hover:bg-[#F0EBE3] transition-colors">
+          className="flex items-center gap-2 px-3 py-2 bg-canvas border border-line rounded-xl text-sm text-ink hover:bg-surface-2 transition-colors">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> {t('common', 'refresh')}
         </button>
       </div>
@@ -317,9 +317,9 @@ export default function FactoryPlansPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{[...Array(4)].map((_, i) => <CardSkeleton key={i} lines={4} />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-          <ClipboardList size={32} className="mx-auto text-[#C4B9A8] mb-3" />
-          <p className="text-sm text-[#8E8878]">{t('production', 'mps_empty')}</p>
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+          <ClipboardList size={32} className="mx-auto text-faint mb-3" />
+          <p className="text-sm text-muted">{t('production', 'mps_empty')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

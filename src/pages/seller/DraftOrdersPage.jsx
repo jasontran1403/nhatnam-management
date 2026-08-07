@@ -111,7 +111,7 @@ function CountdownBadge({ scheduledAt, now }) {
   const secs = diffSecs % 60;
   if (diffMs <= 0) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400 border border-gray-200">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-2 text-faint border border-line">
         <Clock size={10} /> Đã hết giờ
       </span>
     );
@@ -119,20 +119,20 @@ function CountdownBadge({ scheduledAt, now }) {
   const timeStr = hours > 0 ? `${hours}h ${pad(mins)}m` : `${pad(mins)}:${pad(secs)}`;
   if (diffMs < 15 * 60 * 1000) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600 border border-red-300 animate-pulse">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300 border border-red-300 dark:border-red-500/35 animate-pulse">
         <AlertTriangle size={10} /> {timeStr}
       </span>
     );
   }
   if (diffMs < 60 * 60 * 1000) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-600 border border-amber-300">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-500/18 text-amber-600 dark:text-amber-300 border border-amber-300 dark:border-amber-500/35">
         <Clock size={10} /> {timeStr}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-200">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/28">
       <Clock size={10} /> {timeStr}
     </span>
   );
@@ -140,43 +140,43 @@ function CountdownBadge({ scheduledAt, now }) {
 function getScheduledRowClass(scheduledAt, now) {
   if (!scheduledAt) return '';
   const diffMs = scheduledAt - now;
-  if (diffMs <= 0) return 'bg-gray-50';
-  if (diffMs < 15 * 60 * 1000) return 'bg-red-50/60';
-  if (diffMs < 60 * 60 * 1000) return 'bg-amber-50/60';
-  return 'bg-blue-50/20';
+  if (diffMs <= 0) return 'bg-canvas';
+  if (diffMs < 15 * 60 * 1000) return 'bg-red-50/60 dark:bg-red-500/6';
+  if (diffMs < 60 * 60 * 1000) return 'bg-amber-50/60 dark:bg-amber-500/6';
+  return 'bg-blue-50/20 dark:bg-blue-500/4';
 }
 function WarningModal({ open, type, items, onClose }) {
   if (!open) return null;
   const isStock = type === 'stock';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className={`px-5 py-4 flex items-center gap-3 border-b ${isStock ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isStock ? 'bg-red-100' : 'bg-amber-100'}`}>
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className={`px-5 py-4 flex items-center gap-3 border-b ${isStock ? 'bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/18' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/18'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isStock ? 'bg-red-100 dark:bg-red-500/18' : 'bg-amber-100 dark:bg-amber-500/18'}`}>
             <AlertTriangle size={16} className={isStock ? 'text-red-500' : 'text-amber-500'} />
           </div>
           <div className="flex-1">
-            <h3 className={`font-bold text-sm ${isStock ? 'text-red-700' : 'text-amber-700'}`}>
+            <h3 className={`font-bold text-sm ${isStock ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
               {isStock ? 'Không đủ tồn kho' : 'Giá đã thay đổi'}
             </h3>
             <p className={`text-xs mt-0.5 ${isStock ? 'text-red-500' : 'text-amber-500'}`}>
               {isStock ? 'Không thể tạo đơn hàng, vui lòng điều chỉnh đơn nháp' : 'Vui lòng xem lại và cập nhật giá'}
             </p>
           </div>
-          <button onClick={onClose} className={`${isStock ? 'text-red-400 hover:text-red-600' : 'text-amber-400 hover:text-amber-600'} transition-colors`}>
+          <button onClick={onClose} className={`${isStock ? 'text-red-400 hover:text-red-600 dark:text-red-300' : 'text-amber-400 hover:text-amber-600 dark:text-amber-300'} transition-colors`}>
             <X size={18} />
           </button>
         </div>
         <div className="px-5 py-4 space-y-2 max-h-64 overflow-y-auto">
           {items.map((item, idx) => (
-            <div key={idx} className={`rounded-xl border p-3 ${isStock ? 'border-red-100 bg-red-50/40' : 'border-amber-100 bg-amber-50/40'}`}>
-              <p className={`font-semibold text-sm ${isStock ? 'text-red-700' : 'text-amber-700'}`}>
+            <div key={idx} className={`rounded-xl border p-3 ${isStock ? 'border-red-100 dark:border-red-500/18 bg-red-50/40 dark:bg-red-500/4' : 'border-amber-100 dark:border-amber-500/18 bg-amber-50/40 dark:bg-amber-500/4'}`}>
+              <p className={`font-semibold text-sm ${isStock ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
                 {isStock ? item.ingredientName : item.productName}
               </p>
               {isStock ? (
                 <div className="flex gap-4 mt-1">
-                  <span className="text-xs text-red-400">Cần: <b className="text-red-600">{Number(item.needed).toFixed(2)}</b></span>
-                  <span className="text-xs text-red-400">Còn: <b className="text-red-600">{Number(item.available).toFixed(2)}</b></span>
+                  <span className="text-xs text-red-400">Cần: <b className="text-red-600 dark:text-red-300">{Number(item.needed).toFixed(2)}</b></span>
+                  <span className="text-xs text-red-400">Còn: <b className="text-red-600 dark:text-red-300">{Number(item.available).toFixed(2)}</b></span>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1 mt-1">
@@ -184,11 +184,11 @@ function WarningModal({ open, type, items, onClose }) {
                     <span className="text-xs text-amber-500">Giá hiện tại trong đơn: <b>{fmt(item.oldPrice)}</b></span>
                     <span className="text-xs text-amber-500">Giá mới: <b>{fmt(item.newPrice)}</b></span>
                   </div>
-                  {item.tierName && <span className="text-[11px] text-amber-600">Khung giá: {item.tierName}</span>}
+                  {item.tierName && <span className="text-[11px] text-amber-600 dark:text-amber-300">Khung giá: {item.tierName}</span>}
                 </div>
               )}
               {isStock && item.affectedProducts?.length > 0 && (
-                <p className="text-[11px] text-[#8E8878] mt-1">Ảnh hưởng: {item.affectedProducts.join(', ')}</p>
+                <p className="text-[11px] text-muted mt-1">Ảnh hưởng: {item.affectedProducts.join(', ')}</p>
               )}
             </div>
           ))}
@@ -231,8 +231,8 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
+        <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-gold to-gold-strong px-5 py-4 flex items-center justify-between">
             <div>
               <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Xác nhận đặt hàng</p>
               <h3 className="text-white font-bold text-base mt-0.5">Thông tin giao hàng</h3>
@@ -243,51 +243,51 @@ function OrderInfoModal({ open, draft, onClose, onConfirm }) {
           </div>
           <div className="px-5 py-4 space-y-4">
             <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">👤 Khách hàng</label>
+              <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">👤 Khách hàng</label>
               {customer ? (
-                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[#C9A84C]/40 bg-[#FDF8ED]">
+                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-gold/40 bg-gold-tint">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-[#1C1C1E] truncate">{customer.contactName || customer.name}</p>
-                    {customer.phone && <p className="text-xs text-[#8E8878]">{customer.phone}</p>}
+                    <p className="font-semibold text-sm text-ink truncate">{customer.contactName || customer.name}</p>
+                    {customer.phone && <p className="text-xs text-muted">{customer.phone}</p>}
                   </div>
-                  <button onClick={() => setCustomer(null)} className="text-[#C4B9A8] hover:text-red-400 transition-colors shrink-0">
+                  <button onClick={() => setCustomer(null)} className="text-faint hover:text-red-400 transition-colors shrink-0">
                     <X size={14} />
                   </button>
                 </div>
               ) : (
                 <button onClick={() => setCustomerModalOpen(true)}
-                  className="w-full flex items-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-[#E8DDD0] text-[#8E8878] text-sm hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all">
+                  className="w-full flex items-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-line text-muted text-sm hover:border-gold hover:text-gold transition-all">
                   <User size={14} /> Chọn khách hàng (tuỳ chọn)
                 </button>
               )}
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">✍️ Tên người đặt hàng</label>
+              <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">✍️ Tên người đặt hàng</label>
               <input type="text" value={orderedBy} onChange={e => setOrderedBy(e.target.value)}
                 placeholder="Nhập tên người đặt..."
-                className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
+                className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-gold transition-colors bg-surface placeholder:text-faint" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">📦 Người nhận hàng</label>
+              <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">📦 Người nhận hàng</label>
               <input type="text" value={receiverName} onChange={e => setReceiverName(e.target.value)}
                 placeholder="Nhập tên người nhận (nếu khác người đặt)..."
-                className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
+                className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-gold transition-colors bg-surface placeholder:text-faint" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">🕐 Ngày & giờ giao hàng <span className="normal-case font-normal text-[#C4B9A8]">(tuỳ chọn)</span></label>
+              <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">🕐 Ngày & giờ giao hàng <span className="normal-case font-normal text-faint">(tuỳ chọn)</span></label>
               <DateTimePicker value={deliveryDate} onChange={setDeliveryDate} minDate={new Date()} placeholder="Không hẹn giờ giao — bấm để chọn" />
             </div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <div onClick={() => setShowPrices(v => !v)}
-                className={`w-9 h-5 rounded-full relative flex-shrink-0 transition-colors ${showPrices ? 'bg-[#C9A84C]' : 'bg-[#D0C9BE]'}`}>
-                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${showPrices ? 'left-4' : 'left-0.5'}`} />
+                className={`w-9 h-5 rounded-full relative flex-shrink-0 transition-colors ${showPrices ? 'bg-gold' : 'bg-surface-3'}`}>
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-surface shadow transition-all ${showPrices ? 'left-4' : 'left-0.5'}`} />
               </div>
-              <span className="text-sm text-[#5C4E3D]">Hiển thị giá trên hóa đơn</span>
+              <span className="text-sm text-ink-2">Hiển thị giá trên hóa đơn</span>
             </label>
           </div>
           <div className="px-5 pb-5">
             <button onClick={handleConfirm}
-              className="w-full py-3 rounded-xl bg-[#C9A84C] text-white font-bold text-sm hover:bg-[#b8963d] transition-colors flex items-center justify-center gap-2">
+              className="w-full py-3 rounded-xl bg-gold text-white font-bold text-sm hover:bg-gold-strong transition-colors flex items-center justify-center gap-2">
               <Receipt size={15} /> Xác nhận đặt hàng
             </button>
           </div>
@@ -318,17 +318,17 @@ function HoldOverlay({ expiresAt, onExpired, onCancel }) {
   const s = Math.floor(((remaining || 0) % 60000) / 1000);
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm text-center overflow-hidden">
-        <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-5">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm text-center overflow-hidden">
+        <div className="bg-gradient-to-r from-gold to-gold-strong px-5 py-5">
           <Timer size={28} className="text-white mx-auto mb-2" />
           <p className="text-white font-bold text-lg">Đang giữ tồn kho</p>
           <p className="text-white/70 text-xs mt-1">Chuyển sang trang bán hàng để xử lý đơn</p>
         </div>
         <div className="px-5 py-6">
-          <div className="text-5xl font-bold text-[#C9A84C] font-mono mb-2">{pad(m)}:{pad(s)}</div>
-          <p className="text-sm text-[#8E8878] mb-5">Tồn kho sẽ được giải phóng khi hết giờ</p>
+          <div className="text-5xl font-bold text-gold font-mono mb-2">{pad(m)}:{pad(s)}</div>
+          <p className="text-sm text-muted mb-5">Tồn kho sẽ được giải phóng khi hết giờ</p>
           <button onClick={onCancel}
-            className="w-full py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors">
+            className="w-full py-2.5 rounded-xl border border-red-200 dark:border-red-500/28 text-red-500 text-sm font-semibold hover:bg-red-50 dark:bg-red-500/10 transition-colors">
             Hủy & Giải phóng tồn kho
           </button>
         </div>
@@ -344,8 +344,8 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden">
-        <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden">
+        <div className="bg-gradient-to-r from-gold to-gold-strong px-5 py-4 flex items-center justify-between">
           <div>
             <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Chọn loại giá</p>
             <h3 className="text-white font-bold text-sm mt-0.5 truncate max-w-[200px]">{product.name}</h3>
@@ -359,28 +359,28 @@ function TierSelectModal({ product, currentTierId, currentPriceSource, onConfirm
           <button
             onClick={() => onConfirm({ priceSource: 'BASE', tierId: null, tierName: null, unitPrice: product.basePrice * unitsPerBox })}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
-              ${currentPriceSource === 'BASE' ? 'border-sky-400 bg-sky-50' : 'border-[#E8DDD0] hover:border-sky-300 hover:bg-sky-50/50'}`}>
+              ${currentPriceSource === 'BASE' ? 'border-sky-400 bg-sky-50 dark:bg-sky-500/10' : 'border-line hover:border-sky-300 dark:border-sky-500/35 hover:bg-sky-50/50 dark:bg-sky-500/5'}`}>
             <div className="text-left">
-              <p className="text-sm font-semibold text-[#1C1C1E]">Giá lẻ</p>
-              {isBox && <p className="text-[10px] text-[#8E8878]">{fmt(product.basePrice)} / hộp</p>}
+              <p className="text-sm font-semibold text-ink">Giá lẻ</p>
+              {isBox && <p className="text-[10px] text-muted">{fmt(product.basePrice)} / hộp</p>}
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-sky-600">{fmt(product.basePrice * unitsPerBox)}</p>
-              {isBox && <p className="text-[10px] text-[#8E8878]">/ thùng</p>}
+              <p className="text-sm font-bold text-sky-600 dark:text-sky-300">{fmt(product.basePrice * unitsPerBox)}</p>
+              {isBox && <p className="text-[10px] text-muted">/ thùng</p>}
             </div>
           </button>
           {hasTiers && product.priceTiers.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((tier, idx) => (
             <button key={tier.id}
               onClick={() => onConfirm({ priceSource: 'TIER', tierId: tier.id, tierName: tier.tierName, unitPrice: tier.price * unitsPerBox })}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
-                ${currentTierId === tier.id ? 'border-orange-400 bg-orange-50' : 'border-[#E8DDD0] hover:border-orange-300 hover:bg-orange-50/50'}`}>
+                ${currentTierId === tier.id ? 'border-orange-400 bg-orange-50 dark:bg-orange-500/10' : 'border-line hover:border-orange-300 dark:border-orange-500/35 hover:bg-orange-50/50 dark:bg-orange-500/5'}`}>
               <div className="text-left">
-                <p className="text-sm font-semibold text-[#1C1C1E]">{tier.tierName || `Sỉ ${idx + 1}`}</p>
-                {isBox && <p className="text-[10px] text-[#8E8878]">{fmt(tier.price)} / hộp</p>}
+                <p className="text-sm font-semibold text-ink">{tier.tierName || `Sỉ ${idx + 1}`}</p>
+                {isBox && <p className="text-[10px] text-muted">{fmt(tier.price)} / hộp</p>}
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-orange-600">{fmt(tier.price * unitsPerBox)}</p>
-                {isBox && <p className="text-[10px] text-[#8E8878]">/ thùng</p>}
+                <p className="text-sm font-bold text-orange-600 dark:text-orange-300">{fmt(tier.price * unitsPerBox)}</p>
+                {isBox && <p className="text-[10px] text-muted">/ thùng</p>}
                 {currentTierId === tier.id && <Check size={14} className="text-orange-500 ml-auto mt-0.5" />}
               </div>
             </button>
@@ -419,26 +419,26 @@ function ProductSearchModal({ open, warehouseId, onClose, onSelect }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '80vh' }}>
-        <div className="px-4 py-3 border-b border-[#F0EBE3] flex items-center justify-between shrink-0">
-          <h3 className="font-bold text-sm text-[#1C1C1E]">Thêm sản phẩm</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]"><X size={16} /></button>
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '80vh' }}>
+        <div className="px-4 py-3 border-b border-line-soft flex items-center justify-between shrink-0">
+          <h3 className="font-bold text-sm text-ink">Thêm sản phẩm</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-surface-2"><X size={16} /></button>
         </div>
-        <div className="px-4 py-3 border-b border-[#F0EBE3] space-y-2 shrink-0">
+        <div className="px-4 py-3 border-b border-line-soft space-y-2 shrink-0">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input type="text" placeholder="Tìm sản phẩm..." value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAFAF8]"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-line text-sm focus:outline-none focus:border-gold bg-surface"
               autoFocus />
           </div>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
             <button onClick={() => setActiveCategory('ALL')}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeCategory === 'ALL' ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeCategory === 'ALL' ? 'bg-gold text-white' : 'bg-surface-2 text-muted hover:bg-surface-3'}`}>
               Tất cả
             </button>
             {categories.map(cat => (
               <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-                className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeCategory === cat.id ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeCategory === cat.id ? 'bg-gold text-white' : 'bg-surface-2 text-muted hover:bg-surface-3'}`}>
                 {cat.name}
               </button>
             ))}
@@ -447,10 +447,10 @@ function ProductSearchModal({ open, warehouseId, onClose, onSelect }) {
         <div className="flex-1 overflow-y-auto p-3">
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-[#8E8878] gap-2">
+            <div className="flex flex-col items-center justify-center py-10 text-muted gap-2">
               <Package size={28} strokeWidth={1} />
               <p className="text-sm">Không tìm thấy sản phẩm</p>
             </div>
@@ -464,8 +464,8 @@ function ProductSearchModal({ open, warehouseId, onClose, onSelect }) {
                 const outOfStock = stock !== null && stock <= 0;
                 return (
                   <button key={`${p.id}-${Math.random()}`} onClick={() => onSelect(p)}
-                    className="rounded-xl overflow-hidden text-left flex flex-col border border-[#F0EBE3] hover:border-[#C9A84C] transition-all active:scale-95">
-                    <div className="relative aspect-square bg-[#F0EBE3] overflow-hidden">
+                    className="rounded-xl overflow-hidden text-left flex flex-col border border-line-soft hover:border-gold transition-all active:scale-95">
+                    <div className="relative aspect-square bg-surface-2 overflow-hidden">
                       {imageUrl
                         ? <img src={imageUrl} alt={p.name} className="w-full h-full object-cover" />
                         : <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
@@ -477,7 +477,7 @@ function ProductSearchModal({ open, warehouseId, onClose, onSelect }) {
                       )}
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 py-1.5">
                         <p className="text-white text-[10px] font-semibold line-clamp-2 leading-tight">{p.name}</p>
-                        <p className="text-[#FFD97D] text-[10px] font-bold">{fmt(p.basePrice)}</p>
+                        <p className="text-gold text-[10px] font-bold">{fmt(p.basePrice)}</p>
                       </div>
                     </div>
                   </button>
@@ -493,14 +493,14 @@ function ProductSearchModal({ open, warehouseId, onClose, onSelect }) {
 function PriceUpdateBanner({ changes, onUpdate, updating }) {
   if (!changes || changes.length === 0) return null;
   return (
-    <div className="mx-4 mt-3 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+    <div className="mx-4 mt-3 rounded-xl border border-amber-200 dark:border-amber-500/28 bg-amber-50 dark:bg-amber-500/10 overflow-hidden">
       <div className="px-3 py-2.5 flex items-start gap-2">
         <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-amber-700 mb-1">Giá sản phẩm đã thay đổi</p>
+          <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300 mb-1">Giá sản phẩm đã thay đổi</p>
           <div className="space-y-1">
             {changes.map((c, i) => (
-              <p key={i} className="text-[10px] text-amber-600">
+              <p key={i} className="text-[10px] text-amber-600 dark:text-amber-300">
                 <b>{c.productName}</b>
                 {c.tierName ? ` (${c.tierName})` : ' (Giá lẻ)'}:
                 {' '}{fmt(c.oldPrice)} → <b>{fmt(c.newPrice)}</b>
@@ -533,15 +533,15 @@ function DraftCard({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, 
     ? new Date(draft.scheduledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
     : null;
   return (
-    <div className={`bg-white rounded-xl border border-[#F0EBE3] overflow-hidden shadow-sm ${cardBg}`}>
-      <div className="p-4 border-b border-[#F0EBE3]">
+    <div className={`bg-surface rounded-xl border border-line-soft overflow-hidden shadow-sm ${cardBg}`}>
+      <div className="p-4 border-b border-line-soft">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
           <div className="flex items-center gap-2">
-            <span className={`text-xs font-bold ${isScheduled ? 'text-amber-600' : 'text-[#C9A84C]'}`}>
+            <span className={`text-xs font-bold ${isScheduled ? 'text-amber-600 dark:text-amber-300' : 'text-gold'}`}>
               {draft.draftCode}
             </span>
             {isScheduled && (
-              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 border border-amber-200">
+              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-500/18 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28">
                 Hẹn giờ
               </span>
             )}
@@ -549,66 +549,66 @@ function DraftCard({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, 
           <div className="flex items-center gap-2">
             {draft.customerId ? (
               <div className="flex items-center gap-1">
-                <User size={12} className="text-[#C9A84C]" />
-                <span className="text-xs font-medium text-[#C9A84C]">{draft.customerName}</span>
+                <User size={12} className="text-gold" />
+                <span className="text-xs font-medium text-gold">{draft.customerName}</span>
               </div>
             ) : (
               <div className="flex items-center gap-1">
-                <User size={12} className="text-[#C4B9A8]" />
-                <span className="text-xs text-[#C4B9A8] italic">Chưa chọn</span>
+                <User size={12} className="text-faint" />
+                <span className="text-xs text-faint italic">Chưa chọn</span>
               </div>
             )}
             {draft.warehouseName && (
               <div className="flex items-center gap-1">
-                <Warehouse size={11} className="text-[#8E8878]" />
-                <span className="text-xs text-[#5C4E3D]">{draft.warehouseName}</span>
+                <Warehouse size={11} className="text-muted" />
+                <span className="text-xs text-ink-2">{draft.warehouseName}</span>
               </div>
             )}
           </div>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#5C4E3D]">{items.length} món</span>
+            <span className="text-xs text-ink-2">{items.length} món</span>
             {totalSubtotal > 0 && (
-              <span className="text-xs font-bold text-[#C9A84C]">{formatPrice(totalSubtotal)}</span>
+              <span className="text-xs font-bold text-gold">{formatPrice(totalSubtotal)}</span>
             )}
           </div>
           {isScheduled ? (
             <div className="flex items-center gap-1.5">
               <CountdownBadge scheduledAt={draft.scheduledAt} now={now} />
-              {scheduledLabel && <span className="text-[10px] text-[#8E8878]">→ {scheduledLabel}</span>}
+              {scheduledLabel && <span className="text-[10px] text-muted">→ {scheduledLabel}</span>}
             </div>
           ) : (
-            <span className="text-[10px] text-[#B0A090] flex items-center gap-0.5">
+            <span className="text-[10px] text-faint flex items-center gap-0.5">
               <Clock size={10} />{formatDate(draft.updatedAt, t)}
             </span>
           )}
         </div>
         {(draft.discountRate > 0 || Number(draft.discountAmount) > 0) && (
-          <p className="text-[11px] text-emerald-600 mt-1.5">
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-300 mt-1.5">
             {draft.discountRate > 0 ? `Giảm ${draft.discountRate}%` : `Giảm ${formatPrice(draft.discountAmount)}`}
           </p>
         )}
       </div>
-      <div className="p-3 bg-[#FAFAF8] flex gap-2">
+      <div className="p-3 bg-surface flex gap-2">
         <button
           onClick={(e) => { e.stopPropagation(); onInvoice(draft.id); }}
           disabled={busy}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-all disabled:opacity-50 shadow-sm">
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-[var(--c-gold-strong)] transition-all disabled:opacity-50 shadow-sm">
           {isInvoicing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FileTextIcon size={16} />}
           <span>Tạo phiếu</span>
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onOrder(draft); }}
           disabled={busy}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-all disabled:opacity-50 shadow-sm">
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-[var(--c-gold-strong)] transition-all disabled:opacity-50 shadow-sm">
           {isOrdering ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Receipt size={16} />}
           <span>Đặt hàng</span>
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(draft.id); }}
           disabled={busy}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 dark:border-red-500/28 text-red-500 hover:bg-red-50 dark:bg-red-500/10 transition-all disabled:opacity-50">
           <Trash2 size={16} />
           <span className="text-sm">Xóa</span>
         </button>
@@ -630,15 +630,15 @@ function DraftRow({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, o
     ? new Date(draft.scheduledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
     : null;
   return (
-    <tr className={`border-b border-[#F0EBE3] hover:bg-[#FAFAF8] transition-colors cursor-pointer select-none ${rowBg}`} onClick={(e) => { e.stopPropagation(); onEdit(draft); }}>
+    <tr className={`border-b border-line-soft hover:bg-surface transition-colors cursor-pointer select-none ${rowBg}`} onClick={(e) => { e.stopPropagation(); onEdit(draft); }}>
       <td className="px-4 py-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs font-bold ${isScheduled ? 'text-amber-600' : 'text-[#C9A84C]'}`}>
+            <span className={`text-xs font-bold ${isScheduled ? 'text-amber-600 dark:text-amber-300' : 'text-gold'}`}>
               {draft.draftCode}
             </span>
             {isScheduled && (
-              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 border border-amber-200">
+              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-500/18 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28">
                 Hẹn giờ
               </span>
             )}
@@ -646,10 +646,10 @@ function DraftRow({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, o
           {isScheduled ? (
             <div className="flex items-center gap-1.5 flex-wrap">
               <CountdownBadge scheduledAt={draft.scheduledAt} now={now} />
-              {scheduledLabel && <span className="text-[10px] text-[#8E8878]">→ {scheduledLabel}</span>}
+              {scheduledLabel && <span className="text-[10px] text-muted">→ {scheduledLabel}</span>}
             </div>
           ) : (
-            <span className="text-[10px] text-[#B0A090] flex items-center gap-0.5">
+            <span className="text-[10px] text-faint flex items-center gap-0.5">
               <Clock size={10} />{formatDate(draft.updatedAt, t)}
             </span>
           )}
@@ -658,30 +658,30 @@ function DraftRow({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, o
       <td className="px-4 py-3">
         {draft.customerId ? (
           <div className="flex items-center gap-1.5">
-            <User size={13} className="text-[#C9A84C] shrink-0" />
-            {draft.customerName && <span className="text-xs font-bold text-[#C9A84C] font-mono">{draft.customerName}</span>}
+            <User size={13} className="text-gold shrink-0" />
+            {draft.customerName && <span className="text-xs font-bold text-gold font-mono">{draft.customerName}</span>}
           </div>
         ) : (
           <div className="flex items-center gap-1.5">
-            <User size={13} className="text-[#C4B9A8]" />
-            <span className="text-[#C4B9A8] italic text-xs">Chưa chọn</span>
+            <User size={13} className="text-faint" />
+            <span className="text-faint italic text-xs">Chưa chọn</span>
           </div>
         )}
       </td>
       <td className="px-4 py-3">
         {draft.warehouseName
-          ? <span className="text-xs text-[#5C4E3D] flex items-center gap-1"><Warehouse size={11} className="text-[#8E8878]" />{draft.warehouseName}</span>
-          : <span className="text-xs text-[#C4B9A8]">—</span>}
+          ? <span className="text-xs text-ink-2 flex items-center gap-1"><Warehouse size={11} className="text-muted" />{draft.warehouseName}</span>
+          : <span className="text-xs text-faint">—</span>}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#5C4E3D] font-medium">{items.length} món</span>
+          <span className="text-xs text-ink-2 font-medium">{items.length} món</span>
           {totalSubtotal > 0 && (
-            <span className="text-xs font-bold text-[#C9A84C]">{formatPrice(totalSubtotal)}</span>
+            <span className="text-xs font-bold text-gold">{formatPrice(totalSubtotal)}</span>
           )}
         </div>
         {(draft.discountRate > 0 || Number(draft.discountAmount) > 0) && (
-          <p className="text-[11px] text-emerald-600 mt-0.5">
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-300 mt-0.5">
             {draft.discountRate > 0 ? `Giảm ${draft.discountRate}%` : `Giảm ${formatPrice(draft.discountAmount)}`}
           </p>
         )}
@@ -691,21 +691,21 @@ function DraftRow({ draft, onDelete, onOrder, onInvoice, onEdit, processingId, o
           <button
             onClick={(e) => { e.stopPropagation(); onInvoice(draft.id); }}
             disabled={busy}
-            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-all disabled:opacity-50 shadow-sm">
+            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gold text-white text-sm font-bold hover:bg-[var(--c-gold-strong)] transition-all disabled:opacity-50 shadow-sm">
             {isInvoicing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FileTextIcon size={16} />}
             <span>Tạo phiếu</span>
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onOrder(draft); }}
             disabled={busy}
-            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-all disabled:opacity-50 shadow-sm">
+            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gold text-white text-sm font-bold hover:bg-[var(--c-gold-strong)] transition-all disabled:opacity-50 shadow-sm">
             {isOrdering ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Receipt size={16} />}
             <span>Đặt hàng</span>
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(draft.id); }}
             disabled={busy}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-red-200 dark:border-red-500/28 text-red-500 hover:bg-red-50 dark:bg-red-500/10 transition-all disabled:opacity-50">
             <Trash2 size={16} />
             <span className="text-sm">Xóa</span>
           </button>
@@ -718,14 +718,14 @@ function StockErrorBanner({ message, onClose }) {
   if (!message) return null;
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
-      <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-3 shadow-lg">
+      <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-2xl px-4 py-3 flex items-start gap-3 shadow-lg">
         <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-red-700">Không đủ tồn kho</p>
+          <p className="text-xs font-bold text-red-700 dark:text-red-300">Không đủ tồn kho</p>
           <p className="text-xs text-red-500 mt-0.5">{message}</p>
           <p className="text-[10px] text-red-400 mt-1">Đơn nháp vẫn được giữ nguyên. Vui lòng điều chỉnh và thử lại.</p>
         </div>
-        <button onClick={onClose} className="text-red-300 hover:text-red-500 shrink-0"><X size={14} /></button>
+        <button onClick={onClose} className="text-red-300 dark:text-red-300 hover:text-red-500 shrink-0"><X size={14} /></button>
       </div>
     </div>
   );
@@ -759,29 +759,29 @@ function DraftSurchargePanel({ surchargeItems, onChange }) {
     <div className="space-y-1.5">
       {surchargeItems.map(item => (
         <div key={item.name} className="flex items-center gap-2">
-          <span className="text-[11px] text-[#5C4E3D] font-medium w-24 shrink-0 truncate">{item.name}</span>
+          <span className="text-[11px] text-ink-2 font-medium w-24 shrink-0 truncate">{item.name}</span>
           <div className="relative flex-1">
             <input type="text" inputMode="numeric"
               value={item.amount === 0 ? '' : new Intl.NumberFormat('vi-VN').format(item.amount)}
               onChange={e => updateAmount(item.name, e.target.value)}
               placeholder="0"
-              className="w-full rounded-lg border border-[#E8DDD0] px-2 py-1 text-xs text-right pr-6 focus:outline-none focus:border-[#C9A84C]" />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+              className="w-full rounded-lg border border-line px-2 py-1 text-xs text-right pr-6 focus:outline-none focus:border-gold" />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted">đ</span>
           </div>
-          <button onClick={() => onChange(surchargeItems.filter(i => i.name !== item.name))} className="text-[#C4B9A8] hover:text-red-400 shrink-0"><X size={12} /></button>
+          <button onClick={() => onChange(surchargeItems.filter(i => i.name !== item.name))} className="text-faint hover:text-red-400 shrink-0"><X size={12} /></button>
         </div>
       ))}
       {!showPicker ? (
-        <button onClick={() => setShowPicker(true)} className="flex items-center gap-1 text-[11px] text-[#C9A84C] hover:text-[#a07830] font-semibold py-0.5">
+        <button onClick={() => setShowPicker(true)} className="flex items-center gap-1 text-[11px] text-gold hover:text-gold-deep font-semibold py-0.5">
           <Plus size={12} /> Thêm phụ phí
         </button>
       ) : (
-        <div className="bg-[#FDF8ED] rounded-xl border border-[#C9A84C]/20 p-2.5 space-y-2">
+        <div className="bg-gold-tint rounded-xl border border-gold/20 p-2.5 space-y-2">
           {availablePresets.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {availablePresets.map(p => (
                 <button key={p.name} onClick={() => addPreset(p)}
-                  className="text-[10px] px-2 py-1 rounded-lg bg-white border border-[#E8DDD0] text-[#5C4E3D] hover:border-[#C9A84C] font-medium transition-colors">
+                  className="text-[10px] px-2 py-1 rounded-lg bg-surface border border-line text-ink-2 hover:border-gold font-medium transition-colors">
                   {p.name}
                 </button>
               ))}
@@ -791,19 +791,19 @@ function DraftSurchargePanel({ surchargeItems, onChange }) {
             <input type="text" value={customName} onChange={e => setCustomName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') addCustom(); if (e.key === 'Escape') setShowPicker(false); }}
               placeholder="Tên phụ phí..."
-              className="flex-1 rounded-lg border border-[#E8DDD0] px-2 py-1 text-[11px] focus:outline-none focus:border-[#C9A84C] bg-white" />
+              className="flex-1 rounded-lg border border-line px-2 py-1 text-[11px] focus:outline-none focus:border-gold bg-surface" />
             <div className="relative w-24">
               <input type="text" inputMode="numeric" value={customAmount}
                 onChange={e => setCustomAmount(e.target.value.replace(/[^0-9]/g, ''))}
                 onKeyDown={e => { if (e.key === 'Enter') addCustom(); if (e.key === 'Escape') setShowPicker(false); }}
                 placeholder="Số tiền"
-                className="w-full rounded-lg border border-[#E8DDD0] px-2 py-1 text-[11px] text-right pr-5 focus:outline-none focus:border-[#C9A84C] bg-white" />
-              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+                className="w-full rounded-lg border border-line px-2 py-1 text-[11px] text-right pr-5 focus:outline-none focus:border-gold bg-surface" />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted">đ</span>
             </div>
             <button onClick={addCustom} disabled={!customName.trim()}
-              className="px-2 py-1 rounded-lg bg-[#C9A84C] text-white text-[10px] font-semibold disabled:opacity-40 shrink-0">Thêm</button>
+              className="px-2 py-1 rounded-lg bg-gold text-white text-[10px] font-semibold disabled:opacity-40 shrink-0">Thêm</button>
             <button onClick={() => { setShowPicker(false); setCustomName(''); setCustomAmount(''); }}
-              className="px-2 py-1 rounded-lg border border-[#E8DDD0] text-[#8E8878] text-[10px] shrink-0">Bỏ</button>
+              className="px-2 py-1 rounded-lg border border-line text-muted text-[10px] shrink-0">Bỏ</button>
           </div>
         </div>
       )}
@@ -1125,9 +1125,9 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-[80svw] max-w-4xl" style={{ maxHeight: '85svh' }}>
+        <div className="bg-surface rounded-2xl shadow-2xl flex flex-col w-[80svw] max-w-4xl" style={{ maxHeight: '85svh' }}>
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between shrink-0 rounded-t-2xl">
+          <div className="bg-gradient-to-r from-gold to-gold-strong px-5 py-4 flex items-center justify-between shrink-0 rounded-t-2xl">
             <div>
               <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Chỉnh sửa đơn nháp</p>
               <h3 className="text-white font-bold text-base mt-0.5">{draft?.draftCode}</h3>
@@ -1139,23 +1139,23 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto min-h-0">
             {/* Shipping Info Section */}
-            <div className="px-4 pt-4 pb-2 border-b border-[#F0EBE3] space-y-3">
+            <div className="px-4 pt-4 pb-2 border-b border-line-soft space-y-3">
               {/* Customer selection */}
               <div>
-                <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">👤 Khách hàng</label>
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">👤 Khách hàng</label>
                 {customer ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[#C9A84C]/40 bg-[#FDF8ED]">
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl border border-gold/40 bg-gold-tint">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-[#1C1C1E] truncate">{customer.contactName || customer.name}</p>
-                      {customer.phone && <p className="text-xs text-[#8E8878]">{customer.phone}</p>}
+                      <p className="font-semibold text-sm text-ink truncate">{customer.contactName || customer.name}</p>
+                      {customer.phone && <p className="text-xs text-muted">{customer.phone}</p>}
                     </div>
-                    <button onClick={() => setCustomer(null)} className="text-[#C4B9A8] hover:text-red-400 transition-colors shrink-0">
+                    <button onClick={() => setCustomer(null)} className="text-faint hover:text-red-400 transition-colors shrink-0">
                       <X size={14} />
                     </button>
                   </div>
                 ) : (
                   <button onClick={() => setCustomerModalOpen(true)}
-                    className="w-full flex items-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-[#E8DDD0] text-[#8E8878] text-sm hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all">
+                    className="w-full flex items-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-line text-muted text-sm hover:border-gold hover:text-gold transition-all">
                     <User size={14} /> Chọn khách hàng (tuỳ chọn)
                   </button>
                 )}
@@ -1163,39 +1163,39 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
               {/* Two column: Receiver name (left) and Ordered by (right) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">📦 Người nhận hàng</label>
+                  <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">📦 Người nhận hàng</label>
                   <input
                     type="text"
                     value={receiverName}
                     onChange={e => setReceiverName(e.target.value)}
                     placeholder="Tên người nhận"
-                    className="w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAFAF8]"
+                    className="w-full rounded-xl border border-line px-3 py-2 text-sm focus:outline-none focus:border-gold bg-surface"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">✍️ Người đặt hàng</label>
+                  <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">✍️ Người đặt hàng</label>
                   <input
                     type="text"
                     value={orderedByName}
                     onChange={e => setOrderedByName(e.target.value)}
                     placeholder="Tên người đặt"
-                    className="w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAFAF8]"
+                    className="w-full rounded-xl border border-line px-3 py-2 text-sm focus:outline-none focus:border-gold bg-surface"
                   />
                 </div>
               </div>
               {/* Price display option dropdown */}
               <div>
-                <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">💰 Hiển thị giá</label>
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">💰 Hiển thị giá</label>
                 <select
                   value={priceDisplayOption}
                   onChange={(e) => setPriceDisplayOption(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm focus:outline-none focus:border-[#C9A84C] bg-white"
+                  className="w-full rounded-xl border border-line px-3 py-2 text-sm focus:outline-none focus:border-gold bg-surface"
                 >
                   <option value="show">Hiển thị đầy đủ giá</option>
                   <option value="hide_prices">Che giá (ẩn giá từng sản phẩm, chỉ hiện tổng)</option>
                   <option value="hide_all">Che toàn bộ (ẩn tất cả số tiền)</option>
                 </select>
-                <p className="text-[10px] text-[#8E8878] mt-1">
+                <p className="text-[10px] text-muted mt-1">
                   {priceDisplayOption === 'show' && '✓ Hiển thị tất cả giá trên phiếu'}
                   {priceDisplayOption === 'hide_prices' && '✓ Ẩn giá từng sản phẩm, vẫn hiển thị tổng tiền'}
                   {priceDisplayOption === 'hide_all' && '✓ Ẩn toàn bộ số tiền trên phiếu (chỉ hiển thị tên và số lượng)'}
@@ -1205,7 +1205,7 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
             {/* Cart items */}
             <div className="px-4 pt-3 pb-1">
               {cartItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-[#C4B9A8] gap-2">
+                <div className="flex flex-col items-center justify-center py-8 text-faint gap-2">
                   <Package size={28} strokeWidth={1} /><p className="text-sm">Chưa có món nào</p>
                 </div>
               ) : (
@@ -1232,41 +1232,41 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
             {/* Add product button */}
             <div className="px-4 pb-3">
               <button onClick={() => setProductSearchOpen(true)}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-[#E8DDD0] text-[#8E8878] text-sm hover:border-[#C9A84C] hover:text-[#C9A84C] transition-all">
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-line text-muted text-sm hover:border-gold hover:text-gold transition-all">
                 <Plus size={15} /> Thêm sản phẩm
               </button>
             </div>
             {/* Divider */}
-            <div className="border-t border-[#F0EBE3] mx-4" />
+            <div className="border-t border-line-soft mx-4" />
             {/* Order settings */}
             <div className="px-4 py-3 space-y-3">
               <textarea placeholder="Ghi chú đơn hàng..." value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-                className="w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-xs resize-none focus:outline-none focus:border-[#C9A84C] bg-[#FAFAF8]" />
+                className="w-full rounded-xl border border-line px-3 py-2 text-xs resize-none focus:outline-none focus:border-gold bg-surface" />
               <div>
-                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Thanh toán</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Thanh toán</p>
                 <div className="flex gap-1.5">
                   {[['CASH', '💵 Tiền mặt'], ['BANK_TRANSFER', '🏦 Chuyển khoản'], ['DEBT', '📋 Công nợ']].map(([val, label]) => (
                     <button key={val} onClick={() => setPaymentMethod(val)}
                       className={`flex-1 text-[10px] py-1.5 rounded-lg border font-medium transition-colors
-                        ${paymentMethod === val ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C]'}`}>
+                        ${paymentMethod === val ? 'border-gold bg-gold/10 text-gold' : 'border-line text-muted hover:border-gold'}`}>
                       {label}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Giảm giá bill</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Giảm giá bill</p>
                 <div className="flex items-center gap-1 flex-wrap">
                   {[0, 3, 5, 8, 10].map(d => (
                     <button key={d} onClick={() => { setDiscount(d); setDiscountFixedAmt(null); setDiscountFixedDisplay(''); }}
                       className={`text-[10px] px-2 py-1 rounded-md font-semibold transition-colors
-                        ${discount === d && discountFixedAmt === null ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
+                        ${discount === d && discountFixedAmt === null ? 'bg-gold text-white' : 'bg-surface-2 text-muted hover:bg-surface-3'}`}>
                       {d}%
                     </button>
                   ))}
                   {discountFixedAmt === null ? (
                     <button onClick={() => { setDiscount(0); setDiscountFixedAmt(0); setDiscountFixedDisplay(''); }}
-                      className="text-[10px] px-2 py-1 rounded-md font-semibold bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]">
+                      className="text-[10px] px-2 py-1 rounded-md font-semibold bg-surface-2 text-muted hover:bg-surface-3">
                       Nhập tiền
                     </button>
                   ) : (
@@ -1279,34 +1279,34 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
                             setDiscountFixedAmt(raw === '' ? 0 : parseInt(raw, 10) || 0);
                           }}
                           placeholder={`tối đa ${new Intl.NumberFormat('vi-VN').format(maxDiscountFixed)}`}
-                          className="w-28 rounded-md px-2 py-1 text-[10px] text-right pr-5 border border-[#C9A84C] bg-[#C9A84C]/5 font-semibold text-[#C9A84C] focus:outline-none" />
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+                          className="w-28 rounded-md px-2 py-1 text-[10px] text-right pr-5 border border-gold bg-gold/5 font-semibold text-gold focus:outline-none" />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted">đ</span>
                       </div>
                       <button onClick={() => { setDiscountFixedAmt(null); setDiscountFixedDisplay(''); }}
-                        className="text-[10px] px-1.5 py-1 rounded-md bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] font-semibold">×</button>
+                        className="text-[10px] px-1.5 py-1 rounded-md bg-surface-2 text-muted hover:bg-surface-3 font-semibold">×</button>
                     </div>
                   )}
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Phụ phí</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Phụ phí</p>
                 <DraftSurchargePanel surchargeItems={surchargeItems} onChange={setSurchargeItems} />
               </div>
             </div>
           </div>
           {/* Footer: summary + save */}
-          <div className="border-t border-[#F0EBE3] px-4 py-3 bg-white shrink-0 rounded-b-2xl space-y-2">
+          <div className="border-t border-line-soft px-4 py-3 bg-surface shrink-0 rounded-b-2xl space-y-2">
             <div className="space-y-0.5 text-xs">
-              <div className="flex justify-between text-[#8E8878]">
+              <div className="flex justify-between text-muted">
                 <span>Tạm tính</span><span>{fmt(subtotalGross)}</span>
               </div>
               {itemDiscountTotal > 0 && (
-                <div className="flex justify-between text-emerald-600">
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-300">
                   <span>CK món</span><span>-{fmt(itemDiscountTotal)}</span>
                 </div>
               )}
               {discountAmt > 0 && (
-                <div className="flex justify-between text-emerald-600">
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-300">
                   <span>{discountFixedAmt !== null ? 'Giảm trực tiếp' : `Giảm bill (${discount}%)`}</span>
                   <span>-{fmt(discountAmt)}</span>
                 </div>
@@ -1323,24 +1323,24 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
               )}
               {/* Thay đoạn exclusiveVatTotal hiện tại bằng: */}
               {inclusiveVatTotal > 0 && (
-                <div className="flex justify-between text-[#C4B9A8] text-[10px]">
+                <div className="flex justify-between text-faint text-[10px]">
                   <span>VAT (đã bao gồm trong giá)</span>
                   <span>{fmt(inclusiveVatTotal)}</span>
                 </div>
               )}
               {exclusiveVatTotal > 0 && (
-                <div className="flex justify-between text-[#8E8878] text-[10px]">
+                <div className="flex justify-between text-muted text-[10px]">
                   <span>VAT (ngoài giá)</span>
                   <span>+{fmt(exclusiveVatTotal)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-sm text-[#1C1C1E] pt-1 border-t border-[#F0EBE3]">
+              <div className="flex justify-between font-bold text-sm text-ink pt-1 border-t border-line-soft">
                 <span>Tổng cộng</span>
-                <span className="text-[#C9A84C]">{fmt(total)}</span>
+                <span className="text-gold">{fmt(total)}</span>
               </div>
             </div>
             <button onClick={handleSave} disabled={saving || cartItems.length === 0}
-              className="w-full py-3 rounded-xl bg-[#C9A84C] text-white font-bold text-sm hover:bg-[#b8963d] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              className="w-full py-3 rounded-xl bg-gold text-white font-bold text-sm hover:bg-gold-strong transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={15} />}
               Lưu thay đổi
             </button>
@@ -1569,57 +1569,57 @@ export default function DraftOrdersPage() {
   };
   const totalItems = drafts.reduce((s, d) => s + (d.items?.length || 0), 0);
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      <div className="bg-white border-b border-[#F0EBE3] px-5 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div className="min-h-screen bg-surface">
+      <div className="bg-surface border-b border-line-soft px-5 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#FDF8ED] border border-[#C9A84C]/20 flex items-center justify-center">
-            <FileText size={16} className="text-[#C9A84C]" />
+          <div className="w-9 h-9 rounded-xl bg-gold-tint border border-gold/20 flex items-center justify-center">
+            <FileText size={16} className="text-gold" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-[#1C1C1E]">Đơn nháp</h1>
-            {drafts.length > 0 && <p className="text-[11px] text-[#8E8878]">{drafts.length} đơn · {totalItems} sản phẩm</p>}
+            <h1 className="text-base font-bold text-ink">Đơn nháp</h1>
+            {drafts.length > 0 && <p className="text-[11px] text-muted">{drafts.length} đơn · {totalItems} sản phẩm</p>}
           </div>
         </div>
-        <button onClick={load} disabled={loading} className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+        <button onClick={load} disabled={loading} className="w-9 h-9 rounded-xl border border-line flex items-center justify-center text-muted hover:bg-surface-2 transition-colors">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
       <div className="p-4 sm:p-5">
         {loading ? (
-          <div className="bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden">
+          <div className="bg-surface rounded-2xl border border-line-soft overflow-hidden">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="px-4 py-3 border-b border-[#F8F4EE] last:border-0 flex gap-4">
-                <div className="h-4 w-24 bg-[#F0EBE3] rounded animate-pulse" />
-                <div className="h-4 w-32 bg-[#F0EBE3] rounded animate-pulse" />
-                <div className="h-4 w-20 bg-[#F0EBE3] rounded animate-pulse" />
-                <div className="h-4 w-28 bg-[#F0EBE3] rounded animate-pulse flex-1" />
-                <div className="h-7 w-40 bg-[#F0EBE3] rounded-lg animate-pulse" />
+              <div key={i} className="px-4 py-3 border-b border-canvas last:border-0 flex gap-4">
+                <div className="h-4 w-24 bg-surface-2 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-surface-2 rounded animate-pulse" />
+                <div className="h-4 w-20 bg-surface-2 rounded animate-pulse" />
+                <div className="h-4 w-28 bg-surface-2 rounded animate-pulse flex-1" />
+                <div className="h-7 w-40 bg-surface-2 rounded-lg animate-pulse" />
               </div>
             ))}
           </div>
         ) : drafts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#F0EBE3] flex items-center justify-center mb-4">
-              <Package size={28} className="text-[#C4B9A8]" strokeWidth={1.5} />
+            <div className="w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center mb-4">
+              <Package size={28} className="text-faint" strokeWidth={1.5} />
             </div>
-            <p className="text-base font-semibold text-[#5C4E3D] mb-1">Chưa có đơn nháp</p>
-            <p className="text-sm text-[#B0A090] mb-6 max-w-xs">Lưu đơn nháp từ trang bán hàng để tiếp tục xử lý sau</p>
-            <button onClick={() => navigate('/seller/pos')} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-colors shadow-sm">
+            <p className="text-base font-semibold text-ink-2 mb-1">Chưa có đơn nháp</p>
+            <p className="text-sm text-faint mb-6 max-w-xs">Lưu đơn nháp từ trang bán hàng để tiếp tục xử lý sau</p>
+            <button onClick={() => navigate('/seller/pos')} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-[var(--c-gold-strong)] transition-colors shadow-sm">
               <ShoppingCart size={15} /> Đi đến bán hàng
             </button>
           </div>
         ) : (
           <>
             {/* Desktop table view */}
-            <div className="hidden md:block bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden shadow-sm">
+            <div className="hidden md:block bg-surface rounded-2xl border border-line-soft overflow-hidden shadow-sm">
               <table className="w-full table-fixed">
                 <thead>
-                  <tr className="border-b border-[#F0EBE3] bg-[#FAFAF8]">
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-[#8E8878] uppercase tracking-wider w-[22%]">Mã nháp</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-[#8E8878] uppercase tracking-wider w-[18%]">Khách hàng</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-[#8E8878] uppercase tracking-wider w-[13%]">Kho</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-[#8E8878] uppercase tracking-wider">Sản phẩm / Tổng</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-[#8E8878] uppercase tracking-wider w-[30%]">Thao tác</th>
+                  <tr className="border-b border-line-soft bg-surface">
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-muted uppercase tracking-wider w-[22%]">Mã nháp</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-muted uppercase tracking-wider w-[18%]">Khách hàng</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-muted uppercase tracking-wider w-[13%]">Kho</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-muted uppercase tracking-wider">Sản phẩm / Tổng</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-muted uppercase tracking-wider w-[30%]">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>

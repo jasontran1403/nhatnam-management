@@ -27,8 +27,8 @@ import { useState } from 'react';
 import { X, CheckCircle, XCircle, Trash2, AlertTriangle, Receipt } from 'lucide-react';
 import { expenseApi } from '../../api/services';
 import { useToast } from '../common/Toast';
+import { fmtVND } from '../../utils/format.js';
 
-const fmtVND = (n) => new Intl.NumberFormat('vi-VN').format(Number(n) || 0) + ' đ';
 
 export default function ExpenseBulkActionModal({
   vouchers,       // mảng phiếu đang được chọn
@@ -85,26 +85,26 @@ export default function ExpenseBulkActionModal({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
 
-        <div className="flex items-center justify-between p-5 border-b border-black/5">
+        <div className="flex items-center justify-between p-5 border-b border-hairline">
           <div className="flex items-center gap-3">
-            <Receipt size={20} className="text-[#C9A84C]" />
+            <Receipt size={20} className="text-gold" />
             <div>
-              <p className="font-bold text-[#1C1C1E]">Phiếu chi đang chọn</p>
-              <p className="text-xs text-[#8E8878] mt-0.5">
+              <p className="font-bold text-ink">Phiếu chi đang chọn</p>
+              <p className="text-xs text-muted mt-0.5">
                 {shown.length} phiếu · Tổng {fmtVND(total)}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted transition">
             <X size={20} />
           </button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-2">
           {shown.length === 0 && (
-            <p className="text-sm text-[#8E8878] text-center py-6">
+            <p className="text-sm text-muted text-center py-6">
               Chưa chọn phiếu nào. Đóng modal và tick vào phiếu ở danh sách.
             </p>
           )}
@@ -115,37 +115,37 @@ export default function ExpenseBulkActionModal({
             return (
               <div key={v.id}
                 className={`flex items-start gap-3 rounded-xl px-4 py-3 border ${
-                  err ? 'bg-red-50 border-red-200'
-                      : done ? 'bg-green-50 border-green-200'
-                      : 'bg-[#FAF7F2] border-transparent'
+                  err ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/28'
+                      : done ? 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/28'
+                      : 'bg-canvas border-transparent'
                 }`}>
                 <div className="flex-1 min-w-0">
-                  <p className="font-mono text-xs font-bold text-[#C9A84C]">
+                  <p className="font-mono text-xs font-bold text-gold">
                     Số phiếu {v.paymentNumber || v.voucherCode}
                   </p>
-                  <p className="text-sm text-[#1C1C1E] truncate">{v.reason}</p>
-                  <p className="text-xs text-[#8E8878] truncate">
+                  <p className="text-sm text-ink truncate">{v.reason}</p>
+                  <p className="text-xs text-muted truncate">
                     {v.vendorName ? `${v.vendorName} · ` : ''}{v.createdByName}
                   </p>
                   {err && (
-                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-red-600 dark:text-red-300 mt-1 flex items-center gap-1">
                       <AlertTriangle size={11} /> {err}
                     </p>
                   )}
                   {done && (
-                    <p className="text-xs text-green-700 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-1 flex items-center gap-1">
                       <CheckCircle size={11} /> Xử lý thành công
                     </p>
                   )}
                 </div>
-                <p className="text-sm font-bold text-[#1C1C1E] whitespace-nowrap">
+                <p className="text-sm font-bold text-ink whitespace-nowrap">
                   {fmtVND(v.totalAmount)}
                 </p>
                 <button
                   onClick={() => onRemove(v.id)}
                   disabled={busy}
                   title="Bỏ chọn phiếu này"
-                  className="p-1.5 rounded-lg hover:bg-red-100 text-red-400 hover:text-red-600 transition disabled:opacity-50"
+                  className="p-1.5 rounded-lg hover:bg-red-100 dark:bg-red-500/18 text-red-400 hover:text-red-600 dark:text-red-300 transition disabled:opacity-50"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -154,24 +154,24 @@ export default function ExpenseBulkActionModal({
           })}
 
           {rejecting && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-3 mt-2">
-              <label className="block text-xs font-semibold text-red-600 mb-1">
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl p-3 mt-2">
+              <label className="block text-xs font-semibold text-red-600 dark:text-red-300 mb-1">
                 Lý do từ chối * (áp dụng cho tất cả {ids.length} phiếu)
               </label>
               <textarea
                 value={reason} onChange={e => setReason(e.target.value)} rows={2}
                 placeholder="Nhập lý do..."
-                className="w-full px-3 py-2 rounded-lg border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 bg-white"
+                className="w-full px-3 py-2 rounded-lg border border-red-200 dark:border-red-500/28 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 dark:ring-red-500/28 bg-surface"
               />
             </div>
           )}
         </div>
 
-        <div className="p-5 border-t border-black/5 flex gap-3">
+        <div className="p-5 border-t border-hairline flex gap-3">
           {!rejecting ? (
             <>
               <button onClick={() => setRejecting(true)} disabled={busy || ids.length === 0}
-                className="flex-1 py-3 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 py-3 rounded-xl border border-red-200 dark:border-red-500/28 text-sm font-semibold text-red-600 dark:text-red-300 hover:bg-red-50 dark:bg-red-500/10 transition disabled:opacity-50 flex items-center justify-center gap-2">
                 <XCircle size={15} /> Từ chối tất cả
               </button>
               <button onClick={doApprove} disabled={busy || ids.length === 0}
@@ -182,7 +182,7 @@ export default function ExpenseBulkActionModal({
           ) : (
             <>
               <button onClick={() => { setRejecting(false); setReason(''); }} disabled={busy}
-                className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition disabled:opacity-50">
+                className="flex-1 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition disabled:opacity-50">
                 Huỷ
               </button>
               <button onClick={doReject} disabled={busy}

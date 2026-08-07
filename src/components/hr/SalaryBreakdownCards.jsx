@@ -32,14 +32,14 @@ const USE_LEGACY_LAYOUT = false;
 function Row({ label, val, bold, red, green, sub }) {
   return (
     <div className={`flex justify-between items-center gap-3 ${sub ? 'pl-3' : ''}`}>
-      <span className={`text-xs ${sub ? 'text-[#A8A090]' : 'text-[#8E8878]'}`}>{label}</span>
+      <span className={`text-xs ${sub ? 'text-muted' : 'text-muted'}`}>{label}</span>
       <span className={`text-sm whitespace-nowrap ${bold ? 'font-bold' : 'font-medium'} ${
-        red ? 'text-red-600' : green ? 'text-emerald-700' : 'text-[#1C1C1E]'}`}>{val}</span>
+        red ? 'text-red-600 dark:text-red-300' : green ? 'text-emerald-700 dark:text-emerald-300' : 'text-ink'}`}>{val}</span>
     </div>
   );
 }
 
-const Divider = () => <div className="h-px bg-[#E8E0D6] my-1" />;
+const Divider = () => <div className="h-px bg-surface-2 my-1" />;
 
 function LegacySalaryBreakdownCards({ row, showComponents = true }) {
   if (!row) return null;
@@ -64,8 +64,8 @@ function LegacySalaryBreakdownCards({ row, showComponents = true }) {
     <div className="space-y-4">
       {/* Các khoản cấu thành */}
       {showComponents && (
-        <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-          <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">Các khoản cấu thành</p>
+        <div className="bg-canvas rounded-xl p-4 space-y-2">
+          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Các khoản cấu thành</p>
           <Row label={hourly ? 'Lương cơ bản (theo giờ thực tế)' : 'Lương cơ bản (NET)'} val={fmt(row.baseSalary)} />
           {hourly && (
             <>
@@ -88,8 +88,8 @@ function LegacySalaryBreakdownCards({ row, showComponents = true }) {
       )}
 
       {/* Card 1 — Nhân viên */}
-      <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-        <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">Của nhân viên (VNĐ)</p>
+      <div className="bg-canvas rounded-xl p-4 space-y-2">
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Của nhân viên (VNĐ)</p>
         <Row label="Lương GROSS" val={fmt(row.grossSalary)} bold />
         <Divider />
         {/* Không đóng bảo hiểm: gộp thành 1 dòng thay vì 4 dòng 0đ gây hiểu nhầm
@@ -121,8 +121,8 @@ function LegacySalaryBreakdownCards({ row, showComponents = true }) {
       </div>
 
       {/* Card 2 — Doanh nghiệp */}
-      <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-        <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">Của doanh nghiệp phải trả (VNĐ)</p>
+      <div className="bg-canvas rounded-xl p-4 space-y-2">
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Của doanh nghiệp phải trả (VNĐ)</p>
         <Row label="Lương GROSS" val={fmt(row.grossSalary)} />
         <Divider />
         {noIns ? (
@@ -140,7 +140,7 @@ function LegacySalaryBreakdownCards({ row, showComponents = true }) {
         <Row label="TỔNG CỘNG (chi phí DN / tháng)" val={fmt(row.totalCost)} bold />
       </div>
 
-      <p className="text-[11px] text-[#A8A090] leading-relaxed">
+      <p className="text-[11px] text-muted leading-relaxed">
         {noIns ? (
           <>
             Nhân viên này <strong>KHÔNG tham gia bảo hiểm bắt buộc</strong> (lương đóng BH = 0)
@@ -192,8 +192,8 @@ function NewSalaryBreakdownCards({ row }) {
   return (
     <div className="space-y-4">
       {/* ── CARD 1 — NGƯỜI LAO ĐỘNG ───────────────────────────────────────── */}
-      <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-        <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">
+      <div className="bg-canvas rounded-xl p-4 space-y-2">
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
           Của người lao động (VNĐ)
         </p>
 
@@ -236,8 +236,8 @@ function NewSalaryBreakdownCards({ row }) {
       </div>
 
       {/* ── CARD 2 — DOANH NGHIỆP ─────────────────────────────────────────── */}
-      <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-        <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">
+      <div className="bg-canvas rounded-xl p-4 space-y-2">
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
           Của doanh nghiệp phải trả (VNĐ)
         </p>
 
@@ -292,7 +292,7 @@ function NewSalaryBreakdownCards({ row }) {
         <Row label="TỔNG DOANH NGHIỆP PHẢI CHI TRẢ" val={fmt(row.totalCost)} bold green />
       </div>
 
-      <p className="text-[11px] text-[#A8A090] leading-relaxed">
+      <p className="text-[11px] text-muted leading-relaxed">
         {noIns ? (
           <>
             Nhân viên này <strong>KHÔNG tham gia bảo hiểm bắt buộc</strong> (lương đóng

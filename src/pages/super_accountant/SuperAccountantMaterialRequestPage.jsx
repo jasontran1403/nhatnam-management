@@ -80,9 +80,9 @@ function CountdownBadge({ targetMs, label }) {
   }, [targetMs]);
   if (!info) return null;
   const cls = {
-    red:    'bg-red-100 text-red-700',
-    yellow: 'bg-amber-100 text-amber-700',
-    normal: 'bg-blue-50 text-blue-700',
+    red:    'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300',
+    yellow: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300',
+    normal: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300',
   }[info.color];
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cls}`}>{label}: {info.label}</span>;
 }
@@ -112,7 +112,7 @@ function LiveCountdownBadge({ targetMs, label }) {
     return () => clearInterval(t);
   }, [targetMs]);
   if (!info) return null;
-  const cls = { red: 'bg-red-100 text-red-700', yellow: 'bg-amber-100 text-amber-700', normal: 'bg-blue-50 text-blue-700' }[info.color];
+  const cls = { red: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300', yellow: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300', normal: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300' }[info.color];
   return (
     <span className={`text-xs px-2.5 py-1 rounded-full font-semibold tabular-nums ${cls}`}>
       ⏱ {label}: {info.label}
@@ -122,14 +122,14 @@ function LiveCountdownBadge({ targetMs, label }) {
 
 // ── Card bg ────────────────────────────────────────────────────────────────────
 function cardBg(req) {
-  if (req.status === 'RECEIVED') return 'bg-emerald-50 border-emerald-200';
-  if (req.status === 'COMPLETED') return 'bg-white';
-  if (!req.requiredBy) return 'bg-white';
+  if (req.status === 'RECEIVED') return 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/28';
+  if (req.status === 'COMPLETED') return 'bg-surface';
+  if (!req.requiredBy) return 'bg-surface';
   const info = liveCountdown(req.requiredBy);
-  if (!info) return 'bg-white';
-  if (info.color === 'red') return 'bg-red-50 border-red-200';
-  if (info.color === 'yellow') return 'bg-amber-50 border-amber-200';
-  return 'bg-white';
+  if (!info) return 'bg-surface';
+  if (info.color === 'red') return 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/28';
+  if (info.color === 'yellow') return 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28';
+  return 'bg-surface';
 }
 
 // ── Upload hóa đơn / chứng từ thanh toán ──────────────────────────────────────
@@ -195,12 +195,12 @@ function InvoiceUploader({ requestId, value = [], onChange, label, required = tr
 
   return (
     <div>
-      <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
         {label} {required && <span className="text-red-500">*</span>}
       </p>
       <div className="flex gap-2 flex-wrap">
         {value.map((url, i) => (
-          <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-black/10 group">
+          <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-hairline-2 group">
             <img src={imgUrl(url)} alt="" className="w-full h-full object-cover"/>
             <button onClick={() => onChange(value.filter((_, j) => j !== i))}
               className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -209,20 +209,20 @@ function InvoiceUploader({ requestId, value = [], onChange, label, required = tr
           </div>
         ))}
         {previews.map((p, i) => (
-          <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-black/10">
+          <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-hairline-2">
             <img src={`${import.meta.env.VITE_API_BASE_URL}/api/auth/${p}`} alt="" className="w-full h-full object-cover"/>
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={16} className="text-white animate-spin"/></div>
           </div>
         ))}
         <button type="button" onClick={openCamera}
-          className="w-20 h-20 rounded-xl border-2 border-dashed border-[#C9A84C]/40 flex flex-col items-center justify-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 gap-1">
-          <Camera size={20} className="text-[#C9A84C]"/>
-          <span className="text-[10px] text-[#C9A84C] font-medium">{t('production','mr_capture')}</span>
+          className="w-20 h-20 rounded-xl border-2 border-dashed border-gold/40 flex flex-col items-center justify-center hover:border-gold hover:bg-gold/5 gap-1">
+          <Camera size={20} className="text-gold"/>
+          <span className="text-[10px] text-gold font-medium">{t('production','mr_capture')}</span>
         </button>
         <button type="button" onClick={() => fileRef.current?.click()}
-          className="w-20 h-20 rounded-xl border-2 border-dashed border-[#E8DDD0] flex flex-col items-center justify-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 gap-1">
-          <Plus size={20} className="text-[#8E8878]"/>
-          <span className="text-[10px] text-[#8E8878]">{t('production','mr_choose_file')}</span>
+          className="w-20 h-20 rounded-xl border-2 border-dashed border-line flex flex-col items-center justify-center hover:border-gold hover:bg-gold/5 gap-1">
+          <Plus size={20} className="text-muted"/>
+          <span className="text-[10px] text-muted">{t('production','mr_choose_file')}</span>
         </button>
         <input ref={fileRef} type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={e => handleFiles(e.target.files)}/>
       </div>
@@ -232,8 +232,8 @@ function InvoiceUploader({ requestId, value = [], onChange, label, required = tr
           <video ref={videoRef} autoPlay playsInline muted className="max-w-full max-h-[70vh] rounded-xl"/>
           <canvas ref={canvasRef} className="hidden"/>
           <button onClick={capturePhoto}
-            className="mt-6 w-16 h-16 rounded-full bg-white border-4 border-[#C9A84C] flex items-center justify-center hover:scale-105 transition-transform">
-            <Camera size={24} className="text-[#C9A84C]"/>
+            className="mt-6 w-16 h-16 rounded-full bg-surface border-4 border-gold flex items-center justify-center hover:scale-105 transition-transform">
+            <Camera size={24} className="text-gold"/>
           </button>
         </div>
       )}
@@ -330,25 +330,25 @@ function VendorSelectDropdown({ value, onChange, vendors: vendorsProp, loading: 
         width: pos.width,
         zIndex: 9999,
       }}
-      className="bg-white border border-[#E8DDD0] rounded-xl shadow-2xl overflow-hidden"
+      className="bg-surface border border-line rounded-xl shadow-2xl overflow-hidden"
     >
-      <div className="p-2 border-b border-black/5 relative">
-        <Search size={12} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#8E8878]"/>
+      <div className="p-2 border-b border-hairline relative">
+        <Search size={12} className="absolute left-5 top-1/2 -translate-y-1/2 text-muted"/>
         <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
           placeholder={t('production','mr_search_vendor')}
-          className="w-full pl-7 pr-2 py-1.5 text-sm rounded-lg border border-black/10 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"/>
+          className="w-full pl-7 pr-2 py-1.5 text-sm rounded-lg border border-hairline-2 focus:outline-none focus:ring-2 focus:ring-gold/40"/>
       </div>
       <div className="max-h-44 overflow-auto">
         {filtered.length === 0 && (
-          <p className="text-center py-4 text-xs text-[#8E8878]">
+          <p className="text-center py-4 text-xs text-muted">
             {loading ? 'Đang tải...' : 'Không có nhà cung cấp — hãy tạo trong trang Công nợ NCC'}
           </p>
         )}
         {filtered.map(v => (
-          <button key={v.id} className="w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] border-b border-black/5 last:border-0" onClick={() => select(v)}>
-            <p className="font-medium text-[#1C1C1E]">{v.name}</p>
+          <button key={v.id} className="w-full text-left px-3 py-2 text-sm hover:bg-canvas border-b border-hairline last:border-0" onClick={() => select(v)}>
+            <p className="font-medium text-ink">{v.name}</p>
             {(v.contactPerson || v.contactPhone) && (
-              <p className="text-xs text-[#8E8878]">{v.contactPerson}{v.contactPerson && v.contactPhone ? ' · ' : ''}{v.contactPhone}</p>
+              <p className="text-xs text-muted">{v.contactPerson}{v.contactPerson && v.contactPhone ? ' · ' : ''}{v.contactPhone}</p>
             )}
           </button>
         ))}
@@ -361,21 +361,21 @@ function VendorSelectDropdown({ value, onChange, vendors: vendorsProp, loading: 
     <div className="relative" ref={triggerRef}>
       <div
         onClick={toggleOpen}
-        className={`flex items-center justify-between px-3 py-2.5 rounded-xl border cursor-pointer transition text-sm ${value?.vendorId ? 'border-[#C9A84C] bg-white' : 'border-[#E8DDD0] bg-[#FAF7F2]'}`}
+        className={`flex items-center justify-between px-3 py-2.5 rounded-xl border cursor-pointer transition text-sm ${value?.vendorId ? 'border-gold bg-surface' : 'border-line bg-canvas'}`}
       >
         {value?.vendorId ? (
           <div className="min-w-0">
-            <p className="font-medium text-[#1C1C1E] truncate">{value.vendorName}</p>
+            <p className="font-medium text-ink truncate">{value.vendorName}</p>
             {(value.contactPerson || value.contactPhone) && (
-              <p className="text-xs text-[#8E8878] truncate">
+              <p className="text-xs text-muted truncate">
                 {value.contactPerson}{value.contactPerson && value.contactPhone ? ' · ' : ''}{value.contactPhone}
               </p>
             )}
           </div>
         ) : (
-          <span className="text-[#8E8878]">{loading ? 'Đang tải...' : 'Chọn nhà cung cấp...'}</span>
+          <span className="text-muted">{loading ? 'Đang tải...' : 'Chọn nhà cung cấp...'}</span>
         )}
-        <ChevronDown size={14} className={`text-[#8E8878] flex-shrink-0 ml-2 transition-transform ${open ? 'rotate-180' : ''}`}/>
+        <ChevronDown size={14} className={`text-muted flex-shrink-0 ml-2 transition-transform ${open ? 'rotate-180' : ''}`}/>
       </div>
       {dropdown}
     </div>
@@ -475,7 +475,7 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
       <div className="space-y-4">
         {/* Thời gian giao hàng — ngày + giờ phút */}
         <div>
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
             Thời gian giao hàng dự kiến <span className="text-red-500">*</span>
           </p>
           <div className="flex gap-3 items-center">
@@ -494,11 +494,11 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
                 value={deliveryTime}
                 onChange={e => setDeliveryTime(e.target.value)}
               />
-              <span className="text-xs text-[#8E8878]">{t('production','mr_delivery_hour')}</span>
+              <span className="text-xs text-muted">{t('production','mr_delivery_hour')}</span>
             </div>
           </div>
           {deliveryDate && (
-            <p className="text-xs text-[#C9A84C] mt-1.5">
+            <p className="text-xs text-gold mt-1.5">
               → Dự kiến: {new Date(getEstDeliveryMs()).toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
             </p>
           )}
@@ -507,18 +507,18 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
         {/* Nhà cung cấp */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-[#1C1C1E]">{t('production','metrics_vendor')}</p>
-            <button onClick={addVendor} className="text-xs text-[#C9A84C] font-semibold flex items-center gap-1">
+            <p className="text-sm font-medium text-ink">{t('production','metrics_vendor')}</p>
+            <button onClick={addVendor} className="text-xs text-gold font-semibold flex items-center gap-1">
               <Plus size={11}/> Thêm NCC
             </button>
           </div>
           <div className="space-y-3">
             {vendors.map((v, i) => (
-              <div key={i} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
+              <div key={i} className="bg-canvas rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-[#8E8878]">NCC {i + 1}</p>
+                  <p className="text-xs font-medium text-muted">NCC {i + 1}</p>
                   {vendors.length > 1 && (
-                    <button onClick={() => removeVendor(i)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
+                    <button onClick={() => removeVendor(i)} className="text-red-400 hover:text-red-600 dark:text-red-300"><X size={14}/></button>
                   )}
                 </div>
                 <VendorSelectDropdown value={v} onChange={data => setVendor(i, data)}/>
@@ -529,11 +529,11 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
 
         {/* Gán nguyên liệu cho từng NCC — bắt buộc ──────────────────────────── */}
         <div>
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
             Gán nguyên liệu cho nhà cung cấp <span className="text-red-500">*</span>
           </p>
           {validVendors.length === 0 ? (
-            <p className="text-sm text-[#8E8878] bg-[#FAF7F2] rounded-xl p-3">
+            <p className="text-sm text-muted bg-canvas rounded-xl p-3">
               Chọn nhà cung cấp ở trên trước, sau đó gán từng nguyên liệu cho NCC tương ứng.
             </p>
           ) : (
@@ -542,14 +542,14 @@ function ConfirmOrderModal({ req, onClose, onDone }) {
                 const assignedVendorId = itemVendorId[it.id];
                 const unassigned = assignedVendorId == null;
                 return (
-                  <div key={it.id} className={`rounded-xl p-3 ${unassigned ? 'bg-red-50 border border-red-200' : 'bg-[#FAF7F2]'}`}>
+                  <div key={it.id} className={`rounded-xl p-3 ${unassigned ? 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28' : 'bg-canvas'}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#1C1C1E] truncate">{it.materialName}</p>
-                        <p className="text-xs text-[#8E8878]">{it.qtyRequested} {it.unit}</p>
+                        <p className="text-sm font-medium text-ink truncate">{it.materialName}</p>
+                        <p className="text-xs text-muted">{it.qtyRequested} {it.unit}</p>
                       </div>
                       {validVendors.length === 1 ? (
-                        <div className="text-xs font-semibold text-[#1C1C1E] bg-white px-3 py-2 rounded-lg border border-[#E8DDD0] whitespace-nowrap max-w-[40%] truncate flex-shrink-0">
+                        <div className="text-xs font-semibold text-ink bg-surface px-3 py-2 rounded-lg border border-line whitespace-nowrap max-w-[40%] truncate flex-shrink-0">
                           {validVendors[0].vendorName}
                         </div>
                       ) : (
@@ -791,9 +791,9 @@ function CompleteModal({ req, onClose, onDone }) {
   return (
     <Modal open onClose={onClose} title={`Hoàn thành phiếu — ${req.requestCode}`} size="lg">
       <div className="space-y-5">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-          <p className="text-sm font-medium text-emerald-700">{t('production','mr_received')}</p>
-          <p className="text-xs text-emerald-600 mt-0.5">
+        <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl p-3">
+          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{t('production','mr_received')}</p>
+          <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-0.5">
             Nhập giá cho từng nguyên liệu, thêm các loại thuế/phí (nếu có). Thuế/phí được phân bổ
             theo tỷ trọng giá trị từng nguyên liệu; giá vốn chỉ làm tròn tới hàng đồng ở bước cuối.
           </p>
@@ -801,20 +801,20 @@ function CompleteModal({ req, onClose, onDone }) {
 
         {/* ── Chọn loại giá nhập ── */}
         <div>
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">Loại giá nhập</p>
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Loại giá nhập</p>
           <div className="flex gap-2">
             <button onClick={() => switchMode('UNIT')}
               className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${priceMode === 'UNIT'
-                ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}>
+                ? 'bg-gold text-white border-gold' : 'bg-surface text-muted border-line'}`}>
               Đơn giá / 1 đơn vị tính
             </button>
             <button onClick={() => switchMode('TOTAL')}
               className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${priceMode === 'TOTAL'
-                ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}>
+                ? 'bg-gold text-white border-gold' : 'bg-surface text-muted border-line'}`}>
               Tổng tiền của 1 nguyên liệu
             </button>
           </div>
-          <p className="text-[11px] text-[#8E8878] mt-1.5">
+          <p className="text-[11px] text-muted mt-1.5">
             Nhập tối đa {MONEY_DECIMALS} số sau dấu thập phân (dùng dấu phẩy).
             {priceMode === 'TOTAL' && ' Hệ thống tự chia cho số lượng thực nhận để ra đơn giá.'}
           </p>
@@ -822,7 +822,7 @@ function CompleteModal({ req, onClose, onDone }) {
 
         {/* ── Giá từng dòng nguyên liệu ── */}
         <div>
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
             Giá nguyên liệu (theo số lượng thực nhận)
           </p>
           {vendors.length === 0 && (
@@ -835,10 +835,10 @@ function CompleteModal({ req, onClose, onDone }) {
               const r = alloc.get(it.id);
               const up = unitPrices[it.id] || 0;
               return (
-                <div key={it.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
+                <div key={it.id} className="bg-canvas rounded-xl p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-[#1C1C1E]">{it.materialName}</span>
-                    <span className="text-xs text-[#8E8878]">{it.qtyReceived} {it.unit}</span>
+                    <span className="text-sm font-medium text-ink">{it.materialName}</span>
+                    <span className="text-xs text-muted">{it.qtyReceived} {it.unit}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {vendors.length > 1 ? (
@@ -848,7 +848,7 @@ function CompleteModal({ req, onClose, onDone }) {
                         {vendors.map(v => <option key={v.id} value={v.id}>{v.vendorName}</option>)}
                       </select>
                     ) : (
-                      <div className="flex items-center px-3 py-2 text-sm text-[#8E8878] bg-white rounded-lg border border-[#E8DDD0]">
+                      <div className="flex items-center px-3 py-2 text-sm text-muted bg-surface rounded-lg border border-line">
                         {singleVendor ? singleVendor.vendorName : '— Chưa có NCC —'}
                       </div>
                     )}
@@ -863,10 +863,10 @@ function CompleteModal({ req, onClose, onDone }) {
                     />
                   </div>
                   {up > 0 && (
-                    <p className="text-right text-xs text-[#1C1C1E]">
+                    <p className="text-right text-xs text-ink">
                       {priceMode === 'TOTAL'
-                        ? <>Đơn giá: <span className="font-semibold text-[#C9A84C]">{fmtMoney(up)} đ/{it.unit}</span></>
-                        : <>Thành tiền: <span className="font-semibold text-[#C9A84C]">{fmtMoney(r?.lineValue)} đ</span></>}
+                        ? <>Đơn giá: <span className="font-semibold text-gold">{fmtMoney(up)} đ/{it.unit}</span></>
+                        : <>Thành tiền: <span className="font-semibold text-gold">{fmtMoney(r?.lineValue)} đ</span></>}
                     </p>
                   )}
                 </div>
@@ -877,8 +877,8 @@ function CompleteModal({ req, onClose, onDone }) {
             )}
           </div>
           {grandMaterialTotal > 0 && (
-            <p className="text-right text-xs text-[#8E8878] mt-1.5">
-              Tổng tiền nguyên liệu: <span className="font-semibold text-[#1C1C1E]">{fmtMoney(grandMaterialTotal)} đ</span>
+            <p className="text-right text-xs text-muted mt-1.5">
+              Tổng tiền nguyên liệu: <span className="font-semibold text-ink">{fmtMoney(grandMaterialTotal)} đ</span>
             </p>
           )}
         </div>
@@ -886,23 +886,23 @@ function CompleteModal({ req, onClose, onDone }) {
         {/* ── Thuế/phí tuỳ chỉnh ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider">
               Thuế / phí khác (mỗi dòng 1 loại)
             </p>
             <button onClick={addCustomEntry}
-              className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:underline">
+              className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline">
               <Plus size={13} /> Thêm thuế/phí
             </button>
           </div>
 
           {customEntries.length === 0 ? (
-            <p className="text-xs text-[#8E8878] flex items-center gap-1.5">
+            <p className="text-xs text-muted flex items-center gap-1.5">
               <Info size={12} /> Không có thuế/phí → giá vốn = đơn giá nhập.
             </p>
           ) : (
             <div className="space-y-3">
               {customEntries.map(ce => (
-                <div key={ce.id} className="bg-white border border-[#E8DDD0] rounded-xl p-3 space-y-2">
+                <div key={ce.id} className="bg-surface border border-line rounded-xl p-3 space-y-2">
                   <div className="flex gap-2">
                     <input className={inputCls} placeholder={t('production','mr_ph_cost_name')}
                       value={ce.label} onChange={e => updateCustomEntry(ce.id, { label: e.target.value })} />
@@ -910,20 +910,20 @@ function CompleteModal({ req, onClose, onDone }) {
                       value={ce.amount}
                       onChange={e => updateCustomEntry(ce.id, { amount: formatMoneyTyping(e.target.value) })} />
                     <button onClick={() => removeCustomEntry(ce.id)}
-                      className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
+                      className="p-2 rounded-lg hover:bg-red-50 dark:bg-red-500/10 text-red-400 transition flex-shrink-0">
                       <Trash2 size={14} />
                     </button>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#8E8878] mb-1">{t('production','mr_apply_to')}</p>
+                    <p className="text-[10px] text-muted mb-1">{t('production','mr_apply_to')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {receivedItems.map(it => {
                         const checked = ce.itemIds.includes(it.id);
                         return (
                           <button key={it.id} onClick={() => toggleCustomEntryItem(ce.id, it.id)}
                             className={`text-xs px-2 py-1 rounded-full border transition ${checked
-                              ? 'bg-[#C9A84C]/10 border-[#C9A84C] text-[#C9A84C] font-semibold'
-                              : 'bg-white border-[#E8DDD0] text-[#8E8878]'}`}>
+                              ? 'bg-gold/10 border-gold text-gold font-semibold'
+                              : 'bg-surface border-line text-muted'}`}>
                             {checked ? '✓ ' : ''}{it.materialName}
                           </button>
                         );
@@ -935,8 +935,8 @@ function CompleteModal({ req, onClose, onDone }) {
                   </div>
                 </div>
               ))}
-              <p className="text-right text-xs text-[#8E8878]">
-                Tổng thuế/phí: <span className="font-semibold text-[#1C1C1E]">{fmtMoney(grandFeeTotal)} đ</span>
+              <p className="text-right text-xs text-muted">
+                Tổng thuế/phí: <span className="font-semibold text-ink">{fmtMoney(grandFeeTotal)} đ</span>
               </p>
             </div>
           )}
@@ -945,16 +945,16 @@ function CompleteModal({ req, onClose, onDone }) {
         {/* ── PREVIEW giá vốn tạm tính ── */}
         <div>
           <button onClick={handlePreview} disabled={!pricesReady}
-            className="w-full py-2.5 rounded-xl border border-[#C9A84C] text-[#C9A84C] font-semibold hover:bg-[#C9A84C]/10 transition disabled:opacity-40 flex items-center justify-center gap-2">
+            className="w-full py-2.5 rounded-xl border border-gold text-gold font-semibold hover:bg-gold/10 transition disabled:opacity-40 flex items-center justify-center gap-2">
             <Eye size={16} /> Xem trước giá vốn tạm tính
           </button>
 
           {showPreview && (
-            <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
+            <div className="mt-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl p-3 space-y-2">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-[#6b7280] border-b border-emerald-200">
+                    <tr className="text-ink-2 border-b border-emerald-200 dark:border-emerald-500/28">
                       <th className="text-left py-1.5 font-semibold">Nguyên liệu</th>
                       <th className="text-right py-1.5 font-semibold">SL</th>
                       <th className="text-right py-1.5 font-semibold">Đơn giá</th>
@@ -967,14 +967,14 @@ function CompleteModal({ req, onClose, onDone }) {
                       const r = alloc.get(it.id);
                       if (!r) return null;
                       return (
-                        <tr key={it.id} className="border-b border-emerald-100 last:border-0">
-                          <td className="py-1.5 text-[#1C1C1E]">{it.materialName}</td>
+                        <tr key={it.id} className="border-b border-emerald-100 dark:border-emerald-500/18 last:border-0">
+                          <td className="py-1.5 text-ink">{it.materialName}</td>
                           <td className="py-1.5 text-right tabular-nums">{it.qtyReceived} {it.unit}</td>
                           <td className="py-1.5 text-right tabular-nums">{fmtMoney(r.unitPrice)}</td>
-                          <td className="py-1.5 text-right tabular-nums text-amber-700">
+                          <td className="py-1.5 text-right tabular-nums text-amber-700 dark:text-amber-300">
                             {r.feeShare > 0 ? fmtMoney(r.feeShare) : '—'}
                           </td>
-                          <td className="py-1.5 text-right tabular-nums font-bold text-emerald-800">
+                          <td className="py-1.5 text-right tabular-nums font-bold text-emerald-800 dark:text-emerald-300">
                             {fmtDong(r.unitCost)}
                           </td>
                         </tr>
@@ -983,7 +983,7 @@ function CompleteModal({ req, onClose, onDone }) {
                   </tbody>
                 </table>
               </div>
-              <p className="text-[10px] text-emerald-700">
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-300">
                 Giá vốn làm tròn tới hàng đơn vị đồng ở bước cuối; các bước trung gian giữ nguyên phần thập phân.
               </p>
             </div>
@@ -993,7 +993,7 @@ function CompleteModal({ req, onClose, onDone }) {
         {/* ── Thanh toán / Công nợ theo từng NCC ── */}
         {vendorsWithAmount.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
               Thanh toán cho từng nhà cung cấp
             </p>
             <div className="space-y-3">
@@ -1002,23 +1002,23 @@ function CompleteModal({ req, onClose, onDone }) {
                 const d = vendorDecisions[v.id];
                 const missingCatalogLink = d.action === 'DEBT' && !v.vendorId;
                 return (
-                  <div key={v.id} className="bg-white border border-[#E8DDD0] rounded-xl p-3 space-y-3">
+                  <div key={v.id} className="bg-surface border border-line rounded-xl p-3 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-[#1C1C1E]">{v.vendorName}</p>
-                      <p className="text-sm font-bold text-[#C9A84C]">{fmtMoney(total)} đ</p>
+                      <p className="text-sm font-semibold text-ink">{v.vendorName}</p>
+                      <p className="text-sm font-bold text-gold">{fmtMoney(total)} đ</p>
                     </div>
 
                     {/* Mục 7: 2 field bắt buộc theo từng NCC */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[11px] font-medium text-[#8E8878] mb-1">Thông tin phiếu nhập *</label>
+                        <label className="block text-[11px] font-medium text-muted mb-1">Thông tin phiếu nhập *</label>
                         <input className={inputCls}
                           placeholder="Mã phiếu nhập, mã batch NCC..."
                           value={d.importReceiptInfo}
                           onChange={e => setVendorDecision(v.id, { importReceiptInfo: e.target.value })}/>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium text-[#8E8878] mb-1">Serial / IMEI *</label>
+                        <label className="block text-[11px] font-medium text-muted mb-1">Serial / IMEI *</label>
                         <input className={inputCls}
                           placeholder="Dãy số / text từ NCC"
                           value={d.serialImei}
@@ -1031,12 +1031,12 @@ function CompleteModal({ req, onClose, onDone }) {
 
                     <div className="flex gap-2">
                       <button
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${d.action === 'PAID' ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}
+                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${d.action === 'PAID' ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-line'}`}
                         onClick={() => setVendorDecision(v.id, { action: 'PAID' })}>
                         Thanh toán luôn
                       </button>
                       <button
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${d.action === 'DEBT' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-[#8E8878] border-[#E8DDD0]'}`}
+                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${d.action === 'DEBT' ? 'bg-amber-600 text-white border-amber-600 dark:border-amber-500/40' : 'bg-surface text-muted border-line'}`}
                         onClick={() => setVendorDecision(v.id, { action: 'DEBT' })}>
                         Công nợ
                       </button>
@@ -1073,7 +1073,7 @@ function CompleteModal({ req, onClose, onDone }) {
                       </p>
                     )}
                     {d.action === 'DEBT' && !missingCatalogLink && (
-                      <p className="text-xs text-amber-700">
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
                         Sẽ cộng {fmtMoney(total)} đ vào công nợ của {v.vendorName}.
                       </p>
                     )}
@@ -1085,9 +1085,9 @@ function CompleteModal({ req, onClose, onDone }) {
         )}
 
         {grandTotal > 0 && (
-          <div className="pt-2 border-t border-black/5 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#1C1C1E]">{t('production','mr_total_amount')}</span>
-            <span className="text-lg font-bold text-[#C9A84C]">{fmtMoney(grandTotal)} đ</span>
+          <div className="pt-2 border-t border-hairline flex items-center justify-between">
+            <span className="text-sm font-semibold text-ink">{t('production','mr_total_amount')}</span>
+            <span className="text-lg font-bold text-gold">{fmtMoney(grandTotal)} đ</span>
           </div>
         )}
 
@@ -1132,11 +1132,11 @@ function ExtendDeliveryModal({ req, onClose, onDone }) {
     <Modal open onClose={onClose} title={`Gia hạn giao hàng — ${req.requestCode}`} size="sm">
       <div className="space-y-4">
         <div>
-          <p className="text-xs text-[#8E8878] mb-1">
-            Ngày giao hiện tại: <span className="font-semibold text-[#1C1C1E]">{req.estimatedDelivery ? fmtDateTime(req.estimatedDelivery) : '—'}</span>
+          <p className="text-xs text-muted mb-1">
+            Ngày giao hiện tại: <span className="font-semibold text-ink">{req.estimatedDelivery ? fmtDateTime(req.estimatedDelivery) : '—'}</span>
           </p>
           {req.deliveryExtendedTo && (
-            <p className="text-xs text-amber-700 mb-1">
+            <p className="text-xs text-amber-700 dark:text-amber-300 mb-1">
               Đã gia hạn trước đó: {fmtDateTime(req.deliveryExtendedTo)}
               {req.deliveryExtendReason ? ` — ${req.deliveryExtendReason}` : ''}
             </p>
@@ -1167,18 +1167,18 @@ function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
   const bg = cardBg(req);
 
   return (
-    <div className={`rounded-2xl border ${bg} border-black/5 shadow-sm overflow-hidden`}>
+    <div className={`rounded-2xl border ${bg} border-hairline shadow-sm overflow-hidden`}>
       <button className="w-full text-left px-5 py-4" onClick={() => setExpanded(e => !e)}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-sm font-bold text-[#1C1C1E]">{req.requestCode}</span>
+              <span className="font-mono text-sm font-bold text-ink">{req.requestCode}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.cls}`}>{cfg.label}</span>
               {req.status === 'RECEIVED' && (
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">{t('production','mr_status_pending')}</span>
+                <span className="text-xs bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">{t('production','mr_status_pending')}</span>
               )}
             </div>
-            <p className="text-xs text-[#8E8878] mt-1">
+            <p className="text-xs text-muted mt-1">
               {req.createdByName} · {req.itemCount} nguyên liệu · {fmtTs(req.createdAt)}
             </p>
             {/* Countdown badges — hiển thị trên card */}
@@ -1192,36 +1192,36 @@ function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
             </div>
           </div>
           {expanded
-            ? <ChevronUp size={16} className="text-[#8E8878] flex-shrink-0 mt-1"/>
-            : <ChevronDown size={16} className="text-[#8E8878] flex-shrink-0 mt-1"/>}
+            ? <ChevronUp size={16} className="text-muted flex-shrink-0 mt-1"/>
+            : <ChevronDown size={16} className="text-muted flex-shrink-0 mt-1"/>}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 border-t border-black/5">
+        <div className="px-5 pb-4 border-t border-hairline">
           {/* Danh sách nguyên liệu */}
           <div className="mt-3">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production','pcalc_ingredients')}</p>
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{t('production','pcalc_ingredients')}</p>
             <div className="space-y-2">
               {(req.items || []).map((it, i) => (
-                <div key={i} className="flex items-center justify-between bg-[#FAF7F2] rounded-xl px-3 py-2">
+                <div key={i} className="flex items-center justify-between bg-canvas rounded-xl px-3 py-2">
                   <div>
-                    <span className="text-sm text-[#1C1C1E] font-medium">{it.materialName}</span>
+                    <span className="text-sm text-ink font-medium">{it.materialName}</span>
                     {it.suppliedByVendorName && (
-                      <p className="text-xs text-[#8E8878]">{it.suppliedByVendorName}</p>
+                      <p className="text-xs text-muted">{it.suppliedByVendorName}</p>
                     )}
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-semibold text-[#1C1C1E]">{it.qtyRequested}</span>
-                    <span className="text-xs text-[#8E8878] ml-1">{it.unit}</span>
+                    <span className="text-sm font-semibold text-ink">{it.qtyRequested}</span>
+                    <span className="text-xs text-muted ml-1">{it.unit}</span>
                     {it.qtyReceived != null && (
-                      <span className="ml-2 text-xs text-emerald-600">(nhận: {it.qtyReceived})</span>
+                      <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-300">(nhận: {it.qtyReceived})</span>
                     )}
                     {it.lineAmount != null && (
-                      <p className="text-xs text-[#C9A84C] font-semibold">{fmtVND(it.lineAmount)}</p>
+                      <p className="text-xs text-gold font-semibold">{fmtVND(it.lineAmount)}</p>
                     )}
                     {it.costBreakdown?.length > 1 && (
-                      <p className="text-[10px] text-[#8E8878] mt-0.5">
+                      <p className="text-[10px] text-muted mt-0.5">
                         {it.costBreakdown.map((b, bi) => `${b.label}: ${fmtVND(b.amount)}`).join(' · ')}
                       </p>
                     )}
@@ -1233,28 +1233,28 @@ function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
 
           {/* Nhà cung cấp (nếu đã có) */}
           {req.vendors?.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-black/5">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production','metrics_vendor')}</p>
+            <div className="mt-3 pt-3 border-t border-hairline">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">{t('production','metrics_vendor')}</p>
               {req.vendors.map((v, i) => (
                 <div key={i} className="py-0.5">
-                  <div className="flex items-center justify-between text-xs text-[#1C1C1E]">
+                  <div className="flex items-center justify-between text-xs text-ink">
                     <span>
                       {v.vendorName}{v.contactPerson ? ` · ${v.contactPerson}` : ''}{v.contactPhone ? ` · ${v.contactPhone}` : ''}
                     </span>
                     {v.paymentStatus === 'PAID' && (
-                      <span className="text-emerald-600 font-semibold">Đã thanh toán {fmtVND(v.totalAmount)}</span>
+                      <span className="text-emerald-600 dark:text-emerald-300 font-semibold">Đã thanh toán {fmtVND(v.totalAmount)}</span>
                     )}
                     {v.paymentStatus === 'DEBT' && (
-                      <span className="text-amber-700 font-semibold">
+                      <span className="text-amber-700 dark:text-amber-300 font-semibold">
                         Công nợ {fmtVND(v.debtRemaining)}
                         {v.debtSettlementStatus === 'SETTLED' ? ' (đã trả hết)' : v.debtSettlementStatus === 'PARTIAL' ? ' (đã trả 1 phần)' : ''}
                       </span>
                     )}
                   </div>
                   {(v.importReceiptInfo || v.serialImei) && (
-                    <div className="flex flex-wrap gap-x-3 mt-0.5 text-[11px] text-[#8E8878]">
-                      {v.importReceiptInfo && <span>Phiếu nhập: <span className="text-[#1C1C1E]">{v.importReceiptInfo}</span></span>}
-                      {v.serialImei && <span>Serial/IMEI: <span className="text-[#1C1C1E]">{v.serialImei}</span></span>}
+                    <div className="flex flex-wrap gap-x-3 mt-0.5 text-[11px] text-muted">
+                      {v.importReceiptInfo && <span>Phiếu nhập: <span className="text-ink">{v.importReceiptInfo}</span></span>}
+                      {v.serialImei && <span>Serial/IMEI: <span className="text-ink">{v.serialImei}</span></span>}
                     </div>
                   )}
                 </div>
@@ -1265,13 +1265,13 @@ function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
           {/* Thời gian giao nếu đã đặt */}
           {req.estimatedDelivery && req.status !== 'NEW' && (
             <div className="mt-2 space-y-0.5">
-              <p className="text-xs text-[#8E8878]">
-                🚚 Dự kiến giao: <span className="font-medium text-[#1C1C1E]">{fmtDateTime(req.estimatedDelivery)}</span>
+              <p className="text-xs text-muted">
+                🚚 Dự kiến giao: <span className="font-medium text-ink">{fmtDateTime(req.estimatedDelivery)}</span>
               </p>
               {req.deliveryExtendedTo && (
-                <p className="text-xs text-amber-700">
+                <p className="text-xs text-amber-700 dark:text-amber-300">
                   📅 Gia hạn đến: <span className="font-semibold">{fmtDateTime(req.deliveryExtendedTo)}</span>
-                  {req.deliveryExtendReason ? <span className="text-[#8E8878]"> — {req.deliveryExtendReason}</span> : ''}
+                  {req.deliveryExtendReason ? <span className="text-muted"> — {req.deliveryExtendReason}</span> : ''}
                 </p>
               )}
             </div>
@@ -1296,7 +1296,7 @@ function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
 
           {req.status === 'RECEIVED' && (
             <div className="mt-4">
-              <p className="text-xs text-emerald-600 mb-2">✓ Nhận hàng lúc {fmtDateTime(req.receivedAt)}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-300 mb-2">✓ Nhận hàng lúc {fmtDateTime(req.receivedAt)}</p>
               <PrimaryButton className="w-full" onClick={() => onComplete(req)}>
                 <Check size={14} className="mr-2"/> Hoàn thành phiếu
               </PrimaryButton>
@@ -1304,9 +1304,9 @@ function RequestCard({ req, onConfirmOrder, onComplete, onExtendDelivery }) {
           )}
 
           {req.status === 'COMPLETED' && req.completedAt && (
-            <p className="mt-3 text-xs text-gray-500">
+            <p className="mt-3 text-xs text-muted">
               ✓ Hoàn thành {fmtDateTime(req.completedAt)}
-              {req.totalAmount != null && <> · Tổng tiền: <span className="font-semibold text-[#1C1C1E]">{fmtVND(req.totalAmount)}</span></>}
+              {req.totalAmount != null && <> · Tổng tiền: <span className="font-semibold text-ink">{fmtVND(req.totalAmount)}</span></>}
             </p>
           )}
         </div>
@@ -1348,16 +1348,16 @@ export default function SuperAccountantMaterialRequestPage() {
   const requests = data?.content || [];
 
   return (
-    <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
+    <div className="p-4 space-y-4 bg-surface-2 min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','mr_title')}</h1>
+        <h1 className="text-xl font-bold text-ink">{t('production','mr_title')}</h1>
       </div>
 
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 space-y-3">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 space-y-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]"/>
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"/>
           <input
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-canvas placeholder-muted"
             placeholder={t('production','mr_search_ph')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
@@ -1370,7 +1370,7 @@ export default function SuperAccountantMaterialRequestPage() {
             { val: 'COMPLETED', label: 'Hoàn thành' },
           ].map(s => (
             <button key={s.val} onClick={() => { setStatusFilter(s.val); setPage(0); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${statusFilter === s.val ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#1A2B1A]'}`}>
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${statusFilter === s.val ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-line hover:border-forest-deep'}`}>
               {s.label}
             </button>
           ))}
@@ -1381,9 +1381,9 @@ export default function SuperAccountantMaterialRequestPage() {
       {loading
         ? <div className="space-y-3">{[1,2,3].map(i => <CardSkeleton key={i}/>)}</div>
         : requests.length === 0
-          ? <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-              <Package size={32} className="mx-auto text-[#8E8878] mb-2"/>
-              <p className="text-[#8E8878] text-sm">{t('production','mr_empty')}</p>
+          ? <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+              <Package size={32} className="mx-auto text-muted mb-2"/>
+              <p className="text-muted text-sm">{t('production','mr_empty')}</p>
             </div>
           : <div className="space-y-3">
               {requests.map(req => (
@@ -1395,10 +1395,10 @@ export default function SuperAccountantMaterialRequestPage() {
       {data?.totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production','mr_prev')}</button>
-          <span className="px-4 py-2 text-sm text-[#8E8878]">{page + 1} / {data.totalPages}</span>
+            className="px-4 py-2 rounded-xl border border-line text-sm disabled:opacity-40 hover:bg-surface-2">{t('production','mr_prev')}</button>
+          <span className="px-4 py-2 text-sm text-muted">{page + 1} / {data.totalPages}</span>
           <button disabled={page >= data.totalPages - 1} onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 rounded-xl border border-[#E8DDD0] text-sm disabled:opacity-40 hover:bg-[#F0EBE3]">{t('production','mr_next')}</button>
+            className="px-4 py-2 rounded-xl border border-line text-sm disabled:opacity-40 hover:bg-surface-2">{t('production','mr_next')}</button>
         </div>
       )}
 

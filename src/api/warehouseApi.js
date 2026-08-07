@@ -32,7 +32,15 @@ export const warehouseApi = {
   getAllSubCategories: () => api.get(`${BASE}/subcategories`),
 
   // ── Nguyên liệu ───────────────────────────────────────────────────────────
-  getIngredients: () => api.get(`${BASE}/all-ingredients`),
+  /**
+   * Danh mục nguyên liệu.
+   * Truyền warehouseId để chỉ lấy nguyên liệu ĐÃ GÁN cho kho đó (màn Quản lý kho);
+   * bỏ trống thì lấy toàn bộ danh mục như cũ.
+   */
+  getIngredients: (warehouseId) =>
+    api.get(`${BASE}/all-ingredients`, {
+      params: warehouseId ? { warehouseId } : undefined,
+    }),
 
   // ── Tồn kho ───────────────────────────────────────────────────────────────
   getStock: (warehouseId) => api.get(`${BASE}/${warehouseId}/stock`),

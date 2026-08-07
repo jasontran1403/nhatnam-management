@@ -32,22 +32,22 @@ const qtyFmt = (v) =>
   v == null ? '—' : new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(Number(v));
 
 function debtBadgeColor(days) {
-  if (days == null) return 'bg-emerald-50 text-emerald-600 border-emerald-200';
-  if (days >= 30) return 'bg-red-50 text-red-600 border-red-200';
-  if (days >= 14) return 'bg-orange-50 text-orange-600 border-orange-200';
-  return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (days == null) return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28';
+  if (days >= 30) return 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28';
+  if (days >= 14) return 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 border-orange-200 dark:border-orange-500/28';
+  return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28';
 }
 
 const SETTLE_CFG = {
-  NONE: { label: 'Chưa thanh toán', cls: 'bg-red-50 text-red-600 border-red-200' },
-  PARTIAL: { label: 'Đã trả 1 phần', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  SETTLED: { label: 'Đã trả hết', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  NONE: { label: 'Chưa thanh toán', cls: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28' },
+  PARTIAL: { label: 'Đã trả 1 phần', cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28' },
+  SETTLED: { label: 'Đã trả hết', cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28' },
 };
 
 const PAY_CFG = {
-  PAID: { label: 'Đã thanh toán', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  DEBT: { label: 'Công nợ', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  UNSET: { label: 'Chưa xử lý', cls: 'bg-gray-50 text-gray-500 border-gray-200' },
+  PAID: { label: 'Đã thanh toán', cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28' },
+  DEBT: { label: 'Công nợ', cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28' },
+  UNSET: { label: 'Chưa xử lý', cls: 'bg-canvas text-muted border-line' },
 };
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -179,7 +179,7 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       {dashboardPath && (
         <button onClick={() => navigate(dashboardPath)}
-          className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
+          className="flex items-center gap-1.5 text-sm text-muted hover:text-ink font-medium">
           <ChevronLeft size={16} /> Quay lại sản xuất
         </button>
       )}
@@ -193,16 +193,16 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
             <>
               <input ref={importInputRef} type="file" accept=".xlsx" hidden onChange={handleImport} />
               <button onClick={handleExport} disabled={exporting}
-                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-white text-[#1A2B1A] border border-[#E8DDD0] hover:border-[#1A2B1A] transition-colors disabled:opacity-50">
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-surface text-forest border border-line hover:border-forest-deep transition-colors disabled:opacity-50">
                 {exporting
-                  ? <span className="w-4 h-4 border-2 border-[#1A2B1A]/30 border-t-[#1A2B1A] rounded-full animate-spin" />
+                  ? <span className="w-4 h-4 border-2 border-forest-deep/30 border-t-forest-deep rounded-full animate-spin" />
                   : <Download size={15} />}
                 Export
               </button>
               <button onClick={() => importInputRef.current?.click()} disabled={importing}
-                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-white text-[#1A2B1A] border border-[#E8DDD0] hover:border-[#1A2B1A] transition-colors disabled:opacity-50">
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-surface text-forest border border-line hover:border-forest-deep transition-colors disabled:opacity-50">
                 {importing
-                  ? <span className="w-4 h-4 border-2 border-[#1A2B1A]/30 border-t-[#1A2B1A] rounded-full animate-spin" />
+                  ? <span className="w-4 h-4 border-2 border-forest-deep/30 border-t-forest-deep rounded-full animate-spin" />
                   : <Upload size={15} />}
                 Import
               </button>
@@ -212,7 +212,7 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
           {/* Phân tích danh mục chi — nguyên liệu đã mua + khoản chi/dịch vụ đã dùng */}
           {analysisPath && (
             <button onClick={() => navigate(analysisPath)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#1A2B1A] text-white hover:bg-[#243824] transition-colors flex-shrink-0">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-forest-deep text-white hover:bg-forest-mid transition-colors flex-shrink-0">
               <BarChart3 size={15} /> Phân tích danh mục chi
             </button>
           )}
@@ -220,10 +220,10 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
       </div>
 
       {/* Tổng công nợ */}
-      <div className="bg-gradient-to-r from-amber-50 to-amber-50/40 rounded-2xl p-4 flex items-center justify-between border border-amber-100">
+      <div className="bg-gradient-to-r from-amber-50 dark:from-amber-500/10 to-amber-50/40 rounded-2xl p-4 flex items-center justify-between border border-amber-100 dark:border-amber-500/18">
         <div>
-          <p className="text-xs text-[#8E8878] font-medium">Tổng công nợ hiện tại</p>
-          <p className="text-2xl font-bold text-amber-700 mt-0.5">{money(totalDebt)}</p>
+          <p className="text-xs text-muted font-medium">Tổng công nợ hiện tại</p>
+          <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-0.5">{money(totalDebt)}</p>
         </div>
         <Wallet size={28} className="text-amber-600/40" />
       </div>
@@ -236,22 +236,22 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
       {/* Tìm kiếm + sắp xếp */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm nhà cung cấp theo tên..."
-            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white"
+            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-surface"
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <ArrowUpDown size={13} className="text-[#8E8878]" />
+          <ArrowUpDown size={13} className="text-muted" />
           {[
             { val: 'debt', label: 'Nợ lâu nhất', icon: Clock },
             { val: 'amount', label: 'Nợ nhiều nhất', icon: TrendingUp },
             { val: 'name', label: 'Tên A-Z', icon: Building2 },
           ].map(s => (
             <button key={s.val} onClick={() => setSortBy(s.val)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${sortBy === s.val ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#1A2B1A]'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${sortBy === s.val ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-line hover:border-forest-deep'}`}>
               <s.icon size={12} />{s.label}
             </button>
           ))}
@@ -261,16 +261,16 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
       {/* Filter theo danh mục */}
       {availableTypes.length > 1 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <Tag size={13} className="text-[#8E8878]" />
+          <Tag size={13} className="text-muted" />
           <button onClick={() => setTypeFilter('')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!typeFilter ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!typeFilter ? 'bg-gold text-white border-gold' : 'bg-surface text-muted border-line hover:border-gold'}`}>
             Tất cả ({suppliers.length})
           </button>
           {availableTypes.map(type => {
             const count = suppliers.filter(v => (v.vendorType || 'OTHER') === type).length;
             return (
               <button key={type} onClick={() => setTypeFilter(f => f === type ? '' : type)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${typeFilter === type ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}>
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${typeFilter === type ? 'bg-gold text-white border-gold' : 'bg-surface text-muted border-line hover:border-gold'}`}>
                 {VENDOR_TYPE_LABELS[type] || type} ({count})
               </button>
             );
@@ -289,20 +289,20 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
             const isCollapsed = effectiveCollapsed[type];
             const catDebt = vendors.reduce((s, v) => s + Number(v.totalDebt || 0), 0);
             return (
-              <div key={type} className="rounded-2xl border border-black/5 bg-white overflow-hidden">
+              <div key={type} className="rounded-2xl border border-hairline bg-surface overflow-hidden">
                 {/* Header danh mục — click để collapse/expand */}
                 <button onClick={() => toggleCat(type)}
-                  className="w-full flex items-center gap-2 px-4 py-3 bg-[#FAF7F2] hover:bg-[#F0EBE3] transition-colors text-left">
+                  className="w-full flex items-center gap-2 px-4 py-3 bg-canvas hover:bg-surface-2 transition-colors text-left">
                   {isCollapsed
-                    ? <ChevronRight size={14} className="text-[#8E8878]" />
-                    : <ChevronDown size={14} className="text-[#8E8878]" />}
-                  <Tag size={14} className="text-[#C9A84C]" />
-                  <span className="text-sm font-bold text-[#1C1C1E]">
+                    ? <ChevronRight size={14} className="text-muted" />
+                    : <ChevronDown size={14} className="text-muted" />}
+                  <Tag size={14} className="text-gold" />
+                  <span className="text-sm font-bold text-ink">
                     {VENDOR_TYPE_LABELS[type] || type}
                   </span>
-                  <span className="text-[11px] text-[#8E8878]">({vendors.length} NCC)</span>
+                  <span className="text-[11px] text-muted">({vendors.length} NCC)</span>
                   {catDebt > 0 && (
-                    <span className="ml-auto text-xs font-semibold text-amber-700">
+                    <span className="ml-auto text-xs font-semibold text-amber-700 dark:text-amber-300">
                       Nợ: {money(catDebt)}
                     </span>
                   )}
@@ -310,7 +310,7 @@ function SupplierListPage({ basePath, dashboardPath, analysisPath, canManageCata
 
                 {/* Danh sách NCC trong danh mục */}
                 {!isCollapsed && (
-                  <div className="divide-y divide-black/5">
+                  <div className="divide-y divide-hairline">
                     {vendors.map(v => (
                       <SupplierCard key={v.vendorId} v={v}
                         expanded={expandedId === v.vendorId}
@@ -335,26 +335,26 @@ function SupplierCard({ v, expanded, onToggleExpand, onOpen, canManage, onDelete
   const days = v.oldestDebtDays;
 
   return (
-    <div className="hover:bg-[#FAF7F2]/40 transition-colors">
+    <div className="hover:bg-canvas/40 transition-colors">
       <div className="p-4 flex items-start justify-between gap-3">
         <button onClick={onOpen} className="flex items-start gap-3 min-w-0 text-left flex-1">
-          <div className="w-10 h-10 rounded-xl bg-[#C9A84C]/15 text-[#C9A84C] flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-gold/15 text-gold flex items-center justify-center flex-shrink-0">
             <Building2 size={18} />
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-[#1C1C1E] truncate">{v.vendorName}</p>
-            <p className="text-xs text-[#8E8878] mt-0.5 truncate">
+            <p className="font-semibold text-ink truncate">{v.vendorName}</p>
+            <p className="text-xs text-muted mt-0.5 truncate">
               {v.contactPerson && <>{v.contactPerson}</>}
               {v.contactPhone && <> · {v.contactPhone}</>}
             </p>
-            <p className="text-xs text-[#8E8878] mt-1">{v.orderCount} lần đặt hàng</p>
+            <p className="text-xs text-muted mt-1">{v.orderCount} lần đặt hàng</p>
           </div>
         </button>
 
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           {hasDebt
-            ? <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{money(v.totalDebt)}</p>
-            : <span className="text-xs font-medium text-emerald-600">Không nợ</span>}
+            ? <p className="text-lg font-bold text-amber-700 dark:text-amber-300 whitespace-nowrap">{money(v.totalDebt)}</p>
+            : <span className="text-xs font-medium text-emerald-600 dark:text-emerald-300">Không nợ</span>}
 
           {hasDebt && (
             <button onClick={onToggleExpand}
@@ -367,7 +367,7 @@ function SupplierCard({ v, expanded, onToggleExpand, onOpen, canManage, onDelete
 
           {canManage && onDelete && (
             <button onClick={() => onDelete(v)} title="Xóa nhà cung cấp"
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#8E8878] hover:text-red-600 transition-colors">
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted hover:text-red-600 dark:text-red-300 transition-colors">
               <Trash2 size={12} /> Xóa
             </button>
           )}
@@ -390,23 +390,23 @@ function DebtLotsPanel({ vendorId }) {
   }, [vendorId]);
 
   return (
-    <div className="px-4 pb-4 -mt-1 border-t border-black/5 pt-3 bg-[#FAF7F2]/50">
-      <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+    <div className="px-4 pb-4 -mt-1 border-t border-hairline pt-3 bg-canvas/50">
+      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
         <Layers size={12} /> Các lô công nợ còn lại
       </p>
       {lots == null ? (
-        <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 bg-white rounded-xl animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 bg-surface rounded-xl animate-pulse" />)}</div>
       ) : lots.length === 0 ? (
-        <p className="text-xs text-[#8E8878] py-2">Không còn lô công nợ.</p>
+        <p className="text-xs text-muted py-2">Không còn lô công nợ.</p>
       ) : (
         <div className="space-y-2">
           {lots.map(l => {
             const partial = Number(l.paidAmount || 0) > 0;
             const cfg = SETTLE_CFG[l.settlementStatus] || SETTLE_CFG.NONE;
             return (
-              <div key={l.requestVendorId} className="bg-white rounded-xl border border-black/5 p-3">
+              <div key={l.requestVendorId} className="bg-surface rounded-xl border border-hairline p-3">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="font-mono text-xs font-bold text-[#C9A84C]">{l.requestCode}</span>
+                  <span className="font-mono text-xs font-bold text-gold">{l.requestCode}</span>
                   <span className={`inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border ${cfg.cls}`}>
                     {cfg.label} · {l.debtDays} ngày
                   </span>
@@ -414,22 +414,22 @@ function DebtLotsPanel({ vendorId }) {
                 {partial ? (
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <p className="text-[#8E8878]">Tổng</p>
-                      <p className="font-semibold text-[#1C1C1E]">{money(l.totalAmount)}</p>
+                      <p className="text-muted">Tổng</p>
+                      <p className="font-semibold text-ink">{money(l.totalAmount)}</p>
                     </div>
                     <div>
-                      <p className="text-[#8E8878]">Đã trả</p>
-                      <p className="font-semibold text-emerald-600">{money(l.paidAmount)}</p>
+                      <p className="text-muted">Đã trả</p>
+                      <p className="font-semibold text-emerald-600 dark:text-emerald-300">{money(l.paidAmount)}</p>
                     </div>
                     <div>
-                      <p className="text-[#8E8878]">Còn lại</p>
-                      <p className="font-bold text-amber-700">{money(l.remaining)}</p>
+                      <p className="text-muted">Còn lại</p>
+                      <p className="font-bold text-amber-700 dark:text-amber-300">{money(l.remaining)}</p>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#8E8878]">Tổng cần thanh toán</span>
-                    <span className="font-bold text-amber-700">{money(l.totalAmount)}</span>
+                    <span className="text-muted">Tổng cần thanh toán</span>
+                    <span className="font-bold text-amber-700 dark:text-amber-300">{money(l.totalAmount)}</span>
                   </div>
                 )}
               </div>
@@ -477,7 +477,7 @@ function SupplierDetailPage({ basePath, canManageCatalog }) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <button onClick={() => navigate(basePath)}
-        className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
+        className="flex items-center gap-1.5 text-sm text-muted hover:text-ink font-medium">
         <ChevronLeft size={16} /> Quay lại danh sách nhà cung cấp
       </button>
 
@@ -486,7 +486,7 @@ function SupplierDetailPage({ basePath, canManageCatalog }) {
           <SupplierInfoHeader info={info} isService={isService} />
           {canManageCatalog && (
             <button onClick={() => setShowEdit(true)}
-              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-[#F5F0EB] text-[#8E8878] hover:text-[#C9A84C] transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-surface-2 text-muted hover:text-gold transition-colors"
               title="Chỉnh sửa thông tin NCC">
               <Pencil size={16} />
             </button>
@@ -504,15 +504,15 @@ function SupplierDetailPage({ basePath, canManageCatalog }) {
       )}
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-base font-bold text-[#1C1C1E] flex items-center gap-2">
-          <Receipt size={18} className="text-[#C9A84C]" /> {isService ? 'Lịch sử sử dụng' : 'Lịch sử đặt hàng'}
+        <h2 className="text-base font-bold text-ink flex items-center gap-2">
+          <Receipt size={18} className="text-gold" /> {isService ? 'Lịch sử sử dụng' : 'Lịch sử đặt hàng'}
         </h2>
         <div className="relative w-full sm:w-72">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder={isService ? 'Tìm theo tên dịch vụ...' : 'Tìm theo tên sản phẩm...'}
-            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-white"
+            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-surface"
           />
         </div>
       </div>
@@ -578,7 +578,7 @@ function EditVendorModal({ vendorId, info, onClose, onSaved }) {
         </div>
       }>
       <div className="space-y-3">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
         <Field label="Tên nhà cung cấp" required>
           <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} autoFocus />
         </Field>
@@ -617,34 +617,34 @@ function SupplierInfoHeader({ info, isService }) {
   ].filter(Boolean);
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-5">
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/15 text-[#C9A84C] flex items-center justify-center flex-shrink-0">
+        <div className="w-12 h-12 rounded-xl bg-gold/15 text-gold flex items-center justify-center flex-shrink-0">
           <Building2 size={22} />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
+          <h1 className="text-xl font-bold text-ink" style={{ fontFamily: 'var(--font-display)' }}>
             {info.vendorName}
           </h1>
-          <span className="inline-block mt-1 text-xs font-medium bg-[#F5F0EB] text-[#8E8878] px-2 py-0.5 rounded-full">
+          <span className="inline-block mt-1 text-xs font-medium bg-surface-2 text-muted px-2 py-0.5 rounded-full">
             {VENDOR_TYPE_LABELS[info.vendorType] || info.vendorType || 'Khác'}
           </span>
         </div>
       </div>
 
       {rows.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-4 pt-4 border-t border-black/5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-4 pt-4 border-t border-hairline">
           {rows.map((r, i) => (
             <div key={i} className="flex items-center gap-2 text-sm">
-              <r.icon size={14} className="text-[#8E8878] flex-shrink-0" />
-              <span className="text-[#8E8878]">{r.label}:</span>
-              <span className="text-[#1C1C1E] font-medium truncate">{r.value}</span>
+              <r.icon size={14} className="text-muted flex-shrink-0" />
+              <span className="text-muted">{r.label}:</span>
+              <span className="text-ink font-medium truncate">{r.value}</span>
             </div>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-black/5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-hairline">
         <Stat label={isService ? 'Số lần sử dụng' : 'Số lần đặt'} value={info.orderCount} />
         <Stat label={isService ? 'Số dịch vụ' : 'Số sản phẩm'} value={info.distinctProductCount} />
         <Stat label={isService ? 'Tổng tiền đã sử dụng' : 'Tổng đã mua'} value={money(info.totalPurchased)} accent />
@@ -670,9 +670,9 @@ function SupplierInfoHeader({ info, isService }) {
 function Stat({ label, value, sub, accent, danger }) {
   return (
     <div>
-      <p className="text-xs text-[#8E8878]">{label}</p>
-      <p className={`text-base font-bold mt-0.5 ${danger ? 'text-amber-700' : accent ? 'text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>{value}</p>
-      {sub && <p className="text-[11px] text-[#8E8878] mt-0.5">{sub}</p>}
+      <p className="text-xs text-muted">{label}</p>
+      <p className={`text-base font-bold mt-0.5 ${danger ? 'text-amber-700 dark:text-amber-300' : accent ? 'text-gold' : 'text-ink'}`}>{value}</p>
+      {sub && <p className="text-[11px] text-muted mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -682,12 +682,12 @@ function OrderCard({ order, isService }) {
   const dateTs = order.completedAt || order.orderedAt;
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#FAF7F2] border-b border-black/5 flex-wrap">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 bg-canvas border-b border-hairline flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold text-[#C9A84C]">{order.requestCode}</span>
+          <span className="font-mono text-xs font-bold text-gold">{order.requestCode}</span>
           {dateTs && (
-            <span className="text-xs text-[#8E8878] flex items-center gap-1">
+            <span className="text-xs text-muted flex items-center gap-1">
               <Calendar size={11} /> {formatDate(dateTs)}
             </span>
           )}
@@ -700,7 +700,7 @@ function OrderCard({ order, isService }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-black/5 text-[#8E8878]">
+            <tr className="border-b border-hairline text-muted">
               <th className="text-left px-4 py-2 text-xs font-semibold uppercase">{isService ? 'Dịch vụ' : 'Sản phẩm'}</th>
               {!isService && <>
                 <th className="text-right px-4 py-2 text-xs font-semibold uppercase whitespace-nowrap">Đơn giá</th>
@@ -713,28 +713,28 @@ function OrderCard({ order, isService }) {
           <tbody>
             {order.items.map(it => (
               <tr key={it.itemId}
-                className="border-b border-[#F0EBE3] last:border-0">
+                className="border-b border-line-soft last:border-0">
                 <td className="px-4 py-2.5">
-                  <span className="font-medium text-[#1C1C1E] inline-flex items-center gap-1.5">
-                    <Package size={13} className="text-[#8E8878]" />
+                  <span className="font-medium text-ink inline-flex items-center gap-1.5">
+                    <Package size={13} className="text-muted" />
                     {it.materialName}
                   </span>
                 </td>
                 {!isService && <>
-                  <td className="px-4 py-2.5 text-right text-[#1C1C1E] whitespace-nowrap">{money(it.unitPrice)}</td>
-                  <td className="px-4 py-2.5 text-right text-[#1C1C1E] whitespace-nowrap">{qtyFmt(it.quantity)}</td>
-                  <td className="px-2 py-2.5 text-[#8E8878]">{it.unit}</td>
+                  <td className="px-4 py-2.5 text-right text-ink whitespace-nowrap">{money(it.unitPrice)}</td>
+                  <td className="px-4 py-2.5 text-right text-ink whitespace-nowrap">{qtyFmt(it.quantity)}</td>
+                  <td className="px-2 py-2.5 text-muted">{it.unit}</td>
                 </>}
-                <td className="px-4 py-2.5 text-right font-semibold text-[#1C1C1E] whitespace-nowrap">{money(it.lineAmount)}</td>
+                <td className="px-4 py-2.5 text-right font-semibold text-ink whitespace-nowrap">{money(it.lineAmount)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="bg-[#FAF7F2]/60">
-              <td colSpan={isService ? 1 : 4} className="px-4 py-2.5 text-right text-xs font-semibold text-[#8E8878] uppercase">
+            <tr className="bg-canvas/60">
+              <td colSpan={isService ? 1 : 4} className="px-4 py-2.5 text-right text-xs font-semibold text-muted uppercase">
                 {isService ? 'Tổng chi phí sử dụng' : 'Tổng đơn đặt hàng'}
               </td>
-              <td className="px-4 py-2.5 text-right font-bold text-[#C9A84C] whitespace-nowrap">{money(order.totalAmount)}</td>
+              <td className="px-4 py-2.5 text-right font-bold text-gold whitespace-nowrap">{money(order.totalAmount)}</td>
             </tr>
           </tfoot>
         </table>

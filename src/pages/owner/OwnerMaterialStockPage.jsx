@@ -80,7 +80,7 @@ function MaterialDetail({ item, onBack }) {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted hover:text-ink font-medium">
         <ChevronLeft size={16} /> Quay lại danh sách tồn kho
       </button>
 
@@ -88,14 +88,14 @@ function MaterialDetail({ item, onBack }) {
         subtitle={t('production','mstock_detail_subtitle',{qty:fmtQty(item.totalQty),unit:item.unit,n:allLots.length})} />
 
       {/* Bộ lọc: tìm theo mã phiếu (gần đúng) + lọc theo ngày đặt hàng */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('production','mstock_search_request_ph')}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-canvas placeholder-muted"
           />
         </div>
         <DateRangePicker
@@ -106,12 +106,12 @@ function MaterialDetail({ item, onBack }) {
         />
       </div>
 
-      <div className="bg-white rounded-2xl border border-black/5 overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-black/5 bg-[#FAF7F2] flex items-center justify-between gap-2">
-          <h3 className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+      <div className="bg-surface rounded-2xl border border-hairline overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-hairline bg-canvas flex items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
             Chi tiết các lô — sắp xếp gần hết hạn nhất trước
           </h3>
-          <span className="text-xs text-[#8E8878]">
+          <span className="text-xs text-muted">
             {filtering ? t('production','mstock_lots_filtered',{shown:visibleLots.length,total:allLots.length}) : t('production','inv_lot_count',{n:allLots.length})}
           </span>
         </div>
@@ -122,23 +122,23 @@ function MaterialDetail({ item, onBack }) {
               description={filtering ? t('production','mstock_try_other_filter') : undefined} />
           </div>
         ) : (
-          <div className="divide-y divide-black/5">
+          <div className="divide-y divide-hairline">
             {visibleLots.map((lot, i) => {
               const days = daysLeft(lot.expiryDate);
               return (
-                <div key={lot.id || i} className={`flex items-start justify-between px-5 py-3.5 gap-3 ${lot.nearExpiry ? 'bg-amber-50' : ''}`}>
+                <div key={lot.id || i} className={`flex items-start justify-between px-5 py-3.5 gap-3 ${lot.nearExpiry ? 'bg-amber-50 dark:bg-amber-500/10' : ''}`}>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#1C1C1E]">{fmtQty(lot.quantity)} {item.unit}</p>
-                    <p className="text-xs text-[#8E8878]">{t('production','mstock_initial')}: {fmtQty(lot.initialQuantity)} {item.unit}</p>
+                    <p className="text-sm font-semibold text-ink">{fmtQty(lot.quantity)} {item.unit}</p>
+                    <p className="text-xs text-muted">{t('production','mstock_initial')}: {fmtQty(lot.initialQuantity)} {item.unit}</p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
                       {lot.materialRequestCode && (
-                        <span className="inline-flex items-center gap-1 text-xs text-[#8E8878]">
-                          <Receipt size={12} className="text-[#C9A84C]" />
-                          <span className="font-mono text-[#C9A84C]">{lot.materialRequestCode}</span>
+                        <span className="inline-flex items-center gap-1 text-xs text-muted">
+                          <Receipt size={12} className="text-gold" />
+                          <span className="font-mono text-gold">{lot.materialRequestCode}</span>
                         </span>
                       )}
                       {lot.orderedAt && (
-                        <span className="inline-flex items-center gap-1 text-xs text-[#8E8878]">
+                        <span className="inline-flex items-center gap-1 text-xs text-muted">
                           <CalendarClock size={12} />
                           Đặt: {fmtDate(lot.orderedAt)}
                         </span>
@@ -147,13 +147,13 @@ function MaterialDetail({ item, onBack }) {
                     {(lot.importReceiptInfo || lot.serialImei) && (
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
                         {lot.importReceiptInfo && (
-                          <span className="text-[11px] text-[#8E8878]">
-                            Phiếu nhập: <span className="text-[#1C1C1E]">{lot.importReceiptInfo}</span>
+                          <span className="text-[11px] text-muted">
+                            Phiếu nhập: <span className="text-ink">{lot.importReceiptInfo}</span>
                           </span>
                         )}
                         {lot.serialImei && (
-                          <span className="text-[11px] text-[#8E8878]">
-                            Serial/IMEI: <span className="text-[#1C1C1E]">{lot.serialImei}</span>
+                          <span className="text-[11px] text-muted">
+                            Serial/IMEI: <span className="text-ink">{lot.serialImei}</span>
                           </span>
                         )}
                       </div>
@@ -162,17 +162,17 @@ function MaterialDetail({ item, onBack }) {
                   <div className="text-right flex-shrink-0">
                     {lot.expiryDate ? (
                       <>
-                        <p className={`text-sm font-medium ${lot.nearExpiry ? 'text-amber-700' : 'text-[#1C1C1E]'}`}>
+                        <p className={`text-sm font-medium ${lot.nearExpiry ? 'text-amber-700 dark:text-amber-300' : 'text-ink'}`}>
                           HSD: {fmtDate(lot.expiryDate)}
                         </p>
                         {days != null && (
-                          <p className={`text-xs ${days <= 7 ? 'text-red-600 font-semibold' : days <= 30 ? 'text-amber-600' : 'text-[#8E8878]'}`}>
+                          <p className={`text-xs ${days <= 7 ? 'text-red-600 dark:text-red-300 font-semibold' : days <= 30 ? 'text-amber-600 dark:text-amber-300' : 'text-muted'}`}>
                             {days >= 0 ? t('production','inv_days_left',{n:days}) : t('production','mstock_overdue_days',{n:-days})}
                           </p>
                         )}
                       </>
                     ) : (
-                      <span className="text-xs text-[#8E8878]">{t('production','inv_no_expiry')}</span>
+                      <span className="text-xs text-muted">{t('production','inv_no_expiry')}</span>
                     )}
                   </div>
                 </div>
@@ -331,7 +331,7 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
         </div>
       }>
       <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
         {/* Tên */}
         <Field label={t('production','mstock_field_name')} required>
@@ -406,9 +406,9 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
 
         {/* Mục 4: đánh dấu là sản phẩm đầu ra của mix gia vị */}
         <label className="flex items-center gap-2 cursor-pointer select-none py-1">
-          <input type="checkbox" className="w-4 h-4 rounded border-[#E8DDD0] accent-[#C9A84C]"
+          <input type="checkbox" className="w-4 h-4 rounded border-line accent-gold"
             checked={!!form.isMixable} onChange={e => set('isMixable', e.target.checked)} />
-          <span className="text-sm text-[#1C1C1E]">Có thể mix (dùng làm sản phẩm đầu ra khi trộn gia vị)</span>
+          <span className="text-sm text-ink">Có thể mix (dùng làm sản phẩm đầu ra khi trộn gia vị)</span>
         </label>
 
         {/* Mô tả */}
@@ -425,7 +425,7 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
                 const checked = form.factoryIds.includes(f.id);
                 return (
                   <label key={f.id}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border cursor-pointer transition-all select-none ${checked ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#1A2B1A]'}`}>
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border cursor-pointer transition-all select-none ${checked ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-line hover:border-forest-deep'}`}>
                     <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleFactory(f.id)} />
                     {f.name}
                   </label>
@@ -435,7 +435,7 @@ function CreateMaterialModal({ onClose, onCreated, editData }) {
           </Field>
         )}
         {!isEdit && (
-          <p className="text-xs text-[#8E8878] mt-1">
+          <p className="text-xs text-muted mt-1">
             Nguyên liệu mới sẽ tự động có mặt ở kho của tất cả xưởng đang hoạt động.
           </p>
         )}
@@ -561,7 +561,7 @@ export default function OwnerMaterialStockPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <button onClick={() => navigate('/owner/production')}
-        className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
+        className="flex items-center gap-1.5 text-sm text-muted hover:text-ink font-medium">
         <ChevronLeft size={16} /> {t('production','loss_back_to_production')}
       </button>
 
@@ -578,9 +578,9 @@ export default function OwnerMaterialStockPage() {
       {/* Dropdown đổi kho */}
       {factories.length > 1 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
+          <span className="text-xs text-muted font-medium">{t('production','mstock_factory_label')}:</span>
           <select
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-line bg-surface text-ink focus:outline-none focus:border-gold"
             value={factoryId || ''}
             onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">{t('production','oinv_all_warehouses')}</option>
@@ -590,40 +590,40 @@ export default function OwnerMaterialStockPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
-          <p className="text-xs text-[#8E8878]">{t('production','inv_material_types')}</p>
-          <p className="text-2xl font-bold text-[#1A2B1A] mt-1">{stocks.length}</p>
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
+          <p className="text-xs text-muted">{t('production','inv_material_types')}</p>
+          <p className="text-2xl font-bold text-forest mt-1">{stocks.length}</p>
         </div>
-        <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
-          <p className="text-xs text-[#8E8878]">{t('production','inv_near_expiry_lots')}</p>
-          <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700' : 'text-[#1A2B1A]'}`}>{nearExpiryCount}</p>
+        <div className={`rounded-2xl border shadow-sm p-4 ${nearExpiryCount > 0 ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28' : 'bg-surface border-hairline'}`}>
+          <p className="text-xs text-muted">{t('production','inv_near_expiry_lots')}</p>
+          <p className={`text-2xl font-bold mt-1 ${nearExpiryCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-forest'}`}>{nearExpiryCount}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 space-y-3">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 space-y-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-canvas placeholder-muted"
             placeholder={t('production','oinv_search_ph')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_sort_name')}:</span>
+          <span className="text-xs text-muted font-medium">{t('production','mstock_sort_name')}:</span>
           {Object.entries(NAME_SORTS).map(([key, cfg]) => (
             <button key={key}
               onClick={() => { setNameSort(s => s === key ? null : key); setExpirySort(null); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${nameSort === key ? 'bg-[#1A2B1A] text-white border-[#1A2B1A]' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#1A2B1A]'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${nameSort === key ? 'bg-forest-deep text-white border-forest-deep' : 'bg-surface text-muted border-line hover:border-forest-deep'}`}>
               <cfg.icon size={12} />{cfg.label}
             </button>
           ))}
-          <span className="text-xs text-[#8E8878] font-medium ml-2">{t('production','mstock_sort_expiry')}:</span>
+          <span className="text-xs text-muted font-medium ml-2">{t('production','mstock_sort_expiry')}:</span>
           {Object.entries(EXPIRY_SORTS).map(([key, cfg]) => (
             <button key={key}
               onClick={() => { setExpirySort(s => s === key ? null : key); setNameSort(null); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${expirySort === key ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-amber-600'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${expirySort === key ? 'bg-amber-600 text-white border-amber-600 dark:border-amber-500/40' : 'bg-surface text-muted border-line hover:border-amber-600 dark:border-amber-500/40'}`}>
               <cfg.icon size={12} />{cfg.label}
             </button>
           ))}
@@ -639,19 +639,19 @@ export default function OwnerMaterialStockPage() {
           {[...grouped.entries()].map(([catName, subMap]) => {
             const catCollapsed = effectiveCollapsed[catName];
             return (
-              <div key={catName} className="rounded-2xl border border-black/5 bg-white overflow-hidden">
+              <div key={catName} className="rounded-2xl border border-hairline bg-surface overflow-hidden">
                 {/* Danh mục chung header */}
                 <button onClick={() => toggleCat(catName)}
-                  className="w-full flex items-center gap-2 px-4 py-3 bg-[#FAF7F2] hover:bg-[#F0EBE3] transition-colors text-left">
-                  {catCollapsed ? <ChevronRight size={14} className="text-[#8E8878]" /> : <ChevronDown size={14} className="text-[#8E8878]" />}
-                  <span className="text-sm font-bold text-[#1C1C1E]">{catName}</span>
-                  <span className="text-[11px] text-[#8E8878] ml-auto">
+                  className="w-full flex items-center gap-2 px-4 py-3 bg-canvas hover:bg-surface-2 transition-colors text-left">
+                  {catCollapsed ? <ChevronRight size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}
+                  <span className="text-sm font-bold text-ink">{catName}</span>
+                  <span className="text-[11px] text-muted ml-auto">
                     {[...subMap.values()].reduce((a, arr) => a + arr.length, 0)} nguyên liệu
                   </span>
                 </button>
 
                 {!catCollapsed && (
-                  <div className="divide-y divide-black/5">
+                  <div className="divide-y divide-hairline">
                     {[...subMap.entries()].map(([subName, items]) => {
                       const subKey = `${catName}||${subName}`;
                       const subCollapsed = effectiveCollapsed[subKey];
@@ -659,10 +659,10 @@ export default function OwnerMaterialStockPage() {
                         <div key={subKey}>
                           {/* Danh mục riêng header */}
                           <button onClick={() => toggleCat(subKey)}
-                            className="w-full flex items-center gap-2 px-6 py-2.5 hover:bg-[#FAF7F2]/60 transition-colors text-left">
-                            {subCollapsed ? <ChevronRight size={12} className="text-[#C9A84C]" /> : <ChevronDown size={12} className="text-[#C9A84C]" />}
-                            <span className="text-xs font-semibold text-[#C9A84C]">{subName}</span>
-                            <span className="text-[10px] text-[#8E8878] ml-auto">{items.length}</span>
+                            className="w-full flex items-center gap-2 px-6 py-2.5 hover:bg-canvas/60 transition-colors text-left">
+                            {subCollapsed ? <ChevronRight size={12} className="text-gold" /> : <ChevronDown size={12} className="text-gold" />}
+                            <span className="text-xs font-semibold text-gold">{subName}</span>
+                            <span className="text-[10px] text-muted ml-auto">{items.length}</span>
                           </button>
 
                           {!subCollapsed && (
@@ -711,41 +711,41 @@ function MaterialCard({ item, navigate, onSelectLot, onEdit }) {
   const nearest = nearestExpiry(item);
 
   return (
-    <div className={`w-full text-left rounded-xl border shadow-sm p-3.5 ${hasWarning ? 'bg-amber-50 border-amber-200' : 'bg-white border-black/5'}`}>
+    <div className={`w-full text-left rounded-xl border shadow-sm p-3.5 ${hasWarning ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/28' : 'bg-surface border-hairline'}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#1C1C1E] text-sm">{item.materialName}</span>
+            <span className="font-semibold text-ink text-sm">{item.materialName}</span>
             {hasWarning && (
-              <span className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full font-medium">
+              <span className="flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/18 px-1.5 py-0.5 rounded-full font-medium">
                 <AlertTriangle size={9} /> {nearExpiryLots.length}
               </span>
             )}
           </div>
-          <p className="text-xl font-bold text-[#1A2B1A] mt-0.5">
+          <p className="text-xl font-bold text-forest mt-0.5">
             {fmtQty(item.totalQty)}
-            <span className="text-[10px] text-[#8E8878] bg-[#F5F0EB] px-1.5 py-0.5 rounded-full ml-1">{item.unit}</span>
+            <span className="text-[10px] text-muted bg-surface-2 px-1.5 py-0.5 rounded-full ml-1">{item.unit}</span>
           </p>
-          {nearest && <p className="text-[10px] text-[#8E8878] mt-0.5">{t('production','fg_newest_lot')}: {fmtDate(nearest)}</p>}
+          {nearest && <p className="text-[10px] text-muted mt-0.5">{t('production','fg_newest_lot')}: {fmtDate(nearest)}</p>}
         </div>
-        <span className="text-[10px] text-[#8E8878] flex-shrink-0">{item.lots?.length || 0} lô</span>
+        <span className="text-[10px] text-muted flex-shrink-0">{item.lots?.length || 0} lô</span>
       </div>
-      <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-black/5">
+      <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-hairline">
         <button
           onClick={() => navigate(`/owner/production/material-price-analysis?name=${encodeURIComponent(item.materialName)}`)}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-[#E8DDD0] text-[#8E6C1F] bg-[#FDF8EC] hover:border-[#C9A84C] hover:bg-[#FBF1D8] transition-all">
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-line text-gold-deep bg-gold-tint hover:border-gold hover:bg-warning-tint transition-all">
           <BarChart3 size={12} /> Phân tích giá
         </button>
         <button
           onClick={onSelectLot}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-[#E8DDD0] text-[#1A2B1A] bg-white hover:border-[#1A2B1A] hover:bg-[#F5F0EB] transition-all">
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-line text-forest bg-surface hover:border-forest-deep hover:bg-surface-2 transition-all">
           <Layers size={12} /> Chi tiết lô
         </button>
         {onEdit && (
           <button
             onClick={onEdit}
             title="Sửa nguyên liệu"
-            className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-[#E8DDD0] text-[#1A2B1A] bg-white hover:border-[#1A2B1A] hover:bg-[#F5F0EB] transition-all">
+            className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-line text-forest bg-surface hover:border-forest-deep hover:bg-surface-2 transition-all">
             <Pencil size={12} /> Sửa
           </button>
         )}

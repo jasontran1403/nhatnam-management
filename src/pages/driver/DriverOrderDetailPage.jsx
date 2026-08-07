@@ -19,12 +19,12 @@ function InfoRow({ icon: Icon, label, value, href }) {
   if (!value) return null;
   const content = (
     <div className="flex items-start gap-3 py-3">
-      <div className="w-8 h-8 rounded-xl bg-[#FAF7F2] flex items-center justify-center shrink-0">
-        <Icon size={15} className="text-[#8E8878]" />
+      <div className="w-8 h-8 rounded-xl bg-canvas flex items-center justify-center shrink-0">
+        <Icon size={15} className="text-muted" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] uppercase tracking-wide text-[#8E8878] font-semibold">{label}</p>
-        <p className={`text-[15px] leading-snug mt-0.5 ${href ? 'text-[#C9A84C] font-semibold' : 'text-[#1C1C1E]'}`}>
+        <p className="text-[11px] uppercase tracking-wide text-muted font-semibold">{label}</p>
+        <p className={`text-[15px] leading-snug mt-0.5 ${href ? 'text-gold font-semibold' : 'text-ink'}`}>
           {value}
         </p>
       </div>
@@ -64,9 +64,9 @@ function CompleteModal({ open, order, onClose, onDone }) {
     <Modal open={open} onClose={onClose} title="Xác nhận đã giao hàng"
       subtitle={`Đơn ${order?.orderCode}`} size="sm">
       <div className="space-y-4 py-1">
-        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-          <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800">
+        <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2.5">
+          <AlertCircle size={15} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-800 dark:text-amber-300">
             Sau khi xác nhận, đơn chuyển sang <strong>Chờ thanh toán</strong> và
             không thể hoàn tác từ ứng dụng tài xế.
           </p>
@@ -85,9 +85,9 @@ function CompleteModal({ open, order, onClose, onDone }) {
         </Field>
 
         {err && (
-          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+          <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2.5">
             <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-red-600 font-medium">{err}</p>
+            <p className="text-xs text-red-600 dark:text-red-300 font-medium">{err}</p>
           </div>
         )}
 
@@ -134,7 +134,7 @@ export default function DriverOrderDetailPage() {
     <div className="p-4 sm:p-6 space-y-4 pb-28">
       {/* Nút quay lại */}
       <button onClick={() => navigate('/driver/orders')}
-        className="flex items-center gap-1.5 text-sm font-semibold text-[#8E8878] hover:text-[#1C1C1E] transition-colors">
+        className="flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink transition-colors">
         <ArrowLeft size={16} /> Danh sách đơn
       </button>
 
@@ -144,35 +144,35 @@ export default function DriverOrderDetailPage() {
         <SectionCard>
           <div className="flex flex-col items-center gap-3 py-10 px-6 text-center">
             <AlertCircle size={28} className="text-red-500" />
-            <p className="text-sm font-medium text-red-600">{error}</p>
+            <p className="text-sm font-medium text-red-600 dark:text-red-300">{error}</p>
             <SecondaryButton onClick={load}>Thử lại</SecondaryButton>
           </div>
         </SectionCard>
       ) : order && (
         <>
           {/* Header đơn */}
-          <div className="bg-gradient-to-br from-[#1C1C1E] to-[#2E2A24] rounded-2xl p-5 text-white shadow-lg">
+          <div className="bg-gradient-to-br from-chrome to-chrome rounded-2xl p-5 text-white shadow-lg">
             <p className="text-[11px] uppercase tracking-wider text-white/50 font-semibold">Mã đơn hàng</p>
             <p className="text-2xl font-bold mt-1">{order.orderCode}</p>
             <p className="text-sm text-white/70 mt-2">{order.customerName || 'Khách lẻ'}</p>
             {order.showPrices && order.finalAmount != null && (
-              <p className="text-xl font-bold text-[#C9A84C] mt-3">{formatCurrency(order.finalAmount)}</p>
+              <p className="text-xl font-bold text-gold mt-3">{formatCurrency(order.finalAmount)}</p>
             )}
           </div>
 
           {isDone && (
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-              <p className="text-sm text-emerald-800 font-semibold">Đơn này đã được xác nhận giao xong</p>
+            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl px-4 py-3">
+              <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-300 shrink-0" />
+              <p className="text-sm text-emerald-800 dark:text-emerald-300 font-semibold">Đơn này đã được xác nhận giao xong</p>
             </div>
           )}
 
           {/* Thông tin giao hàng */}
           <SectionCard>
-            <div className="px-4 py-3 border-b border-black/5">
-              <h3 className="text-sm font-bold text-[#1C1C1E]">Thông tin giao hàng</h3>
+            <div className="px-4 py-3 border-b border-hairline">
+              <h3 className="text-sm font-bold text-ink">Thông tin giao hàng</h3>
             </div>
-            <div className="px-4 divide-y divide-black/5">
+            <div className="px-4 divide-y divide-hairline">
               <InfoRow icon={MapPin} label="Địa chỉ giao" value={order.deliveryAddress} href={mapsUrl} />
               <InfoRow icon={Phone} label="Số điện thoại" value={order.customerPhone}
                 href={order.customerPhone ? `tel:${order.customerPhone}` : null} />
@@ -187,12 +187,12 @@ export default function DriverOrderDetailPage() {
             </div>
 
             {mapsUrl && (
-              <div className="px-4 py-3 border-t border-black/5">
+              <div className="px-4 py-3 border-t border-hairline">
                 <a href={mapsUrl} target="_blank" rel="noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                    bg-[#FAF7F2] border border-black/10 text-sm font-semibold text-[#1C1C1E]
-                    hover:bg-[#F2EDE4] transition-colors">
-                  <Navigation size={15} className="text-[#C9A84C]" /> Mở chỉ đường
+                    bg-canvas border border-hairline-2 text-sm font-semibold text-ink
+                    hover:bg-surface-2 transition-colors">
+                  <Navigation size={15} className="text-gold" /> Mở chỉ đường
                 </a>
               </div>
             )}
@@ -200,28 +200,28 @@ export default function DriverOrderDetailPage() {
 
           {/* Danh sách hàng cần giao */}
           <SectionCard>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-black/5">
-              <h3 className="text-sm font-bold text-[#1C1C1E]">Hàng cần giao</h3>
-              <span className="text-xs font-semibold text-[#8E8878]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
+              <h3 className="text-sm font-bold text-ink">Hàng cần giao</h3>
+              <span className="text-xs font-semibold text-muted">
                 {order.items?.length || 0} mặt hàng
               </span>
             </div>
             {!order.items?.length ? (
-              <p className="px-4 py-8 text-center text-sm text-[#8E8878]">Không có mặt hàng</p>
+              <p className="px-4 py-8 text-center text-sm text-muted">Không có mặt hàng</p>
             ) : (
-              <ul className="divide-y divide-black/5">
+              <ul className="divide-y divide-hairline">
                 {order.items.map((it, idx) => (
                   <li key={it.id ?? idx} className="flex items-start gap-3 px-4 py-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#C9A84C]/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-[11px] font-bold text-[#C9A84C]">{idx + 1}</span>
+                    <div className="w-7 h-7 rounded-lg bg-gold/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-[11px] font-bold text-gold">{idx + 1}</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#1C1C1E] leading-snug">{it.productName}</p>
+                      <p className="text-sm font-semibold text-ink leading-snug">{it.productName}</p>
                       {it.packaging && (
-                        <p className="text-xs text-[#8E8878] mt-0.5">{it.packaging}</p>
+                        <p className="text-xs text-muted mt-0.5">{it.packaging}</p>
                       )}
                     </div>
-                    <span className="text-sm font-bold text-[#1C1C1E] shrink-0 whitespace-nowrap">
+                    <span className="text-sm font-bold text-ink shrink-0 whitespace-nowrap">
                       {it.quantity} {it.unit || ''}
                     </span>
                   </li>
@@ -232,8 +232,8 @@ export default function DriverOrderDetailPage() {
 
           {/* Nút hoàn thành — cố định đáy màn hình cho dễ bấm khi đang giao */}
           {!isDone && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur
-              border-t border-black/5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] z-30">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface/95 backdrop-blur
+              border-t border-hairline shadow-[0_-4px_16px_rgba(0,0,0,0.06)] z-30">
               <button onClick={() => setCompleteOpen(true)}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl
                   bg-emerald-600 text-white text-base font-bold shadow-lg

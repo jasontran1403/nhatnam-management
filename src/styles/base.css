@@ -1,0 +1,300 @@
+/**
+ * base.css — reset & global. Chỉ dùng token, không hardcode màu.
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background-color: var(--c-canvas);
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  /* Không transition khi đang chuyển theme (xem .theme-switching bên dưới) */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+svg:focus,
+svg *:focus {
+  outline: none;
+}
+
+nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thanh cuộn hoà vào theme thay vì luôn sáng */
+* {
+  scrollbar-color: var(--c-faint) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-line);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-faint);
+  background-clip: content-box;
+}
+
+/* Focus nhìn thấy được bằng bàn phím — yêu cầu tối thiểu về khả năng tiếp cận */
+:focus-visible {
+  outline: 2px solid var(--c-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .input-elegant {
+    background-color: var(--c-surface);
+    border: 1.5px solid var(--c-line);
+    color: var(--c-ink);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .input-elegant:focus {
+    border-color: var(--c-gold);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-gold) 15%, transparent);
+  }
+
+  .btn-gold {
+    background-color: var(--c-gold);
+    color: var(--c-on-chrome);
+    transition: background-color 0.2s, box-shadow 0.2s;
+  }
+
+  .btn-gold:hover:not(:disabled) {
+    background-color: var(--c-gold-strong);
+  }
+
+  .btn-gold:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-gold) 35%, transparent);
+  }
+
+  .btn-gold:active:not(:disabled) {
+    background-color: var(--c-gold-deep);
+  }
+
+  .card-product {
+    background-color: var(--c-surface);
+    border: 1.5px solid var(--c-line-soft);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .card-product:hover:not(:disabled) {
+    border-color: var(--c-gold);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--c-gold) 12%, transparent);
+  }
+}
+
+/* ── react-date-range ──────────────────────────────────────────────────────── */
+
+.rdrDayStartPreview,
+.rdrDayInPreview,
+.rdrDayEndPreview {
+  border-color: var(--c-gold) !important;
+}
+
+.rdrDay:not(.rdrDayPassive) .rdrInRange~.rdrDayNumber span,
+.rdrDay:not(.rdrDayPassive) .rdrStartEdge~.rdrDayNumber span,
+.rdrDay:not(.rdrDayPassive) .rdrEndEdge~.rdrDayNumber span {
+  color: var(--c-on-chrome) !important;
+}
+
+.rdrDefinedRangesWrapper {
+  display: none;
+}
+
+.rdrCalendarWrapper {
+  font-size: 13px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+
+.rdrMonth {
+  padding: 0 12px 12px;
+}
+
+/* Thư viện này ghi màu trắng cứng vào nhiều phần tử — ép lại theo token,
+   nếu không lịch sẽ là một mảng trắng chói giữa giao diện tối. */
+.dark .rdrDateDisplayWrapper,
+.dark .rdrMonthAndYearWrapper,
+.dark .rdrMonths,
+.dark .rdrDateDisplayItem,
+.dark .rdrDateDisplayItem input {
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+
+.dark .rdrDayNumber span {
+  color: var(--c-ink);
+}
+
+.dark .rdrDayPassive .rdrDayNumber span {
+  color: var(--c-faint);
+}
+
+.dark .rdrNextPrevButton {
+  background: var(--c-surface-2);
+}
+
+.dark .rdrNextPrevButton i {
+  border-color: transparent var(--c-ink) transparent transparent;
+}
+
+.dark .rdrPprevButton i {
+  border-color: transparent var(--c-ink) transparent transparent;
+}
+
+.dark .rdrNextButton i {
+  border-color: transparent transparent transparent var(--c-ink);
+}
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+
+@keyframes pulse {
+  from {
+    opacity: .4;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Rung ngang khi nhập sai passcode — tín hiệu tức thì, không cần đọc chữ. */
+@keyframes passcode-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  15% {
+    transform: translateX(-8px);
+  }
+
+  30% {
+    transform: translateX(8px);
+  }
+
+  45% {
+    transform: translateX(-6px);
+  }
+
+  60% {
+    transform: translateX(6px);
+  }
+
+  75% {
+    transform: translateX(-3px);
+  }
+
+  90% {
+    transform: translateX(3px);
+  }
+}
+
+.passcode-shake {
+  animation: passcode-shake .45s cubic-bezier(.36, .07, .19, .97);
+}
+
+/* Con trỏ nhấp nháy giả trong ô đang focus (input trong suốt nên phải tự vẽ) */
+@keyframes passcode-caret {
+
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.passcode-caret {
+  animation: passcode-caret 1.05s steps(1) infinite;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   CHUYỂN TRANG DẠNG "SWIPE"
+   Khi bấm nút phụ trên một trang gốc (VD: Dashboard → Dòng tiền) ta điều hướng
+   kèm state { slide: 'forward' }; nút Quay lại điều hướng kèm { slide: 'back' }.
+   SlideOutlet đọc state đó và gắn 1 trong 2 class dưới đây cho vùng nội dung,
+   nên người dùng thấy trang trượt qua / trượt về thay vì nhảy cóc.
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes page-slide-forward {
+  from {
+    transform: translateX(6%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes page-slide-back {
+  from {
+    transform: translateX(-6%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.page-slide-forward {
+  animation: page-slide-forward 260ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.page-slide-back {
+  animation: page-slide-back 260ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .page-slide-forward,
+  .page-slide-back {
+    animation: none;
+  }
+}

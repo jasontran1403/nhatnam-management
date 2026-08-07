@@ -92,9 +92,9 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fadeIn">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fadeIn">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-gold to-gold-strong px-5 py-4 flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Chọn giá & VAT</p>
             <h3 className="text-white font-bold text-sm mt-0.5 truncate">{product.name}</h3>
@@ -108,21 +108,21 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
         <div className="p-4 space-y-4">
           {/* Chọn giá */}
           <div>
-            <p className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">Loại giá</p>
+            <p className="text-[11px] font-bold text-muted uppercase tracking-wider mb-2">Loại giá</p>
             <div className="space-y-2">
               {/* Giá lẻ */}
               <button
                 onClick={() => { setSelectedTierId(null); setUseCustom(false); }}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
                   ${!useCustom && selectedTierId === null
-                    ? 'border-sky-400 bg-sky-50'
-                    : 'border-[#E8DDD0] hover:border-sky-300 hover:bg-sky-50/40'}`}
+                    ? 'border-sky-400 bg-sky-50 dark:bg-sky-500/10'
+                    : 'border-line hover:border-sky-300 dark:border-sky-500/35 hover:bg-sky-50/40 dark:bg-sky-500/4'}`}
               >
                 <div className="flex items-center gap-2">
                   {!useCustom && selectedTierId === null && <Check size={13} className="text-sky-500" />}
-                  <span className="text-sm font-semibold text-[#1C1C1E]">Giá lẻ</span>
+                  <span className="text-sm font-semibold text-ink">Giá lẻ</span>
                 </div>
-                <span className="text-sm font-bold text-sky-600">{fmt(product.basePrice)}</span>
+                <span className="text-sm font-bold text-sky-600 dark:text-sky-300">{fmt(product.basePrice)}</span>
               </button>
 
               {/* Các tier */}
@@ -134,19 +134,19 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
                     onClick={() => { setSelectedTierId(tier.id); setUseCustom(false); }}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
                       ${!useCustom && selectedTierId === tier.id
-                        ? 'border-orange-400 bg-orange-50'
-                        : 'border-[#E8DDD0] hover:border-orange-300 hover:bg-orange-50/40'}`}
+                        ? 'border-orange-400 bg-orange-50 dark:bg-orange-500/10'
+                        : 'border-line hover:border-orange-300 dark:border-orange-500/35 hover:bg-orange-50/40 dark:bg-orange-500/4'}`}
                   >
                     <div className="flex items-center gap-2">
                       {!useCustom && selectedTierId === tier.id && <Check size={13} className="text-orange-500" />}
-                      <span className="text-sm font-semibold text-[#1C1C1E]">
+                      <span className="text-sm font-semibold text-ink">
                         {tier.tierName || `Sỉ ${idx + 1}`}
                       </span>
-                      <span className="text-[10px] text-[#8E8878]">
+                      <span className="text-[10px] text-muted">
                         {tier.minQuantity ?? 0}{tier.maxQuantity ? `–${tier.maxQuantity}` : '+'}
                       </span>
                     </div>
-                    <span className="text-sm font-bold text-orange-600">{fmt(tier.price)}</span>
+                    <span className="text-sm font-bold text-orange-600 dark:text-orange-300">{fmt(tier.price)}</span>
                   </button>
                 ))
               }
@@ -156,14 +156,14 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
                 onClick={() => setUseCustom(true)}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all
                   ${useCustom
-                    ? 'border-emerald-400 bg-emerald-50'
-                    : 'border-[#E8DDD0] hover:border-emerald-300 hover:bg-emerald-50/40'}`}
+                    ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-500/10'
+                    : 'border-line hover:border-emerald-300 dark:border-emerald-500/35 hover:bg-emerald-50/40 dark:bg-emerald-500/4'}`}
               >
                 <div className="flex items-center gap-2">
                   {useCustom && <Check size={13} className="text-emerald-500" />}
-                  <span className="text-sm font-semibold text-[#1C1C1E]">Giá tùy chỉnh</span>
+                  <span className="text-sm font-semibold text-ink">Giá tùy chỉnh</span>
                 </div>
-                <span className="text-[10px] text-[#8E8878]">Tự nhập giá</span>
+                <span className="text-[10px] text-muted">Tự nhập giá</span>
               </button>
               {useCustom && (
                 <div className="px-1 pt-1">
@@ -172,8 +172,8 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
                     value={customPrice}
                     onChange={e => setCustomPrice(e.target.value)}
                     placeholder="Nhập giá (đ)"
-                    className="w-full px-4 py-2.5 rounded-xl border-2 border-emerald-300 text-sm font-semibold text-right
-                      focus:outline-none focus:border-emerald-500 bg-emerald-50/40"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-emerald-300 dark:border-emerald-500/35 text-sm font-semibold text-right
+                      focus:outline-none focus:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-500/4"
                   />
                   {(!customPrice || Number(customPrice) <= 0) && (
                     <p className="text-[11px] text-red-500 mt-1 ml-1">Vui lòng nhập giá lớn hơn 0</p>
@@ -185,7 +185,7 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
 
           {/* VAT Rate */}
           <div>
-            <p className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">Tỷ suất VAT</p>
+            <p className="text-[11px] font-bold text-muted uppercase tracking-wider mb-2">Tỷ suất VAT</p>
             <div className="flex gap-1.5 flex-wrap">
               {VAT_RATES.map(r => (
                 <button
@@ -193,8 +193,8 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
                   onClick={() => setVatRate(r)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
                     ${vatRate === r
-                      ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                      : 'bg-white text-[#8E8878] border-[#E8DDD0] hover:border-[#C9A84C]'}`}
+                      ? 'bg-gold text-white border-gold'
+                      : 'bg-surface text-muted border-line hover:border-gold'}`}
                 >
                   {r}%
                 </button>
@@ -204,8 +204,8 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
 
           {/* VAT Mode */}
           <div>
-            <p className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">Loại VAT</p>
-            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+            <p className="text-[11px] font-bold text-muted uppercase tracking-wider mb-2">Loại VAT</p>
+            <div className="flex rounded-xl border border-line overflow-hidden text-xs">
               {[
                 ['INCLUSIVE', 'Trong giá'],
                 ['EXCLUSIVE', 'Ngoài giá'],
@@ -214,8 +214,8 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
                   key={val}
                   onClick={() => setVatMode(val)}
                   className={`flex-1 py-2 font-semibold transition-colors
-                    ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
-                    ${vatMode === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}
+                    ${i > 0 ? 'border-l border-line' : ''}
+                    ${vatMode === val ? 'bg-gold text-white' : 'text-muted hover:bg-surface-2'}`}
                 >
                   {label}
                 </button>
@@ -224,30 +224,30 @@ function PricePickerModal({ product, existing, onConfirm, onClose }) {
           </div>
 
           {/* Preview tính toán */}
-          <div className="bg-[#FAF7F2] rounded-xl p-3 border border-[#F0EBE3] space-y-1">
+          <div className="bg-canvas rounded-xl p-3 border border-line-soft space-y-1">
             <div className="flex justify-between text-xs">
-              <span className="text-[#8E8878]">Giá trước thuế</span>
-              <span className="font-semibold text-[#1C1C1E]">{fmt(preTax)}</span>
+              <span className="text-muted">Giá trước thuế</span>
+              <span className="font-semibold text-ink">{fmt(preTax)}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-[#8E8878]">VAT ({vatRate}% — {vatMode === 'INCLUSIVE' ? 'trong giá' : 'ngoài giá'})</span>
-              <span className="font-semibold text-[#C9A84C]">{fmt(postTax - preTax)}</span>
+              <span className="text-muted">VAT ({vatRate}% — {vatMode === 'INCLUSIVE' ? 'trong giá' : 'ngoài giá'})</span>
+              <span className="font-semibold text-gold">{fmt(postTax - preTax)}</span>
             </div>
-            <div className="flex justify-between text-xs pt-1 border-t border-[#E8DDD0]">
-              <span className="text-[#8E8878]">Giá sau thuế</span>
-              <span className="font-bold text-[#1C1C1E]">{fmt(postTax)}</span>
+            <div className="flex justify-between text-xs pt-1 border-t border-line">
+              <span className="text-muted">Giá sau thuế</span>
+              <span className="font-bold text-ink">{fmt(postTax)}</span>
             </div>
           </div>
         </div>
 
         <div className="px-4 pb-4 flex gap-2">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-medium hover:bg-[#F0EBE3] transition-colors">
+            className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-medium hover:bg-surface-2 transition-colors">
             Huỷ
           </button>
           <button onClick={handleConfirm}
             disabled={useCustom && (!customPrice || Number(customPrice) <= 0)}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-strong transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             {existing ? 'Cập nhật' : 'Thêm vào báo giá'}
           </button>
         </div>
@@ -266,9 +266,9 @@ function QuotationCartItem({ item, onEdit, onRemove }) {
       : 'Giá lẻ';
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-[#F0EBE3] last:border-0">
+    <div className="flex items-start gap-3 py-3 border-b border-line-soft last:border-0">
       {/* Ảnh */}
-      <div className="w-10 h-10 rounded-lg bg-[#F0EBE3] overflow-hidden shrink-0 mt-0.5">
+      <div className="w-10 h-10 rounded-lg bg-surface-2 overflow-hidden shrink-0 mt-0.5">
         {getImgSrc(item.productImageUrl)
           ? <img src={getImgSrc(item.productImageUrl)} alt={item.productName} className="w-full h-full object-cover" />
           : <div className="w-full h-full flex items-center justify-center text-base">🍽️</div>
@@ -277,20 +277,20 @@ function QuotationCartItem({ item, onEdit, onRemove }) {
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-[#1C1C1E] truncate">{item.productName}</p>
+        <p className="text-xs font-semibold text-ink truncate">{item.productName}</p>
 
         {/* Badges */}
         <div className="flex items-center gap-1 flex-wrap mt-0.5">
           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold border
             ${item.tierId
-              ? 'bg-orange-50 text-orange-700 border-orange-200'
-              : 'bg-sky-50 text-sky-700 border-sky-200'}`}>
+              ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/28'
+              : 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/28'}`}>
             {tierLabel}
           </span>
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border bg-amber-50 text-amber-700 border-amber-200">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28">
             VAT {item.vatRate}%
           </span>
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border bg-[#F0EBE3] text-[#8E8878] border-[#E8DDD0]">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border bg-surface-2 text-muted border-line">
             {item.vatMode === 'INCLUSIVE' ? 'Trong giá' : 'Ngoài giá'}
           </span>
         </div>
@@ -298,12 +298,12 @@ function QuotationCartItem({ item, onEdit, onRemove }) {
         {/* Giá */}
         <div className="mt-1 space-y-0.5">
           <div className="flex justify-between text-[10px]">
-            <span className="text-[#8E8878]">Trước thuế</span>
-            <span className="font-semibold text-[#1C1C1E]">{fmt(preTax)}</span>
+            <span className="text-muted">Trước thuế</span>
+            <span className="font-semibold text-ink">{fmt(preTax)}</span>
           </div>
           <div className="flex justify-between text-[10px]">
-            <span className="text-[#8E8878]">Sau thuế</span>
-            <span className="font-bold text-[#C9A84C]">{fmt(postTax)}</span>
+            <span className="text-muted">Sau thuế</span>
+            <span className="font-bold text-gold">{fmt(postTax)}</span>
           </div>
         </div>
       </div>
@@ -311,11 +311,11 @@ function QuotationCartItem({ item, onEdit, onRemove }) {
       {/* Actions */}
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <button onClick={() => onRemove(item.id)}
-          className="w-5 h-5 rounded-full text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 flex items-center justify-center transition-colors">
+          className="w-5 h-5 rounded-full text-faint hover:text-red-400 hover:bg-red-50 dark:bg-red-500/10 flex items-center justify-center transition-colors">
           <Trash2 size={11} />
         </button>
         <button onClick={() => onEdit(item)}
-          className="text-[9px] px-2 py-1 rounded-lg border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+          className="text-[9px] px-2 py-1 rounded-lg border border-line text-muted hover:border-gold hover:text-gold transition-colors">
           Sửa
         </button>
       </div>
@@ -331,8 +331,8 @@ function ExportModal({ onConfirm, onClose, exporting }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fadeIn">
-        <div className="bg-gradient-to-r from-[#C9A84C] to-[#b8963d] px-5 py-4 flex items-center justify-between">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fadeIn">
+        <div className="bg-gradient-to-r from-gold to-gold-strong px-5 py-4 flex items-center justify-between">
           <div>
             <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold">Xuất báo giá</p>
             <h3 className="text-white font-bold text-base mt-0.5">Thông tin báo giá</h3>
@@ -345,7 +345,7 @@ function ExportModal({ onConfirm, onClose, exporting }) {
 
         <div className="px-5 py-4 space-y-4">
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               Kính gửi
             </label>
             <input
@@ -353,15 +353,15 @@ function ExportModal({ onConfirm, onClose, exporting }) {
               value={customerName}
               onChange={e => setCustomerName(e.target.value)}
               placeholder="Để trống → QUÝ KHÁCH HÀNG"
-              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAFAF8]"
+              className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm focus:outline-none focus:border-gold bg-surface"
             />
-            <p className="text-[10px] text-[#C4B9A8] mt-1">
+            <p className="text-[10px] text-faint mt-1">
               Nếu để trống sẽ hiển thị: <em>QUÝ KHÁCH HÀNG</em>
             </p>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               Nội dung báo giá
             </label>
             <input
@@ -369,20 +369,20 @@ function ExportModal({ onConfirm, onClose, exporting }) {
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="VD: SẢN PHẨM ICEHOT & RICH'S"
-              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm focus:outline-none focus:border-[#C9A84C] bg-[#FAFAF8]"
+              className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm focus:outline-none focus:border-gold bg-surface"
             />
           </div>
         </div>
 
         <div className="px-5 pb-5 flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3] transition-colors">
+            className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-semibold hover:bg-surface-2 transition-colors">
             Huỷ
           </button>
           <button
             onClick={() => onConfirm({ customerName: customerName.trim(), content: content.trim() })}
             disabled={exporting}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8963d] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-strong disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
           >
             {exporting
               ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang tạo...</>
@@ -408,18 +408,18 @@ function QuotationProductCard({ product, onAdd, isInCart }) {
     >
       {/* Badge đã thêm */}
       {isInCart && (
-        <div className="absolute top-2 right-2 z-30 w-5 h-5 rounded-full bg-[#C9A84C] flex items-center justify-center shadow">
+        <div className="absolute top-2 right-2 z-30 w-5 h-5 rounded-full bg-gold flex items-center justify-center shadow">
           <Check size={11} className="text-white" />
         </div>
       )}
 
-      <div className="relative aspect-square bg-[#F0EBE3] overflow-hidden w-full">
+      <div className="relative aspect-square bg-surface-2 overflow-hidden w-full">
         {imageUrl
           ? <img src={imageUrl} alt={product.name} className="w-full h-full object-cover"
               onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
           : null
         }
-        <div className="absolute inset-0 items-center justify-center text-[#C4B9A8] text-3xl"
+        <div className="absolute inset-0 items-center justify-center text-faint text-3xl"
           style={{ display: imageUrl ? 'none' : 'flex' }}>
           🍽️
         </div>
@@ -432,7 +432,7 @@ function QuotationProductCard({ product, onAdd, isInCart }) {
           </p>
           <div className="flex items-center justify-between gap-1 mt-0.5">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[#FFD97D] text-[11px] sm:text-xs font-bold drop-shadow">
+              <span className="text-gold text-[11px] sm:text-xs font-bold drop-shadow">
                 {new Intl.NumberFormat('vi-VN').format(Math.round(priceVal))} đ
               </span>
               {hasTiers && (
@@ -621,19 +621,19 @@ export default function QuotationPage() {
   }, [cartItems, toast]);
 
   return (
-    <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-[#FAF7F2]">
+    <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-canvas">
 
       {/* ── Product panel ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Search + Filter */}
-        <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-white border-b border-[#F0EBE3] space-y-2">
+        <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-surface border-b border-line-soft space-y-2">
           <div className="flex items-center justify-between">
-            <h1 className="text-base font-bold text-[#1C1C1E]">Tạo báo giá</h1>
+            <h1 className="text-base font-bold text-ink">Tạo báo giá</h1>
             {/* Mobile: nút tạo báo giá */}
             <button
               onClick={() => setExportModalOpen(true)}
               disabled={cartItems.length === 0}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#C9A84C] text-white text-xs font-bold disabled:opacity-40 transition-colors"
+              className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gold text-white text-xs font-bold disabled:opacity-40 transition-colors"
             >
               <FileText size={13} />
               Xuất ({cartItems.length})
@@ -643,7 +643,7 @@ export default function QuotationPage() {
           {/* Search */}
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 placeholder="Tìm sản phẩm (có thể không dấu)..."
@@ -663,7 +663,7 @@ export default function QuotationPage() {
                   else { setSortField(null); setSortDir('asc'); }
                 }}
                   className={`shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl border text-xs font-medium transition-colors
-                    ${active ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C]'}`}>
+                    ${active ? 'border-gold bg-gold/10 text-gold' : 'border-line text-muted hover:border-gold'}`}>
                   <Icon size={13} />{label}
                 </button>
               );
@@ -674,13 +674,13 @@ export default function QuotationPage() {
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
             <button onClick={() => setActiveCategory('ALL')}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${activeCategory === 'ALL' ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
+                ${activeCategory === 'ALL' ? 'bg-gold text-white' : 'bg-surface-2 text-muted hover:bg-surface-3'}`}>
               Tất cả
             </button>
             {categories.map(cat => (
               <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
                 className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                  ${activeCategory === cat.id ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'}`}>
+                  ${activeCategory === cat.id ? 'bg-gold text-white' : 'bg-surface-2 text-muted hover:bg-surface-3'}`}>
                 {cat.name}
               </button>
             ))}
@@ -691,10 +691,10 @@ export default function QuotationPage() {
         <div className="flex-1 overflow-y-auto p-3">
           {loading ? (
             <div className="flex justify-center items-center h-40">
-              <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-[#8E8878] gap-2">
+            <div className="flex flex-col items-center justify-center h-40 text-muted gap-2">
               <span className="text-3xl">🔍</span>
               <p className="text-sm">Không tìm thấy sản phẩm</p>
             </div>
@@ -714,21 +714,21 @@ export default function QuotationPage() {
       </div>
 
       {/* ── Cart / Quotation list panel (Desktop) ── */}
-      <div className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-[#E8DDD0] h-full bg-white">
+      <div className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-line h-full bg-surface">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-[#F0EBE3] flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-line-soft flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText size={16} className="text-[#C9A84C]" />
-            <span className="font-semibold text-sm text-[#1C1C1E]">Danh sách báo giá</span>
+            <FileText size={16} className="text-gold" />
+            <span className="font-semibold text-sm text-ink">Danh sách báo giá</span>
             {cartItems.length > 0 && (
-              <span className="bg-[#C9A84C] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="bg-gold text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                 {cartItems.length}
               </span>
             )}
           </div>
           {cartItems.length > 0 && (
             <button onClick={() => setCartItems([])}
-              className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-600">
+              className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-600 dark:text-red-300">
               <Trash2 size={11} /> Xoá tất cả
             </button>
           )}
@@ -737,7 +737,7 @@ export default function QuotationPage() {
         {/* Items */}
         <div className="flex-1 overflow-y-auto px-4">
           {cartItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-[#C4B9A8] gap-2 py-8">
+            <div className="flex flex-col items-center justify-center h-full text-faint gap-2 py-8">
               <FileText size={32} strokeWidth={1} />
               <p className="text-sm text-center">Chưa có sản phẩm nào<br/>Click sản phẩm để thêm</p>
             </div>
@@ -754,14 +754,14 @@ export default function QuotationPage() {
         </div>
 
         {/* Footer: nút xuất */}
-        <div className="px-4 pb-4 pt-3 border-t border-[#F0EBE3]">
-          <p className="text-[10px] text-[#C4B9A8] mb-2 text-center">
+        <div className="px-4 pb-4 pt-3 border-t border-line-soft">
+          <p className="text-[10px] text-faint mb-2 text-center">
             {cartItems.length} sản phẩm trong báo giá
           </p>
           <button
             onClick={() => setExportModalOpen(true)}
             disabled={cartItems.length === 0}
-            className="w-full py-3 rounded-xl bg-[#C9A84C] hover:bg-[#b8963d] text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-gold hover:bg-gold-strong text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             <FileText size={15} />
             Tạo báo giá PDF

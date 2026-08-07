@@ -1,5 +1,6 @@
 // src/pages/seller/SellerCustomersPage.jsx
 import { useLang } from '../../context/LangContext';
+import { useContractModals } from '../../components/customer/CustomerContract';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -13,11 +14,11 @@ import {
 import DebtReportCustomerModal from '../../components/accountant/DebtReportCustomerModal';
 import { sellerReportApi } from '../../api/services';
 
-const inputCls = 'w-full rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]';
+const inputCls = 'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink focus:outline-none focus:border-gold transition-colors bg-surface placeholder:text-faint';
 
 const DEFAULT_COLORS = [
-  '#C9A84C', '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
-  '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16', '#F97316',
+  'var(--c-gold)', 'var(--c-info)', 'var(--c-success)', 'var(--c-warning)', 'var(--c-danger)',
+  '#8B5CF6', '#EC4899', 'var(--c-info)', '#84CC16', 'var(--c-warning)',
 ];
 
 function useDebounce(val, ms) {
@@ -101,14 +102,14 @@ function CategoryCombobox({ value, onChange }) {
     <div ref={wrapRef} className="relative">
       <div
         className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-text transition-colors
-          ${open ? 'border-[#C9A84C]' : 'border-[#E8DDD0]'} bg-[#FAFAF8]`}
+          ${open ? 'border-gold' : 'border-line'} bg-surface`}
         onClick={() => setOpen(true)}
       >
-        <Tag size={13} className="text-[#C4B9A8] shrink-0" />
+        <Tag size={13} className="text-faint shrink-0" />
         {value && !open ? (
           <div className="flex-1 flex items-center gap-1.5 min-w-0">
             {value.color && <span className="w-3 h-3 rounded-full shrink-0" style={{ background: value.color }} />}
-            <span className="text-sm text-[#1C1C1E] truncate">{value.name}</span>
+            <span className="text-sm text-ink truncate">{value.name}</span>
           </div>
         ) : (
           <input
@@ -117,34 +118,34 @@ function CategoryCombobox({ value, onChange }) {
             onChange={e => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             placeholder={value ? value.name : 'Tìm hoặc tạo phân loại...'}
-            className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none placeholder:text-[#C4B9A8]"
+            className="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-faint"
           />
         )}
         {value && (
-          <button onClick={handleClear} className="text-[#C4B9A8] hover:text-red-400 shrink-0">
+          <button onClick={handleClear} className="text-faint hover:text-red-400 shrink-0">
             <X size={13} />
           </button>
         )}
       </div>
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-[#E8DDD0] shadow-lg overflow-hidden max-h-52 overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-surface rounded-xl border border-line shadow-lg overflow-hidden max-h-52 overflow-y-auto">
           {options.length === 0 && !canCreate && (
-            <p className="text-xs text-[#C4B9A8] text-center py-4">Chưa có phân loại nào</p>
+            <p className="text-xs text-faint text-center py-4">Chưa có phân loại nào</p>
           )}
           {options.map(cat => (
             <button key={cat.id} onClick={() => handleSelect(cat)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-[#FDF8ED] transition-colors text-left
-                ${value?.id === cat.id ? 'bg-[#FDF8ED]' : ''}`}>
-              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: cat.color || '#C9A84C' }} />
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-gold-tint transition-colors text-left
+                ${value?.id === cat.id ? 'bg-gold-tint' : ''}`}>
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: cat.color || 'var(--c-gold)' }} />
               <span className="flex-1 truncate">{cat.name}</span>
-              {value?.id === cat.id && <Check size={13} className="text-[#C9A84C] shrink-0" />}
+              {value?.id === cat.id && <Check size={13} className="text-gold shrink-0" />}
             </button>
           ))}
           {canCreate && (
             <button onClick={handleCreate} disabled={creating}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-[#C9A84C] hover:bg-[#FDF8ED] transition-colors border-t border-[#F0EBE3]">
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gold hover:bg-gold-tint transition-colors border-t border-line-soft">
               {creating
-                ? <div className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                ? <div className="w-3.5 h-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                 : <Plus size={13} />}
               <span>Tạo phân loại "<strong>{query.trim()}</strong>"</span>
             </button>
@@ -222,21 +223,21 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-bold text-[#8E8878] uppercase tracking-wider">
+        <label className="text-[11px] font-bold text-muted uppercase tracking-wider">
           📦 Địa chỉ nhận hàng {receivers.length > 0 && `(${receivers.length})`}
         </label>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] font-semibold hover:bg-[#C9A84C]/20 transition-colors"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/10 text-gold text-[10px] font-semibold hover:bg-gold/20 transition-colors"
         >
           <Plus size={11} /> Thêm địa chỉ
         </button>
       </div>
 
       {loading ? (
-        <div className="text-xs text-[#8E8878] text-center py-3">Đang tải...</div>
+        <div className="text-xs text-muted text-center py-3">Đang tải...</div>
       ) : receivers.length === 0 ? (
-        <div className="text-xs text-[#C4B9A8] text-center py-3 italic border border-dashed border-[#E8DDD0] rounded-xl">
+        <div className="text-xs text-faint text-center py-3 italic border border-dashed border-line rounded-xl">
           Chưa có địa chỉ nhận hàng
         </div>
       ) : (
@@ -244,33 +245,33 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
           {receivers.map((r, idx) => (
             <div key={r.id}
               className={`rounded-xl border p-3 space-y-2
-                ${r.isDefault ? 'border-[#C9A84C]/40 bg-[#FDF8ED]' : 'border-[#F0EBE3] bg-white'}
+                ${r.isDefault ? 'border-gold/40 bg-gold-tint' : 'border-line-soft bg-surface'}
                 ${r._isNew ? 'border-dashed' : ''}`}
             >
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   {r.isDefault && (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#C9A84C]">
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-gold">
                       <Star size={9} fill="currentColor" /> Mặc định
                     </span>
                   )}
                   {r._isNew && (
-                    <span className="text-[10px] font-bold text-amber-500 bg-amber-50 border border-amber-200 px-1.5 rounded">Mới</span>
+                    <span className="text-[10px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 px-1.5 rounded">Mới</span>
                   )}
                   {!r._isNew && !r.isDefault && (
-                    <span className="text-[10px] text-[#8E8878]">Địa chỉ {idx + 1}</span>
+                    <span className="text-[10px] text-muted">Địa chỉ {idx + 1}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-0.5">
                   {!r.isDefault && (
                     <button onClick={() => handleSetDefault(r.id)} title="Đặt làm mặc định"
-                      className="p-1.5 rounded-lg text-[#C4B9A8] hover:text-[#C9A84C] hover:bg-[#FDF8ED] transition-colors">
+                      className="p-1.5 rounded-lg text-faint hover:text-gold hover:bg-gold-tint transition-colors">
                       <Star size={12} />
                     </button>
                   )}
                   <button onClick={() => handleDelete(r.id)}
-                    className="p-1.5 rounded-lg text-[#C4B9A8] hover:text-red-400 hover:bg-red-50 transition-colors">
+                    className="p-1.5 rounded-lg text-faint hover:text-red-400 hover:bg-red-50 dark:bg-red-500/10 transition-colors">
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -278,7 +279,7 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
 
               {/* Fields — luôn hiển thị, không có nút lưu riêng */}
               <div>
-                <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
                   Địa chỉ <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -290,7 +291,7 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Tên người nhận</label>
+                  <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Tên người nhận</label>
                   <input
                     value={r.receiverName || ''}
                     onChange={e => handleFieldChange(r.id, 'receiverName', e.target.value)}
@@ -299,7 +300,7 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">SĐT người nhận</label>
+                  <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">SĐT người nhận</label>
                   <input
                     value={r.receiverPhone || ''}
                     onChange={e => handleFieldChange(r.id, 'receiverPhone', e.target.value)}
@@ -494,14 +495,14 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[#F0EBE3] flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 border-b border-line-soft flex items-center justify-between shrink-0">
           <div>
-            <h3 className="font-bold text-[#1C1C1E] text-base">Sửa thông tin khách hàng</h3>
-            <p className="text-xs text-[#8E8878] mt-0.5">#{customer.customerCode}</p>
+            <h3 className="font-bold text-ink text-base">Sửa thông tin khách hàng</h3>
+            <p className="text-xs text-muted mt-0.5">#{customer.customerCode}</p>
           </div>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-red-400 transition-colors">
+          <button onClick={onClose} className="text-muted hover:text-red-400 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -511,11 +512,11 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
           {/* Mã khách hàng */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
               Mã khách hàng <span className="text-red-400">*</span>
             </label>
             <div className="relative">
-              <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C4B9A8]" />
+              <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
               <input
                 value={form.customerCode}
                 onChange={e => handleCodeChange(e.target.value)}
@@ -525,7 +526,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
                     ? 'border-emerald-400 focus:border-emerald-400' : ''}`}
                 placeholder="VD: KH001"
               />
-              {codeChecking && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />}
+              {codeChecking && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" />}
               {!codeChecking && codeError && <AlertCircle size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400" />}
               {!codeChecking && !codeError && form.customerCode && form.customerCode.trim().toUpperCase() !== (customer.customerCode || '').toUpperCase() && (
                 <Check size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500" />
@@ -533,7 +534,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
             </div>
             {codeError && <p className="text-[10px] text-red-500 mt-1">{codeError}</p>}
             {!codeError && form.customerCode?.trim().toUpperCase() !== (customer.customerCode || '').toUpperCase() && !codeChecking && (
-              <p className="text-[10px] text-emerald-600 mt-1">
+              <p className="text-[10px] text-emerald-600 dark:text-emerald-300 mt-1">
                 Mã sẽ đổi từ <span className="font-mono font-bold">{customer.customerCode}</span> → <span className="font-mono font-bold">{form.customerCode?.trim().toUpperCase()}</span>
               </p>
             )}
@@ -541,22 +542,22 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
           {/* Phân loại */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               Phân loại khách hàng
             </label>
             <CategoryCombobox value={category} onChange={setCategory} />
-            <p className="text-[10px] text-[#C4B9A8] mt-1">Để trống nếu chưa phân loại</p>
+            <p className="text-[10px] text-faint mt-1">Để trống nếu chưa phân loại</p>
           </div>
 
           {/* Loại khách */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Loại khách hàng</label>
-            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">Loại khách hàng</label>
+            <div className="flex rounded-xl border border-line overflow-hidden text-xs">
               {[['RETAIL', <UserIcon size={11} />, 'Cá nhân'], ['COMPANY', <Building2 size={11} />, 'Công ty']].map(([val, icon, label], i) => (
                 <button key={val} type="button" onClick={() => set('customerType', val)}
                   className={`flex-1 py-2 font-medium transition-colors flex items-center justify-center gap-1.5
-                    ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
-                    ${form.customerType === val ? 'bg-[#1A2744] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                    ${i > 0 ? 'border-l border-line' : ''}
+                    ${form.customerType === val ? 'bg-[var(--c-steel)] text-white' : 'text-muted hover:bg-surface-2'}`}>
                   {icon}{label}
                 </button>
               ))}
@@ -567,52 +568,52 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
           {isCompany ? (
             <>
               <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Tên công ty <span className="text-red-400">*</span></label>
+                <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Tên công ty <span className="text-red-400">*</span></label>
                 <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} placeholder="Công ty TNHH ABC" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Mã số thuế</label>
+                  <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Mã số thuế</label>
                   <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Người liên hệ</label>
+                  <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Người liên hệ</label>
                   <input value={form.contactName} onChange={e => set('contactName', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">SĐT công ty</label>
+                  <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">SĐT công ty</label>
                   <input value={form.companyPhone} onChange={e => set('companyPhone', e.target.value)} className={inputCls} placeholder="0901..." />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Email</label>
+                  <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Email</label>
                   <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="info@..." />
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Địa chỉ</label>
+                <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Địa chỉ</label>
                 <input value={form.companyAddress} onChange={e => set('companyAddress', e.target.value)} className={inputCls} placeholder="123 Nguyễn Văn A, Q.1" />
               </div>
             </>
           ) : (
             <>
               <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Họ tên</label>
+                <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Họ tên</label>
                 <input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} placeholder="Nguyễn Văn A" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Số điện thoại</label>
+                  <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Số điện thoại</label>
                   <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls} placeholder="0901..." />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Email</label>
+                  <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Email</label>
                   <input value={form.email} onChange={e => set('email', e.target.value)} className={inputCls} placeholder="email@..." />
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1">Mã số thuế</label>
+                <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Mã số thuế</label>
                 <input value={form.taxCode} onChange={e => set('taxCode', e.target.value)} className={inputCls} placeholder="0123456789 (tuỳ chọn)" />
               </div>
             </>
@@ -620,13 +621,13 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
           {/* Loại giá */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">Loại giá</label>
-            <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">Loại giá</label>
+            <div className="flex rounded-xl border border-line overflow-hidden text-xs">
               {[['RETAIL_PRICE', 'Bán lẻ (giá gốc)'], ['WHOLESALE_PRICE', 'Bán sỉ (khung giá)']].map(([val, label], i) => (
                 <button key={val} type="button" onClick={() => set('pricingType', val)}
                   className={`flex-1 py-2 font-medium transition-colors
-                    ${i > 0 ? 'border-l border-[#E8DDD0]' : ''}
-                    ${form.pricingType === val ? 'bg-[#C9A84C] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                    ${i > 0 ? 'border-l border-line' : ''}
+                    ${form.pricingType === val ? 'bg-gold text-white' : 'text-muted hover:bg-surface-2'}`}>
                   {label}
                 </button>
               ))}
@@ -635,7 +636,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
           {/* Chiết khấu */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               Chiết khấu
             </label>
             <div className="space-y-2">
@@ -644,9 +645,9 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
                   type="checkbox"
                   checked={form.discountRate > 0}
                   onChange={e => set('discountRate', e.target.checked ? 5 : 0)}
-                  className="w-4 h-4 accent-[#C9A84C] rounded"
+                  className="w-4 h-4 accent-gold rounded"
                 />
-                <span className="text-sm text-[#5C4E3D]">Có chiết khấu</span>
+                <span className="text-sm text-ink-2">Có chiết khấu</span>
               </label>
               {form.discountRate > 0 && (
                 <div className="flex items-center gap-2 pl-6">
@@ -658,9 +659,9 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
                     onChange={e => set('discountRate', Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
                     className={`${inputCls} w-24 text-center font-mono`}
                   />
-                  <span className="text-sm text-[#8E8878]">%</span>
-                  <div className="flex-1 h-2 rounded-full bg-[#F0EBE3] overflow-hidden">
-                    <div className="h-full rounded-full bg-[#C9A84C] transition-all" style={{ width: `${form.discountRate}%` }} />
+                  <span className="text-sm text-muted">%</span>
+                  <div className="flex-1 h-2 rounded-full bg-surface-2 overflow-hidden">
+                    <div className="h-full rounded-full bg-gold transition-all" style={{ width: `${form.discountRate}%` }} />
                   </div>
                 </div>
               )}
@@ -669,7 +670,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 
           {/* Xuất hóa đơn */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               Xuất hóa đơn
             </label>
             <div className="space-y-2">
@@ -678,28 +679,28 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
                   type="checkbox"
                   checked={form.invoiceDays >= 0}
                   onChange={e => set('invoiceDays', e.target.checked ? 0 : -1)}
-                  className="w-4 h-4 accent-[#C9A84C] rounded"
+                  className="w-4 h-4 accent-gold rounded"
                 />
-                <span className="text-sm text-[#5C4E3D]">Có xuất hóa đơn</span>
+                <span className="text-sm text-ink-2">Có xuất hóa đơn</span>
               </label>
               {form.invoiceDays >= 0 && (
-                <div className="flex rounded-xl border border-[#E8DDD0] overflow-hidden text-xs">
+                <div className="flex rounded-xl border border-line overflow-hidden text-xs">
                   <button type="button" onClick={() => set('invoiceDays', 0)}
                     className={`flex-1 py-2 font-medium transition-colors
-                      ${form.invoiceDays === 0 ? 'bg-[#1A2744] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                      ${form.invoiceDays === 0 ? 'bg-[var(--c-steel)] text-white' : 'text-muted hover:bg-surface-2'}`}>
                     Xuất ngay trong ngày
                   </button>
                   <button type="button"
                     onClick={() => set('invoiceDays', form.invoiceDays > 0 ? form.invoiceDays : 7)}
-                    className={`flex-1 py-2 font-medium transition-colors border-l border-[#E8DDD0]
-                      ${form.invoiceDays > 0 ? 'bg-[#1A2744] text-white' : 'text-[#8E8878] hover:bg-[#F0EBE3]'}`}>
+                    className={`flex-1 py-2 font-medium transition-colors border-l border-line
+                      ${form.invoiceDays > 0 ? 'bg-[var(--c-steel)] text-white' : 'text-muted hover:bg-surface-2'}`}>
                     Xuất sau N ngày
                   </button>
                 </div>
               )}
               {form.invoiceDays > 0 && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#8E8878]">Xuất sau</span>
+                  <span className="text-sm text-muted">Xuất sau</span>
                   <input
                     type="number"
                     min={1}
@@ -707,14 +708,14 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
                     onChange={e => set('invoiceDays', Math.max(1, parseInt(e.target.value) || 1))}
                     className={`${inputCls} w-20 text-center font-mono`}
                   />
-                  <span className="text-sm text-[#8E8878]">ngày</span>
+                  <span className="text-sm text-muted">ngày</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Địa chỉ nhận hàng — không có nút lưu riêng */}
-          <div className="border-t border-[#F0EBE3] pt-3">
+          <div className="border-t border-line-soft pt-3">
             <ReceiverInfosSection
               customerId={customer.id}
               onReceiverChange={handleReceiverChange}
@@ -723,13 +724,13 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
         </div>
 
         {/* Footer — chỉ 1 nút Lưu thay đổi duy nhất */}
-        <div className="px-5 pb-5 pt-3 border-t border-[#F0EBE3] flex gap-2 shrink-0">
+        <div className="px-5 pb-5 pt-3 border-t border-line-soft flex gap-2 shrink-0">
           <button onClick={onClose} disabled={saving}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C4E3D] font-semibold hover:bg-[#F0EBE3] transition-colors">
+            className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 font-semibold hover:bg-surface-2 transition-colors">
             Hủy
           </button>
           <button onClick={handleSave} disabled={saving || !!codeError || codeChecking}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#b8973d] transition-colors flex items-center justify-center gap-2 disabled:opacity-40">
+            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-[var(--c-gold-strong)] transition-colors flex items-center justify-center gap-2 disabled:opacity-40">
             {saving
               ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : <Check size={14} />}
@@ -742,61 +743,70 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 }
 
 // ─── Customer Row ─────────────────────────────────────────────────────────────
-function CustomerRow({ c, onEdit }) {
+function CustomerRow({ c, onEdit, onContract }) {
   const isCompany = c.customerType === 'COMPANY';
   const isWholesale = c.pricingType === 'WHOLESALE_PRICE';
 
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EBE3] hover:border-[#C9A84C]/40 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${isCompany ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+    <div className="bg-surface rounded-2xl border border-line-soft hover:border-gold/40 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${isCompany ? 'bg-blue-500' : 'bg-gold'}`}>
         {isCompany ? <Building2 size={16} /> : <UserIcon size={16} />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-semibold text-sm text-[#1C1C1E] truncate">
+          <p className="font-semibold text-sm text-ink truncate">
             {isCompany
               ? (c.companyName || c.name || '—')
-              : (c.name || c.contactName || <span className="text-[#C4B9A8] italic font-normal">Khách vãng lai</span>)}
+              : (c.name || c.contactName || <span className="text-faint italic font-normal">Khách vãng lai</span>)}
           </p>
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${isCompany ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${isCompany ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-100 dark:border-blue-500/18' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-100 dark:border-amber-500/18'}`}>
             {isCompany ? 'Cty' : 'CN'}
           </span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${isWholesale ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${isWholesale ? 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-100 dark:border-purple-500/18' : 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-300 border-green-100 dark:border-green-500/18'}`}>
             {isWholesale ? 'Giá Sỉ' : 'Giá Lẻ'}
           </span>
-          {c.createdByAdmin && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100">Admin</span>}
-          {c.discountRate > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100">-{c.discountRate}%</span>}
+          {c.createdByAdmin && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-100 dark:border-sky-500/18">Admin</span>}
+          {c.discountRate > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-500/18">-{c.discountRate}%</span>}
           {c.invoiceDays === 0 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">HĐ ngay</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-100 dark:border-violet-500/18">HĐ ngay</span>
           )}
           {c.invoiceDays > 0 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">HĐ +{c.invoiceDays}d</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-100 dark:border-violet-500/18">HĐ +{c.invoiceDays}d</span>
           )}
           {/* TRẠNG THÁI KHOÁ — chỉ HIỂN THỊ, sale không có quyền khoá/mở khoá.
               Khách bị khoá vẫn tra cứu được, nhưng phải thấy ngay để không lỡ
               nhận đơn mới rồi mới biết. Quyền khoá thuộc SUPER_ACCOUNTANT/OWNER/ADMIN. */}
           {c.isActive === false && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/28">
               Đã khóa
             </span>
           )}
         </div>
         <div className="flex items-center gap-3 mt-1 flex-wrap">
-          {c.customerCode && <span className="text-[11px] text-[#8E8878]">#{c.customerCode}</span>}
-          {c.phone && <span className="flex items-center gap-1 text-[11px] text-[#8E8878]"><Phone size={10} />{c.phone}</span>}
-          {c.email && <span className="flex items-center gap-1 text-[11px] text-[#8E8878] truncate max-w-[140px]"><Mail size={10} />{c.email}</span>}
-          {isCompany && c.contactName && <span className="text-[11px] text-[#8E8878]">Liên hệ: {c.contactName}</span>}
+          {c.customerCode && <span className="text-[11px] text-muted">#{c.customerCode}</span>}
+          {c.phone && <span className="flex items-center gap-1 text-[11px] text-muted"><Phone size={10} />{c.phone}</span>}
+          {c.email && <span className="flex items-center gap-1 text-[11px] text-muted truncate max-w-[140px]"><Mail size={10} />{c.email}</span>}
+          {isCompany && c.contactName && <span className="text-[11px] text-muted">Liên hệ: {c.contactName}</span>}
         </div>
       </div>
       <div className="text-right shrink-0 hidden sm:block">
         {c.createdByAdmin
           ? <p className="text-[11px] text-sky-500 font-medium">Admin/Owner</p>
-          : c.createdBySellerName ? <p className="text-[11px] text-[#8E8878]">{c.createdBySellerName}</p>
+          : c.createdBySellerName ? <p className="text-[11px] text-muted">{c.createdBySellerName}</p>
             : null}
-        <p className="text-[10px] text-[#C4B9A8]">{formatDate(c.createdAt)}</p>
+        <p className="text-[10px] text-faint">{formatDate(c.createdAt)}</p>
       </div>
+      {/* Hợp đồng — điều kiện để khách được mua công nợ. Xanh = đã có. */}
+      <button onClick={(e) => { e.stopPropagation(); onContract?.(c); }}
+        className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-colors shrink-0
+          ${c.hasContract
+            ? 'border-blue-200 dark:border-blue-500/28 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10'
+            : 'border-line text-muted hover:border-gold hover:text-gold hover:bg-gold-tint'}`}
+        title={c.hasContract ? 'Xem hợp đồng' : 'Tải hợp đồng lên'}>
+        <FileText size={13} />
+      </button>
       <button onClick={() => onEdit(c)}
-        className="w-8 h-8 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] hover:bg-[#FDF8ED] transition-colors shrink-0">
+        className="w-8 h-8 rounded-xl border border-line flex items-center justify-center text-muted hover:border-gold hover:text-gold hover:bg-gold-tint transition-colors shrink-0">
         <Edit2 size={13} />
       </button>
     </div>
@@ -804,28 +814,28 @@ function CustomerRow({ c, onEdit }) {
 }
 
 // ─── Category Accordion Section ───────────────────────────────────────────────
-function CategorySection({ label, color, customers, defaultOpen, onEdit }) {
+function CategorySection({ label, color, customers, defaultOpen, onEdit, onContract }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="rounded-2xl border border-[#F0EBE3] overflow-hidden">
+    <div className="rounded-2xl border border-line-soft overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-[#FDF8ED] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-surface hover:bg-gold-tint transition-colors"
       >
         {color
           ? <span className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-          : <Tag size={13} className="text-[#C4B9A8] shrink-0" />}
-        <span className="font-semibold text-sm text-[#1C1C1E] flex-1 text-left">{label}</span>
-        <span className="text-[11px] text-[#8E8878] font-medium">{customers.length} khách</span>
+          : <Tag size={13} className="text-faint shrink-0" />}
+        <span className="font-semibold text-sm text-ink flex-1 text-left">{label}</span>
+        <span className="text-[11px] text-muted font-medium">{customers.length} khách</span>
         {open
-          ? <ChevronDown size={15} className="text-[#8E8878] shrink-0" />
-          : <ChevronRight size={15} className="text-[#8E8878] shrink-0" />}
+          ? <ChevronDown size={15} className="text-muted shrink-0" />
+          : <ChevronRight size={15} className="text-muted shrink-0" />}
       </button>
       {open && (
-        <div className="border-t border-[#F0EBE3] p-3 space-y-2 bg-[#FAFAF8]">
+        <div className="border-t border-line-soft p-3 space-y-2 bg-surface">
           {customers.map(c => (
-            <CustomerRow key={c.id} c={c} onEdit={onEdit} />
+            <CustomerRow key={c.id} c={c} onEdit={onEdit} onContract={onContract} />
           ))}
         </div>
       )}
@@ -875,6 +885,11 @@ export default function SellerCustomersPage() {
   }, [debouncedSearch, typeFilter, toast]);
 
   useEffect(() => { load(0); }, [debouncedSearch, typeFilter]);
+
+  // Hợp đồng: đã có thì mở modal xem (trong đó có nút Cập nhật), chưa có thì
+  // vào thẳng màn tải lên — bớt một lần bấm cho trường hợp hay gặp nhất.
+  const contract = useContractModals(() => load(page));
+  const openContract = (c) => (c.hasContract ? contract.view(c) : contract.upload(c));
 
   const grouped = (() => {
     const map = new Map();
@@ -969,56 +984,56 @@ export default function SellerCustomersPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-surface">
       <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportFile} />
 
       {/* Header */}
-      <div className="bg-white border-b border-[#F0EBE3] px-5 py-4 sticky top-0 z-10">
+      <div className="bg-surface border-b border-line-soft px-5 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#FDF8ED] border border-[#C9A84C]/20 flex items-center justify-center">
-              <Users size={16} className="text-[#C9A84C]" />
+            <div className="w-9 h-9 rounded-xl bg-gold-tint border border-gold/20 flex items-center justify-center">
+              <Users size={16} className="text-gold" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-[#1C1C1E]">Khách hàng</h1>
-              <p className="text-[11px] text-[#8E8878]">{isSuperSeller ? 'Tất cả' : 'Khách của tôi'} · {total} khách</p>
+              <h1 className="text-base font-bold text-ink">Khách hàng</h1>
+              <p className="text-[11px] text-muted">{isSuperSeller ? 'Tất cả' : 'Khách của tôi'} · {total} khách</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
             <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt} title="Báo cáo công nợ"
-              className="h-9 px-3 rounded-xl border border-[#E8DDD0] flex items-center gap-1.5 text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-colors disabled:opacity-60">
+              className="h-9 px-3 rounded-xl border border-line flex items-center gap-1.5 text-xs text-ink-2 hover:border-gold transition-colors disabled:opacity-60">
               {exportingDebt
-                ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                ? <span className="w-3 h-3 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                 : <FileText size={14} />}
               <span className="hidden sm:inline">Báo cáo công nợ</span>
             </button>
             <button onClick={handleDownloadTemplate} disabled={exportingTemplate} title="Tải template"
-              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+              className="w-9 h-9 rounded-xl border border-line flex items-center justify-center text-muted hover:bg-surface-2 transition-colors">
               <FileSpreadsheet size={15} />
             </button>
             <button onClick={() => fileInputRef.current?.click()} disabled={importing} title="Import"
-              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
-              {importing ? <div className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" /> : <Upload size={15} />}
+              className="w-9 h-9 rounded-xl border border-line flex items-center justify-center text-muted hover:bg-surface-2 transition-colors">
+              {importing ? <div className="w-3.5 h-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" /> : <Upload size={15} />}
             </button>
             <button onClick={handleExport} title="Xuất"
-              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+              className="w-9 h-9 rounded-xl border border-line flex items-center justify-center text-muted hover:bg-surface-2 transition-colors">
               <Download size={15} />
             </button>
             <button onClick={() => load(page)} disabled={loading}
-              className="w-9 h-9 rounded-xl border border-[#E8DDD0] flex items-center justify-center text-[#8E8878] hover:bg-[#F0EBE3] transition-colors">
+              className="w-9 h-9 rounded-xl border border-line flex items-center justify-center text-muted hover:bg-surface-2 transition-colors">
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
         <div className="flex gap-2">
           <div className="flex-1 relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C4B9A8]" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên, SĐT, mã, MST..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#E8DDD0] text-sm text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C] transition-colors bg-[#FAFAF8] placeholder:text-[#C4B9A8]" />
-            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C4B9A8] hover:text-red-400"><X size={13} /></button>}
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-line text-sm text-ink focus:outline-none focus:border-gold transition-colors bg-surface placeholder:text-faint" />
+            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-faint hover:text-red-400"><X size={13} /></button>}
           </div>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-            className="rounded-xl border border-[#E8DDD0] px-3 py-2 text-sm text-[#5C4E3D] focus:outline-none focus:border-[#C9A84C] bg-white">
+            className="rounded-xl border border-line px-3 py-2 text-sm text-ink-2 focus:outline-none focus:border-gold bg-surface">
             <option value="">Tất cả</option>
             <option value="RETAIL">Cá nhân</option>
             <option value="COMPANY">Công ty</option>
@@ -1028,37 +1043,38 @@ export default function SellerCustomersPage() {
 
       <div className="p-4 sm:p-5">
         {!isSuperSeller && (
-          <div className="mb-4 px-4 py-3 bg-sky-50 rounded-xl border border-sky-100 flex items-start gap-2">
+          <div className="mb-4 px-4 py-3 bg-sky-50 dark:bg-sky-500/10 rounded-xl border border-sky-100 dark:border-sky-500/18 flex items-start gap-2">
             <AlertCircle size={14} className="text-sky-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-sky-700">Hiển thị: khách cá nhân (tất cả), khách công ty được gán cho bạn, và khách do admin tạo.</p>
+            <p className="text-xs text-sky-700 dark:text-sky-300">Hiển thị: khách cá nhân (tất cả), khách công ty được gán cho bạn, và khách do admin tạo.</p>
           </div>
         )}
 
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="bg-white rounded-2xl border border-[#F0EBE3] p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#F0EBE3] animate-pulse shrink-0" />
+              <div key={i} className="bg-surface rounded-2xl border border-line-soft p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-surface-2 animate-pulse shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-40 bg-[#F0EBE3] rounded animate-pulse" />
-                  <div className="h-3 w-28 bg-[#F0EBE3] rounded animate-pulse" />
+                  <div className="h-4 w-40 bg-surface-2 rounded animate-pulse" />
+                  <div className="h-3 w-28 bg-surface-2 rounded animate-pulse" />
                 </div>
               </div>
             ))}
           </div>
         ) : customers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#F0EBE3] flex items-center justify-center mb-3">
-              <Users size={24} className="text-[#C4B9A8]" strokeWidth={1.5} />
+            <div className="w-14 h-14 rounded-2xl bg-surface-2 flex items-center justify-center mb-3">
+              <Users size={24} className="text-faint" strokeWidth={1.5} />
             </div>
-            <p className="font-semibold text-[#5C4E3D]">Không tìm thấy khách hàng</p>
-            {search && <p className="text-sm text-[#8E8878] mt-1">Thử tìm với từ khóa khác</p>}
+            <p className="font-semibold text-ink-2">Không tìm thấy khách hàng</p>
+            {search && <p className="text-sm text-muted mt-1">Thử tìm với từ khóa khác</p>}
           </div>
         ) : (
           <>
             {search ? (
               <div className="space-y-2">
-                {customers.map(c => <CustomerRow key={c.id} c={c} onEdit={setEditTarget} />)}
+                {customers.map(c => <CustomerRow key={c.id} c={c} onEdit={setEditTarget}
+                  onContract={openContract} />)}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1070,6 +1086,7 @@ export default function SellerCustomersPage() {
                     customers={items}
                     defaultOpen={idx === 0}
                     onEdit={setEditTarget}
+                    onContract={openContract}
                   />
                 ))}
               </div>
@@ -1078,12 +1095,12 @@ export default function SellerCustomersPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-5">
                 <button onClick={() => load(page - 1)} disabled={page === 0 || loading}
-                  className="px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-xs text-[#5C4E3D] font-semibold disabled:opacity-40 hover:bg-[#F0EBE3] transition-colors">
+                  className="px-3 py-1.5 rounded-lg border border-line text-xs text-ink-2 font-semibold disabled:opacity-40 hover:bg-surface-2 transition-colors">
                   ← Trước
                 </button>
-                <span className="text-xs text-[#8E8878]">{page + 1} / {totalPages}</span>
+                <span className="text-xs text-muted">{page + 1} / {totalPages}</span>
                 <button onClick={() => load(page + 1)} disabled={page >= totalPages - 1 || loading}
-                  className="px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-xs text-[#5C4E3D] font-semibold disabled:opacity-40 hover:bg-[#F0EBE3] transition-colors">
+                  className="px-3 py-1.5 rounded-lg border border-line text-xs text-ink-2 font-semibold disabled:opacity-40 hover:bg-surface-2 transition-colors">
                   Sau →
                 </button>
               </div>
@@ -1111,6 +1128,8 @@ export default function SellerCustomersPage() {
         onExportAll={() => handleExportAgedReceivables(null)}
         exporting={exportingDebt}
       />
+
+      {contract.render()}
     </div>
   );
 }

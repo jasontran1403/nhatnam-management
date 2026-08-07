@@ -54,9 +54,9 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn overflow-hidden">
+        <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#5C4E3D] to-[#3D3028] px-5 py-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-[var(--c-ink-2)] to-chrome px-5 py-4 flex items-center justify-between">
             <div>
               <p className="text-white/60 text-[10px] uppercase tracking-widest font-semibold">Lưu đơn</p>
               <h3 className="text-white font-bold text-base mt-0.5">Chọn hình thức lưu</h3>
@@ -72,16 +72,16 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
             {/* DRAFT */}
             <button
               onClick={() => onConfirm({ type: 'DRAFT' })}
-              className="w-full flex items-start gap-4 p-4 rounded-xl border-2 border-[#E8DDD0]
-                         hover:border-[#C9A84C] hover:bg-[#FDF8ED] transition-all text-left group"
+              className="w-full flex items-start gap-4 p-4 rounded-xl border-2 border-line
+                         hover:border-gold hover:bg-gold-tint transition-all text-left group"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#F0EBE3] flex items-center justify-center shrink-0
-                              group-hover:bg-[#C9A84C]/15 transition-colors">
-                <Save size={18} className="text-[#8E8878] group-hover:text-[#C9A84C]" />
+              <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center shrink-0
+                              group-hover:bg-gold/15 transition-colors">
+                <Save size={18} className="text-muted group-hover:text-gold" />
               </div>
               <div>
-                <p className="font-bold text-sm text-[#1C1C1E]">Lưu đơn nháp</p>
-                <p className="text-[11px] text-[#8E8878] mt-0.5">
+                <p className="font-bold text-sm text-ink">Lưu đơn nháp</p>
+                <p className="text-[11px] text-muted mt-0.5">
                   Lưu tạm giỏ hàng, tiếp tục chỉnh sửa sau.
                   Không giữ tồn kho.
                 </p>
@@ -91,21 +91,21 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
             {/* SCHEDULED */}
             <button
               onClick={() => setMode('SCHEDULED')}
-              className="w-full flex items-start gap-4 p-4 rounded-xl border-2 border-[#E8DDD0]
-                         hover:border-amber-400 hover:bg-amber-50/60 transition-all text-left group"
+              className="w-full flex items-start gap-4 p-4 rounded-xl border-2 border-line
+                         hover:border-amber-400 hover:bg-amber-50/60 dark:bg-amber-500/6 transition-all text-left group"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0
-                              group-hover:bg-amber-100 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0
+                              group-hover:bg-amber-100 dark:bg-amber-500/18 transition-colors">
                 <Clock size={18} className="text-amber-500" />
               </div>
               <div>
-                <p className="font-bold text-sm text-[#1C1C1E]">Đặt hàng hẹn giờ</p>
-                <p className="text-[11px] text-[#8E8878] mt-0.5">
+                <p className="font-bold text-sm text-ink">Đặt hàng hẹn giờ</p>
+                <p className="text-[11px] text-muted mt-0.5">
                   Hẹn thời điểm cần xuất đơn. Hiển thị đếm ngược
                   và cảnh báo khi sắp đến giờ.
                 </p>
                 {!hasCustomer && (
-                  <p className="text-[10px] text-amber-600 mt-1 font-semibold">
+                  <p className="text-[10px] text-amber-600 dark:text-amber-300 mt-1 font-semibold">
                     ⚠ Yêu cầu chọn khách hàng
                   </p>
                 )}
@@ -121,7 +121,7 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn overflow-hidden">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-4 flex items-center justify-between">
           <div>
@@ -142,19 +142,19 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
         <div className="px-5 py-4 space-y-4">
           {/* Khách hàng (chỉ read-only nếu đã có) */}
           {hasCustomer ? (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28">
               <User size={14} className="text-amber-500 shrink-0" />
               <div>
-                <p className="text-xs font-semibold text-[#1C1C1E]">
+                <p className="text-xs font-semibold text-ink">
                   {customer?.contactName || customer?.name}
                 </p>
-                <p className="text-[10px] text-[#8E8878]">{customer?.phone}</p>
+                <p className="text-[10px] text-muted">{customer?.phone}</p>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28">
               <User size={14} className="text-red-400 shrink-0" />
-              <p className="text-xs text-red-600 font-semibold">
+              <p className="text-xs text-red-600 dark:text-red-300 font-semibold">
                 Vui lòng chọn khách hàng trước khi hẹn giờ
               </p>
             </div>
@@ -162,7 +162,7 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
 
           {/* Thời gian hẹn */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               <span className="flex items-center gap-1.5">
                 <Clock size={11} /> Thời điểm cần xuất đơn *
               </span>
@@ -174,30 +174,30 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
                   minDate={new Date()}
                   placeholder="Chọn ngày & giờ hẹn..."
                 />
-              : <div className="h-11 rounded-xl border-2 border-[#E8DDD0] animate-pulse bg-[#FAFAF8]" />
+              : <div className="h-11 rounded-xl border-2 border-line animate-pulse bg-surface" />
             }
-            <p className="text-[10px] text-[#8E8878] mt-1">
+            <p className="text-[10px] text-muted mt-1">
               Đơn sẽ hiển thị đếm ngược đến thời điểm này.
             </p>
           </div>
 
           {/* Người đặt */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               👤 Tên người đặt hàng
             </label>
             <input
               type="text" value={orderedBy}
               onChange={e => setOrderedBy(e.target.value)}
               placeholder="Nhập tên người đặt (nếu có)..."
-              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm
-                         focus:outline-none focus:border-amber-400 bg-[#FAFAF8]"
+              className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm
+                         focus:outline-none focus:border-amber-400 bg-surface"
             />
           </div>
 
           {/* Người nhận */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               <span className="flex items-center gap-1.5">
                 <Package size={11} /> Tên người nhận hàng
               </span>
@@ -206,14 +206,14 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
               type="text" value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
               placeholder="Nhập tên người nhận..."
-              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm
-                         focus:outline-none focus:border-amber-400 bg-[#FAFAF8]"
+              className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm
+                         focus:outline-none focus:border-amber-400 bg-surface"
             />
           </div>
 
           {/* Hiển thị giá trên phiếu */}
           <div>
-            <label className="block text-[11px] font-bold text-[#8E8878] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
               <span className="flex items-center gap-1.5">
                 <Eye size={11} /> Hiển thị giá trên phiếu
               </span>
@@ -221,14 +221,14 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
             <select
               value={priceDisplayOption}
               onChange={e => setPriceDisplayOption(e.target.value)}
-              className="w-full rounded-xl border-2 border-[#E8DDD0] px-4 py-2.5 text-sm
-                         focus:outline-none focus:border-amber-400 bg-white"
+              className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm
+                         focus:outline-none focus:border-amber-400 bg-surface"
             >
               <option value="show">Hiển thị đầy đủ giá</option>
               <option value="hide_prices">Che giá (ẩn đơn giá, chỉ hiện tổng)</option>
               <option value="hide_all">Che toàn bộ (ẩn tất cả số tiền)</option>
             </select>
-            <p className="text-[10px] text-[#8E8878] mt-1">
+            <p className="text-[10px] text-muted mt-1">
               {priceDisplayOption === 'show'        && '✓ Hiển thị tất cả giá trên phiếu in'}
               {priceDisplayOption === 'hide_prices' && '✓ Ẩn giá từng sản phẩm, vẫn hiện tổng tiền'}
               {priceDisplayOption === 'hide_all'    && '✓ Ẩn toàn bộ số tiền (chỉ tên và số lượng)'}
@@ -240,7 +240,7 @@ export default function SaveDraftModal({ onConfirm, onClose, customer, hasCustom
         <div className="px-5 pb-5 flex gap-3">
           <button
             onClick={() => setMode(null)}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-semibold hover:bg-[#F0EBE3]"
+            className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-semibold hover:bg-surface-2"
           >
             Quay lại
           </button>

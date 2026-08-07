@@ -43,7 +43,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
       className="card-product rounded-xl overflow-hidden text-left w-full flex flex-col
         cursor-pointer active:scale-95 transition-transform"
     >
-      <div className="relative aspect-square bg-[#F0EBE3] overflow-hidden w-full">
+      <div className="relative aspect-square bg-surface-2 overflow-hidden w-full">
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -57,7 +57,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
         ) : null}
 
         <div
-          className="absolute inset-0 items-center justify-center text-[#C4B9A8] text-3xl"
+          className="absolute inset-0 items-center justify-center text-faint text-3xl"
           style={{ display: imageUrl ? 'none' : 'flex' }}
         >
           🍽️
@@ -84,7 +84,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
 
           <div className="flex items-center justify-between gap-1 mt-0.5">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[#FFD97D] text-[11px] sm:text-xs font-bold drop-shadow">
+              <span className="text-gold text-[11px] sm:text-xs font-bold drop-shadow">
                 {formatPrice(priceVal)}
               </span>
               {hasTiers && (
@@ -107,7 +107,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
                     return (
                       <span key={ing.ingredientId} className={`
                         text-[8px] rounded-md px-1.5 py-0.5 leading-none font-semibold whitespace-nowrap
-                        ${none ? 'text-red-200 bg-red-800/60' : low ? 'text-yellow-200 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
+                        ${none ? 'text-red-200 dark:text-red-300 bg-red-800/60' : low ? 'text-yellow-200 dark:text-yellow-300 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
                       `}>
                         {qtyStr} {ing.unit || ''}
                       </span>
@@ -118,7 +118,7 @@ export default function ProductCard({ product, onAdd, cartQty = 0, ingStockMap =
               : stock !== null && (
                 <span className={`
                   text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold whitespace-nowrap
-                  ${isOutOfStock ? 'text-red-200 bg-red-800/60' : remaining <= 5 ? 'text-yellow-200 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
+                  ${isOutOfStock ? 'text-red-200 dark:text-red-300 bg-red-800/60' : remaining <= 5 ? 'text-yellow-200 dark:text-yellow-300 bg-yellow-800/50' : 'text-white/90 bg-black/35'}
                 `}>
                   {isOutOfStock
                     ? t('status', 'out_of_stock')

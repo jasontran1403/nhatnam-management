@@ -23,17 +23,17 @@ function formatPrice(n) {
 // ── Summary card ─────────────────────────────────────────────────────────────
 function SummaryCard({ icon: Icon, label, value, color }) {
   const colors = {
-    gold:  'bg-[#C9A84C]/10 text-[#C9A84C]',
-    amber: 'bg-amber-50 text-amber-600',
-    red:   'bg-red-50 text-red-500',
+    gold:  'bg-gold/10 text-gold',
+    amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300',
+    red:   'bg-red-50 dark:bg-red-500/10 text-red-500',
   };
   return (
-    <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+    <div className="bg-surface rounded-2xl border border-hairline p-4 shadow-sm">
       <div className={`inline-flex p-2 rounded-xl ${colors[color]} mb-2`}>
         <Icon size={16} />
       </div>
-      <p className="text-2xl font-bold text-[#1C1C1E]">{value}</p>
-      <p className="text-xs text-[#8E8878] mt-0.5">{label}</p>
+      <p className="text-2xl font-bold text-ink">{value}</p>
+      <p className="text-xs text-muted mt-0.5">{label}</p>
     </div>
   );
 }
@@ -43,14 +43,14 @@ function IngredientRow({ row }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-black/5 last:border-0">
+    <div className="border-b border-hairline last:border-0">
       {/* Header row */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FAF7F2]/60 transition text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-canvas/60 transition text-left"
       >
         {/* Expand icon */}
-        <span className="text-[#C4B9A8] flex-shrink-0">
+        <span className="text-faint flex-shrink-0">
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
 
@@ -59,19 +59,19 @@ function IngredientRow({ row }) {
           <img src={getImageUrl(row.ingredientImageUrl)} alt=""
             className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
         ) : (
-          <div className="w-9 h-9 rounded-xl bg-[#FAF7F2] flex items-center justify-center flex-shrink-0">
-            <Package size={16} className="text-[#C9A84C]" />
+          <div className="w-9 h-9 rounded-xl bg-canvas flex items-center justify-center flex-shrink-0">
+            <Package size={16} className="text-gold" />
           </div>
         )}
 
         {/* Name + badge */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-[#1C1C1E] text-sm truncate">{row.ingredientName}</p>
+            <p className="font-semibold text-ink text-sm truncate">{row.ingredientName}</p>
             {row.expiryBadge === 'DANGER'  && <AlertCircle  size={13} className="text-red-500 flex-shrink-0" />}
             {row.expiryBadge === 'WARNING' && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />}
           </div>
-          <p className="text-xs text-[#8E8878]">
+          <p className="text-xs text-muted">
             {t('ingredient', 'lot_count').replace('{n}', row.lots?.length || 0)}
             {row.lots?.length > 0 && row.lots.some(l => l.expiryDate) && (
               <> · {t('ingredient', 'nearest_expiry')}: {formatDate(row.nearestExpiryDate)}</>
@@ -81,37 +81,37 @@ function IngredientRow({ row }) {
 
         {/* Stock + cost */}
         <div className="text-right flex-shrink-0">
-          <p className="font-bold text-[#1C1C1E] text-sm">
-            {formatNumber(row.stockQuantity)} <span className="text-[#8E8878] font-normal text-xs">{row.unit}</span>
+          <p className="font-bold text-ink text-sm">
+            {formatNumber(row.stockQuantity)} <span className="text-muted font-normal text-xs">{row.unit}</span>
           </p>
           {row.totalCostValue != null && Number(row.totalCostValue) > 0 && (
-            <p className="text-xs text-[#C9A84C] font-medium">{formatPrice(row.totalCostValue)}</p>
+            <p className="text-xs text-gold font-medium">{formatPrice(row.totalCostValue)}</p>
           )}
         </div>
       </button>
 
       {/* Lot detail */}
       {open && row.lots?.length > 0 && (
-        <div className="bg-[#FAF7F2] px-4 py-3 border-t border-black/5">
-          <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">{t('ingredient', 'lot_detail')}</p>
+        <div className="bg-canvas px-4 py-3 border-t border-hairline">
+          <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">{t('ingredient', 'lot_detail')}</p>
           <div className="space-y-1.5">
             {row.lots.map((lot, i) => (
               <div key={i} className="flex items-center justify-between text-xs gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[#555]">
+                  <span className="text-ink-2">
                     {t('batch', 'expiry_short')}: {lot.expiryDate ? formatDate(lot.expiryDate) : t('ingredient', 'no_expiry_date')}
                   </span>
                   <ExpiryBadge expiryDate={lot.expiryDate} />
                 </div>
                 <div className="flex items-center gap-4 flex-shrink-0 text-right">
-                  <span className="text-[#8E8878]">
-                    {t('admin','cost_price_label')}: <span className="font-medium text-[#1C1C1E]">{formatPrice(lot.costPrice)}</span>
+                  <span className="text-muted">
+                    {t('admin','cost_price_label')}: <span className="font-medium text-ink">{formatPrice(lot.costPrice)}</span>
                   </span>
-                  <span className="font-semibold text-[#1C1C1E]">
+                  <span className="font-semibold text-ink">
                     {formatNumber(lot.quantity)} {row.unit}
                   </span>
                   {lot.totalCost != null && Number(lot.totalCost) > 0 && (
-                    <span className="text-[#C9A84C] font-medium">{formatPrice(lot.totalCost)}</span>
+                    <span className="text-gold font-medium">{formatPrice(lot.totalCost)}</span>
                   )}
                 </div>
               </div>
@@ -119,9 +119,9 @@ function IngredientRow({ row }) {
           </div>
           {/* Tổng giá vốn */}
           {row.totalCostValue != null && Number(row.totalCostValue) > 0 && (
-            <div className="mt-2 pt-2 border-t border-black/5 flex justify-end">
-              <span className="text-xs text-[#8E8878]">
-                {t('admin','total_cost_label')}: <span className="font-bold text-[#C9A84C]">{formatPrice(row.totalCostValue)}</span>
+            <div className="mt-2 pt-2 border-t border-hairline flex justify-end">
+              <span className="text-xs text-muted">
+                {t('admin','total_cost_label')}: <span className="font-bold text-gold">{formatPrice(row.totalCostValue)}</span>
               </span>
             </div>
           )}
@@ -141,26 +141,26 @@ function SubCategorySection({ name, rows }) {
   const hasWarning = rows.some(r => r.expiryBadge === 'WARNING');
 
   return (
-    <div className="ml-4 border-l-2 border-[#F0EBE3] mb-1">
+    <div className="ml-4 border-l-2 border-line-soft mb-1">
       {/* SubCat header */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#FAF7F2] transition text-left"
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-canvas transition text-left"
       >
-        {open ? <ChevronDown size={13} className="text-[#C4B9A8]" /> : <ChevronRight size={13} className="text-[#C4B9A8]" />}
-        <span className="text-xs font-semibold text-[#5C5C5C] flex-1 truncate">
+        {open ? <ChevronDown size={13} className="text-faint" /> : <ChevronRight size={13} className="text-faint" />}
+        <span className="text-xs font-semibold text-ink-2 flex-1 truncate">
           {name || t('ingredient', 'uncategorized')}
         </span>
         {hasDanger  && <AlertCircle  size={11} className="text-red-400 flex-shrink-0" />}
         {hasWarning && !hasDanger && <AlertTriangle size={11} className="text-amber-400 flex-shrink-0" />}
-        <span className="text-[10px] text-[#8E8878] flex-shrink-0">{rows.length} NL</span>
+        <span className="text-[10px] text-muted flex-shrink-0">{rows.length} NL</span>
         {totalCost > 0 && (
-          <span className="text-[10px] text-[#C9A84C] font-medium flex-shrink-0">{formatPrice(totalCost)}</span>
+          <span className="text-[10px] text-gold font-medium flex-shrink-0">{formatPrice(totalCost)}</span>
         )}
       </button>
 
       {open && (
-        <div className="bg-white rounded-xl mx-2 mb-2 border border-black/5 overflow-hidden">
+        <div className="bg-surface rounded-xl mx-2 mb-2 border border-hairline overflow-hidden">
           {rows.map(r => <IngredientRow key={r.ingredientId} row={r} />)}
         </div>
       )}
@@ -194,19 +194,19 @@ function CategorySection({ name, rows }) {
   const hasSubCats = subGroups.length > 1 || subGroups[0]?.name;
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden mb-3">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden mb-3">
       {/* Category header */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2.5 px-4 py-3 bg-[#FAF7F2] hover:bg-[#F0EBE3] transition text-left border-b border-black/5"
+        className="w-full flex items-center gap-2.5 px-4 py-3 bg-canvas hover:bg-surface-2 transition text-left border-b border-hairline"
       >
-        {open ? <ChevronDown size={15} className="text-[#C9A84C]" /> : <ChevronRight size={15} className="text-[#C9A84C]" />}
-        <span className="font-bold text-[#1C1C1E] flex-1 truncate">{name}</span>
+        {open ? <ChevronDown size={15} className="text-gold" /> : <ChevronRight size={15} className="text-gold" />}
+        <span className="font-bold text-ink flex-1 truncate">{name}</span>
         {hasDanger  && <AlertCircle  size={13} className="text-red-500 flex-shrink-0" />}
         {hasWarning && !hasDanger && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />}
-        <span className="text-xs text-[#8E8878] flex-shrink-0">{rows.length} {t('ingredient', 'ingredients').toLowerCase()}</span>
+        <span className="text-xs text-muted flex-shrink-0">{rows.length} {t('ingredient', 'ingredients').toLowerCase()}</span>
         {totalCost > 0 && (
-          <span className="text-xs text-[#C9A84C] font-semibold flex-shrink-0 ml-2">{formatPrice(totalCost)}</span>
+          <span className="text-xs text-gold font-semibold flex-shrink-0 ml-2">{formatPrice(totalCost)}</span>
         )}
       </button>
 
@@ -291,24 +291,24 @@ export default function AdminIngredients() {
       <PageHeader icon={Package} title={t('ingredient', 'ingredients')} subtitle={t('warehouse', 'manage_stock_expiry')} />
 
       {/* Warehouse selector */}
-      <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
-        <label className="block text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider mb-2">
+      <div className="bg-surface rounded-2xl border border-hairline p-4 shadow-sm">
+        <label className="block text-xs font-semibold text-ink uppercase tracking-wider mb-2">
           <WhIcon size={12} className="inline mr-1" /> Chọn kho
         </label>
         {loadingWh ? (
-          <div className="h-10 bg-[#FAF7F2] rounded-xl animate-pulse" />
+          <div className="h-10 bg-canvas rounded-xl animate-pulse" />
         ) : warehouses.length === 0 ? (
-          <p className="text-sm text-[#8E8878]">Chưa có kho nào.</p>
+          <p className="text-sm text-muted">Chưa có kho nào.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {warehouses.map(w => (
               <button key={w.id} onClick={() => setSelectedWhId(w.id)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition ring-1
                   ${selectedWhId === w.id
-                    ? 'bg-[#C9A84C] text-white ring-[#C9A84C]'
-                    : 'bg-white text-[#1C1C1E] ring-black/10 hover:bg-[#FAF7F2]'}`}>
+                    ? 'bg-gold text-white ring-gold'
+                    : 'bg-surface text-ink ring-hairline-2 hover:bg-canvas'}`}>
                 {w.name}
-                <span className={`ml-2 text-xs ${selectedWhId === w.id ? 'text-white/80' : 'text-[#8E8878]'}`}>
+                <span className={`ml-2 text-xs ${selectedWhId === w.id ? 'text-white/80' : 'text-muted'}`}>
                   {w.type === 'SALE' ? 'Bán hàng' : 'Trung chuyển'}
                 </span>
               </button>
@@ -323,19 +323,19 @@ export default function AdminIngredients() {
           <SummaryCard icon={Package}       label={t('ingredient', 'total_label')}        value={counts.total}   color="gold" />
           <SummaryCard icon={AlertTriangle} label={t('ingredient', 'warning_label')} value={counts.warning} color="amber" />
           <SummaryCard icon={AlertCircle}   label={t('ingredient', 'danger_label')}  value={counts.danger}  color="red" />
-          <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
-            <div className="inline-flex p-2 rounded-xl bg-emerald-50 text-emerald-600 mb-2">
+          <div className="bg-surface rounded-2xl border border-hairline p-4 shadow-sm">
+            <div className="inline-flex p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 mb-2">
               <Package size={16} />
             </div>
-            <p className="text-lg font-bold text-[#1C1C1E] truncate">{formatPrice(grandTotalCost)}</p>
-            <p className="text-xs text-[#8E8878] mt-0.5">Tổng giá vốn tồn kho</p>
+            <p className="text-lg font-bold text-ink truncate">{formatPrice(grandTotalCost)}</p>
+            <p className="text-xs text-muted mt-0.5">Tổng giá vốn tồn kho</p>
           </div>
         </div>
       )}
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
         <input
           type="text"
           {...{placeholder: t('ingredient', 'search_placeholder')}}
@@ -348,7 +348,7 @@ export default function AdminIngredients() {
       {/* Content */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
         </div>
       ) : rows.length === 0 ? (
         <EmptyState icon={Package} message={t('ingredient', 'no_data')} />

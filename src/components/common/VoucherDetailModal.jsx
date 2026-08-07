@@ -3,6 +3,7 @@
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Receipt, TrendingUp, User, Building2, Calendar, Hash } from 'lucide-react';
+import { formatVND } from '../../utils/format.js';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -11,9 +12,6 @@ function imgSrc(url) {
   return url.startsWith('http') ? url : `${BASE_URL}/api/auth${url}`;
 }
 
-function formatVND(n) {
-  return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ';
-}
 
 function formatDateTime(ts) {
   if (!ts) return '—';
@@ -25,10 +23,10 @@ function formatDateTime(ts) {
 
 function getStatusCfg(t) {
   return {
-    CONFIRMED: { label: t('status', 'confirmed'),  cls: 'bg-emerald-100 text-emerald-700' },
-    APPROVED:  { label: t('status', 'approved'),   cls: 'bg-emerald-100 text-emerald-700' },
-    PENDING:   { label: t('status', 'pending'),    cls: 'bg-amber-100 text-amber-700'    },
-    REJECTED:  { label: t('status', 'rejected'),   cls: 'bg-red-100 text-red-600'         },
+    CONFIRMED: { label: t('status', 'confirmed'),  cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
+    APPROVED:  { label: t('status', 'approved'),   cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
+    PENDING:   { label: t('status', 'pending'),    cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300'    },
+    REJECTED:  { label: t('status', 'rejected'),   cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300'         },
   };
 }
 
@@ -135,20 +133,20 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
       >
         {/* Modal card */}
         <div
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft">
             <div className="flex items-center gap-2.5">
               {isExpense
-                ? <Receipt size={18} className="text-[#C9A84C]" />
-                : <TrendingUp size={18} className="text-emerald-600" />}
+                ? <Receipt size={18} className="text-gold" />
+                : <TrendingUp size={18} className="text-emerald-600 dark:text-emerald-300" />}
               <div>
-                <p className="font-bold text-[#1C1C1E] text-sm">
+                <p className="font-bold text-ink text-sm">
                   {isExpense ? t('voucher', 'expense_title') : t('voucher', 'income_title')}
                 </p>
-                <p className="font-mono text-xs text-[#C9A84C]">{!isExpense ? (voucher.receiptNumber || voucher.voucherCode) : (voucher.paymentNumber || voucher.voucherCode)}</p>
+                <p className="font-mono text-xs text-gold">{!isExpense ? (voucher.receiptNumber || voucher.voucherCode) : (voucher.paymentNumber || voucher.voucherCode)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -157,7 +155,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
               </span>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-[#FAF7F2] text-[#8E8878] transition"
+                className="p-1.5 rounded-lg hover:bg-canvas text-muted transition"
               >
                 <X size={18} />
               </button>
@@ -170,94 +168,94 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
             {/* Meta info */}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-start gap-2">
-                <User size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
+                <User size={14} className="text-muted mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-[#8E8878]">{t('voucher', 'creator_label')}</p>
-                  <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.createdByName || '—'}</p>
+                  <p className="text-xs text-muted">{t('voucher', 'creator_label')}</p>
+                  <p className="text-sm font-semibold text-ink">{voucher.createdByName || '—'}</p>
                 </div>
               </div>
 
               {isExpense && voucher.requestedByName && (
                 <div className="flex items-start gap-2">
-                  <User size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
+                  <User size={14} className="text-muted mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#8E8878]">{t('voucher', 'requester_label')}</p>
-                    <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.requestedByName}</p>
+                    <p className="text-xs text-muted">{t('voucher', 'requester_label')}</p>
+                    <p className="text-sm font-semibold text-ink">{voucher.requestedByName}</p>
                   </div>
                 </div>
               )}
 
               {!isExpense && voucher.payerName && (
                 <div className="flex items-start gap-2">
-                  <User size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
+                  <User size={14} className="text-muted mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#8E8878]">{t('voucher', 'payer_label')}</p>
-                    <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.payerName}</p>
+                    <p className="text-xs text-muted">{t('voucher', 'payer_label')}</p>
+                    <p className="text-sm font-semibold text-ink">{voucher.payerName}</p>
                   </div>
                 </div>
               )}
 
               {isExpense && voucher.vendorName && (
                 <div className="flex items-start gap-2">
-                  <Building2 size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
+                  <Building2 size={14} className="text-muted mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#8E8878]">{t('voucher', 'vendor_label')}</p>
-                    <p className="text-sm font-semibold text-[#1C1C1E]">{voucher.vendorName}</p>
+                    <p className="text-xs text-muted">{t('voucher', 'vendor_label')}</p>
+                    <p className="text-sm font-semibold text-ink">{voucher.vendorName}</p>
                   </div>
                 </div>
               )}
 
               <div className="flex items-start gap-2">
-                <Calendar size={14} className="text-[#8E8878] mt-0.5 flex-shrink-0" />
+                <Calendar size={14} className="text-muted mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-[#8E8878]">{t('voucher', 'created_date')}</p>
-                  <p className="text-sm font-semibold text-[#1C1C1E]">{formatDateTime(voucher.createdAt)}</p>
+                  <p className="text-xs text-muted">{t('voucher', 'created_date')}</p>
+                  <p className="text-sm font-semibold text-ink">{formatDateTime(voucher.createdAt)}</p>
                 </div>
               </div>
             </div>
 
             {/* Lý do */}
-            <div className="bg-[#FAF7F2] rounded-xl px-4 py-3">
-              <p className="text-xs text-[#8E8878] mb-1">{isExpense ? t('voucher', 'expense_reason') : t('voucher', 'income_reason')}</p>
-              <p className="text-sm text-[#1C1C1E] font-medium">{voucher.reason}</p>
+            <div className="bg-canvas rounded-xl px-4 py-3">
+              <p className="text-xs text-muted mb-1">{isExpense ? t('voucher', 'expense_reason') : t('voucher', 'income_reason')}</p>
+              <p className="text-sm text-ink font-medium">{voucher.reason}</p>
             </div>
 
             {/* Khoản chi/thu */}
             <div>
-              <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2 flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-muted uppercase mb-2 flex items-center gap-1.5">
                 <Hash size={12} /> {isExpense ? t('voucher', 'expense_items') : t('voucher', 'income_items')}
               </p>
               <div className="space-y-1.5">
                 {items.map((item, i) => (
-                  <div key={i} className="flex justify-between items-start py-2 border-b border-[#F0EBE3] last:border-0">
+                  <div key={i} className="flex justify-between items-start py-2 border-b border-line-soft last:border-0">
                     <div className="flex-1 min-w-0 mr-3">
-                      <p className="text-sm text-[#1C1C1E] font-medium">{item.itemName}</p>
-                      {item.note && <p className="text-xs text-[#8E8878] mt-0.5">{item.note}</p>}
+                      <p className="text-sm text-ink font-medium">{item.itemName}</p>
+                      {item.note && <p className="text-xs text-muted mt-0.5">{item.note}</p>}
                     </div>
-                    <p className="text-sm font-bold text-[#C9A84C] flex-shrink-0">
+                    <p className="text-sm font-bold text-gold flex-shrink-0">
                       {formatVND(item.amount)}
                     </p>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between items-center mt-3 pt-2 border-t-2 border-[#E8DDD0]">
-                <p className="text-sm font-bold text-[#1C1C1E]">{t('voucher', 'total_amount')}</p>
-                <p className="text-lg font-bold text-[#C9A84C]">{formatVND(voucher.totalAmount)}</p>
+              <div className="flex justify-between items-center mt-3 pt-2 border-t-2 border-line">
+                <p className="text-sm font-bold text-ink">{t('voucher', 'total_amount')}</p>
+                <p className="text-lg font-bold text-gold">{formatVND(voucher.totalAmount)}</p>
               </div>
             </div>
 
             {/* Lý do từ chối */}
             {voucher.status === 'REJECTED' && voucher.rejectReason && (
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3">
                 <p className="text-xs font-semibold text-red-500 uppercase mb-1">{t('voucher', 'reject_reason_label')}</p>
-                <p className="text-sm text-red-700">{voucher.rejectReason}</p>
+                <p className="text-sm text-red-700 dark:text-red-300">{voucher.rejectReason}</p>
               </div>
             )}
 
             {/* Ảnh chứng từ */}
             {images.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">
+                <p className="text-xs font-semibold text-muted uppercase mb-2">
                   {t('voucher', 'receipt_images')} ({images.length})
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -265,7 +263,7 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
                     <button
                       key={i}
                       onClick={() => setLightboxIdx(i)}
-                      className="w-20 h-20 rounded-xl overflow-hidden border border-[#E8DDD0] hover:border-[#C9A84C] hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-[#C9A84C]"
+                      className="w-20 h-20 rounded-xl overflow-hidden border border-line hover:border-gold hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-gold"
                     >
                       <img src={imgSrc(url)} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -276,10 +274,10 @@ export default function VoucherDetailModal({ voucher, type = 'expense', onClose 
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-4 border-t border-[#F0EBE3] flex justify-end">
+          <div className="px-5 py-4 border-t border-line-soft flex justify-end">
             <button
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#F0EBE3] text-[#1C1C1E] text-sm font-semibold transition"
+              className="px-5 py-2 rounded-xl bg-canvas hover:bg-surface-2 text-ink text-sm font-semibold transition"
             >
               Đóng
             </button>

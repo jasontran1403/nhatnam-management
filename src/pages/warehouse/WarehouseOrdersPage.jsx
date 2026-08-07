@@ -37,8 +37,8 @@ function PrepayBadge({ order, compact = false }) {
     <span className={`inline-flex items-center gap-1 font-semibold rounded-full border
       ${compact ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1'}
       ${ok
-        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-        : 'bg-red-50 text-red-600 border-red-200'}`}>
+        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28'
+        : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28'}`}>
       {ok ? <Check size={compact ? 9 : 12} /> : <Lock size={compact ? 9 : 12} />}
       {ok
         ? 'Đã thu đủ'
@@ -115,7 +115,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
   return (
     <div className="space-y-2.5">
       {/* Label */}
-      <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+      <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
         {t('warehouse','driver_delivery')}
       </p>
 
@@ -124,8 +124,8 @@ function DriverPicker({ selectedDrivers, onChange }) {
         <div className="flex flex-wrap gap-1.5">
           {selectedDrivers.map(d => (
             <span key={d.id}
-              className="inline-flex items-center gap-1 text-xs bg-[#C9A84C]/10 text-[#C9A84C]
-                border border-[#C9A84C]/30 rounded-full px-2.5 py-1 font-medium">
+              className="inline-flex items-center gap-1 text-xs bg-gold/10 text-gold
+                border border-gold/30 rounded-full px-2.5 py-1 font-medium">
               <UserCircle size={11} />
               {d.name}
               <button
@@ -143,7 +143,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
       <div ref={dropRef} className="relative">
         <div className="flex gap-1.5">
           <div className="relative flex-1">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
             <input
               ref={inputRef}
               type="text"
@@ -151,9 +151,9 @@ function DriverPicker({ selectedDrivers, onChange }) {
               value={query}
               onChange={e => { setQuery(e.target.value); setOpen(true); }}
               onFocus={() => setOpen(true)}
-              className="w-full pl-8 pr-3 py-2 text-xs border border-[#E8DDD0] rounded-lg
-                focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/10
-                bg-white placeholder:text-[#C4B9A8]"
+              className="w-full pl-8 pr-3 py-2 text-xs border border-line rounded-lg
+                focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/10
+                bg-surface placeholder:text-faint"
             />
           </div>
           {showCreate && (
@@ -161,7 +161,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
               onClick={createDriver}
               disabled={creating}
               className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold
-                bg-[#C9A84C] text-white hover:bg-[#B8943C] transition-colors disabled:opacity-60"
+                bg-gold text-white hover:bg-gold-strong transition-colors disabled:opacity-60"
             >
               <Plus size={12} />
               Thêm
@@ -171,8 +171,8 @@ function DriverPicker({ selectedDrivers, onChange }) {
 
         {/* Dropdown */}
         {open && results.length > 0 && (
-          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl
-            border border-[#E8DDD0] shadow-lg py-1 max-h-40 overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-surface rounded-xl
+            border border-line shadow-lg py-1 max-h-40 overflow-y-auto">
             {results.map(d => {
               const sel = selectedDrivers.some(s => s.id === d.id);
               return (
@@ -181,8 +181,8 @@ function DriverPicker({ selectedDrivers, onChange }) {
                   onClick={() => { toggle(d); setQuery(''); setOpen(false); }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors
                     ${sel
-                      ? 'bg-[#C9A84C]/10 text-[#C9A84C] font-semibold'
-                      : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'
+                      ? 'bg-gold/10 text-gold font-semibold'
+                      : 'hover:bg-canvas text-ink'
                     }`}
                 >
                   <UserCircle size={13} />
@@ -197,7 +197,7 @@ function DriverPicker({ selectedDrivers, onChange }) {
 
       {/* Hint */}
       {selectedDrivers.length === 0 && (
-        <p className="text-[10px] text-[#C4B9A8] italic">
+        <p className="text-[10px] text-faint italic">
           {t('warehouse','no_selection')}
         </p>
       )}
@@ -233,29 +233,29 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl
+      <div className="relative w-full sm:max-w-lg bg-surface rounded-t-3xl sm:rounded-2xl shadow-2xl
         max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3] flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft flex-shrink-0">
           <div>
-            <p className="font-mono text-sm font-bold text-[#C9A84C]">{order.orderCode}</p>
-            <p className="text-xs text-[#8E8878] mt-0.5">{formatDate(order.createdAt)}</p>
+            <p className="font-mono text-sm font-bold text-gold">{order.orderCode}</p>
+            <p className="text-xs text-muted mt-0.5">{formatDate(order.createdAt)}</p>
           </div>
           <button onClick={onClose}
-            className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
+            className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors">
             <X size={16} />
           </button>
         </div>
 
         {/* Customer info */}
-        <div className="px-5 py-3 bg-[#FAF7F2] border-b border-[#F0EBE3] flex-shrink-0">
-          <p className="text-xs font-semibold text-[#1C1C1E]">
+        <div className="px-5 py-3 bg-canvas border-b border-line-soft flex-shrink-0">
+          <p className="text-xs font-semibold text-ink">
             {order.customerName || t('customer','retail')}
           </p>
-          <p className="text-[10px] text-[#8E8878]">{order.customerPhone}</p>
+          <p className="text-[10px] text-muted">{order.customerPhone}</p>
           {order.notes && (
-            <p className="text-[11px] text-[#8E8878] mt-1.5 italic">📝 {order.notes}</p>
+            <p className="text-[11px] text-muted mt-1.5 italic">📝 {order.notes}</p>
           )}
         </div>
 
@@ -263,44 +263,44 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
           {/* Driver picker — đồng bộ style với phần còn lại */}
-          <div className="bg-[#FAF7F2] rounded-2xl px-4 py-3.5 border border-[#F0EBE3]">
+          <div className="bg-canvas rounded-2xl px-4 py-3.5 border border-line-soft">
             <DriverPicker selectedDrivers={drivers} onChange={setDrivers} />
           </div>
 
           {/* Product list */}
-          <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider">
+          <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
             Danh sách sản phẩm cần chuẩn bị
           </p>
           {order.items?.map((item, idx) => (
-            <div key={idx} className="bg-[#FAF7F2] rounded-2xl p-3.5 space-y-3 border border-[#F0EBE3]">
+            <div key={idx} className="bg-canvas rounded-2xl p-3.5 space-y-3 border border-line-soft">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white overflow-hidden shrink-0 border border-[#F0EBE3]">
+                <div className="w-10 h-10 rounded-xl bg-surface overflow-hidden shrink-0 border border-line-soft">
                   {item.productImageUrl
                     ? <img src={getImageUrl(item.productImageUrl)} alt={item.productName} className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-[#1C1C1E] truncate">{item.productName}</p>
+                  <p className="text-sm font-bold text-ink truncate">{item.productName}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     {item.saleType === 'BOX'
-                      ? <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">📦 Thùng</span>
-                      : <span className="text-[10px] font-semibold bg-[#F0EBE3] text-[#8E8878] rounded px-1.5 py-0.5">Lẻ</span>}
+                      ? <span className="text-[10px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28 rounded px-1.5 py-0.5">📦 Thùng</span>
+                      : <span className="text-[10px] font-semibold bg-surface-2 text-muted rounded px-1.5 py-0.5">Lẻ</span>}
                   </div>
                 </div>
-                <div className="shrink-0 w-8 h-8 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
-                  <span className="text-xs font-bold text-[#C9A84C]">x{item.quantity}</span>
+                <div className="shrink-0 w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center">
+                  <span className="text-xs font-bold text-gold">x{item.quantity}</span>
                 </div>
               </div>
               {item.ingredients?.length > 0 && (
-                <div className="border-t border-[#E8DDD0] pt-2.5 space-y-1.5">
-                  <p className="text-[10px] text-[#8E8878] uppercase font-bold tracking-wider mb-2">Nguyên liệu</p>
+                <div className="border-t border-line pt-2.5 space-y-1.5">
+                  <p className="text-[10px] text-muted uppercase font-bold tracking-wider mb-2">Nguyên liệu</p>
                   {item.ingredients.map((ing, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />
-                        <span className="text-xs text-[#1C1C1E]">{ing.ingredientName}</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-gold" />
+                        <span className="text-xs text-ink">{ing.ingredientName}</span>
                       </div>
-                      <span className="text-xs font-semibold text-[#C9A84C]">
+                      <span className="text-xs font-semibold text-gold">
                         {formatQty(ing.quantityUsed)} {ing.unit}
                       </span>
                     </div>
@@ -308,7 +308,7 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
                 </div>
               )}
               {item.notes && (
-                <p className="text-[11px] text-[#8E8878] italic border-t border-[#E8DDD0] pt-2">📝 {item.notes}</p>
+                <p className="text-[11px] text-muted italic border-t border-line pt-2">📝 {item.notes}</p>
               )}
             </div>
           ))}
@@ -316,10 +316,10 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
 
         {/* Cảnh báo yêu cầu thanh toán trước */}
         {order.requirePrepayment && !deliverAllowed && (
-          <div className="mx-5 mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200
+          <div className="mx-5 mb-3 px-3 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28
             flex items-start gap-2 flex-shrink-0">
             <Lock size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-red-600 leading-relaxed">
+            <div className="text-xs text-red-600 dark:text-red-300 leading-relaxed">
               <b>Khách hàng yêu cầu thanh toán trước khi giao hàng.</b><br />
               Đã thu {fmtVnd(order.paidAmount)}đ / {fmtVnd(order.finalAmount)}đ
               {order.remainingAmount > 0 && <> — còn thiếu <b>{fmtVnd(order.remainingAmount)}đ</b></>}.
@@ -329,12 +329,12 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
         )}
 
         {/* Footer actions */}
-        <div className="px-5 py-4 border-t border-[#F0EBE3] flex-shrink-0 flex gap-2">
+        <div className="px-5 py-4 border-t border-line-soft flex-shrink-0 flex gap-2">
           {canCancel && (
             <button onClick={() => onCancel(order)}
               className="flex items-center justify-center gap-1.5 py-3 px-4 rounded-2xl
-                border border-red-200 bg-red-50 text-red-500 font-semibold text-sm
-                hover:bg-red-100 active:scale-[0.98] transition-all shrink-0">
+                border border-red-200 dark:border-red-500/28 bg-red-50 dark:bg-red-500/10 text-red-500 font-semibold text-sm
+                hover:bg-red-100 dark:bg-red-500/18 active:scale-[0.98] transition-all shrink-0">
               <Ban size={15} /> Hủy đơn
             </button>
           )}
@@ -344,8 +344,8 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
               ? 'Khách hàng yêu cầu thanh toán trước — đơn chưa thu đủ tiền'
               : ''}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl
-              bg-[#C9A84C] text-white font-semibold text-sm
-              hover:bg-[#B8943C] active:scale-[0.98] transition-all
+              bg-gold text-white font-semibold text-sm
+              hover:bg-gold-strong active:scale-[0.98] transition-all
               disabled:opacity-60 disabled:cursor-not-allowed">
             {delivering
               ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -365,36 +365,36 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
   const itemCount = order.items?.length || 0;
   return (
     <button onClick={() => onClick(order)}
-      className="w-full bg-white rounded-2xl border border-[#F0EBE3] p-4
-        hover:border-[#C9A84C] hover:shadow-md active:scale-[0.99]
+      className="w-full bg-surface rounded-2xl border border-line-soft p-4
+        hover:border-gold hover:shadow-md active:scale-[0.99]
         transition-all text-left group">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <p className="font-mono text-sm font-bold text-[#C9A84C]">{order.orderCode}</p>
+            <p className="font-mono text-sm font-bold text-gold">{order.orderCode}</p>
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5
-              rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+              rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/28">
               <Package size={9} /> Đang chuẩn bị
             </span>
             <PrepayBadge order={order} compact />
           </div>
-          <p className="text-sm font-semibold text-[#1C1C1E] truncate">
+          <p className="text-sm font-semibold text-ink truncate">
             {order.customerName || t('customer','retail')}
           </p>
-          <p className="text-[11px] text-[#8E8878] mt-0.5">{order.customerPhone}</p>
+          <p className="text-[11px] text-muted mt-0.5">{order.customerPhone}</p>
           {order.drivers?.length > 0 && (
             <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-              <UserCircle size={11} className="text-[#C9A84C]" />
-              <span className="text-[10px] text-[#C9A84C] font-medium">
+              <UserCircle size={11} className="text-gold" />
+              <span className="text-[10px] text-gold font-medium">
                 {order.drivers.map(d => d.name).join(', ')}
               </span>
             </div>
           )}
           <div className="flex items-center gap-3 mt-2">
-            <span className="flex items-center gap-1 text-[10px] text-[#8E8878]">
+            <span className="flex items-center gap-1 text-[10px] text-muted">
               <Clock size={10} /> {formatDate(order.createdAt)}
             </span>
-            <span className="flex items-center gap-1 text-[10px] text-[#8E8878]">
+            <span className="flex items-center gap-1 text-[10px] text-muted">
               <Box size={10} /> {itemCount} sản phẩm
             </span>
           </div>
@@ -404,17 +404,17 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
             disabled={!!invoiceLoadingId} title="In hoá đơn PDF"
             className={`p-1.5 rounded-lg border transition-all duration-200
               ${invoiceLoadingId === order.id
-                ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40 cursor-wait'
-                : 'bg-[#C9A84C]/10 text-[#C9A84C] border-transparent hover:bg-[#C9A84C]/20 hover:scale-105 active:scale-95'}`}>
+                ? 'bg-gold/15 text-gold border-gold/40 cursor-wait'
+                : 'bg-gold/10 text-gold border-transparent hover:bg-gold/20 hover:scale-105 active:scale-95'}`}>
             {invoiceLoadingId === order.id
-              ? <div className="w-3.5 h-3.5 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              ? <div className="w-3.5 h-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               : <FileText size={14} />}
           </button>
-          <ChevronRight size={16} className="text-[#C4B9A8] group-hover:text-[#C9A84C] transition-colors mt-1" />
+          <ChevronRight size={16} className="text-faint group-hover:text-gold transition-colors mt-1" />
         </div>
       </div>
       {order.notes && (
-        <p className="text-[11px] text-[#8E8878] italic mt-2 pt-2 border-t border-[#F0EBE3] truncate">
+        <p className="text-[11px] text-muted italic mt-2 pt-2 border-t border-line-soft truncate">
           📝 {order.notes}
         </p>
       )}
@@ -502,43 +502,43 @@ export default function WarehouseOrdersPage() {
   });
 
   return (
-    <div className="flex flex-col h-full bg-[#FAF7F2]">
-      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
+    <div className="flex flex-col h-full bg-canvas">
+      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-surface border-b border-line-soft">
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-[#1C1C1E]">Đơn cần giao</h1>
-            <p className="text-xs text-[#8E8878] mt-0.5">{orders.length} đơn đang chuẩn bị</p>
+            <h1 className="text-xl font-bold text-ink">Đơn cần giao</h1>
+            <p className="text-xs text-muted mt-0.5">{orders.length} đơn đang chuẩn bị</p>
           </div>
           <WarehouseSelector compact />
           <button onClick={fetchOrders}
-            className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
+            className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
         <div className="relative mt-3">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input type="text" placeholder="Tìm theo mã đơn, khách hàng..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white
-              focus:outline-none focus:border-[#C9A84C]" />
+            className="w-full border border-line rounded-xl pl-9 pr-4 py-2.5 text-sm bg-surface
+              focus:outline-none focus:border-gold" />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-[#F0EBE3] flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center py-16 text-muted gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center">
               <Package size={28} strokeWidth={1.5} />
             </div>
             <p className="text-sm font-medium">
               {search ? 'Không tìm thấy đơn hàng' : 'Không có đơn hàng cần chuẩn bị'}
             </p>
             {!search && activeWarehouseName && (
-              <p className="text-xs text-center max-w-[220px] text-[#8E8878]">
+              <p className="text-xs text-center max-w-[220px] text-muted">
                 Kho: <strong>{activeWarehouseName}</strong>
               </p>
             )}

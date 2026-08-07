@@ -47,11 +47,11 @@ const STATUSES = [
 ];
 
 const STATUS_STYLE = {
-  PENDING:           { cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-  APPROVED_PAID:     { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: Check },
-  APPROVED_UNPAID:   { cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: Check },
-  APPROVED_DEDUCTED: { cls: 'bg-orange-50 text-orange-700 border-orange-200', icon: MinusCircle },
-  REJECTED:          { cls: 'bg-red-50 text-red-700 border-red-200', icon: X },
+  PENDING:           { cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28', icon: Clock },
+  APPROVED_PAID:     { cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: Check },
+  APPROVED_UNPAID:   { cls: 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/28', icon: Check },
+  APPROVED_DEDUCTED: { cls: 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/28', icon: MinusCircle },
+  REJECTED:          { cls: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/28', icon: X },
 };
 
 function StatusBadge({ status, label }) {
@@ -139,9 +139,9 @@ function DecideModal({ item, onClose, onDone }) {
   };
 
   const Row = ({ label, children }) => (
-    <div className="flex gap-3 py-2.5 border-b border-black/5 last:border-0">
-      <span className="text-xs text-[#8E8878] uppercase tracking-wider w-32 flex-shrink-0 pt-0.5">{label}</span>
-      <div className="text-sm text-[#1C1C1E] min-w-0 flex-1">{children}</div>
+    <div className="flex gap-3 py-2.5 border-b border-hairline last:border-0">
+      <span className="text-xs text-muted uppercase tracking-wider w-32 flex-shrink-0 pt-0.5">{label}</span>
+      <div className="text-sm text-ink min-w-0 flex-1">{children}</div>
     </div>
   );
 
@@ -149,7 +149,7 @@ function DecideModal({ item, onClose, onDone }) {
     <button type="button" onClick={() => setAction(id)}
       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm
         font-semibold border transition-all
-        ${action === id ? tone : 'bg-white text-[#8E8878] border-black/10 hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}>
+        ${action === id ? tone : 'bg-surface text-muted border-hairline-2 hover:border-gold hover:text-gold'}`}>
       <Icon size={14} />{label}
     </button>
   );
@@ -162,7 +162,7 @@ function DecideModal({ item, onClose, onDone }) {
         <div>
           <Row label="Nhân viên">
             <div className="font-medium">{item.userFullName}</div>
-            <div className="text-xs text-[#8E8878]">
+            <div className="text-xs text-muted">
               {[item.roleLabel, item.departmentLabel].filter(Boolean).join(' · ')}
             </div>
           </Row>
@@ -175,7 +175,7 @@ function DecideModal({ item, onClose, onDone }) {
 
           {item.status === 'APPROVED_DEDUCTED' && (
             <Row label="Công bị trừ">
-              <span className="font-semibold text-orange-600">{item.deductedDays} công</span>
+              <span className="font-semibold text-orange-600 dark:text-orange-300">{item.deductedDays} công</span>
             </Row>
           )}
           {item.decisionNote && (
@@ -186,7 +186,7 @@ function DecideModal({ item, onClose, onDone }) {
           {item.decidedByName && (
             <Row label="Người duyệt">
               {item.decidedByName}
-              <span className="text-xs text-[#8E8878] ml-2">{formatDateTime(item.decidedAt)}</span>
+              <span className="text-xs text-muted ml-2">{formatDateTime(item.decidedAt)}</span>
             </Row>
           )}
           <Row label="Gửi lúc">{formatDateTime(item.createdAt)}</Row>
@@ -194,23 +194,23 @@ function DecideModal({ item, onClose, onDone }) {
 
         {/* ── Thao tác ───────────────────────────────────────────────────── */}
         {editable ? (
-          <div className="rounded-xl border border-black/10 bg-[#FAF7F2] p-4 space-y-4">
-            <p className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider">Xử lý phiếu</p>
+          <div className="rounded-xl border border-hairline-2 bg-canvas p-4 space-y-4">
+            <p className="text-xs font-semibold text-ink uppercase tracking-wider">Xử lý phiếu</p>
 
             <div className="flex gap-2">
               <ActionTab id="APPROVE" label="Duyệt" icon={Check}
-                tone="bg-emerald-600 text-white border-emerald-600 shadow-sm" />
+                tone="bg-emerald-600 text-white border-emerald-600 dark:border-emerald-500/40 shadow-sm" />
               <ActionTab id="DEDUCT" label="Duyệt & trừ công" icon={MinusCircle}
                 tone="bg-orange-500 text-white border-orange-500 shadow-sm" />
               <ActionTab id="REJECT" label="Từ chối" icon={X}
-                tone="bg-red-600 text-white border-red-600 shadow-sm" />
+                tone="bg-red-600 text-white border-red-600 dark:border-red-500/40 shadow-sm" />
             </div>
 
             {action === 'APPROVE' && isLeave && (
               <div className="space-y-3">
                 {/* Số dư phép của CHÍNH nhân viên này — phải thấy TRƯỚC khi bấm
                     duyệt, nếu không sẽ duyệt vượt quỹ mà không hay. */}
-                <div className="rounded-xl bg-white border border-black/10 px-3 py-2.5">
+                <div className="rounded-xl bg-surface border border-hairline-2 px-3 py-2.5">
                   <LeaveBalanceCard userId={item.userId} compact />
                 </div>
 
@@ -222,15 +222,15 @@ function DecideModal({ item, onClose, onDone }) {
                         value={paidDays} onChange={e => setPaidDays(e.target.value)}
                         placeholder={String(totalDays)}
                         className={inputCls + ' max-w-[90px]'} />
-                      <span className="text-xs text-[#8E8878]">ngày phép</span>
+                      <span className="text-xs text-muted">ngày phép</span>
                     </div>
-                    <span className="text-[#8E8878]">+</span>
+                    <span className="text-muted">+</span>
                     <div className="flex items-center gap-1.5">
                       <input type="number" step="0.5" min="0" max={totalDays}
                         value={unpaidDays} onChange={e => setUnpaidDays(e.target.value)}
                         placeholder="0"
                         className={inputCls + ' max-w-[90px]'} />
-                      <span className="text-xs text-[#8E8878]">ngày không lương</span>
+                      <span className="text-xs text-muted">ngày không lương</span>
                     </div>
                   </div>
                 </Field>
@@ -242,14 +242,14 @@ function DecideModal({ item, onClose, onDone }) {
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setPaid(true)}
                     className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all
-                      ${paid ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                             : 'bg-white text-[#8E8878] border-black/10 hover:border-emerald-300'}`}>
+                      ${paid ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/35'
+                             : 'bg-surface text-muted border-hairline-2 hover:border-emerald-300 dark:border-emerald-500/35'}`}>
                     Có phép — hưởng đủ công
                   </button>
                   <button type="button" onClick={() => setPaid(false)}
                     className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all
-                      ${!paid ? 'bg-sky-50 text-sky-700 border-sky-300'
-                              : 'bg-white text-[#8E8878] border-black/10 hover:border-sky-300'}`}>
+                      ${!paid ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/35'
+                              : 'bg-surface text-muted border-hairline-2 hover:border-sky-300 dark:border-sky-500/35'}`}>
                     Không phép — công ngày đó = 0
                   </button>
                 </div>
@@ -266,8 +266,8 @@ function DecideModal({ item, onClose, onDone }) {
                   <div className="flex gap-1.5">
                     {['0.25', '0.5', '1'].map(v => (
                       <button key={v} type="button" onClick={() => setDeduct(v)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-black/10
-                          bg-white text-[#8E8878] hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-hairline-2
+                          bg-surface text-muted hover:border-gold hover:text-gold transition-colors">
                         {v}
                       </button>
                     ))}
@@ -289,8 +289,8 @@ function DecideModal({ item, onClose, onDone }) {
             )}
           </div>
         ) : (
-          <div className="rounded-xl border border-black/10 bg-[#FAF7F2] px-4 py-3">
-            <p className="text-sm text-[#8E8878]">
+          <div className="rounded-xl border border-hairline-2 bg-canvas px-4 py-3">
+            <p className="text-sm text-muted">
               Phiếu đã được xử lý nên không thao tác lại được. Cần đổi quyết định thì yêu cầu
               nhân viên gửi phiếu mới.
             </p>
@@ -312,13 +312,21 @@ function DecideModal({ item, onClose, onDone }) {
 // PANEL
 // ══════════════════════════════════════════════════════════════════════════════
 
-export default function EmployeeRequestsPanel() {
+/**
+ * Panel duyệt phiếu nghỉ / OT.
+ *
+ * @param userId  chỉ xét phiếu của MỘT nhân viên (mở từ nút "Duyệt nghỉ/OT"
+ *                trên trang Nhân viên). Bỏ trống = toàn công ty như trước.
+ */
+export default function EmployeeRequestsPanel({ userId = null }) {
   const toast = useToast();
 
   const [department, setDepartment] = useState('');
   // Mặc định lọc "Chờ duyệt": mở tab ra là thấy ngay việc cần làm, không phải
   // lội qua hàng trăm đơn cũ đã xử lý.
-  const [status, setStatus] = useState('PENDING');
+  // Khi xét riêng một người thì mở sẵn TẤT CẢ: số phiếu ít, và người duyệt
+  // thường muốn thấy cả lịch sử để cân nhắc.
+  const [status, setStatus] = useState(userId ? '' : 'PENDING');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -331,8 +339,9 @@ export default function EmployeeRequestsPanel() {
     setLoading(true);
     try {
       const data = await employeeRequestApi.search({
-        department: department || undefined,
+        department: userId ? undefined : (department || undefined),
         status: status || undefined,
+        userId: userId || undefined,
         page, size: 20,
       });
       setItems(data?.content ?? []);
@@ -342,20 +351,28 @@ export default function EmployeeRequestsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [department, status, page, toast]);
+  }, [department, status, page, userId, toast]);
 
   const loadSummary = useCallback(async () => {
+    // Khi lọc theo một nhân viên, số liệu tổng của cả bộ phận gây hiểu nhầm —
+    // đếm thẳng trên danh sách đang hiển thị thay vì gọi API tổng hợp.
+    if (userId) return;
     try {
       const s = await employeeRequestApi.summary(department || undefined);
       setPendingCount(s?.pending ?? 0);
     } catch { /* badge không quan trọng tới mức phải báo lỗi */ }
-  }, [department]);
+  }, [department, userId]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
   // Đổi bộ lọc thì phải về trang 1, nếu không sẽ rơi vào trang trống.
-  useEffect(() => { setPage(0); }, [department, status]);
+  useEffect(() => { setPage(0); }, [department, status, userId]);
+
+  // Chế độ một nhân viên: badge đếm ngay trên danh sách đang có.
+  useEffect(() => {
+    if (userId) setPendingCount(items.filter(i => i.status === 'PENDING').length);
+  }, [userId, items]);
 
   const refresh = () => { load(); loadSummary(); };
 
@@ -369,13 +386,15 @@ export default function EmployeeRequestsPanel() {
 
       {/* ── Bộ lọc ──────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5 text-[#8E8878] text-xs font-semibold uppercase tracking-wider mr-1">
+        <div className="flex items-center gap-1.5 text-muted text-xs font-semibold uppercase tracking-wider mr-1">
           <Filter size={13} /> Lọc
         </div>
-        <select value={department} onChange={e => setDepartment(e.target.value)}
-          className={selectCls + ' max-w-[190px] py-2'}>
-          {DEPARTMENTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-        </select>
+        {!userId && (
+          <select value={department} onChange={e => setDepartment(e.target.value)}
+            className={selectCls + ' max-w-[190px] py-2'}>
+            {DEPARTMENTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+          </select>
+        )}
         <select value={status} onChange={e => setStatus(e.target.value)}
           className={selectCls + ' max-w-[210px] py-2'}>
           {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -383,12 +402,12 @@ export default function EmployeeRequestsPanel() {
 
         <button onClick={refresh}
           className="inline-flex items-center gap-1.5 px-3 h-[42px] rounded-xl text-xs font-semibold
-            bg-white text-[#8E8878] border border-black/10 hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors">
+            bg-surface text-muted border border-hairline-2 hover:border-gold hover:text-gold transition-colors">
           <RefreshCw size={13} /> Tải lại
         </button>
 
         <span className={`ml-auto text-xs font-semibold px-2.5 py-1.5 rounded-lg
-          ${pendingCount > 0 ? 'bg-amber-50 text-amber-700' : 'bg-[#FAF7F2] text-[#8E8878]'}`}>
+          ${pendingCount > 0 ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-canvas text-muted'}`}>
           {headerNote}
         </span>
       </div>
@@ -408,7 +427,7 @@ export default function EmployeeRequestsPanel() {
         ) : (
           <Table>
             <Thead>
-              <Tr className="bg-[#FAF7F2] text-[#8E8878]">
+              <Tr className="bg-canvas text-muted">
                 <Th>Nhân viên</Th>
                 <Th>Loại phiếu</Th>
                 <Th>Thời gian xin phép</Th>
@@ -422,19 +441,19 @@ export default function EmployeeRequestsPanel() {
               {items.map(it => (
                 <Tr key={it.id} onClick={() => setSelected(it)}>
                   <Td>
-                    <div className="font-medium text-[#1C1C1E]">{it.userFullName}</div>
-                    <div className="text-xs text-[#8E8878]">
+                    <div className="font-medium text-ink">{it.userFullName}</div>
+                    <div className="text-xs text-muted">
                       {[it.roleLabel, it.departmentLabel].filter(Boolean).join(' · ') || '—'}
                     </div>
                   </Td>
                   <Td className="whitespace-nowrap">{it.typeLabel}</Td>
-                  <Td className="whitespace-nowrap font-medium text-[#1C1C1E]">{it.periodText}</Td>
-                  <Td className="text-[#8E8878] max-w-[220px] truncate">{it.reason}</Td>
+                  <Td className="whitespace-nowrap font-medium text-ink">{it.periodText}</Td>
+                  <Td className="text-muted max-w-[220px] truncate">{it.reason}</Td>
                   <Td><StatusBadge status={it.status} label={it.statusLabel} /></Td>
-                  <Td right className="text-xs text-[#8E8878] whitespace-nowrap">
+                  <Td right className="text-xs text-muted whitespace-nowrap">
                     {formatDateTime(it.createdAt)}
                   </Td>
-                  <Td right><ChevronRight size={14} className="text-[#C4B9A8]" /></Td>
+                  <Td right><ChevronRight size={14} className="text-faint" /></Td>
                 </Tr>
               ))}
             </tbody>
@@ -442,7 +461,7 @@ export default function EmployeeRequestsPanel() {
         )}
 
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-black/5">
+          <div className="px-4 py-3 border-t border-hairline">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}

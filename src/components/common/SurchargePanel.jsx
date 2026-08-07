@@ -49,7 +49,7 @@ function SurchargePanel({ surchargeItems, onChange }) {
         const val = getAmount(type.name);
         return (
           <div key={type.name} className="flex items-center gap-2">
-            <span className="text-[11px] text-[#5C4E3D] font-medium w-28 shrink-0">{type.name}</span>
+            <span className="text-[11px] text-ink-2 font-medium w-28 shrink-0">{type.name}</span>
             <div className="relative flex-1">
               <input
                 type="text"
@@ -57,9 +57,9 @@ function SurchargePanel({ surchargeItems, onChange }) {
                 value={val === 0 || val === '' ? '' : new Intl.NumberFormat('vi-VN').format(val)}
                 onChange={e => setAmount(type.name, e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder={type.placeholder}
-                className="w-full rounded-lg border border-[#E8DDD0] px-2 py-1.5 text-xs text-right pr-6 focus:outline-none focus:border-[#C9A84C]"
+                className="w-full rounded-lg border border-line px-2 py-1.5 text-xs text-right pr-6 focus:outline-none focus:border-gold"
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted">đ</span>
             </div>
           </div>
         );
@@ -68,7 +68,7 @@ function SurchargePanel({ surchargeItems, onChange }) {
       {/* Custom items */}
       {customItems.map(item => (
         <div key={item.name} className="flex items-center gap-2">
-          <span className="text-[11px] text-[#5C4E3D] font-medium w-28 shrink-0 truncate">{item.name}</span>
+          <span className="text-[11px] text-ink-2 font-medium w-28 shrink-0 truncate">{item.name}</span>
           <div className="relative flex-1">
             <input
               type="text"
@@ -76,11 +76,11 @@ function SurchargePanel({ surchargeItems, onChange }) {
               value={item.amount === 0 ? '' : new Intl.NumberFormat('vi-VN').format(item.amount)}
               onChange={e => setAmount(item.name, e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="0"
-              className="w-full rounded-lg border border-[#E8DDD0] px-2 py-1.5 text-xs text-right pr-6 focus:outline-none focus:border-[#C9A84C]"
+              className="w-full rounded-lg border border-line px-2 py-1.5 text-xs text-right pr-6 focus:outline-none focus:border-gold"
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8E8878]">đ</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted">đ</span>
           </div>
-          <button onClick={() => removeItem(item.name)} className="text-[#C4B9A8] hover:text-red-400">
+          <button onClick={() => removeItem(item.name)} className="text-faint hover:text-red-400">
             <X size={12} />
           </button>
         </div>
@@ -94,10 +94,10 @@ function SurchargePanel({ surchargeItems, onChange }) {
           onChange={e => setCustomName(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') addCustom(); }}
           placeholder="+ Thêm phụ phí khác..."
-          className="flex-1 rounded-lg border border-dashed border-[#E8DDD0] px-2 py-1.5 text-[11px] focus:outline-none focus:border-[#C9A84C] text-[#8E8878]"
+          className="flex-1 rounded-lg border border-dashed border-line px-2 py-1.5 text-[11px] focus:outline-none focus:border-gold text-muted"
         />
         {customName.trim() && (
-          <button onClick={addCustom} className="px-2 py-1.5 rounded-lg bg-[#C9A84C] text-white text-[10px] font-semibold">
+          <button onClick={addCustom} className="px-2 py-1.5 rounded-lg bg-gold text-white text-[10px] font-semibold">
             Thêm
           </button>
         )}

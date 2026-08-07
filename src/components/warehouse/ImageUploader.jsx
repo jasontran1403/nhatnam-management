@@ -89,8 +89,8 @@ export default function ImageUploader({ value = [], onChange }) {
       {toast && (
         <div style={{
           position: 'fixed', top: 24, right: 12,
-          background: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          color: '#fff', padding: '10px 20px', borderRadius: 8,
+          background: toast.type === 'error' ? 'var(--c-danger)' : 'var(--c-success)',
+          color: 'var(--c-surface)', padding: '10px 20px', borderRadius: 8,
           fontSize: 13, fontWeight: 500, zIndex: 99999,
           boxShadow: '0 4px 16px rgba(0,0,0,.2)',
           maxWidth: '80vw', textAlign: 'center',
@@ -104,7 +104,7 @@ export default function ImageUploader({ value = [], onChange }) {
         {value.map((url, i) => (
           <div key={i} style={{ position: 'relative' }}>
             <img src={getImageUrl(url)} className="wh-img-thumb" onClick={() => setLightbox(url)} alt="" />
-            <button onClick={() => removeImage(i)} style={{ position:'absolute',top:-6,right:-6,width:18,height:18,borderRadius:'50%',background:'var(--wh-danger)',color:'#fff',border:'none',cursor:'pointer',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center' }}>×</button>
+            <button onClick={() => removeImage(i)} style={{ position:'absolute',top:-6,right:-6,width:18,height:18,borderRadius:'50%',background:'var(--wh-danger)',color:'var(--c-surface)',border:'none',cursor:'pointer',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center' }}>×</button>
           </div>
         ))}
 
@@ -126,10 +126,10 @@ export default function ImageUploader({ value = [], onChange }) {
         <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:9999,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16 }}>
           <video ref={videoRef} autoPlay playsInline style={{ maxWidth:'90vw',maxHeight:'65vh',borderRadius:12,background:'#000' }} />
           <div style={{ display:'flex',gap:12 }}>
-            <button onClick={capture} style={{ padding:'10px 28px',borderRadius:99,background:'#fff',color:'#111',fontWeight:700,fontSize:15,border:'none',cursor:'pointer' }}>
+            <button onClick={capture} style={{ padding:'10px 28px',borderRadius:99,background:'var(--c-surface)',color:'var(--c-ink)',fontWeight:700,fontSize:15,border:'none',cursor:'pointer' }}>
               📸
             </button>
-            <button onClick={closeCamera} style={{ padding:'10px 20px',borderRadius:99,background:'rgba(255,255,255,.15)',color:'#fff',fontWeight:600,fontSize:14,border:'none',cursor:'pointer' }}>
+            <button onClick={closeCamera} style={{ padding:'10px 20px',borderRadius:99,background:'rgba(255,255,255,.15)',color:'var(--c-surface)',fontWeight:600,fontSize:14,border:'none',cursor:'pointer' }}>
               Huỷ
             </button>
           </div>

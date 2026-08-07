@@ -29,14 +29,14 @@ const USE_LEGACY_LAYOUT = false;
 function Row({ label, val, bold, red, green, sub }) {
   return (
     <div className={`flex justify-between items-center gap-3 ${sub ? 'pl-3' : ''}`}>
-      <span className={`text-xs ${sub ? 'text-[#A8A090]' : 'text-[#8E8878]'}`}>{label}</span>
+      <span className={`text-xs ${sub ? 'text-muted' : 'text-muted'}`}>{label}</span>
       <span className={`text-sm whitespace-nowrap ${bold ? 'font-bold' : 'font-medium'} ${
-        red ? 'text-red-600' : green ? 'text-emerald-700' : 'text-[#1C1C1E]'}`}>{val}</span>
+        red ? 'text-red-600 dark:text-red-300' : green ? 'text-emerald-700 dark:text-emerald-300' : 'text-ink'}`}>{val}</span>
     </div>
   );
 }
 
-const Divider = () => <div className="h-px bg-[#E8E0D6] my-1" />;
+const Divider = () => <div className="h-px bg-surface-2 my-1" />;
 
 /**
  * @param {object}  row              SalaryBreakdownDto trả từ BE (payslip.salaryDetail)
@@ -64,8 +64,8 @@ function LegacyPayslipBreakdownCards({ row, showComponents = true, className = '
     <div className={`space-y-4 ${className}`}>
       {/* ── 1. CÁC KHOẢN CẤU THÀNH ───────────────────────────────────────── */}
       {showComponents && (
-        <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-          <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">
+        <div className="bg-canvas rounded-xl p-4 space-y-2">
+          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
             Các khoản cấu thành
           </p>
 
@@ -100,8 +100,8 @@ function LegacyPayslipBreakdownCards({ row, showComponents = true, className = '
       )}
 
       {/* ── 2. CỦA NHÂN VIÊN ─────────────────────────────────────────────── */}
-      <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-        <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">
+      <div className="bg-canvas rounded-xl p-4 space-y-2">
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
           Của nhân viên (VNĐ)
         </p>
 
@@ -144,7 +144,7 @@ function LegacyPayslipBreakdownCards({ row, showComponents = true, className = '
         )}
       </div>
 
-      <p className="text-[11px] text-[#A8A090] leading-relaxed">
+      <p className="text-[11px] text-muted leading-relaxed">
         {flat ? (
           <>
             Lương khoán trọn tháng theo hợp đồng với đơn vị cung cấp dịch vụ bảo vệ,
@@ -182,8 +182,8 @@ function NewPayslipBreakdownCards({ row, className = '' }) {
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="bg-[#FAF7F2] rounded-xl p-4 space-y-2">
-        <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-2">
+      <div className="bg-canvas rounded-xl p-4 space-y-2">
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
           Lương của bạn (VNĐ)
         </p>
 
@@ -236,7 +236,7 @@ function NewPayslipBreakdownCards({ row, className = '' }) {
         <Row label="LƯƠNG THỰC NHẬN" val={fmt(row.netSalary)} bold green />
       </div>
 
-      <p className="text-[11px] text-[#A8A090] leading-relaxed">
+      <p className="text-[11px] text-muted leading-relaxed">
         {flat ? (
           <>
             Lương khoán trọn tháng theo hợp đồng với đơn vị cung cấp dịch vụ, không chia

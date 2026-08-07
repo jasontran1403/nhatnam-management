@@ -4,13 +4,13 @@ import { incomeApi, bankApi } from '../../api/services';
 import { accountantOrderApi } from '../../api/accountantApi';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
+import { formatVND } from '../../utils/format.js';
 import {
   X, TrendingUp, Send, CreditCard, Banknote,
   Search, Plus, Trash2, Upload, ShoppingCart,
   AlertCircle, FileText, ChevronRight, CheckCircle2, Clock, RefreshCw,
 } from 'lucide-react';
 
-function formatVND(n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + ' đ'; }
 function parseVND(s) { return Number(String(s).replace(/[^0-9]/g, '')) || 0; }
 
 // ── Modal chi tiết các đơn đã chọn ───────────────────────────────────────────
@@ -19,24 +19,24 @@ function OrderSummaryModal({ orders, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
-        <div className="flex items-center justify-between p-5 border-b border-black/5 flex-shrink-0">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
+        <div className="flex items-center justify-between p-5 border-b border-hairline flex-shrink-0">
           <div className="flex items-center gap-2">
-            <ShoppingCart size={18} className="text-[#C9A84C]" />
-            <h3 className="font-bold text-[#1C1C1E]">Chi tiết đơn hàng ({orders.length})</h3>
+            <ShoppingCart size={18} className="text-gold" />
+            <h3 className="font-bold text-ink">Chi tiết đơn hàng ({orders.length})</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878]">
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-canvas text-muted">
             <X size={18} />
           </button>
         </div>
         <div className="overflow-y-auto flex-1 p-5 space-y-2">
           {orders.map(o => (
-            <div key={o.id} className="flex items-center justify-between py-2.5 px-3 bg-[#FAF7F2] rounded-xl">
+            <div key={o.id} className="flex items-center justify-between py-2.5 px-3 bg-canvas rounded-xl">
               <div>
-                <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
-                <p className="text-sm text-[#1C1C1E]">{o.customerName || 'Khách lẻ'}</p>
+                <p className="font-mono text-xs font-bold text-gold">{o.orderCode}</p>
+                <p className="text-sm text-ink">{o.customerName || 'Khách lẻ'}</p>
               </div>
-              <p className="text-sm font-bold text-[#1C1C1E]">
+              <p className="text-sm font-bold text-ink">
                 {formatVND(Math.round(o.remainingAmount ?? o.finalAmount ?? 0))}
                 {o.paymentStatus === 'PARTIAL' && (
                   <span className="block text-xs font-normal text-amber-500 text-right">
@@ -47,12 +47,12 @@ function OrderSummaryModal({ orders, onClose }) {
             </div>
           ))}
         </div>
-        <div className="p-5 border-t border-black/5 flex-shrink-0">
+        <div className="p-5 border-t border-hairline flex-shrink-0">
           <div className="flex justify-between items-center mb-4">
-            <span className="text-sm font-semibold text-[#8E8878]">Tổng cần thu</span>
-            <span className="text-lg font-bold text-[#C9A84C]">{formatVND(total)}</span>
+            <span className="text-sm font-semibold text-muted">Tổng cần thu</span>
+            <span className="text-lg font-bold text-gold">{formatVND(total)}</span>
           </div>
-          <button onClick={onClose} className="w-full py-2.5 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+          <button onClick={onClose} className="w-full py-2.5 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
             Đóng
           </button>
         </div>
@@ -66,50 +66,50 @@ function PartialConfirmModal({ info, onConfirm, onCancel }) {
   // info = { lastOrder, lastOrderRemaining, shortfall, collected, orderTotal }
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="p-5 border-b border-black/5">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="p-5 border-b border-hairline">
           <div className="flex items-center gap-2 mb-1">
             <AlertCircle size={18} className="text-amber-500" />
-            <h3 className="font-bold text-[#1C1C1E]">Xác nhận thu thiếu</h3>
+            <h3 className="font-bold text-ink">Xác nhận thu thiếu</h3>
           </div>
-          <p className="text-sm text-[#8E8878]">
-            Số tiền thu <span className="font-bold text-[#1C1C1E]">{formatVND(info.collected)}</span> thiếu{' '}
+          <p className="text-sm text-muted">
+            Số tiền thu <span className="font-bold text-ink">{formatVND(info.collected)}</span> thiếu{' '}
             <span className="font-bold text-red-500">{formatVND(info.shortfall)}</span> so với tổng đơn hàng{' '}
-            <span className="font-bold text-[#1C1C1E]">{formatVND(info.orderTotal)}</span>.
+            <span className="font-bold text-ink">{formatVND(info.orderTotal)}</span>.
           </p>
         </div>
 
         <div className="p-5 space-y-3">
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wide">
-            Đơn bị thiếu: <span className="font-mono text-[#C9A84C]">{info.lastOrder.orderCode}</span>
+          <p className="text-xs font-semibold text-muted uppercase tracking-wide">
+            Đơn bị thiếu: <span className="font-mono text-gold">{info.lastOrder.orderCode}</span>
           </p>
-          <div className="bg-[#FAF7F2] rounded-xl p-3 text-sm space-y-1">
+          <div className="bg-canvas rounded-xl p-3 text-sm space-y-1">
             <div className="flex justify-between">
-              <span className="text-[#8E8878]">Cần thu</span>
+              <span className="text-muted">Cần thu</span>
               <span className="font-bold">
                 {formatVND(Math.round(info.lastOrder.remainingAmount ?? info.lastOrder.finalAmount ?? 0))}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#8E8878]">Số tiền sẽ thu</span>
-              <span className="font-bold text-amber-600">{formatVND(info.lastOrderRemaining)}</span>
+              <span className="text-muted">Số tiền sẽ thu</span>
+              <span className="font-bold text-amber-600 dark:text-amber-300">{formatVND(info.lastOrderRemaining)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#8E8878]">Còn thiếu</span>
+              <span className="text-muted">Còn thiếu</span>
               <span className="font-bold text-red-500">{formatVND(info.shortfall)}</span>
             </div>
           </div>
 
-          <p className="text-xs text-[#8E8878]">Chọn cách xử lý cho đơn này:</p>
+          <p className="text-xs text-muted">Chọn cách xử lý cho đơn này:</p>
 
           <button
             onClick={() => onConfirm('PARTIAL')}
-            className="w-full flex items-start gap-3 p-3 rounded-xl border-2 border-amber-200 bg-amber-50 hover:border-amber-400 transition text-left"
+            className="w-full flex items-start gap-3 p-3 rounded-xl border-2 border-amber-200 dark:border-amber-500/28 bg-amber-50 dark:bg-amber-500/10 hover:border-amber-400 transition text-left"
           >
             <Clock size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-bold text-amber-700">Thu 1 phần</p>
-              <p className="text-xs text-amber-600 mt-0.5">
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-300">Thu 1 phần</p>
+              <p className="text-xs text-amber-600 dark:text-amber-300 mt-0.5">
                 Ghi nhận thu {formatVND(info.lastOrderRemaining)}, đơn vẫn ở trạng thái <strong>Chờ thanh toán</strong>. Còn thiếu {formatVND(info.shortfall)}.
               </p>
             </div>
@@ -117,12 +117,12 @@ function PartialConfirmModal({ info, onConfirm, onCancel }) {
 
           <button
             onClick={() => onConfirm('FULL')}
-            className="w-full flex items-start gap-3 p-3 rounded-xl border-2 border-green-200 bg-green-50 hover:border-green-400 transition text-left"
+            className="w-full flex items-start gap-3 p-3 rounded-xl border-2 border-green-200 dark:border-green-500/28 bg-green-50 dark:bg-green-500/10 hover:border-green-400 transition text-left"
           >
             <CheckCircle2 size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-bold text-green-700">Ghi nhận đã thu đủ</p>
-              <p className="text-xs text-green-600 mt-0.5">
+              <p className="text-sm font-bold text-green-700 dark:text-green-300">Ghi nhận đã thu đủ</p>
+              <p className="text-xs text-green-600 dark:text-green-300 mt-0.5">
                 Chấp nhận lệch {formatVND(info.shortfall)}, đánh dấu đơn <strong>Hoàn thành</strong>.
               </p>
             </div>
@@ -132,7 +132,7 @@ function PartialConfirmModal({ info, onConfirm, onCancel }) {
         <div className="px-5 pb-5">
           <button
             onClick={onCancel}
-            className="w-full py-2.5 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition"
+            className="w-full py-2.5 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition"
           >
             Huỷ, kiểm tra lại
           </button>
@@ -576,18 +576,18 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+        <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
 
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-black/5 flex-shrink-0">
+          <div className="flex items-center justify-between p-5 border-b border-hairline flex-shrink-0">
             <div className="flex items-center gap-3">
-              <TrendingUp size={20} className="text-[#C9A84C]" />
+              <TrendingUp size={20} className="text-gold" />
               <div>
-                <h2 className="text-lg font-bold text-[#1C1C1E]">{isEdit ? 'Sửa phiếu thu' : 'Tạo phiếu thu'}</h2>
-                <p className="text-xs text-[#8E8878]">Có hiệu lực ngay, không cần duyệt</p>
+                <h2 className="text-lg font-bold text-ink">{isEdit ? 'Sửa phiếu thu' : 'Tạo phiếu thu'}</h2>
+                <p className="text-xs text-muted">Có hiệu lực ngay, không cần duyệt</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878] transition">
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted transition">
               <X size={20} />
             </button>
           </div>
@@ -597,31 +597,31 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
 
             {/* ── Chọn đơn hàng ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                <ShoppingCart size={14} className="text-[#C9A84C]" />
+              <label className="block text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5">
+                <ShoppingCart size={14} className="text-gold" />
                 Chọn đơn hàng cần thu tiền
-                <span className="text-xs font-normal text-[#8E8878] ml-1">(tuỳ chọn)</span>
+                <span className="text-xs font-normal text-muted ml-1">(tuỳ chọn)</span>
               </label>
 
               <div className="relative" ref={orderDropRef}>
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                   <input
                     value={orderSearch}
                     onChange={e => handleOrderSearchChange(e.target.value)}
                     onFocus={handleOrderInputFocus}
                     placeholder="Nhập mã đơn hoặc tên khách hàng..."
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
                   />
                   {orderLoading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
                   )}
                 </div>
 
                 {showOrderDrop && (
-                  <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-black/10 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                  <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-surface border border-hairline-2 rounded-xl shadow-xl max-h-52 overflow-y-auto">
                     {orderResults.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-sm text-[#8E8878]">
+                      <div className="px-4 py-6 text-center text-sm text-muted">
                         {orderLoading ? 'Đang tìm...' : 'Không có đơn chờ thanh toán'}
                       </div>
                     ) : (
@@ -629,24 +629,24 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                         <button
                           key={o.id}
                           onClick={() => selectOrder(o)}
-                          className="w-full text-left px-4 py-3 hover:bg-[#FAF7F2] transition border-b border-black/5 last:border-0"
+                          className="w-full text-left px-4 py-3 hover:bg-canvas transition border-b border-hairline last:border-0"
                         >
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="flex items-center gap-1.5">
-                                <p className="font-mono text-xs font-bold text-[#C9A84C]">{o.orderCode}</p>
+                                <p className="font-mono text-xs font-bold text-gold">{o.orderCode}</p>
                                 {/* Đơn THU TRƯỚC KHI GIAO: phiếu thu chỉ ghi nhận đã thu tiền,
                                     KHÔNG chuyển đơn sang "Hoàn thành" — kho vẫn phải giao hàng. */}
                                 {o.prepaymentOrder && (
                                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
-                                    bg-amber-50 text-amber-700 border border-amber-200">
+                                    bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28">
                                     Thu trước khi giao
                                   </span>
                                 )}
                               </div>
-                              <p className="text-sm text-[#1C1C1E]">{o.customerName || 'Khách lẻ'}</p>
+                              <p className="text-sm text-ink">{o.customerName || 'Khách lẻ'}</p>
                             </div>
-                            <span className="text-sm font-bold text-[#1C1C1E]">
+                            <span className="text-sm font-bold text-ink">
                               {formatVND(Math.round(o.remainingAmount ?? o.finalAmount ?? 0))}
                               {o.paymentStatus === 'PARTIAL' && (
                                 <span className="block text-xs font-normal text-amber-500">
@@ -664,8 +664,8 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
 
               {/* Ghi chú cho đơn thu trước khi giao */}
               {hasOrders && selectedOrders.some(o => o.prepaymentOrder) && (
-                <div className="mt-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200
-                  text-xs text-amber-800 leading-relaxed">
+                <div className="mt-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28
+                  text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                   <b>Có đơn "Thu trước khi giao".</b> Phiếu thu sẽ chỉ ghi nhận <b>ĐÃ THU TIỀN</b> —
                   đơn vẫn ở trạng thái "Đang chuẩn bị" để kho giao hàng.
                   Khi thu đủ, kho mới được bấm "Bắt đầu giao hàng".
@@ -674,26 +674,26 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
 
               {/* Tóm tắt đơn đã chọn */}
               {hasOrders && (
-                <div className="mt-2 bg-[#FAF7F2] rounded-xl border border-[#C9A84C]/20 p-3">
+                <div className="mt-2 bg-canvas rounded-xl border border-gold/20 p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-[#1C1C1E]">
+                      <span className="text-sm font-semibold text-ink">
                         {selectedOrders.length} đơn hàng đang chọn:
                       </span>
-                      <span className="text-sm font-bold text-[#C9A84C]">
+                      <span className="text-sm font-bold text-gold">
                         {formatVND(orderTotal)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setShowOrderDetail(true)}
-                        className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"
+                        className="flex items-center gap-1 text-xs text-gold font-semibold hover:underline"
                       >
                         <FileText size={13} /> Chi tiết <ChevronRight size={12} />
                       </button>
                       <button
                         onClick={() => { setSelectedOrders([]); setPayerName(''); setReason(''); }}
-                        className="text-xs text-red-400 hover:text-red-600 hover:underline"
+                        className="text-xs text-red-400 hover:text-red-600 dark:text-red-300 hover:underline"
                       >
                         Xoá hết
                       </button>
@@ -703,10 +703,10 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                     {selectedOrders.map(o => (
                       <span
                         key={o.id}
-                        className="inline-flex items-center gap-1 font-mono text-xs bg-white border border-[#C9A84C]/30 text-[#C9A84C] px-2 py-1 rounded-lg font-bold"
+                        className="inline-flex items-center gap-1 font-mono text-xs bg-surface border border-gold/30 text-gold px-2 py-1 rounded-lg font-bold"
                       >
                         {o.orderCode}
-                        <button onClick={() => removeOrder(o.id)} className="text-[#C9A84C]/60 hover:text-red-400 transition">
+                        <button onClick={() => removeOrder(o.id)} className="text-gold/60 hover:text-red-400 transition">
                           <X size={10} />
                         </button>
                       </span>
@@ -717,12 +717,12 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
 
               {/* ── Banner cảnh báo race condition ── */}
               {staleWarning && (
-                <div className="mt-2 rounded-xl border-2 border-rose-300 bg-rose-50 p-3 space-y-2">
+                <div className="mt-2 rounded-xl border-2 border-rose-300 dark:border-rose-500/35 bg-rose-50 dark:bg-rose-500/10 p-3 space-y-2">
                   <div className="flex items-start gap-2">
                     <AlertCircle size={15} className="text-rose-500 mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-rose-700">Số tiền đã thay đổi!</p>
-                      <p className="text-xs text-rose-600 mt-0.5">{staleWarning.message}</p>
+                      <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Số tiền đã thay đổi!</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-300 mt-0.5">{staleWarning.message}</p>
                       {staleWarning.orderCode && (
                         <p className="text-xs text-rose-500 mt-0.5">
                           Đơn: <span className="font-mono font-bold">{staleWarning.orderCode}</span>
@@ -730,7 +730,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                             <> · Đã thu: <span className="font-bold">{formatVND(staleWarning.paidAmount)}</span></>
                           )}
                           {staleWarning.actualRemainingAmount != null && (
-                            <> · Còn lại: <span className="font-bold text-rose-700">{formatVND(staleWarning.actualRemainingAmount)}</span></>
+                            <> · Còn lại: <span className="font-bold text-rose-700 dark:text-rose-300">{formatVND(staleWarning.actualRemainingAmount)}</span></>
                           )}
                         </p>
                       )}
@@ -751,7 +751,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
             {/* ── Số tiền thực thu (chỉ hiện khi có đơn) ── */}
             {hasOrders && (
               <div>
-                <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+                <label className="block text-sm font-semibold text-ink mb-1.5">
                   Số tiền thực thu <span className="text-red-500">*</span>
                 </label>
                 <div className="flex gap-2">
@@ -761,19 +761,19 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                       onChange={e => handleCollectedChange(String(parseVND(e.target.value)))}
                       placeholder="Nhập số tiền..."
                       className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 text-right pr-10 ${collectedError
-                        ? 'border-red-300 focus:ring-red-200 bg-red-50'
+                        ? 'border-red-300 dark:border-red-500/35 focus:ring-red-200 dark:ring-red-500/28 bg-red-50 dark:bg-red-500/10'
                         : collectedStatus === 'exact'
-                          ? 'border-green-300 focus:ring-green-200 bg-green-50'
+                          ? 'border-green-300 dark:border-green-500/35 focus:ring-green-200 dark:ring-green-500/28 bg-green-50 dark:bg-green-500/10'
                           : collectedStatus === 'partial'
-                            ? 'border-amber-300 focus:ring-amber-200 bg-amber-50'
-                            : 'border-black/10 focus:ring-[#C9A84C]/40'
+                            ? 'border-amber-300 dark:border-amber-500/35 focus:ring-amber-200 dark:ring-amber-500/28 bg-amber-50 dark:bg-amber-500/10'
+                            : 'border-hairline-2 focus:ring-gold/40'
                         }`}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#8E8878]">đ</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">đ</span>
                   </div>
                   <button
                     onClick={() => handleCollectedChange(String(orderTotal))}
-                    className="px-3 py-2.5 rounded-xl border border-[#C9A84C]/40 text-xs font-bold text-[#C9A84C] hover:bg-[#C9A84C]/10 transition whitespace-nowrap"
+                    className="px-3 py-2.5 rounded-xl border border-gold/40 text-xs font-bold text-gold hover:bg-gold/10 transition whitespace-nowrap"
                   >
                     Thu đủ
                   </button>
@@ -787,18 +787,18 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                   </p>
                 )}
                 {collectedStatus === 'exact' && (
-                  <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1">
+                  <p className="mt-1.5 text-xs text-green-600 dark:text-green-300 flex items-center gap-1">
                     <CheckCircle2 size={12} /> Thu đủ tổng đơn hàng
                   </p>
                 )}
                 {collectedStatus === 'partial' && partialInfo && (
-                  <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 border border-amber-200">
-                    <p className="text-xs text-amber-700 font-semibold flex items-center gap-1">
+                  <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 font-semibold flex items-center gap-1">
                       <AlertCircle size={12} />
                       Thu thiếu <span className="font-mono">{formatVND(partialInfo.shortfall)}</span> cho đơn cuối{' '}
-                      <span className="font-mono text-[#C9A84C]">{partialInfo.lastOrder.orderCode}</span>
+                      <span className="font-mono text-gold">{partialInfo.lastOrder.orderCode}</span>
                     </p>
-                    <p className="text-xs text-amber-600 mt-0.5">
+                    <p className="text-xs text-amber-600 dark:text-amber-300 mt-0.5">
                       Sẽ thu {formatVND(partialInfo.lastOrderRemaining)} / {formatVND(Math.round(partialInfo.lastOrder.finalAmount || 0))} — bạn sẽ chọn cách xử lý khi tạo phiếu.
                     </p>
                   </div>
@@ -808,31 +808,31 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
 
             {/* ── Người nộp tiền ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+              <label className="block text-sm font-semibold text-ink mb-1.5">
                 Người nộp tiền / Đơn vị
               </label>
               <input
                 value={payerName} onChange={e => setPayerName(e.target.value)}
                 placeholder="Tên người nộp tiền hoặc đơn vị..."
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
               />
             </div>
 
             {/* ── Lý do thu ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+              <label className="block text-sm font-semibold text-ink mb-1.5">
                 Lý do thu <span className="text-red-500">*</span>
               </label>
               <input
                 value={reason} onChange={e => setReason(e.target.value)}
                 placeholder="Mô tả lý do thu tiền..."
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
               />
             </div>
 
             {/* ── Số phiếu thu ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+              <label className="block text-sm font-semibold text-ink mb-1.5">
                 Số phiếu thu <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -840,36 +840,36 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                   value={receiptNumber}
                   onChange={e => setReceiptNumber(e.target.value)}
                   placeholder={suggestedReceiptNumber ? `Gợi ý: ${suggestedReceiptNumber}` : 'Nhập số phiếu thu...'}
-                  className="w-full px-4 py-2.5 pr-20 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+                  className="w-full px-4 py-2.5 pr-20 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
                 />
                 {suggestedReceiptNumber && !receiptNumber && (
                   <button
                     type="button"
                     onClick={() => setReceiptNumber(suggestedReceiptNumber)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gold/10 text-gold hover:bg-gold/20 transition"
                   >
                     Dùng số này
                   </button>
                 )}
               </div>
               {suggestedReceiptNumber && (
-                <p className="text-xs text-[#8E8878] mt-1">
-                  Số kế tiếp gợi ý: <span className="font-mono font-semibold text-[#C9A84C]">{suggestedReceiptNumber}</span> — bạn có thể tự nhập số khác.
+                <p className="text-xs text-muted mt-1">
+                  Số kế tiếp gợi ý: <span className="font-mono font-semibold text-gold">{suggestedReceiptNumber}</span> — bạn có thể tự nhập số khác.
                 </p>
               )}
             </div>
 
             {/* ── Loại thanh toán ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-2">
+              <label className="block text-sm font-semibold text-ink mb-2">
                 Hình thức thanh toán <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setPaymentType('CASH')}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition ${paymentType === 'CASH'
-                    ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
-                    : 'border-black/10 text-[#8E8878] hover:border-[#C9A84C]/50'
+                    ? 'border-gold bg-gold/10 text-gold'
+                    : 'border-hairline-2 text-muted hover:border-gold/50'
                     }`}
                 >
                   <Banknote size={18} />
@@ -881,8 +881,8 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                 <button
                   onClick={() => setPaymentType('BANK_TRANSFER')}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition ${paymentType === 'BANK_TRANSFER'
-                    ? 'border-blue-400 bg-blue-50 text-blue-600'
-                    : 'border-black/10 text-[#8E8878] hover:border-blue-300'
+                    ? 'border-blue-400 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300'
+                    : 'border-hairline-2 text-muted hover:border-blue-300 dark:border-blue-500/35'
                     }`}
                 >
                   <CreditCard size={18} />
@@ -896,28 +896,28 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
 
             {/* Bank info */}
             {paymentType === 'BANK_TRANSFER' && (
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 text-blue-600 text-xs font-semibold mb-1">
+              <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/18 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 text-xs font-semibold mb-1">
                   <AlertCircle size={13} /> Bắt buộc điền khi chuyển khoản
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Tên ngân hàng *</label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Tên ngân hàng *</label>
                   <select
                     value={bankName} onChange={e => setBankName(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 dark:border-blue-500/28 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 dark:ring-blue-500/35 bg-surface">
                     <option value="">-- Chọn ngân hàng * --</option>
                     {banks.map(b => <option key={b.id || b.name} value={b.name}>{b.name}</option>)}
                   </select>
                   {banks.length === 0 && (
-                    <p className="text-[11px] text-amber-600 mt-1">Chưa có ngân hàng — Chủ/Quản trị cần tạo ở trang Quản lý dòng tiền.</p>
+                    <p className="text-[11px] text-amber-600 dark:text-amber-300 mt-1">Chưa có ngân hàng — Chủ/Quản trị cần tạo ở trang Quản lý dòng tiền.</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1E] mb-1">Mã tham chiếu giao dịch *</label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Mã tham chiếu giao dịch *</label>
                   <input
                     value={bankRef} onChange={e => setBankRef(e.target.value)}
                     placeholder="Mã GD / Transaction ID..."
-                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white font-mono"
+                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 dark:border-blue-500/28 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 dark:ring-blue-500/35 bg-surface font-mono"
                   />
                 </div>
               </div>
@@ -927,30 +927,30 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
             {!hasOrders && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-[#1C1C1E]">
+                  <label className="text-sm font-semibold text-ink">
                     Các khoản thu <span className="text-red-500">*</span>
                   </label>
-                  <button onClick={addItem} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:underline font-semibold">
+                  <button onClick={addItem} className="flex items-center gap-1 text-xs text-gold hover:underline font-semibold">
                     <Plus size={13} /> Thêm khoản
                   </button>
                 </div>
                 <div className="space-y-2">
                   {items.map((item, idx) => (
-                    <div key={item.id} className="bg-[#FAF7F2] rounded-xl p-3 space-y-2">
+                    <div key={item.id} className="bg-canvas rounded-xl p-3 space-y-2">
                       <div className="flex gap-2">
                         <input
                           value={item.itemName} onChange={e => updateItem(item.id, 'itemName', e.target.value)}
                           placeholder={`Khoản thu ${idx + 1}...`}
-                          className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white"
+                          className="flex-1 px-3 py-2 rounded-lg border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface"
                         />
                         <input
                           value={item.amount ? new Intl.NumberFormat('vi-VN').format(parseVND(item.amount)) : ''}
                           onChange={e => updateItem(item.id, 'amount', String(parseVND(e.target.value)))}
                           placeholder="Số tiền"
-                          className="w-32 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white text-right"
+                          className="w-32 px-3 py-2 rounded-lg border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface text-right"
                         />
                         {items.length > 1 && (
-                          <button onClick={() => removeItem(item.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
+                          <button onClick={() => removeItem(item.id)} className="p-2 rounded-lg hover:bg-red-50 dark:bg-red-500/10 text-red-400 transition flex-shrink-0">
                             <Trash2 size={14} />
                           </button>
                         )}
@@ -958,7 +958,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                       <input
                         value={item.note} onChange={e => updateItem(item.id, 'note', e.target.value)}
                         placeholder="Ghi chú (tuỳ chọn)..."
-                        className="w-full px-3 py-2 rounded-lg border border-black/10 text-xs focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 bg-white"
+                        className="w-full px-3 py-2 rounded-lg border border-hairline-2 text-xs focus:outline-none focus:ring-2 focus:ring-gold/40 bg-surface"
                       />
                     </div>
                   ))}
@@ -967,13 +967,13 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
             )}
 
             {/* Tổng */}
-            <div className="flex justify-between items-center py-2 border-t border-black/5">
-              <span className="text-sm font-semibold text-[#8E8878]">
+            <div className="flex justify-between items-center py-2 border-t border-hairline">
+              <span className="text-sm font-semibold text-muted">
                 {hasOrders ? 'Số tiền thực thu' : 'Tổng cần thu'}
               </span>
               <span className={`text-lg font-bold ${collectedStatus === 'error' ? 'text-red-500' :
                 collectedStatus === 'partial' ? 'text-amber-500' :
-                  'text-[#C9A84C]'
+                  'text-gold'
                 }`}>
                 {formatVND(displayTotal)}
               </span>
@@ -981,10 +981,10 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
 
             {/* ── Ảnh chứng từ ── */}
             <div>
-              <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">Ảnh chứng từ</label>
+              <label className="block text-sm font-semibold text-ink mb-1.5">Ảnh chứng từ</label>
               <div className="flex flex-wrap gap-2">
                 {images.map(img => (
-                  <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-black/10">
+                  <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-hairline-2">
                     <img src={img.url} alt="" className="w-full h-full object-cover" />
                     {img.uploading ? (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -999,7 +999,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                   </div>
                 ))}
                 <button onClick={() => fileRef.current?.click()}
-                  className="w-16 h-16 rounded-xl border-2 border-dashed border-black/20 flex flex-col items-center justify-center gap-0.5 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition text-[#8E8878] hover:text-[#C9A84C]">
+                  className="w-16 h-16 rounded-xl border-2 border-dashed border-hairline-3 flex flex-col items-center justify-center gap-0.5 hover:border-gold hover:bg-gold/5 transition text-muted hover:text-gold">
                   <Upload size={14} />
                   <span className="text-xs">Thêm</span>
                 </button>
@@ -1009,14 +1009,14 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
           </div>
 
           {/* Footer */}
-          <div className="p-5 border-t border-black/5 flex-shrink-0 flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+          <div className="p-5 border-t border-hairline flex-shrink-0 flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
               Huỷ
             </button>
             <button
               onClick={handleSubmit}
               disabled={submitting || !!collectedError || !!staleWarning}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#C9A84C] text-white font-bold hover:bg-[#B8923E] transition disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gold text-white font-bold hover:bg-gold-strong transition disabled:opacity-50"
             >
               {submitting
                 ? <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />

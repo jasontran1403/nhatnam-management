@@ -78,7 +78,7 @@ function ProductSearchSelect({ products, value, onChange, placeholder }) {
   return (
     <div ref={dropRef} className="relative">
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         <input
           ref={inputRef}
           className={inputCls + ' pl-9'}
@@ -89,22 +89,22 @@ function ProductSearchSelect({ products, value, onChange, placeholder }) {
         />
         {selected && !open && (
           <button type="button" onClick={() => { onChange(''); setQuery(''); }}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-red-500">
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-red-500">
             <X size={14} />
           </button>
         )}
       </div>
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border border-black/10 shadow-lg py-1 max-h-56 overflow-y-auto">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-surface rounded-xl border border-hairline-2 shadow-lg py-1 max-h-56 overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="px-3 py-2.5 text-xs text-[#8E8878] italic">{t('production', 'recipe_no_product_found')}</p>
+            <p className="px-3 py-2.5 text-xs text-muted italic">{t('production', 'recipe_no_product_found')}</p>
           ) : (
             filtered.map(p => (
               <button key={p.id} type="button" onClick={() => pick(p)}
                 className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors
-                  ${String(p.id) === String(value) ? 'bg-[#C9A84C]/10 text-[#A07830] font-semibold' : 'hover:bg-[#FAF7F2] text-[#1C1C1E]'}`}>
+                  ${String(p.id) === String(value) ? 'bg-gold/10 text-gold-deep font-semibold' : 'hover:bg-canvas text-ink'}`}>
                 <span className="truncate">{p.name}</span>
-                <span className="text-[#8E8878] text-[10px] flex-shrink-0">{p.unit}</span>
+                <span className="text-muted text-[10px] flex-shrink-0">{p.unit}</span>
               </button>
             ))
           )}
@@ -182,8 +182,8 @@ export default function FactoryRecipesPage() {
       />
 
       {/* Filter by product */}
-      <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm flex flex-wrap items-center gap-3">
-        <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'recipe_filter_by_product')}</span>
+      <div className="bg-surface rounded-2xl border border-hairline p-3 sm:p-4 shadow-sm flex flex-wrap items-center gap-3">
+        <span className="text-xs font-semibold text-muted uppercase tracking-wider">{t('production', 'recipe_filter_by_product')}</span>
         <select className={inputCls + ' max-w-xs'} value={productFilter}
           onChange={e => setProductFilter(e.target.value)}>
           <option value="">{t('production', 'recipe_all_products')}</option>
@@ -224,29 +224,29 @@ export default function FactoryRecipesPage() {
 function RecipeCard({ recipe: r, onEdit, onToggle }) {
   const { t } = useLang();
   return (
-    <div className={`bg-white rounded-2xl border border-black/5 shadow-sm p-4 sm:p-5 space-y-3 ${!r.isActive ? 'opacity-60' : ''}`}>
+    <div className={`bg-surface rounded-2xl border border-hairline shadow-sm p-4 sm:p-5 space-y-3 ${!r.isActive ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>{r.name}</p>
-          <p className="text-xs text-[#8E8878] mt-0.5">{r.factoryProductName}</p>
+          <p className="font-bold text-ink" style={{ fontFamily: 'var(--font-display)' }}>{r.name}</p>
+          <p className="text-xs text-muted mt-0.5">{r.factoryProductName}</p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <button onClick={onToggle} title={r.isActive ? t('production', 'recipe_disable') : t('production', 'recipe_enable')}
-            className={`p-2 rounded-lg transition-colors ${r.isActive ? 'text-emerald-600 hover:bg-emerald-50' : 'text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+            className={`p-2 rounded-lg transition-colors ${r.isActive ? 'text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:bg-emerald-500/10' : 'text-muted hover:bg-canvas'}`}>
             <Power size={15} />
           </button>
-          <button onClick={onEdit} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] hover:text-[#1C1C1E] transition-colors">
+          <button onClick={onEdit} className="p-2 rounded-lg text-muted hover:bg-canvas hover:text-ink transition-colors">
             <Edit2 size={15} />
           </button>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        <Badge className="bg-[#C9A84C]/10 text-[#A07830] ring-[#C9A84C]/30">
+        <Badge className="bg-gold/10 text-gold-deep ring-gold/30">
           {t('production', 'recipe_standard_output')}: {r.standardOutputQty} {r.outputUnit}
         </Badge>
         {r.packagingQty != null && (
-          <Badge className="bg-blue-50 text-blue-700 ring-blue-200">
+          <Badge className="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-500/28">
             {t('production', 'recipe_standard_packaging')}: {r.packagingQty} {r.outputUnit}/{r.packagingUnit || 'túi'}
           </Badge>
         )}
@@ -254,41 +254,41 @@ function RecipeCard({ recipe: r, onEdit, onToggle }) {
 
       {/* Materials */}
       <div>
-        <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1">
           <Package size={12} /> {t('production', 'recipe_materials')}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {(r.items || []).map(i => (
-            <Badge key={i.id} className="bg-slate-50 text-slate-600 ring-slate-200">
+            <Badge key={i.id} className="bg-canvas text-ink-2 ring-line">
               {i.materialName}: {i.standardQty} {i.unit}
             </Badge>
           ))}
-          {(r.items || []).length === 0 && <span className="text-xs text-[#8E8878] italic">{t('production', 'recipe_no_materials')}</span>}
+          {(r.items || []).length === 0 && <span className="text-xs text-muted italic">{t('production', 'recipe_no_materials')}</span>}
         </div>
       </div>
 
       {/* Steps */}
       <div>
-        <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1">
           <Clock size={12} /> {t('production', 'recipe_steps')}
         </p>
         <ol className="space-y-1">
           {(r.steps || []).map((s, idx) => (
-            <li key={s.id} className="flex items-center gap-2 text-xs text-[#1C1C1E] bg-[#FAF7F2] rounded-lg px-2.5 py-1.5">
-              <span className="w-4 h-4 rounded-full bg-[#1C1C1E] text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+            <li key={s.id} className="flex items-center gap-2 text-xs text-ink bg-canvas rounded-lg px-2.5 py-1.5">
+              <span className="w-4 h-4 rounded-full bg-chrome text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                 {idx + 1}
               </span>
               <span className="font-medium flex-1 truncate">{s.stepName}</span>
               <ControlTypeIcon controlType={s.controlType} requiresQc={s.requiresQc} />
-              <span className="text-[#8E8878] flex-shrink-0">{fmtDuration(s.durationMinutes, t)}</span>
+              <span className="text-muted flex-shrink-0">{fmtDuration(s.durationMinutes, t)}</span>
               {s.machineName && (
-                <span className="flex items-center gap-0.5 text-[#8E8878] flex-shrink-0">
+                <span className="flex items-center gap-0.5 text-muted flex-shrink-0">
                   <Wrench size={11} /> {s.machineName}
                 </span>
               )}
             </li>
           ))}
-          {(r.steps || []).length === 0 && <span className="text-xs text-[#8E8878] italic">{t('production', 'recipe_no_steps')}</span>}
+          {(r.steps || []).length === 0 && <span className="text-xs text-muted italic">{t('production', 'recipe_no_steps')}</span>}
         </ol>
       </div>
     </div>
@@ -309,7 +309,7 @@ function StepDots({ step, total = 3 }) {
     <div className="flex items-center gap-1.5">
       {Array.from({ length: total }).map((_, i) => (
         <div key={i}
-          className={`h-1.5 rounded-full transition-all ${i + 1 === step ? 'w-6 bg-[#C9A84C]' : i + 1 < step ? 'w-1.5 bg-[#C9A84C]/50' : 'w-1.5 bg-black/10'}`} />
+          className={`h-1.5 rounded-full transition-all ${i + 1 === step ? 'w-6 bg-gold' : i + 1 < step ? 'w-1.5 bg-gold/50' : 'w-1.5 bg-hairline-2'}`} />
       ))}
     </div>
   );
@@ -487,7 +487,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
         </div>
       }>
       <div className="space-y-5">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
         {/* ════════════ STEP 1: Thông tin chung ════════════ */}
         {wizardStep === 1 && (
@@ -507,7 +507,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                 <input type="number" min="0" step="0.001" className={inputCls} value={form.standardOutputQty}
                   onChange={e => setForm(f => ({ ...f, standardOutputQty: e.target.value }))} />
                 {selectedProduct && (
-                  <span className="flex items-center px-3 py-2.5 bg-[#FAF7F2] border border-black/10 rounded-xl text-sm text-[#8E8878] whitespace-nowrap font-medium">
+                  <span className="flex items-center px-3 py-2.5 bg-canvas border border-hairline-2 rounded-xl text-sm text-muted whitespace-nowrap font-medium">
                     {selectedProduct.unit}
                   </span>
                 )}
@@ -519,7 +519,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                 <input type="number" min="0" step="0.001" className={inputCls} value={form.packagingQty}
                   placeholder="VD: 0.5" onChange={e => setForm(f => ({ ...f, packagingQty: e.target.value }))} />
                 {selectedProduct && (
-                  <span className="flex items-center px-2 py-2.5 bg-[#FAF7F2] border border-black/10 rounded-xl text-sm text-[#8E8878] whitespace-nowrap font-medium">
+                  <span className="flex items-center px-2 py-2.5 bg-canvas border border-hairline-2 rounded-xl text-sm text-muted whitespace-nowrap font-medium">
                     {selectedProduct.unit}/
                   </span>
                 )}
@@ -539,11 +539,11 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
         {wizardStep === 2 && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
                 <Package size={13} /> {t('production', 'recipe_section_materials')}
               </span>
               <button onClick={addItem}
-                className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:text-[#A07830] transition-colors">
+                className="flex items-center gap-1 text-xs font-semibold text-gold hover:text-gold-deep transition-colors">
                 <Plus size={13} /> {t('production', 'recipe_add_material')}
               </button>
             </div>
@@ -552,9 +552,9 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
               {form.items.map((item, idx) => {
                 const mat = materials.find(m => m.id === Number(item.factoryMaterialId));
                 return (
-                  <div key={idx} className="flex gap-2 items-end bg-[#FAF7F2] rounded-xl p-3 border border-black/5">
+                  <div key={idx} className="flex gap-2 items-end bg-canvas rounded-xl p-3 border border-hairline">
                     <div className="flex-1">
-                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_material')}</label>
+                      <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_material')}</label>
                       <select className={inputCls} value={item.factoryMaterialId}
                         onChange={e => {
                           const m = materials.find(m => m.id === Number(e.target.value));
@@ -566,25 +566,25 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                       </select>
                     </div>
                     <div className="w-28">
-                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_quantity')}</label>
+                      <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_quantity')}</label>
                       <input type="number" min="0" step="0.001" className={inputCls} value={item.standardQty}
                         onChange={e => setItem(idx, 'standardQty', e.target.value)} />
                     </div>
                     <div className="w-20">
-                      <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_unit')}</label>
-                      <div className="px-3 py-2.5 bg-white border border-black/10 rounded-xl text-sm text-[#8E8878] font-medium">
+                      <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_unit')}</label>
+                      <div className="px-3 py-2.5 bg-surface border border-hairline-2 rounded-xl text-sm text-muted font-medium">
                         {mat?.unit || item.unit || '—'}
                       </div>
                     </div>
                     <button onClick={() => removeItem(idx)}
-                      className="p-2 text-[#8E8878] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mb-0.5">
+                      className="p-2 text-muted hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 rounded-lg transition-colors mb-0.5">
                       <X size={15} />
                     </button>
                   </div>
                 );
               })}
               {form.items.length === 0 && (
-                <p className="text-xs text-[#8E8878] italic text-center py-6">{t('production', 'recipe_no_materials_added')}</p>
+                <p className="text-xs text-muted italic text-center py-6">{t('production', 'recipe_no_materials_added')}</p>
               )}
             </div>
           </div>
@@ -594,7 +594,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
         {wizardStep === 3 && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-[#1C1C1E] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
                 <Clock size={13} /> {t('production', 'recipe_section_steps')}
               </span>
             </div>
@@ -603,17 +603,17 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
             <div className="flex flex-wrap gap-1.5 mb-3">
               {stepTemplates.map(tpl => (
                 <button key={tpl.id} onClick={() => addStep(tpl)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#FAF7F2] text-[#1C1C1E] hover:bg-[#F0EBE3] border border-black/5 transition-colors">
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-canvas text-ink hover:bg-surface-2 border border-hairline transition-colors">
                   <Plus size={11} /> {tpl.name}
                 </button>
               ))}
               <div className="flex items-center gap-1">
-                <input className="px-2.5 py-1.5 text-xs rounded-lg border border-black/10 w-36"
+                <input className="px-2.5 py-1.5 text-xs rounded-lg border border-hairline-2 w-36"
                   placeholder={t('production', 'recipe_new_step_placeholder')} value={newStepName}
                   onChange={e => setNewStepName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); createStepTemplate(); } }} />
                 <button onClick={createStepTemplate}
-                  className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#1C1C1E] text-white hover:bg-black transition-colors">
+                  className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-chrome text-white hover:bg-black transition-colors">
                   {t('production', 'recipe_create_template')}
                 </button>
               </div>
@@ -621,33 +621,33 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
 
             <div className="space-y-2">
               {form.steps.map((step_, idx) => (
-                <div key={idx} className="bg-[#FAF7F2] rounded-xl p-3 border border-black/5">
+                <div key={idx} className="bg-canvas rounded-xl p-3 border border-hairline">
                   <div className="flex gap-2 items-start">
                     <div className="flex flex-col gap-0.5 pt-1.5">
-                      <span className="w-6 h-6 rounded-full bg-[#1C1C1E] text-white flex items-center justify-center text-xs font-bold">
+                      <span className="w-6 h-6 rounded-full bg-chrome text-white flex items-center justify-center text-xs font-bold">
                         {idx + 1}
                       </span>
                       <div className="flex flex-col">
                         <button disabled={idx === 0} onClick={() => moveStep(idx, -1)}
-                          className="text-[#8E8878] hover:text-[#1C1C1E] disabled:opacity-30 text-[10px] leading-none">▲</button>
+                          className="text-muted hover:text-ink disabled:opacity-30 text-[10px] leading-none">▲</button>
                         <button disabled={idx === form.steps.length - 1} onClick={() => moveStep(idx, 1)}
-                          className="text-[#8E8878] hover:text-[#1C1C1E] disabled:opacity-30 text-[10px] leading-none">▼</button>
+                          className="text-muted hover:text-ink disabled:opacity-30 text-[10px] leading-none">▼</button>
                       </div>
                     </div>
 
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2">
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_step_name')}</label>
+                        <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">{t('production', 'recipe_field_step_name')}</label>
                         <input className={inputCls} value={step_.stepName}
                           onChange={e => setStep(idx, 'stepName', e.target.value)} />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_duration')}</label>
+                        <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">{t('production', 'recipe_field_duration')}</label>
                         <input type="number" min="1" className={inputCls} value={step_.durationMinutes}
                           onChange={e => setStep(idx, 'durationMinutes', e.target.value)} />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_machine')}</label>
+                        <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">{t('production', 'recipe_field_machine')}</label>
                         <select className={inputCls} value={step_.machineId}
                           onChange={e => setStep(idx, 'machineId', e.target.value)}>
                           <option value="">{t('production', 'recipe_no_machine')}</option>
@@ -657,7 +657,7 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
 
                       {/* ── Loại kiểm soát: Không KS / Trực quan / Hình ảnh cân ký ── */}
                       <div className="sm:col-span-4">
-                        <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_control')}</label>
+                        <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">{t('production', 'recipe_field_control')}</label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                           {CONTROL_TYPES.map(ct => {
                             const active = (step_.controlType || 'NONE') === ct.value;
@@ -665,13 +665,13 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                             return (
                               <button key={ct.value} type="button" onClick={() => setStep(idx, 'controlType', ct.value)}
                                 className={`text-left px-3 py-2 rounded-lg border transition-colors ${
-                                  active ? 'border-[#C9A84C] bg-[#C9A84C]/10' : 'border-black/10 bg-white hover:bg-[#F0EBE3]'
+                                  active ? 'border-gold bg-gold/10' : 'border-hairline-2 bg-surface hover:bg-surface-2'
                                 }`}>
-                                <span className={`flex items-center gap-1.5 text-xs font-semibold ${active ? 'text-[#A07830]' : 'text-[#1C1C1E]'}`}>
-                                  {Icon ? <Icon size={13} className={active ? 'text-[#C9A84C]' : 'text-[#8E8878]'} /> : <span className="w-[13px]" />}
+                                <span className={`flex items-center gap-1.5 text-xs font-semibold ${active ? 'text-gold-deep' : 'text-ink'}`}>
+                                  {Icon ? <Icon size={13} className={active ? 'text-gold' : 'text-muted'} /> : <span className="w-[13px]" />}
                                   {ct.label}
                                 </span>
-                                <span className="block text-[10px] text-[#8E8878] mt-0.5 leading-snug">{ct.desc}</span>
+                                <span className="block text-[10px] text-muted mt-0.5 leading-snug">{ct.desc}</span>
                               </button>
                             );
                           })}
@@ -679,36 +679,36 @@ function RecipeFormModal({ recipe, products, materials, stepTemplates, machines,
                       </div>
 
                       {/* ── Bước chung / riêng + công suất mỗi lần ── */}
-                      <div className="sm:col-span-4 border-t border-black/5 pt-3">
+                      <div className="sm:col-span-4 border-t border-hairline pt-3">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input type="checkbox" className="w-4 h-4 accent-[#C9A84C]"
+                          <input type="checkbox" className="w-4 h-4 accent-gold"
                             checked={!!step_.shared}
                             onChange={e => setStep(idx, 'shared', e.target.checked)} />
-                          <span className="text-xs font-semibold text-[#1C1C1E]">{t('production', 'recipe_field_shared')}</span>
+                          <span className="text-xs font-semibold text-ink">{t('production', 'recipe_field_shared')}</span>
                         </label>
-                        <p className="text-[10px] text-[#8E8878] mt-0.5 ml-6 leading-snug">{t('production', 'recipe_field_shared_hint')}</p>
+                        <p className="text-[10px] text-muted mt-0.5 ml-6 leading-snug">{t('production', 'recipe_field_shared_hint')}</p>
                         {step_.shared && (
                           <div className="mt-2 ml-6">
-                            <label className="block text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-1">{t('production', 'recipe_field_capacity')}</label>
+                            <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">{t('production', 'recipe_field_capacity')}</label>
                             <input type="number" min="0" step="0.001" className={inputCls + ' max-w-[200px]'}
                               placeholder={t('production', 'recipe_field_capacity_ph')}
                               value={step_.capacityPerRun}
                               onChange={e => setStep(idx, 'capacityPerRun', e.target.value)} />
-                            <p className="text-[10px] text-[#8E8878] mt-0.5 leading-snug">{t('production', 'recipe_field_capacity_hint')}</p>
+                            <p className="text-[10px] text-muted mt-0.5 leading-snug">{t('production', 'recipe_field_capacity_hint')}</p>
                           </div>
                         )}
                       </div>
                     </div>
 
                     <button onClick={() => removeStep(idx)}
-                      className="p-2 text-[#8E8878] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                      className="p-2 text-muted hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 rounded-lg transition-colors">
                       <X size={15} />
                     </button>
                   </div>
                 </div>
               ))}
               {form.steps.length === 0 && (
-                <p className="text-xs text-[#8E8878] italic text-center py-6">{t('production', 'recipe_no_steps_added')}</p>
+                <p className="text-xs text-muted italic text-center py-6">{t('production', 'recipe_no_steps_added')}</p>
               )}
             </div>
           </div>

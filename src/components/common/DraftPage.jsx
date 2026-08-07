@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { draftApi, orderApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
-import ScheduledOrderModal from '../../components/seller/ScheduledOrderModal';
+import ScheduledOrderModal from './ScheduledOrderModal';
 
 // ── Countdown hook ────────────────────────────────────────────────────────
 function useCountdowns(drafts) {
@@ -36,7 +36,7 @@ function CountdownBadge({ scheduledAt, now }) {
   if (isExpired) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold
-                       bg-gray-100 text-gray-400 border border-gray-200">
+                       bg-surface-2 text-faint border border-line">
         <Clock size={10} /> Đã hết giờ
       </span>
     );
@@ -49,7 +49,7 @@ function CountdownBadge({ scheduledAt, now }) {
   if (isCritical) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold
-                       bg-red-100 text-red-600 border border-red-300 animate-pulse">
+                       bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300 border border-red-300 dark:border-red-500/35 animate-pulse">
         <AlertTriangle size={10} /> {timeStr}
       </span>
     );
@@ -57,14 +57,14 @@ function CountdownBadge({ scheduledAt, now }) {
   if (isWarning) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold
-                       bg-amber-100 text-amber-600 border border-amber-300">
+                       bg-amber-100 dark:bg-amber-500/18 text-amber-600 dark:text-amber-300 border border-amber-300 dark:border-amber-500/35">
         <Clock size={10} /> {timeStr}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold
-                     bg-blue-50 text-blue-600 border border-blue-200">
+                     bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/28">
       <Clock size={10} /> {timeStr}
     </span>
   );
@@ -74,10 +74,10 @@ function CountdownBadge({ scheduledAt, now }) {
 function getScheduledStyle(scheduledAt, now) {
   if (!scheduledAt) return '';
   const diffMs = scheduledAt - now;
-  if (diffMs <= 0)                   return 'border-gray-200 bg-gray-50/50';
-  if (diffMs < 15 * 60 * 1000)      return 'border-red-300 bg-red-50/40 shadow-red-100';
-  if (diffMs < 60 * 60 * 1000)      return 'border-amber-300 bg-amber-50/40 shadow-amber-100';
-  return 'border-amber-200 bg-amber-50/20';
+  if (diffMs <= 0)                   return 'border-line bg-canvas/50';
+  if (diffMs < 15 * 60 * 1000)      return 'border-red-300 dark:border-red-500/35 bg-red-50/40 dark:bg-red-500/4 shadow-red-100';
+  if (diffMs < 60 * 60 * 1000)      return 'border-amber-300 dark:border-amber-500/35 bg-amber-50/40 dark:bg-amber-500/4 shadow-amber-100';
+  return 'border-amber-200 dark:border-amber-500/28 bg-amber-50/20 dark:bg-amber-500/4';
 }
 
 // ── Format date ───────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ export default function DraftsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -242,14 +242,14 @@ export default function DraftsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">Đơn nháp</h1>
-        <span className="text-xs text-[#8E8878] bg-[#F0EBE3] px-3 py-1.5 rounded-full">
+        <h1 className="text-xl font-bold text-ink">Đơn nháp</h1>
+        <span className="text-xs text-muted bg-surface-2 px-3 py-1.5 rounded-full">
           {drafts.length} đơn
         </span>
       </div>
 
       {drafts.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-[#C4B9A8] gap-3">
+        <div className="flex flex-col items-center justify-center py-20 text-faint gap-3">
           <Save size={40} strokeWidth={1} />
           <p className="text-sm">Chưa có đơn nháp nào</p>
         </div>
@@ -258,7 +258,7 @@ export default function DraftsPage() {
       {/* ── Đơn hẹn giờ ───────────────────────────────────────────────────── */}
       {scheduledDrafts.length > 0 && (
         <section>
-          <h2 className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <h2 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <Clock size={12} className="text-amber-500" /> Đơn hẹn giờ ({scheduledDrafts.length})
           </h2>
           <div className="space-y-3">
@@ -271,17 +271,17 @@ export default function DraftsPage() {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-[#1C1C1E]">{draft.draftCode}</span>
+                        <span className="text-xs font-bold text-ink">{draft.draftCode}</span>
                         <CountdownBadge scheduledAt={draft.scheduledAt} now={now} />
                       </div>
-                      <p className="text-[10px] text-[#8E8878] mt-0.5">
+                      <p className="text-[10px] text-muted mt-0.5">
                         Hẹn: {fmtDate(draft.scheduledAt)}
                       </p>
                     </div>
                     <button onClick={() => handleDelete(draft.id)} disabled={deletingId === draft.id}
-                      className="text-[#C4B9A8] hover:text-red-400 shrink-0 p-1">
+                      className="text-faint hover:text-red-400 shrink-0 p-1">
                       {deletingId === draft.id
-                        ? <div className="w-4 h-4 border-2 border-red-300 border-t-transparent rounded-full animate-spin" />
+                        ? <div className="w-4 h-4 border-2 border-red-300 dark:border-red-500/35 border-t-transparent rounded-full animate-spin" />
                         : <Trash2 size={14} />}
                     </button>
                   </div>
@@ -289,16 +289,16 @@ export default function DraftsPage() {
                   {/* Khách hàng */}
                   {draft.customerName && (
                     <div className="flex items-center gap-1.5 mb-2">
-                      <User size={11} className="text-[#8E8878] shrink-0" />
-                      <span className="text-xs text-[#5C4E3D] font-medium truncate">
+                      <User size={11} className="text-muted shrink-0" />
+                      <span className="text-xs text-ink-2 font-medium truncate">
                         {draft.customerName}
-                        {draft.customerPhone && <span className="text-[#8E8878]"> · {draft.customerPhone}</span>}
+                        {draft.customerPhone && <span className="text-muted"> · {draft.customerPhone}</span>}
                       </span>
                     </div>
                   )}
 
                   {/* Items */}
-                  <div className="text-[11px] text-[#8E8878] mb-2">
+                  <div className="text-[11px] text-muted mb-2">
                     {draft.items?.length > 0 && (
                       <span>{draft.items.length} món · {fmtPrice(calcDraftTotal(draft))}</span>
                     )}
@@ -310,15 +310,15 @@ export default function DraftsPage() {
                       onClick={() => handlePreviewInvoice(draft.id)}
                       disabled={previewLoading}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl
-                                 border border-[#E8DDD0] text-[#5C4E3D] text-[11px] font-semibold
-                                 hover:bg-[#F0EBE3] disabled:opacity-40 transition-colors"
+                                 border border-line text-ink-2 text-[11px] font-semibold
+                                 hover:bg-surface-2 disabled:opacity-40 transition-colors"
                     >
                       <FileText size={12} /> Phiếu đặt hàng
                     </button>
                     <button
                       onClick={() => setScheduledModal(draft)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl
-                                 bg-[#C9A84C] text-white text-[11px] font-bold hover:bg-[#b8963d] transition-colors"
+                                 bg-gold text-white text-[11px] font-bold hover:bg-gold-strong transition-colors"
                     >
                       <ChevronRight size={12} /> Tạo đơn hàng
                     </button>
@@ -334,35 +334,35 @@ export default function DraftsPage() {
       {normalDrafts.length > 0 && (
         <section>
           {scheduledDrafts.length > 0 && (
-            <h2 className="text-xs font-bold text-[#8E8878] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <h2 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Save size={12} /> Đơn nháp ({normalDrafts.length})
             </h2>
           )}
           <div className="space-y-3">
             {normalDrafts.map(draft => (
               <div key={draft.id}
-                className="rounded-2xl border border-[#E8DDD0] bg-white shadow-sm p-4">
+                className="rounded-2xl border border-line bg-surface shadow-sm p-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <p className="text-xs font-bold text-[#1C1C1E]">{draft.draftCode}</p>
-                    <p className="text-[10px] text-[#8E8878]">{fmtDate(draft.updatedAt)}</p>
+                    <p className="text-xs font-bold text-ink">{draft.draftCode}</p>
+                    <p className="text-[10px] text-muted">{fmtDate(draft.updatedAt)}</p>
                   </div>
                   <button onClick={() => handleDelete(draft.id)} disabled={deletingId === draft.id}
-                    className="text-[#C4B9A8] hover:text-red-400 p-1">
+                    className="text-faint hover:text-red-400 p-1">
                     {deletingId === draft.id
-                      ? <div className="w-4 h-4 border-2 border-red-300 border-t-transparent rounded-full animate-spin" />
+                      ? <div className="w-4 h-4 border-2 border-red-300 dark:border-red-500/35 border-t-transparent rounded-full animate-spin" />
                       : <Trash2 size={14} />}
                   </button>
                 </div>
 
                 {draft.customerName && (
                   <div className="flex items-center gap-1.5 mb-1">
-                    <User size={11} className="text-[#8E8878] shrink-0" />
-                    <span className="text-xs text-[#5C4E3D] truncate">{draft.customerName}</span>
+                    <User size={11} className="text-muted shrink-0" />
+                    <span className="text-xs text-ink-2 truncate">{draft.customerName}</span>
                   </div>
                 )}
 
-                <div className="text-[11px] text-[#8E8878] mb-3">
+                <div className="text-[11px] text-muted mb-3">
                   {draft.items?.length > 0 && (
                     <span>{draft.items.length} món · {fmtPrice(calcDraftTotal(draft))}</span>
                   )}
@@ -371,8 +371,8 @@ export default function DraftsPage() {
                 <button
                   onClick={() => handleLoadToPOS(draft)}
                   className="w-full flex items-center justify-center gap-2 py-2 rounded-xl
-                             border border-[#C9A84C] text-[#C9A84C] text-xs font-semibold
-                             hover:bg-[#FDF8ED] transition-colors"
+                             border border-gold text-gold text-xs font-semibold
+                             hover:bg-gold-tint transition-colors"
                 >
                   <ShoppingCart size={13} /> Mở trong POS
                 </button>

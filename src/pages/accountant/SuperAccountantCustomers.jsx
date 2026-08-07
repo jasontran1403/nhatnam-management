@@ -1,5 +1,6 @@
 // src/pages/admin/SuperAccountantCustomers.jsx
 import { useLang } from '../../context/LangContext';
+import { useContractModals } from '../../components/customer/CustomerContract';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -130,13 +131,13 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
       <div className="flex gap-2">
         <button
           onClick={onCancel}
-          className="flex-1 py-1.5 rounded-lg border border-[#E8DDD0] text-xs text-[#8E8878] hover:bg-[#FAF7F2] transition-colors">
+          className="flex-1 py-1.5 rounded-lg border border-line text-xs text-muted hover:bg-canvas transition-colors">
           Hủy
         </button>
         <button
           onClick={onSave}
           disabled={saving}
-          className="flex-1 py-1.5 rounded-lg bg-[#C9A84C] text-white text-xs font-semibold hover:bg-[#b8973d] disabled:opacity-50 transition-colors">
+          className="flex-1 py-1.5 rounded-lg bg-gold text-white text-xs font-semibold hover:bg-[var(--c-gold-strong)] disabled:opacity-50 transition-colors">
           {saving ? 'Đang lưu...' : 'Lưu'}
         </button>
       </div>
@@ -146,21 +147,21 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-bold text-[#5C5C5C]">
+        <label className="text-xs font-bold text-ink-2">
           Địa chỉ nhận hàng {receiverInfos.length > 0 && `(${receiverInfos.length})`}
         </label>
         {!adding && editingId === null && (
           <button
             onClick={() => { setAdding(true); setEditingId(null); resetForm(); }}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] font-semibold hover:bg-[#C9A84C]/20 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/10 text-gold text-[10px] font-semibold hover:bg-gold/20 transition-colors">
             <Plus size={11} /> Thêm địa chỉ
           </button>
         )}
       </div>
 
       {adding && (
-        <div className="border border-[#C9A84C]/30 rounded-xl p-3 bg-[#FDF8ED] space-y-2">
-          <p className="text-[11px] font-semibold text-[#C9A84C]">Thêm địa chỉ mới</p>
+        <div className="border border-gold/30 rounded-xl p-3 bg-gold-tint space-y-2">
+          <p className="text-[11px] font-semibold text-gold">Thêm địa chỉ mới</p>
           <ReceiverForm
             onSave={handleAdd}
             onCancel={() => { setAdding(false); resetForm(); }}
@@ -169,9 +170,9 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
       )}
 
       {loading ? (
-        <div className="text-xs text-[#8E8878] text-center py-2">Đang tải...</div>
+        <div className="text-xs text-muted text-center py-2">Đang tải...</div>
       ) : receiverInfos.length === 0 && !adding ? (
-        <div className="text-xs text-[#C4B9A8] text-center py-2 italic border border-dashed border-[#E8DDD0] rounded-xl">
+        <div className="text-xs text-faint text-center py-2 italic border border-dashed border-line rounded-xl">
           Chưa có địa chỉ nhận hàng
         </div>
       ) : (
@@ -180,7 +181,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
             <div
               key={r.id}
               className={`rounded-xl border p-2.5 transition-colors
-                ${r.isDefault ? 'border-[#C9A84C]/40 bg-[#FDF8ED]' : 'border-[#F0EBE3] bg-white'}`}>
+                ${r.isDefault ? 'border-gold/40 bg-gold-tint' : 'border-line-soft bg-surface'}`}>
 
               {editingId === r.id ? (
                 <div className="space-y-2">
@@ -194,19 +195,19 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                       {r.isDefault && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#C9A84C]">
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-gold">
                           <Star size={9} fill="currentColor" /> Mặc định
                         </span>
                       )}
                       {r.receiverName && (
-                        <span className="text-xs font-semibold text-[#1C1C1E]">{r.receiverName}</span>
+                        <span className="text-xs font-semibold text-ink">{r.receiverName}</span>
                       )}
                       {r.receiverPhone && (
-                        <span className="text-[11px] text-[#8E8878]">{r.receiverPhone}</span>
+                        <span className="text-[11px] text-muted">{r.receiverPhone}</span>
                       )}
                     </div>
-                    <p className="text-xs text-[#5C4E3D] flex items-start gap-1">
-                      <MapPin size={10} className="mt-0.5 shrink-0 text-[#8E8878]" />
+                    <p className="text-xs text-ink-2 flex items-start gap-1">
+                      <MapPin size={10} className="mt-0.5 shrink-0 text-muted" />
                       <span>{r.receiverAddress}</span>
                     </p>
                   </div>
@@ -214,16 +215,16 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
                     {!r.isDefault && (
                       <button onClick={() => handleSetDefault(r.id)}
                         title="Đặt làm mặc định"
-                        className="p-1 rounded text-[#C4B9A8] hover:text-[#C9A84C] transition-colors">
+                        className="p-1 rounded text-faint hover:text-gold transition-colors">
                         <Star size={12} />
                       </button>
                     )}
                     <button onClick={() => startEdit(r)}
-                      className="p-1 rounded text-[#8E8878] hover:text-[#C9A84C] transition-colors">
+                      className="p-1 rounded text-muted hover:text-gold transition-colors">
                       <Edit2 size={12} />
                     </button>
                     <button onClick={() => handleDelete(r.id)}
-                      className="p-1 rounded text-[#8E8878] hover:text-red-400 transition-colors">
+                      className="p-1 rounded text-muted hover:text-red-400 transition-colors">
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -280,26 +281,26 @@ function AssignSellerModal({ open, customer, onClose, onSaved }) {
   return (
     <Modal open={open} onClose={onClose} title="Gán nhân viên kinh doanh" size="sm">
       <div className="space-y-3">
-        <p className="text-sm text-[#5C4E3D]">
+        <p className="text-sm text-ink-2">
           Khách hàng: <span className="font-semibold">{displayName}</span>
         </p>
 
         {customer?.sellerId && (
-          <div className="flex items-center justify-between bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-xl px-3 py-2">
+          <div className="flex items-center justify-between bg-gold/10 border border-gold/30 rounded-xl px-3 py-2">
             <div>
-              <p className="text-xs text-[#8E8878]">Đang gán</p>
-              <p className="text-sm font-semibold text-[#1C1C1E]">{customer.sellerName}</p>
-              <p className="text-xs text-[#8E8878]">@{customer.sellerUsername}</p>
+              <p className="text-xs text-muted">Đang gán</p>
+              <p className="text-sm font-semibold text-ink">{customer.sellerName}</p>
+              <p className="text-xs text-muted">@{customer.sellerUsername}</p>
             </div>
             <button onClick={unassign} disabled={saving}
-              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+              className="p-1.5 text-red-400 hover:text-red-600 dark:text-red-300 hover:bg-red-50 dark:bg-red-500/10 rounded-lg transition-colors">
               <X size={14} />
             </button>
           </div>
         )}
 
         <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input value={q} onChange={e => setQ(e.target.value)}
             placeholder="Tìm tên nhân viên..."
             className={`${inputCls} pl-8 text-sm`} />
@@ -307,26 +308,26 @@ function AssignSellerModal({ open, customer, onClose, onSaved }) {
 
         <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
           {loading ? (
-            <p className="text-xs text-[#8E8878] text-center py-4">Đang tìm...</p>
+            <p className="text-xs text-muted text-center py-4">Đang tìm...</p>
           ) : sellers.length === 0 ? (
-            <p className="text-xs text-[#8E8878] text-center py-4">Không tìm thấy</p>
+            <p className="text-xs text-muted text-center py-4">Không tìm thấy</p>
           ) : sellers.map(s => (
             <button key={s.id}
               onClick={() => assign(s.id)}
               disabled={saving || s.id === customer?.sellerId}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-colors
                 ${s.id === customer?.sellerId
-                  ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30 cursor-default'
-                  : 'hover:bg-[#FAF7F2] border border-transparent'}`}>
-              <div className="w-8 h-8 rounded-full bg-[#C9A84C]/20 flex items-center justify-center shrink-0">
-                <UserIcon size={13} className="text-[#C9A84C]" />
+                  ? 'bg-gold/10 border border-gold/30 cursor-default'
+                  : 'hover:bg-canvas border border-transparent'}`}>
+              <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
+                <UserIcon size={13} className="text-gold" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#1C1C1E] truncate">{s.fullName}</p>
-                <p className="text-xs text-[#8E8878]">@{s.username} · {s.role === 'SUPER_SELLER' ? 'Trưởng phòng KD' : 'NV Kinh doanh'}</p>
+                <p className="text-sm font-medium text-ink truncate">{s.fullName}</p>
+                <p className="text-xs text-muted">@{s.username} · {s.role === 'SUPER_SELLER' ? 'Trưởng phòng KD' : 'NV Kinh doanh'}</p>
               </div>
               {s.id === customer?.sellerId && (
-                <span className="text-[10px] text-[#C9A84C] font-semibold shrink-0">Đang gán</span>
+                <span className="text-[10px] text-gold font-semibold shrink-0">Đang gán</span>
               )}
             </button>
           ))}
@@ -374,13 +375,13 @@ function SellerFilterDropdown({ value, onChange }) {
         type="button"
         onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors min-w-[180px]
-          ${value && value !== '0' ? 'border-[#C9A84C] bg-[#C9A84C]/5 text-[#C9A84C]' : 'border-[#E8DDD0] text-[#8E8878]'}`}>
+          ${value && value !== '0' ? 'border-gold bg-gold/5 text-gold' : 'border-line text-muted'}`}>
         <Search size={13} />
         <span className="flex-1 text-left truncate text-sm">
           {value === '0' ? 'Chưa gán' : (selectedName || 'Lọc theo NV KD...')}
         </span>
         {value ? (
-          <button onClick={(e) => { e.stopPropagation(); clear(); }} className="text-[#8E8878] hover:text-red-400 shrink-0">
+          <button onClick={(e) => { e.stopPropagation(); clear(); }} className="text-muted hover:text-red-400 shrink-0">
             <X size={13} />
           </button>
         ) : (
@@ -389,28 +390,28 @@ function SellerFilterDropdown({ value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-80 sm:w-96 bg-white rounded-xl border border-black/10 shadow-xl overflow-hidden">
-          <div className="p-2 border-b border-[#F0EBE3]">
+        <div className="absolute top-full left-0 mt-1 z-50 w-80 sm:w-96 bg-surface rounded-xl border border-hairline-2 shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-line-soft">
             <input
               autoFocus value={q} onChange={e => setQ(e.target.value)}
               placeholder="Tìm nhân viên..."
-              className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C]"
+              className="w-full text-sm px-3 py-1.5 rounded-lg border border-line focus:outline-none focus:border-gold"
             />
           </div>
           <div className="max-h-64 overflow-y-auto py-1">
             <button
               onClick={() => { onChange('0'); setSelectedName('Chưa gán'); setOpen(false); }}
-              className="w-full px-3 py-2.5 text-left text-sm hover:bg-[#FAF7F2] text-[#5C4E3D]">
+              className="w-full px-3 py-2.5 text-left text-sm hover:bg-canvas text-ink-2">
               Chưa gán NV
             </button>
             {loading ? (
-              <p className="text-xs text-center text-[#8E8878] py-4">Đang tìm...</p>
+              <p className="text-xs text-center text-muted py-4">Đang tìm...</p>
             ) : sellers.map(s => (
               <button key={s.id} onClick={() => select(s)}
-                className={`w-full px-3 py-2.5 text-left hover:bg-[#FAF7F2] transition-colors
-                        ${value === String(s.id) ? 'bg-[#C9A84C]/10 text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+                className={`w-full px-3 py-2.5 text-left hover:bg-canvas transition-colors
+                        ${value === String(s.id) ? 'bg-gold/10 text-gold' : 'text-ink'}`}>
                 <p className="text-sm font-medium truncate">{s.fullName}</p>
-                <p className="text-xs text-[#8E8878]">@{s.username}</p>
+                <p className="text-xs text-muted">@{s.username}</p>
               </button>
             ))}
           </div>
@@ -578,12 +579,12 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
 
         {/* Địa chỉ nhận hàng — chỉ hiện khi edit */}
         {isEdit && customer?.id && (
-          <div className="border-t border-[#F0EBE3] pt-4">
+          <div className="border-t border-line-soft pt-4">
             <ReceiverInfosSection customerId={customer.id} apiPrefix="/api/seller" />
           </div>
         )}
 
-        <p className="text-xs text-[#8E8878] bg-[#FDF8ED] rounded-xl px-3 py-2 border border-[#C9A84C]/20">
+        <p className="text-xs text-muted bg-gold-tint rounded-xl px-3 py-2 border border-gold/20">
           💡 Khách do admin/owner tạo: ai cũng có thể tạo đơn, KPI tính chung cho toàn phòng SALE.
         </p>
       </div>
@@ -661,6 +662,9 @@ export default function SuperAccountantCustomers() {
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [page, debouncedQ, filters.type, filters.isActive, filters.sellerId, debtSort]);
+
+  // Xem / tải hợp đồng — tải lại danh sách sau khi thay để cờ hasContract mới.
+  const contract = useContractModals(() => load());
 
   // Bấm header "Công nợ (chưa TT)": desc → asc → tắt
   const cycleDebtSort = useCallback(() => {
@@ -812,22 +816,22 @@ export default function SuperAccountantCustomers() {
         <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
         <div className="flex items-center gap-2">
           <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold transition-all disabled:opacity-60">
             {exportingDebt
-              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              ? <span className="w-3 h-3 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               : <FileText size={13} />}
             {exportingDebt ? 'Đang xuất...' : 'Báo cáo công nợ'}
           </button>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
               if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
             }} />
           </label>
           <button onClick={handleExport} disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold transition-all disabled:opacity-60">
             {exporting
-              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              ? <span className="w-3 h-3 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               : <Download size={13} />}
             {exporting ? 'Đang xuất...' : 'Export'}
           </button>
@@ -835,17 +839,17 @@ export default function SuperAccountantCustomers() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-black/5 p-3 sm:p-4 shadow-sm flex flex-col gap-3">
+      <div className="bg-surface rounded-2xl border border-hairline p-3 sm:p-4 shadow-sm flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
             <input type="text" placeholder="Tìm tên, SĐT, email, công ty, mã KH..."
               value={filters.q}
               onChange={e => { setFilters({ ...filters, q: e.target.value }); setPage(0); }}
               className={`${inputCls} pl-9 pr-9`} />
             {filters.q && (
               <button onClick={() => { setFilters({ ...filters, q: '' }); setPage(0); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">✕</button>
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">✕</button>
             )}
           </div>
           <select value={filters.type}
@@ -865,13 +869,13 @@ export default function SuperAccountantCustomers() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs text-[#8E8878] font-medium shrink-0">Lọc theo NV Kinh Doanh:</span>
+          <span className="text-xs text-muted font-medium shrink-0">Lọc theo NV Kinh Doanh:</span>
           <button
             onClick={() => { setFilters(f => ({ ...f, sellerId: '' })); setPage(0); }}
             className={`px-3 h-[38px] rounded-xl text-xs font-medium transition-colors border
             ${filters.sellerId === ''
-                ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                : 'border-[#E8DDD0] text-[#5C4E3D] hover:bg-[#F0EBE3]'}`}>
+                ? 'bg-gold text-white border-gold'
+                : 'border-line text-ink-2 hover:bg-surface-2'}`}>
             Tất cả
           </button>
           <SellerFilterDropdown
@@ -883,8 +887,8 @@ export default function SuperAccountantCustomers() {
 
       {/* Bulk action bar */}
       {anyChecked && (
-        <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <p className="text-sm text-[#1C1C1E] flex-1">Đã chọn <span className="font-bold text-[#C9A84C]">{selectedIds.size}</span> khách hàng</p>
+        <div className="bg-gold/10 border border-gold/30 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <p className="text-sm text-ink flex-1">Đã chọn <span className="font-bold text-gold">{selectedIds.size}</span> khách hàng</p>
           <div className="flex flex-wrap gap-2">
             <SecondaryButton onClick={openDiscountBulk}><Percent size={14} /> Set chiết khấu</SecondaryButton>
             <SecondaryButton onClick={() => setActiveConfirm({ mode: 'bulk', lock: true })}><Lock size={14} /> Khóa bán</SecondaryButton>
@@ -894,7 +898,7 @@ export default function SuperAccountantCustomers() {
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
         {loading ? (
           <TableSkeleton cols={5} rows={8} />
         ) : data.content.length === 0 ? <EmptyState icon={Users} title="Không có khách hàng" /> : (
@@ -903,8 +907,8 @@ export default function SuperAccountantCustomers() {
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#FAF7F2] text-[#8E8878]">
-                    <th className="px-4 py-3 w-10"><input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded accent-[#C9A84C]" /></th>
+                  <tr className="bg-canvas text-muted">
+                    <th className="px-4 py-3 w-10"><input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded accent-gold" /></th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Khách hàng</th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Loại</th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">NV Kinh doanh</th>
@@ -912,11 +916,11 @@ export default function SuperAccountantCustomers() {
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Công nợ</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
                       <button onClick={cycleDebtSort}
-                        className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[#C9A84C] transition-colors"
+                        className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-gold transition-colors"
                         title="Sắp xếp theo công nợ chưa thanh toán">
                         Công nợ (chưa TT)
-                        {debtSort === 'desc' ? <ArrowDown size={13} className="text-[#C9A84C]" />
-                          : debtSort === 'asc' ? <ArrowUp size={13} className="text-[#C9A84C]" />
+                        {debtSort === 'desc' ? <ArrowDown size={13} className="text-gold" />
+                          : debtSort === 'asc' ? <ArrowUp size={13} className="text-gold" />
                             : <ChevronsUpDown size={13} className="opacity-50" />}
                       </button>
                     </th>
@@ -931,16 +935,16 @@ export default function SuperAccountantCustomers() {
                     return (
                       <tr key={c.id}
                         onClick={() => setHistoryCustomerId(c.id)}
-                        className={`border-t border-black/5 hover:bg-[#FAF7F2]/50 transition-colors cursor-pointer
-                          ${selectedIds.has(c.id) ? 'bg-[#C9A84C]/5' : ''}
-                          ${urgency === 'critical' ? 'bg-red-50/30' : urgency === 'warning' ? 'bg-amber-50/30' : ''}`}>
+                        className={`border-t border-hairline hover:bg-canvas/50 transition-colors cursor-pointer
+                          ${selectedIds.has(c.id) ? 'bg-gold/5' : ''}
+                          ${urgency === 'critical' ? 'bg-red-50/30 dark:bg-red-500/4' : urgency === 'warning' ? 'bg-amber-50/30 dark:bg-amber-500/4' : ''}`}>
                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                          <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)} className="rounded accent-[#C9A84C]" />
+                          <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)} className="rounded accent-gold" />
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 relative
-                              ${isCompany ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+                              ${isCompany ? 'bg-blue-500' : 'bg-gold'}`}>
                               {isCompany ? <Building2 size={15} /> : <UserIcon size={15} />}
                               {urgency && (
                                 <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white
@@ -948,62 +952,70 @@ export default function SuperAccountantCustomers() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium text-[#1C1C1E] truncate">
+                              <p className="font-medium text-ink truncate">
                                 {isCompany ? (c.companyName || c.name) : (c.name || '—')}
                               </p>
-                              {c.customerCode && <p className="text-xs text-[#8E8878]">#{c.customerCode}</p>}
+                              {c.customerCode && <p className="text-xs text-muted">#{c.customerCode}</p>}
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge className={isCompany ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}>
+                          <Badge className={isCompany ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-500/28' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28'}>
                             {isCompany ? 'Công ty' : t('customer', 'individual')}
                           </Badge>
                           {c.pricingType === 'WHOLESALE_PRICE'
-                            ? <Badge className="bg-purple-50 text-purple-700 ring-purple-200 mt-0.5">Sỉ</Badge>
-                            : <Badge className="bg-green-50 text-green-700 ring-green-200 mt-0.5">Lẻ</Badge>
+                            ? <Badge className="bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-purple-200 dark:ring-purple-500/28 mt-0.5">Sỉ</Badge>
+                            : <Badge className="bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 ring-green-200 dark:ring-green-500/28 mt-0.5">Lẻ</Badge>
                           }
                           {c.createdByAdmin && (
-                            <Badge className="bg-sky-50 text-sky-700 ring-sky-200 mt-0.5">Admin</Badge>
+                            <Badge className="bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-500/28 mt-0.5">Admin</Badge>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           {isCompany ? (
                             c.sellerName ? (
                               <div>
-                                <p className="text-sm font-medium text-[#1C1C1E]">{c.sellerName}</p>
-                                <p className="text-xs text-[#8E8878]">@{c.sellerUsername}</p>
+                                <p className="text-sm font-medium text-ink">{c.sellerName}</p>
+                                <p className="text-xs text-muted">@{c.sellerUsername}</p>
                               </div>
                             ) : (
-                              <span className="text-xs text-[#C4B9A8] italic">Chưa có</span>
+                              <span className="text-xs text-faint italic">Chưa có</span>
                             )
                           ) : (
-                            <span className="text-xs text-[#E8DDD0]">—</span>
+                            <span className="text-xs text-line">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="font-semibold text-[#C9A84C]">{c.discountRate || 0}%</span>
+                          <span className="font-semibold text-gold">{c.discountRate || 0}%</span>
                         </td>
                         <td className="px-4 py-3 text-right" onClick={e => openDebtDays(c, e)}>
-                          <span className={`text-xs font-semibold cursor-pointer hover:underline ${c.debtDays > 0 ? 'text-orange-600' : 'text-[#C4B9A8]'}`}>
+                          <span className={`text-xs font-semibold cursor-pointer hover:underline ${c.debtDays > 0 ? 'text-orange-600 dark:text-orange-300' : 'text-faint'}`}>
                             {c.debtDays > 0 ? `${c.debtDays} ngày` : '—'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className={`text-xs font-semibold ${c.unpaidDebt > 0 ? 'text-red-600' : 'text-[#C4B9A8]'}`}>
+                          <span className={`text-xs font-semibold ${c.unpaidDebt > 0 ? 'text-red-600 dark:text-red-300' : 'text-faint'}`}>
                             {c.unpaidDebt > 0 ? formatPrice(c.unpaidDebt) : '—'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           {c.isActive
-                            ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Hoạt động</Badge>
-                            : <Badge className="bg-red-50 text-red-700 ring-red-200">Đã khóa</Badge>
+                            ? <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Hoạt động</Badge>
+                            : <Badge className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-500/28">Đã khóa</Badge>
                           }
                         </td>
                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
+                            {/* Hợp đồng — điều kiện để khách được mua công nợ. */}
+                            <button onClick={() => c.hasContract ? contract.view(c) : contract.upload(c)}
+                              className={`p-2 rounded-lg transition-colors ${c.hasContract
+                                ? 'text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10'
+                                : 'text-muted hover:bg-canvas hover:text-ink'}`}
+                              title={c.hasContract ? 'Xem hợp đồng' : 'Tải hợp đồng lên'}>
+                              <FileText size={15} />
+                            </button>
                             <button onClick={() => setActiveConfirm({ mode: 'single', lock: c.isActive, customer: c })}
-                              className={`p-2 rounded-lg transition-colors ${c.isActive ? 'text-[#8E8878] hover:bg-red-50 hover:text-red-600' : 'text-[#8E8878] hover:bg-emerald-50 hover:text-emerald-600'}`}>
+                              className={`p-2 rounded-lg transition-colors ${c.isActive ? 'text-muted hover:bg-red-50 dark:bg-red-500/10 hover:text-red-600 dark:text-red-300' : 'text-muted hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-emerald-600 dark:text-emerald-300'}`}>
                               {c.isActive ? <Lock size={15} /> : <Unlock size={15} />}
                             </button>
                           </div>
@@ -1016,7 +1028,7 @@ export default function SuperAccountantCustomers() {
             </div>
 
             {/* Mobile */}
-            <div className="lg:hidden divide-y divide-black/5">
+            <div className="lg:hidden divide-y divide-hairline">
               {data.content.map(c => {
                 const urgency = getDebtUrgency(c);
                 const isCompany = c.customerType === 'COMPANY';
@@ -1024,38 +1036,38 @@ export default function SuperAccountantCustomers() {
                   <div key={c.id}
                     onClick={() => setHistoryCustomerId(c.id)}
                     className={`p-4 cursor-pointer transition-colors
-                      ${selectedIds.has(c.id) ? 'bg-[#C9A84C]/5' : ''}
+                      ${selectedIds.has(c.id) ? 'bg-gold/5' : ''}
                       ${urgency === 'critical' ? 'border-l-4 border-red-400' : urgency === 'warning' ? 'border-l-4 border-amber-400' : ''}`}>
                     <div className="flex items-start gap-3">
                       <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)}
-                        onClick={e => e.stopPropagation()} className="mt-1 rounded accent-[#C9A84C]" />
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0 ${isCompany ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+                        onClick={e => e.stopPropagation()} className="mt-1 rounded accent-gold" />
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0 ${isCompany ? 'bg-blue-500' : 'bg-gold'}`}>
                         {isCompany ? <Building2 size={15} /> : <UserIcon size={15} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[#1C1C1E] truncate">
+                        <p className="font-medium text-ink truncate">
                           {isCompany ? (c.companyName || c.name) : (c.name || '—')}
                         </p>
-                        <p className="text-xs text-[#8E8878]">{c.phone} · CK {c.discountRate || 0}%</p>
+                        <p className="text-xs text-muted">{c.phone} · CK {c.discountRate || 0}%</p>
                         {c.debtDays > 0 && <p className="text-[10px] text-orange-500">📋 Công nợ {c.debtDays} ngày</p>}
-                        {c.unpaidDebt > 0 && <p className="text-[10px] font-semibold text-red-600">💰 Chưa TT: {formatPrice(c.unpaidDebt)}</p>}
+                        {c.unpaidDebt > 0 && <p className="text-[10px] font-semibold text-red-600 dark:text-red-300">💰 Chưa TT: {formatPrice(c.unpaidDebt)}</p>}
                         {isCompany && (
                           c.sellerName
-                            ? <p className="text-[10px] text-sky-600 mt-0.5">👤 {c.sellerName}</p>
-                            : <p className="text-[10px] text-[#C4B9A8] italic mt-0.5">Chưa có NV</p>
+                            ? <p className="text-[10px] text-sky-600 dark:text-sky-300 mt-0.5">👤 {c.sellerName}</p>
+                            : <p className="text-[10px] text-faint italic mt-0.5">Chưa có NV</p>
                         )}
                       </div>
                     </div>
                     <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
                       {isCompany && (
-                        <button onClick={e => openAssign(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-sky-50 text-sky-600">Gán NV</button>
+                        <button onClick={e => openAssign(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300">Gán NV</button>
                       )}
                       <button onClick={e => { e.stopPropagation(); setEditCustomer(c); setCreateOpen(true); }}
-                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FDF8ED] text-[#C9A84C]">Sửa</button>
-                      <button onClick={() => openDiscountSingle(c)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#FAF7F2] text-[#1C1C1E]">CK</button>
-                      <button onClick={e => openDebtDays(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-50 text-orange-600">CN</button>
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-gold-tint text-gold">Sửa</button>
+                      <button onClick={() => openDiscountSingle(c)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-canvas text-ink">CK</button>
+                      <button onClick={e => openDebtDays(c, e)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300">CN</button>
                       <button onClick={() => setActiveConfirm({ mode: 'single', lock: c.isActive, customer: c })}
-                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${c.isActive ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${c.isActive ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'}`}>
                         {c.isActive ? 'Khóa' : 'Mở'}
                       </button>
                       <button
@@ -1065,7 +1077,7 @@ export default function SuperAccountantCustomers() {
                           setDeletePassword('');
                           setDeleteError('');
                         }}
-                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-50 text-red-600">
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">
                         Xóa
                       </button>
                     </div>
@@ -1089,8 +1101,8 @@ export default function SuperAccountantCustomers() {
         title={discountTarget ? 'Đặt chiết khấu' : 'Đặt chiết khấu hàng loạt'} size="sm"
         footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={() => setDiscountOpen(false)} disabled={saving}>Hủy</SecondaryButton><PrimaryButton onClick={saveDiscount} loading={saving}>Áp dụng</PrimaryButton></div>}>
         {discountTarget
-          ? <p className="text-sm text-[#1C1C1E] mb-3">Khách: <span className="font-semibold">{discountTarget.customerType === 'COMPANY' ? discountTarget.companyName : discountTarget.name}</span></p>
-          : <p className="text-sm text-[#1C1C1E] mb-3">Áp dụng cho <span className="font-bold text-[#C9A84C]">{selectedIds.size}</span> khách hàng đã chọn</p>
+          ? <p className="text-sm text-ink mb-3">Khách: <span className="font-semibold">{discountTarget.customerType === 'COMPANY' ? discountTarget.companyName : discountTarget.name}</span></p>
+          : <p className="text-sm text-ink mb-3">Áp dụng cho <span className="font-bold text-gold">{selectedIds.size}</span> khách hàng đã chọn</p>
         }
         <Field label="Tỷ lệ chiết khấu (%)" required>
           <input type="number" min={0} max={100} value={discountValue} onChange={e => setDiscountValue(e.target.value)} className={inputCls} />
@@ -1100,19 +1112,19 @@ export default function SuperAccountantCustomers() {
       <Modal open={debtDaysOpen} onClose={() => !saving && setDebtDaysOpen(false)}
         title="Số ngày công nợ" size="sm"
         footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={() => setDebtDaysOpen(false)} disabled={saving}>Hủy</SecondaryButton><PrimaryButton onClick={saveDebtDays} loading={saving}>Áp dụng</PrimaryButton></div>}>
-        {debtDaysTarget && <p className="text-sm text-[#1C1C1E] mb-3">Khách: <span className="font-semibold">{debtDaysTarget.customerType === 'COMPANY' ? debtDaysTarget.companyName : debtDaysTarget.name}</span></p>}
+        {debtDaysTarget && <p className="text-sm text-ink mb-3">Khách: <span className="font-semibold">{debtDaysTarget.customerType === 'COMPANY' ? debtDaysTarget.companyName : debtDaysTarget.name}</span></p>}
         <Field label="Số ngày được phép công nợ" required>
           <input type="number" min={0} max={365} value={debtDaysValue} onChange={e => setDebtDaysValue(e.target.value)} className={inputCls} placeholder="0" />
         </Field>
-        <p className="text-xs text-[#8E8878] mt-1.5">Từ 1–365 ngày. Đặt 0 để tắt công nợ.</p>
+        <p className="text-xs text-muted mt-1.5">Từ 1–365 ngày. Đặt 0 để tắt công nợ.</p>
       </Modal>
 
       <Modal open={!!activeConfirm} onClose={() => !saving && setActiveConfirm(null)}
         title={activeConfirm?.lock ? 'Khóa bán khách hàng' : 'Mở bán khách hàng'} size="sm"
         footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={() => setActiveConfirm(null)} disabled={saving}>Hủy</SecondaryButton>{activeConfirm?.lock ? <DangerButton onClick={confirmActive} loading={saving}>Xác nhận khóa</DangerButton> : <PrimaryButton onClick={confirmActive} loading={saving}>Xác nhận mở</PrimaryButton>}</div>}>
-        <p className="text-sm text-[#1C1C1E]">
+        <p className="text-sm text-ink">
           {activeConfirm?.mode === 'bulk'
-            ? <>Bạn có chắc muốn {activeConfirm.lock ? 'khóa bán' : 'mở bán'} cho <span className="font-bold text-[#C9A84C]">{selectedIds.size}</span> khách hàng?</>
+            ? <>Bạn có chắc muốn {activeConfirm.lock ? 'khóa bán' : 'mở bán'} cho <span className="font-bold text-gold">{selectedIds.size}</span> khách hàng?</>
             : <>Bạn có chắc muốn {activeConfirm?.lock ? 'khóa bán' : 'mở bán'} khách <span className="font-semibold">{activeConfirm?.customer?.customerType === 'COMPANY' ? activeConfirm?.customer?.companyName : activeConfirm?.customer?.name}</span>?</>
           }
         </p>
@@ -1136,9 +1148,9 @@ export default function SuperAccountantCustomers() {
           </div>
         }>
         <div className="space-y-4">
-          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl px-4 py-3">
             <p className="text-xs text-red-400 font-medium mb-0.5">Sẽ xóa khách hàng</p>
-            <p className="text-sm font-semibold text-red-700">
+            <p className="text-sm font-semibold text-red-700 dark:text-red-300">
               {deleteTarget?.customerType === 'COMPANY'
                 ? deleteTarget?.companyName
                 : deleteTarget?.name}
@@ -1150,9 +1162,9 @@ export default function SuperAccountantCustomers() {
             </p>
           </div>
 
-          <p className="text-sm text-[#5C4E3D]">
+          <p className="text-sm text-ink-2">
             Khách hàng sẽ <span className="font-semibold">không hiển thị</span> trên
-            hệ thống sau khi xóa. Hành động này <span className="font-semibold text-red-600">không thể hoàn tác</span>.
+            hệ thống sau khi xóa. Hành động này <span className="font-semibold text-red-600 dark:text-red-300">không thể hoàn tác</span>.
           </p>
 
           <Field label="Nhập mật khẩu đăng nhập của bạn để xác nhận" required>
@@ -1188,6 +1200,8 @@ export default function SuperAccountantCustomers() {
         onExportAll={() => handleExportAgedReceivables(null)}
         exporting={exportingDebt}
       />
+
+      {contract.render()}
     </div>
   );
 }

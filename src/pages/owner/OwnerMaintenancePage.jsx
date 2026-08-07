@@ -13,11 +13,11 @@ const getMonths = (t) =>
   Array.from({ length: 12 }, (_, i) => t('production', 'month_short', { n: i + 1 }));
 
 const getStatusConfig = (t) => ({
-  PLANNED:   { label: t('production', 'omaint_status_planned'),   cls: 'bg-blue-100 text-blue-700' },
-  SCHEDULED: { label: t('production', 'omaint_status_scheduled'), cls: 'bg-indigo-100 text-indigo-700' },
-  COMPLETED: { label: t('production', 'maint_status_completed'),  cls: 'bg-emerald-100 text-emerald-700' },
-  ADJUSTED:  { label: t('production', 'maint_status_adjusted'),   cls: 'bg-amber-100 text-amber-700' },
-  MISSED:    { label: t('production', 'maint_status_missed'),     cls: 'bg-red-100 text-red-700' },
+  PLANNED:   { label: t('production', 'omaint_status_planned'),   cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300' },
+  SCHEDULED: { label: t('production', 'omaint_status_scheduled'), cls: 'bg-indigo-100 dark:bg-indigo-500/18 text-indigo-700 dark:text-indigo-300' },
+  COMPLETED: { label: t('production', 'maint_status_completed'),  cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
+  ADJUSTED:  { label: t('production', 'maint_status_adjusted'),   cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300' },
+  MISSED:    { label: t('production', 'maint_status_missed'),     cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300' },
 });
 
 const getTypeLabels = (t) => ({
@@ -48,23 +48,23 @@ function MaintenanceCalendar({ items, year }) {
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-xs min-w-[700px]">
           <thead>
-            <tr className="bg-[#FAF7F2] border-b border-black/5">
-              <th className="text-left px-4 py-3 font-semibold text-[#1C1C1E] w-36">
+            <tr className="bg-canvas border-b border-hairline">
+              <th className="text-left px-4 py-3 font-semibold text-ink w-36">
                 {t('production', 'omaint_col_machine')}
               </th>
               {MONTHS.map((m, i) => (
-                <th key={i} className="text-center py-3 font-medium text-[#8E8878] w-16">{m}</th>
+                <th key={i} className="text-center py-3 font-medium text-muted w-16">{m}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {Object.entries(byMachine).map(([machineId, { name, events }]) => (
-              <tr key={machineId} className="border-b border-black/5 last:border-0">
-                <td className="px-4 py-3 font-semibold text-[#1C1C1E] text-xs truncate max-w-[140px]">{name}</td>
+              <tr key={machineId} className="border-b border-hairline last:border-0">
+                <td className="px-4 py-3 font-semibold text-ink text-xs truncate max-w-[140px]">{name}</td>
                 {MONTHS.map((_, mo) => {
                   const monthEvents = events.filter(e => {
                     const d = new Date(e.plannedStart);
@@ -87,7 +87,7 @@ function MaintenanceCalendar({ items, year }) {
               </tr>
             ))}
             {Object.keys(byMachine).length === 0 && (
-              <tr><td colSpan={13} className="text-center py-10 text-[#8E8878] text-sm italic">
+              <tr><td colSpan={13} className="text-center py-10 text-muted text-sm italic">
                 {t('production', 'omaint_empty_calendar')}
               </td></tr>
             )}
@@ -95,7 +95,7 @@ function MaintenanceCalendar({ items, year }) {
         </table>
       </div>
       {/* Legend */}
-      <div className="px-4 py-3 border-t border-black/5 bg-[#FAF7F2] flex flex-wrap gap-4 text-xs text-[#8E8878]">
+      <div className="px-4 py-3 border-t border-hairline bg-canvas flex flex-wrap gap-4 text-xs text-muted">
         {legend.map(([c, l]) => (
           <span key={l} className="flex items-center gap-1.5">
             <span className={`w-3 h-3 rounded ${c}`} />{l}
@@ -143,8 +143,8 @@ function MaintenanceModal({ machines, item, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-black/5 bg-[#1A2B1A] flex items-center justify-between">
+      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-hairline bg-forest-deep flex items-center justify-between">
           <h2 className="text-white font-semibold text-sm">
             {item ? t('production', 'omaint_edit_title') : t('production', 'omaint_create_title')}
           </h2>
@@ -187,8 +187,8 @@ function MaintenanceModal({ machines, item, onClose, onSaved }) {
               onChange={e => set('notes', e.target.value)} />
           </Field>
         </div>
-        <div className="px-6 py-4 border-t border-black/5 bg-[#FAF7F2]/50 flex gap-3 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-[#8E8878]">{t('common', 'cancel')}</button>
+        <div className="px-6 py-4 border-t border-hairline bg-canvas/50 flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-muted">{t('common', 'cancel')}</button>
           <PrimaryButton onClick={submit} loading={saving}
             disabled={!form.machineId || !form.plannedStart || !form.plannedDowntimeHours}>
             {item ? t('common', 'save_changes') : t('production', 'omaint_add')}
@@ -241,10 +241,10 @@ export default function OwnerMaintenancePage() {
   const items = summary?.items || [];
 
   const kpis = summary ? [
-    { icon: Clock,         label: t('production', 'omaint_kpi_planned_downtime'), value: t('production', 'metrics_hours', { n: summary.totalPlannedDowntimeHours }), color: 'text-blue-600' },
-    { icon: CheckCircle2,  label: t('production', 'omaint_kpi_on_schedule'),      value: `${summary.completedOnSchedule}/${summary.totalScheduled}`, color: 'text-emerald-600' },
-    { icon: AlertTriangle, label: t('production', 'maint_status_adjusted'),       value: summary.adjustmentsMade, color: 'text-amber-600' },
-    { icon: TrendingDown,  label: t('production', 'omaint_kpi_avg_deviation'),    value: summary.avgDeviationDays ?? 0, color: 'text-[#C9A84C]' },
+    { icon: Clock,         label: t('production', 'omaint_kpi_planned_downtime'), value: t('production', 'metrics_hours', { n: summary.totalPlannedDowntimeHours }), color: 'text-blue-600 dark:text-blue-300' },
+    { icon: CheckCircle2,  label: t('production', 'omaint_kpi_on_schedule'),      value: `${summary.completedOnSchedule}/${summary.totalScheduled}`, color: 'text-emerald-600 dark:text-emerald-300' },
+    { icon: AlertTriangle, label: t('production', 'maint_status_adjusted'),       value: summary.adjustmentsMade, color: 'text-amber-600 dark:text-amber-300' },
+    { icon: TrendingDown,  label: t('production', 'omaint_kpi_avg_deviation'),    value: summary.avgDeviationDays ?? 0, color: 'text-gold' },
   ] : [];
 
   return (
@@ -252,11 +252,11 @@ export default function OwnerMaintenancePage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]"
+          <h1 className="text-2xl sm:text-3xl font-bold text-ink"
               style={{ fontFamily: 'var(--font-display)' }}>
             {t('production', 'omaint_title')}
           </h1>
-          <p className="text-sm text-[#8E8878] mt-1">
+          <p className="text-sm text-muted mt-1">
             {t('production', 'omaint_subtitle')}
           </p>
         </div>
@@ -272,7 +272,7 @@ export default function OwnerMaintenancePage() {
             {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
           <button onClick={() => setModal('create')}
-            className="flex items-center gap-2 bg-[#1A2B1A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#243824] transition-colors">
+            className="flex items-center gap-2 bg-forest-deep text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-forest-mid transition-colors">
             <Plus size={16} />{t('production', 'omaint_add')}
           </button>
         </div>
@@ -282,10 +282,10 @@ export default function OwnerMaintenancePage() {
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {kpis.map(kpi => (
-            <div key={kpi.label} className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+            <div key={kpi.label} className="bg-surface rounded-2xl border border-hairline p-4 shadow-sm">
               <kpi.icon size={18} className={kpi.color + ' mb-2'} />
               <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
-              <p className="text-xs text-[#8E8878] mt-0.5">{kpi.label}</p>
+              <p className="text-xs text-muted mt-0.5">{kpi.label}</p>
             </div>
           ))}
         </div>
@@ -293,7 +293,7 @@ export default function OwnerMaintenancePage() {
 
       {/* Gantt Calendar */}
       <div>
-        <p className="text-xs font-medium text-[#8E8878] uppercase tracking-wide mb-3">
+        <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">
           {t('production', 'omaint_calendar_title')} — {year}
         </p>
         <MaintenanceCalendar items={items} year={year} />
@@ -301,48 +301,48 @@ export default function OwnerMaintenancePage() {
 
       {/* Detail list */}
       <div>
-        <p className="text-xs font-medium text-[#8E8878] uppercase tracking-wide mb-3">
+        <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">
           {t('production', 'omaint_detail_list')} ({items.length})
         </p>
         <div className="space-y-2">
           {items.map(item => (
-            <div key={item.id} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4">
+            <div key={item.id} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-[#1C1C1E]">{item.machineName}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[item.status]?.cls || 'bg-gray-100 text-gray-500'}`}>
+                    <span className="font-semibold text-sm text-ink">{item.machineName}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[item.status]?.cls || 'bg-surface-2 text-muted'}`}>
                       {STATUS_CONFIG[item.status]?.label || item.status}
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#FAF7F2] text-[#8E8878]">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-canvas text-muted">
                       {TYPE_LABELS[item.maintenanceType]}
                     </span>
                   </div>
-                  <p className="text-xs text-[#8E8878] mt-1">
+                  <p className="text-xs text-muted mt-1">
                     {t('production', 'omaint_planned')}: {fmtDate(item.plannedStart)}
                     {item.plannedEnd && item.plannedEnd !== item.plannedStart && ` → ${fmtDate(item.plannedEnd)}`}
                     {' · '}{item.plannedDowntimeHours}h downtime
                   </p>
                   {item.actualStart && (
-                    <p className="text-xs text-emerald-600 mt-0.5">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-0.5">
                       {t('production', 'omaint_actual')}: {fmtDate(item.actualStart)} · {item.actualDowntimeHours}h
                       {item.deviationDays !== null && item.deviationDays !== 0 &&
-                        <span className={`ml-1 ${Math.abs(item.deviationDays) > 0 ? 'text-amber-600' : ''}`}>
+                        <span className={`ml-1 ${Math.abs(item.deviationDays) > 0 ? 'text-amber-600 dark:text-amber-300' : ''}`}>
                           ({item.deviationDays > 0 ? '+' : ''}{t('production', 'omaint_days', { n: item.deviationDays })})
                         </span>}
                     </p>
                   )}
-                  {item.notes && <p className="text-xs text-[#8E8878] italic mt-0.5">{item.notes}</p>}
+                  {item.notes && <p className="text-xs text-muted italic mt-0.5">{item.notes}</p>}
                 </div>
                 <div className="flex gap-1.5 flex-shrink-0">
                   <button onClick={() => setModal(item)}
                     title={t('common', 'edit')}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 text-[#8E8878] hover:text-[#1C1C1E] transition-colors text-xs">
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-hairline text-muted hover:text-ink transition-colors text-xs">
                     ✏️
                   </button>
                   <button onClick={() => deleteItem(item.id)}
                     title={t('common', 'delete')}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-[#8E8878] hover:text-red-500 transition-colors">
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:bg-red-500/10 text-muted hover:text-red-500 transition-colors">
                     <X size={14} />
                   </button>
                 </div>
@@ -350,9 +350,9 @@ export default function OwnerMaintenancePage() {
             </div>
           ))}
           {items.length === 0 && (
-            <div className="bg-white rounded-2xl border border-black/5 p-10 text-center">
-              <Wrench size={28} className="mx-auto text-[#8E8878] mb-3" />
-              <p className="text-sm text-[#8E8878]">
+            <div className="bg-surface rounded-2xl border border-hairline p-10 text-center">
+              <Wrench size={28} className="mx-auto text-muted mb-3" />
+              <p className="text-sm text-muted">
                 {t('production', 'omaint_empty_year', { year })}
               </p>
             </div>

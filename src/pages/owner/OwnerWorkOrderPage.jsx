@@ -12,19 +12,19 @@ import { useFmt } from '../../utils/useFmt';
 // fmtDate removed — use useFmt()
 
 const getStatusConfig = (t) => ({
-  DRAFT:       { label: t('production','wo_status_draft'),       cls: 'bg-gray-100 text-gray-600',        dot: 'bg-gray-400' },
-  RELEASED:    { label: t('production','wo_status_released'),    cls: 'bg-blue-100 text-blue-700',        dot: 'bg-blue-400' },
-  IN_PROGRESS: { label: t('production','wo_status_in_progress'), cls: 'bg-amber-100 text-amber-700',      dot: 'bg-amber-400' },
-  COMPLETED:   { label: t('production','status_completed'),      cls: 'bg-emerald-100 text-emerald-700',  dot: 'bg-emerald-400' },
-  CLOSED:      { label: t('production','wo_status_closed'),      cls: 'bg-gray-100 text-gray-500',        dot: 'bg-gray-300' },
-  CANCELLED:   { label: t('production','status_cancelled'),      cls: 'bg-red-100 text-red-600',          dot: 'bg-red-400' },
+  DRAFT:       { label: t('production','wo_status_draft'),       cls: 'bg-surface-2 text-ink-2',        dot: 'bg-gray-400' },
+  RELEASED:    { label: t('production','wo_status_released'),    cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300',        dot: 'bg-blue-400' },
+  IN_PROGRESS: { label: t('production','wo_status_in_progress'), cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300',      dot: 'bg-amber-400' },
+  COMPLETED:   { label: t('production','status_completed'),      cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300',  dot: 'bg-emerald-400' },
+  CLOSED:      { label: t('production','wo_status_closed'),      cls: 'bg-surface-2 text-muted',        dot: 'bg-surface-3' },
+  CANCELLED:   { label: t('production','status_cancelled'),      cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300',          dot: 'bg-red-400' },
 });
 
 const getQcStatus = (t) => ({
-  PENDING:      { label: t('production','wo_qc_pending'),      cls: 'text-gray-500' },
-  PASS:         { label: t('production','wo_qc_pass'),         cls: 'text-emerald-600' },
-  FAIL:         { label: t('production','wo_qc_fail'),         cls: 'text-red-600' },
-  NEEDS_REVIEW: { label: t('production','wo_qc_needs_review'), cls: 'text-amber-600' },
+  PENDING:      { label: t('production','wo_qc_pending'),      cls: 'text-muted' },
+  PASS:         { label: t('production','wo_qc_pass'),         cls: 'text-emerald-600 dark:text-emerald-300' },
+  FAIL:         { label: t('production','wo_qc_fail'),         cls: 'text-red-600 dark:text-red-300' },
+  NEEDS_REVIEW: { label: t('production','wo_qc_needs_review'), cls: 'text-amber-600 dark:text-amber-300' },
 });
 
 // ── Search dropdown ────────────────────────────────────────────────────────────
@@ -49,21 +49,21 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder }) {
         className={`${inputCls} flex items-center gap-2 cursor-pointer min-h-[38px]`}
         onClick={() => setOpen(o => !o)}
       >
-        <Search size={13} className="text-[#8E8878] flex-shrink-0" />
-        <span className={`flex-1 truncate text-sm ${selected ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}`}>
+        <Search size={13} className="text-muted flex-shrink-0" />
+        <span className={`flex-1 truncate text-sm ${selected ? 'text-ink' : 'text-muted'}`}>
           {selected ? `${selected.name}${selected.unit ? ` (${selected.unit})` : ''}` : placeholder}
         </span>
-        <ChevronDown size={13} className={`text-[#8E8878] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={13} className={`text-muted transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
       </div>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-[#E8DDD0]
+        <div className="absolute top-full left-0 right-0 z-50 bg-surface border border-line
           rounded-xl shadow-lg mt-1 overflow-hidden">
-          <div className="p-2 border-b border-[#F0EBE3]">
+          <div className="p-2 border-b border-line-soft">
             <input
               autoFocus
-              className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#E8DDD0]
-                focus:outline-none focus:border-[#C9A84C] bg-[#FAF7F2] placeholder-[#8E8878]"
+              className="w-full text-sm px-3 py-1.5 rounded-lg border border-line
+                focus:outline-none focus:border-gold bg-canvas placeholder-muted"
               placeholder={t('production','wo_search_product_ph')}
               value={q}
               onChange={e => setQ(e.target.value)}
@@ -72,13 +72,13 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder }) {
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-[#8E8878] italic">{t('production','wo_not_found')}</div>
+              <div className="px-3 py-2 text-sm text-muted italic">{t('production','wo_not_found')}</div>
             ) : (
               filtered.map(item => (
                 <button
                   key={item.id}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] transition-colors
-                    ${value === item.id ? 'bg-[#F0EBE3] font-medium' : ''}`}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-canvas transition-colors
+                    ${value === item.id ? 'bg-surface-2 font-medium' : ''}`}
                   onClick={() => { onChange(item.id); setOpen(false); setQ(''); }}
                 >
                   {item.name}{item.unit ? ` (${item.unit})` : ''}
@@ -88,8 +88,8 @@ function SearchDropdown({ items, value, onChange, onCreateNew, placeholder }) {
           </div>
           {onCreateNew && (
             <button
-              className="w-full text-left px-3 py-2.5 text-sm text-[#C9A84C] font-semibold
-                border-t border-[#F0EBE3] hover:bg-[#FAF7F2] flex items-center gap-1.5"
+              className="w-full text-left px-3 py-2.5 text-sm text-gold font-semibold
+                border-t border-line-soft hover:bg-canvas flex items-center gap-1.5"
               onClick={() => { setOpen(false); onCreateNew(q); }}
             >
               <Plus size={13} /> {t('production','wo_create_product')}{q ? `: "${q}"` : ''}
@@ -122,12 +122,12 @@ function QuickCreateProductModal({ initialName = '', onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[#1C1C1E]">{t('production','wo_create_product')}</h3>
-          <button onClick={onClose} className="text-[#8E8878] hover:text-[#1C1C1E]"><X size={18} /></button>
+          <h3 className="font-semibold text-ink">{t('production','wo_create_product')}</h3>
+          <button onClick={onClose} className="text-muted hover:text-ink"><X size={18} /></button>
         </div>
-        {err && <p className="text-xs text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-xl">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 mb-3 bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-xl">{err}</p>}
         <div className="space-y-3">
           <Field label={`${t('production','wo_field_product_name')} *`}>
             <input
@@ -151,7 +151,7 @@ function QuickCreateProductModal({ initialName = '', onClose, onCreated }) {
         </div>
         <div className="flex gap-2 mt-4">
           <button onClick={onClose}
-            className="flex-1 py-2 text-sm text-[#8E8878] border border-[#E8DDD0] rounded-xl hover:bg-[#FAF7F2]">
+            className="flex-1 py-2 text-sm text-muted border border-line rounded-xl hover:bg-canvas">
             Huỷ
           </button>
           <PrimaryButton className="flex-1" onClick={submit} loading={saving}>
@@ -188,18 +188,18 @@ function WorkOrderCard({ wo, onStatusChange }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
       <button className="w-full text-left px-5 py-4" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-sm font-bold text-[#1C1C1E]">{wo.workOrderCode}</span>
+              <span className="font-mono text-sm font-bold text-ink">{wo.workOrderCode}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
             </div>
-            <p className="text-sm text-[#8E8878] mt-0.5 truncate">{wo.productName}</p>
-            <div className="flex gap-4 mt-1 text-xs text-[#8E8878] flex-wrap">
-              <span>KH: <b className="text-[#1C1C1E]">{Number(wo.plannedQty || 0)} {wo.outputUnit}</b></span>
-              {wo.actualQty && <span>TT: <b className="text-emerald-600">{Number(wo.actualQty)} {wo.outputUnit}</b></span>}
+            <p className="text-sm text-muted mt-0.5 truncate">{wo.productName}</p>
+            <div className="flex gap-4 mt-1 text-xs text-muted flex-wrap">
+              <span>KH: <b className="text-ink">{Number(wo.plannedQty || 0)} {wo.outputUnit}</b></span>
+              {wo.actualQty && <span>TT: <b className="text-emerald-600 dark:text-emerald-300">{Number(wo.actualQty)} {wo.outputUnit}</b></span>}
               {wo.plannedStartDate && <span>📅 {fmtDate(wo.plannedStartDate)} → {fmtDate(wo.plannedEndDate)}</span>}
               {wo.assignedToName && <span>👤 {wo.assignedToName}</span>}
             </div>
@@ -209,30 +209,30 @@ function WorkOrderCard({ wo, onStatusChange }) {
               <button
                 onClick={e => { e.stopPropagation(); handleAdvance(); }}
                 disabled={changingStatus}
-                className="px-3 py-1.5 bg-[#1A2B1A] text-white text-xs font-semibold rounded-lg hover:bg-[#243824] disabled:opacity-50 transition-colors">
+                className="px-3 py-1.5 bg-forest-deep text-white text-xs font-semibold rounded-lg hover:bg-forest-mid disabled:opacity-50 transition-colors">
                 {changingStatus ? '...' : `→ ${STATUS_CONFIG[nextStatus]?.label}`}
               </button>
             )}
-            {expanded ? <ChevronUp size={16} className="text-[#8E8878]" /> : <ChevronDown size={16} className="text-[#8E8878]" />}
+            {expanded ? <ChevronUp size={16} className="text-muted" /> : <ChevronDown size={16} className="text-muted" />}
           </div>
         </div>
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 border-t border-black/5">
+        <div className="px-5 pb-4 border-t border-hairline">
           {wo.operations?.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{t('production','wo_steps')}</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{t('production','wo_steps')}</p>
               <div className="space-y-1.5">
                 {wo.operations.map((op, i) => {
                   const qcCfg = QC_STATUS[op.qcStatus] || QC_STATUS.PENDING;
                   return (
                     <div key={i} className="flex items-center gap-3 text-xs">
-                      <div className="w-5 h-5 rounded-full bg-[#1A2B1A]/10 flex items-center justify-center text-[10px] font-bold text-[#1A2B1A] flex-shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-forest-deep/10 flex items-center justify-center text-[10px] font-bold text-forest flex-shrink-0">
                         {op.operationSequence}
                       </div>
-                      <span className="flex-1 text-[#1C1C1E]">{op.operationName}</span>
-                      {op.machineName && <span className="text-[#8E8878]">⚙ {op.machineName}</span>}
+                      <span className="flex-1 text-ink">{op.operationName}</span>
+                      {op.machineName && <span className="text-muted">⚙ {op.machineName}</span>}
                       {op.qcRequired && <span className={`font-medium ${qcCfg.cls}`}>{qcCfg.label}</span>}
                     </div>
                   );
@@ -241,7 +241,7 @@ function WorkOrderCard({ wo, onStatusChange }) {
             </div>
           )}
           {wo.notes && (
-            <p className="mt-3 text-xs text-[#8E8878] italic">{wo.notes}</p>
+            <p className="mt-3 text-xs text-muted italic">{wo.notes}</p>
           )}
         </div>
       )}
@@ -342,15 +342,15 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="bg-surface rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
           {/* Header */}
-          <div className="px-6 py-4 border-b border-black/5 bg-[#1A2B1A] flex items-center justify-between flex-shrink-0">
+          <div className="px-6 py-4 border-b border-hairline bg-forest-deep flex items-center justify-between flex-shrink-0">
             <h2 className="text-white font-semibold text-sm">{t('production','wo_create_title')}</h2>
             <button onClick={onClose} className="text-white/60 hover:text-white"><X size={18} /></button>
           </div>
 
           <div className="p-6 space-y-5 overflow-y-auto flex-1">
-            {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+            {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
             {/* Kế hoạch sản xuất (optional) */}
             {plans.length > 0 && (
@@ -404,22 +404,22 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
             {/* Operations */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-[#1C1C1E]">{t('production','wo_operations')}</p>
+                <p className="text-sm font-semibold text-ink">{t('production','wo_operations')}</p>
                 <button onClick={addOp}
-                  className="flex items-center gap-1 text-xs text-[#1A2B1A] font-semibold hover:underline">
+                  className="flex items-center gap-1 text-xs text-forest font-semibold hover:underline">
                   <Plus size={13} />Thêm bước
                 </button>
               </div>
               <div className="space-y-3">
                 {operations.map((op, idx) => (
-                  <div key={idx} className="border border-black/5 rounded-xl p-4 bg-[#FAF7F2]">
+                  <div key={idx} className="border border-hairline rounded-xl p-4 bg-canvas">
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-5 h-5 rounded-full bg-[#1A2B1A] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-forest-deep text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                         {op.operationSequence}
                       </div>
-                      <span className="text-xs font-medium text-[#8E8878]">{t('production','wo_step_n',{n:op.operationSequence})}</span>
+                      <span className="text-xs font-medium text-muted">{t('production','wo_step_n',{n:op.operationSequence})}</span>
                       {operations.length > 1 && (
-                        <button onClick={() => removeOp(idx)} className="ml-auto text-[#8E8878] hover:text-red-500">
+                        <button onClick={() => removeOp(idx)} className="ml-auto text-muted hover:text-red-500">
                           <X size={13} />
                         </button>
                       )}
@@ -444,8 +444,8 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
                         <label className="flex items-center gap-2 cursor-pointer text-sm">
                           <input type="checkbox" checked={op.qcRequired}
                             onChange={e => setOp(idx, 'qcRequired', e.target.checked)}
-                            className="w-4 h-4 rounded accent-[#1A2B1A]" />
-                          <span className="text-[#1C1C1E]">{t('production','wo_qc_required')}</span>
+                            className="w-4 h-4 rounded accent-forest" />
+                          <span className="text-ink">{t('production','wo_qc_required')}</span>
                         </label>
                       </div>
                       {op.qcRequired && (
@@ -474,8 +474,8 @@ function CreateWorkOrderModal({ plans, allProducts, machines, onClose, onSaved }
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-black/5 bg-[#FAF7F2]/50 flex gap-3 justify-end flex-shrink-0">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-[#8E8878]">{t('common','cancel')}</button>
+          <div className="px-6 py-4 border-t border-hairline bg-canvas/50 flex gap-3 justify-end flex-shrink-0">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-muted">{t('common','cancel')}</button>
             <PrimaryButton onClick={submit} loading={saving}
               disabled={!form.factoryProductId || !form.plannedQty}>
               Tạo lệnh sản xuất
@@ -541,11 +541,11 @@ export default function OwnerWorkOrderPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E]">{t('production','wo_title')}</h1>
-          <p className="text-sm text-[#8E8878] mt-1">{t('production','wo_subtitle')}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-ink">{t('production','wo_title')}</h1>
+          <p className="text-sm text-muted mt-1">{t('production','wo_subtitle')}</p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-[#1A2B1A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#243824] transition-colors">
+          className="flex items-center gap-2 bg-forest-deep text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-forest-mid transition-colors">
           <Plus size={16} />Tạo lệnh
         </button>
       </div>
@@ -557,8 +557,8 @@ export default function OwnerWorkOrderPage() {
             onClick={() => setStatusFilter(val)}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
               statusFilter === val
-                ? 'bg-[#1A2B1A] text-white'
-                : 'bg-white border border-black/10 text-[#8E8878] hover:text-[#1C1C1E]'
+                ? 'bg-forest-deep text-white'
+                : 'bg-surface border border-hairline-2 text-muted hover:text-ink'
             }`}>
             {label}
             {val && counts[val] ? ` (${counts[val]})` : ''}
@@ -573,9 +573,9 @@ export default function OwnerWorkOrderPage() {
           <WorkOrderCard key={wo.id} wo={wo} onStatusChange={() => loadData(page)} />
         ))}
         {!loading && workOrders.length === 0 && (
-          <div className="bg-white rounded-2xl border border-black/5 p-12 text-center">
-            <ClipboardList size={32} className="mx-auto text-[#8E8878] mb-3" />
-            <p className="text-sm text-[#8E8878]">{t('production','wo_empty')}</p>
+          <div className="bg-surface rounded-2xl border border-hairline p-12 text-center">
+            <ClipboardList size={32} className="mx-auto text-muted mb-3" />
+            <p className="text-sm text-muted">{t('production','wo_empty')}</p>
           </div>
         )}
       </div>
@@ -586,7 +586,7 @@ export default function OwnerWorkOrderPage() {
           {Array.from({ length: totalPages }, (_, i) => (
             <button key={i} onClick={() => loadData(i)}
               className={`w-8 h-8 rounded-lg text-sm font-medium ${
-                page === i ? 'bg-[#1A2B1A] text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                page === i ? 'bg-forest-deep text-white' : 'bg-surface border border-line text-ink-2 hover:bg-canvas'
               }`}>{i + 1}</button>
           ))}
         </div>

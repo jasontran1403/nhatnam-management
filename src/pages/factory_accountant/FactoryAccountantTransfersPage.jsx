@@ -19,10 +19,8 @@ import { useLang } from '../../context/LangContext';
 import { useFmt } from '../../utils/useFmt';
 import { useToast } from '../../components/common/Toast.jsx';
 import { downloadBlob } from '../../utils/downloadBlob';
+import { fmtQty } from '../../utils/format.js';
 
-function fmtQty(v) {
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(Number(v || 0));
-}
 
 function fmtDateTime(ms) {
   if (!ms) return '—';
@@ -78,23 +76,23 @@ function ReceiveTransferModal({ note, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title={`Xác nhận nhận hàng — ${note.noteCode}`} size="lg">
       <div className="space-y-4">
-        <p className="text-sm text-[#8E8878]">
+        <p className="text-sm text-muted">
           Nhập số lượng đóng gói thực tế đếm được + tổng trọng lượng thực cân của tất cả gói đã đóng cho từng sản phẩm.
           Hao hụt sẽ tự tính = kg đã chuyển − kg thực cân. Chỉ xác nhận được <b>1 lần duy nhất</b> cho cả phiếu.
         </p>
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
 
         <div className="space-y-3">
           {note.lines.map((line, idx) => {
             const loss = lossPreview(line, idx);
             return (
-              <div key={line.id} className="bg-[#FAF7F2] rounded-xl p-3">
+              <div key={line.id} className="bg-canvas rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-[#1C1C1E]">{line.productName}</span>
-                  <span className="text-xs text-[#8E8878]">Đã chuyển: {fmtQty(line.transferredQty)} {line.unit}</span>
+                  <span className="text-sm font-semibold text-ink">{line.productName}</span>
+                  <span className="text-xs text-muted">Đã chuyển: {fmtQty(line.transferredQty)} {line.unit}</span>
                 </div>
                 {line.estimatedPackagedQty != null && (
-                  <p className="text-[11px] text-[#8E8878] mb-2">
+                  <p className="text-[11px] text-muted mb-2">
                     Ước tính dự kiến: ~{fmtQty(line.estimatedPackagedQty)} {line.sourceBatches?.[0]?.packagedUnit || 'túi'} (chỉ tham khảo, không dùng tính hao hụt)
                   </p>
                 )}
@@ -112,11 +110,11 @@ function ReceiveTransferModal({ note, onClose, onSaved }) {
                 </div>
                 {loss != null && (
                   loss > 0 ? (
-                    <p className="mt-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                    <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-lg px-2 py-1.5">
                       ⚠ Hao hụt đóng gói: {fmtQty(loss)} {line.unit} — sẽ tự lập biên bản hao hụt
                     </p>
                   ) : (
-                    <p className="mt-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1.5">
+                    <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-lg px-2 py-1.5">
                       ✓ Không hao hụt (cân đủ hoặc dư so với kg chuyển)
                     </p>
                   )
@@ -173,54 +171,54 @@ function TransferNoteCard({ note, onReceive }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
       <button onClick={() => setExpanded(v => !v)}
-        className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#FAF7F2] transition-colors">
+        className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-canvas transition-colors">
         <div>
           <div className="flex items-center gap-2">
-            <p className="font-mono font-semibold text-sm text-[#1C1C1E]">{note.noteCode}</p>
+            <p className="font-mono font-semibold text-sm text-ink">{note.noteCode}</p>
             {isPending ? (
-              <Badge className="bg-amber-50 text-amber-700 ring-amber-200"><Clock size={11} className="inline mr-1" />{t('production','sft_status_pending')}</Badge>
+              <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28"><Clock size={11} className="inline mr-1" />{t('production','sft_status_pending')}</Badge>
             ) : (
-              <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200"><CheckCircle2 size={11} className="inline mr-1" />{t('production','sft_status_received')}</Badge>
+              <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28"><CheckCircle2 size={11} className="inline mr-1" />{t('production','sft_status_received')}</Badge>
             )}
           </div>
-          <p className="text-xs text-[#8E8878] mt-1">{note.createdByName} · {fmtDateTime(note.createdAt)}</p>
+          <p className="text-xs text-muted mt-1">{note.createdByName} · {fmtDateTime(note.createdAt)}</p>
         </div>
         <div className="flex items-center gap-2">
           {isPending && (
             <button onClick={(e) => { e.stopPropagation(); onReceive(note); }}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[#1A2B1A] text-white hover:bg-[#243524]">
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-forest-deep text-white hover:bg-forest-mid">
               <CheckCircle2 size={13} /> Xác nhận nhận
             </button>
           )}
           {!isPending && (
             <button onClick={(e) => { e.stopPropagation(); printTransferIn(); }} disabled={printingOp === 'in'}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[#E8F0E8] text-[#1A2B1A] hover:bg-[#D8E8D8] disabled:opacity-50">
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-surface-2 text-forest hover:bg-surface-3 disabled:opacity-50">
               <Printer size={13} /> {printingOp === 'in' ? 'Đang xuất...' : 'In phiếu nhập TP'}
             </button>
           )}
-          {expanded ? <ChevronUp size={16} className="text-[#8E8878]" /> : <ChevronDown size={16} className="text-[#8E8878]" />}
+          {expanded ? <ChevronUp size={16} className="text-muted" /> : <ChevronDown size={16} className="text-muted" />}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 border-t border-black/10 space-y-3 pt-3">
+        <div className="px-5 pb-4 border-t border-hairline-2 space-y-3 pt-3">
           {note.lines.map(l => (
-            <div key={l.id} className="bg-[#FAF7F2] rounded-xl p-3">
+            <div key={l.id} className="bg-canvas rounded-xl p-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-[#1C1C1E]">{l.productName}</span>
-                <span className="text-sm text-[#8E8878]">{fmtQty(l.transferredQty)} {l.unit}</span>
+                <span className="text-sm font-semibold text-ink">{l.productName}</span>
+                <span className="text-sm text-muted">{fmtQty(l.transferredQty)} {l.unit}</span>
               </div>
               {l.packagedQty != null && (
                 <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-emerald-600">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-300">
                     ✓ Đã nhận: {fmtQty(l.packagedQty)} {l.packagedUnit} — cân thực {fmtQty(l.actualReceivedWeight)} {l.unit}
-                    {l.lossQty > 0 && <span className="text-amber-600"> · hao hụt {fmtQty(l.lossQty)} {l.unit}</span>}
+                    {l.lossQty > 0 && <span className="text-amber-600 dark:text-amber-300"> · hao hụt {fmtQty(l.lossQty)} {l.unit}</span>}
                   </p>
                   {l.lossQty > 0 && l.lossReportId && (
                     <button onClick={() => printLossReport(l)} disabled={printingOp === `loss-${l.id}`}
-                      className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg hover:bg-amber-100 disabled:opacity-50 flex-shrink-0 ml-2">
+                      className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-lg hover:bg-amber-100 dark:bg-amber-500/18 disabled:opacity-50 flex-shrink-0 ml-2">
                       <FileWarning size={11} /> {printingOp === `loss-${l.id}` ? 'Đang xuất...' : 'In biên bản hao hụt'}
                     </button>
                   )}
@@ -228,7 +226,7 @@ function TransferNoteCard({ note, onReceive }) {
               )}
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {(l.sourceBatches || []).map((sb, i) => (
-                  <span key={i} className="text-[11px] bg-white border border-black/10 rounded-full px-2 py-1 text-[#1C1C1E] font-mono">
+                  <span key={i} className="text-[11px] bg-surface border border-hairline-2 rounded-full px-2 py-1 text-ink font-mono">
                     {sb.batchCode}: {fmtQty(sb.quantity)} {l.unit}
                   </span>
                 ))}
@@ -236,7 +234,7 @@ function TransferNoteCard({ note, onReceive }) {
             </div>
           ))}
           {note.receivedByName && (
-            <p className="text-xs text-[#8E8878]">Xác nhận bởi {note.receivedByName} · {fmtDateTime(note.receivedAt)}</p>
+            <p className="text-xs text-muted">Xác nhận bởi {note.receivedByName} · {fmtDateTime(note.receivedAt)}</p>
           )}
         </div>
       )}
@@ -279,15 +277,15 @@ export default function FactoryAccountantTransfersPage() {
   const pendingCount = items.filter(t => t.status === 'PENDING').length;
 
   return (
-    <div className="p-4 space-y-4 bg-[#F5F0EB] min-h-full">
+    <div className="p-4 space-y-4 bg-surface-2 min-h-full">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production','sft_title')}</h1>
+        <h1 className="text-xl font-bold text-ink">{t('production','sft_title')}</h1>
       </div>
 
       {factories.length > 1 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
-          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+          <span className="text-xs text-muted font-medium">{t('production','mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-line bg-surface text-ink focus:outline-none focus:border-gold"
             value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">{t('common','all')}</option>
             {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -295,14 +293,14 @@ export default function FactoryAccountantTransfersPage() {
         </div>
       )}
 
-      <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
+      <div className="flex gap-1 bg-surface border border-hairline rounded-xl p-1 w-fit shadow-sm">
         {[
           { id: 'PENDING', label: t('production','sft_pending') },
           { id: 'RECEIVED', label: t('production','sft_received') },
           { id: 'ALL', label: t('production','sft_all') },
         ].map(s => (
           <button key={s.id} onClick={() => setStatusFilter(s.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === s.id ? 'bg-chrome text-white' : 'text-muted hover:text-ink'}`}>
             {s.label}
           </button>
         ))}
@@ -312,9 +310,9 @@ export default function FactoryAccountantTransfersPage() {
         ? <div className="space-y-3">{[1, 2, 3].map(i => <CardSkeleton key={i} />)}</div>
         : items.length === 0
           ? (
-            <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-              <FileText size={32} className="mx-auto text-[#8E8878] mb-2" />
-              <p className="text-[#8E8878] text-sm">{t('production','sft_empty')}</p>
+            <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-10 text-center">
+              <FileText size={32} className="mx-auto text-muted mb-2" />
+              <p className="text-muted text-sm">{t('production','sft_empty')}</p>
             </div>
           )
           : (

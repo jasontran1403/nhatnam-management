@@ -277,13 +277,13 @@ export const productionUploadApi = {
 // ── Trạng thái: TÁCH màu (STATUS_META) khỏi nhãn (dịch qua t) ─────────────────
 // Không hard-code label tiếng Việt ở đây nữa.
 export const STATUS_META = {
-  SCHEDULED:    { key: 'status_scheduled',    cls: 'bg-blue-100 text-blue-700',      dot: 'bg-blue-400' },
-  PENDING_PLAN: { key: 'status_pending_plan', cls: 'bg-amber-100 text-amber-700',    dot: 'bg-amber-400' },
-  PLANNED:      { key: 'status_planned',      cls: 'bg-indigo-100 text-indigo-700',  dot: 'bg-indigo-400' },
-  IN_PROGRESS:  { key: 'status_in_progress',  cls: 'bg-orange-100 text-orange-700',  dot: 'bg-orange-400' },
-  COMPLETED:    { key: 'status_completed',    cls: 'bg-emerald-100 text-emerald-700',dot: 'bg-emerald-400' },
-  CANCELLED:    { key: 'status_cancelled',    cls: 'bg-red-100 text-red-600',        dot: 'bg-red-400' },
-  ACTIVE:       { key: 'status_active',       cls: 'bg-emerald-100 text-emerald-700',dot: 'bg-emerald-400' },
+  SCHEDULED:    { key: 'status_scheduled',    cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300',      dot: 'bg-blue-400' },
+  PENDING_PLAN: { key: 'status_pending_plan', cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300',    dot: 'bg-amber-400' },
+  PLANNED:      { key: 'status_planned',      cls: 'bg-indigo-100 dark:bg-indigo-500/18 text-indigo-700 dark:text-indigo-300',  dot: 'bg-indigo-400' },
+  IN_PROGRESS:  { key: 'status_in_progress',  cls: 'bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300',  dot: 'bg-orange-400' },
+  COMPLETED:    { key: 'status_completed',    cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300',dot: 'bg-emerald-400' },
+  CANCELLED:    { key: 'status_cancelled',    cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300',        dot: 'bg-red-400' },
+  ACTIVE:       { key: 'status_active',       cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300',dot: 'bg-emerald-400' },
 };
 
 // Dùng TRONG component: const STATUS = getStatusLabels(t);
@@ -298,12 +298,12 @@ export const getStatusLabels = (t) =>
 // Màu progress bar / Gantt theo % tiến độ
 export function progressColor(pct) {
   const v = Number(pct || 0);
-  if (v > 100) return { bg: 'bg-emerald-700', text: 'text-emerald-700', hex: '#047857' };
-  if (v >= 100) return { bg: 'bg-emerald-500', text: 'text-emerald-600', hex: '#10b981' };
-  if (v >= 75)  return { bg: 'bg-lime-500',    text: 'text-lime-600',    hex: '#84cc16' };
-  if (v >= 50)  return { bg: 'bg-yellow-400',  text: 'text-yellow-600',  hex: '#facc15' };
-  if (v >= 25)  return { bg: 'bg-orange-400',  text: 'text-orange-600',  hex: '#fb923c' };
-  return             { bg: 'bg-red-400',      text: 'text-red-600',     hex: '#f87171' };
+  if (v > 100) return { bg: 'bg-emerald-700', text: 'text-emerald-700 dark:text-emerald-300', hex: 'var(--c-success-ink)' };
+  if (v >= 100) return { bg: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-300', hex: 'var(--c-success)' };
+  if (v >= 75)  return { bg: 'bg-lime-500',    text: 'text-lime-600 dark:text-lime-300',    hex: '#84cc16' };
+  if (v >= 50)  return { bg: 'bg-yellow-400',  text: 'text-yellow-600 dark:text-yellow-300',  hex: '#facc15' };
+  if (v >= 25)  return { bg: 'bg-orange-400',  text: 'text-orange-600 dark:text-orange-300',  hex: '#fb923c' };
+  return             { bg: 'bg-red-400',      text: 'text-red-600 dark:text-red-300',     hex: '#f87171' };
 }
 
 /** @deprecated dùng useFmt() để format theo ngôn ngữ đang chọn */

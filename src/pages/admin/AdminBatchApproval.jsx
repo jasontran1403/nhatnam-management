@@ -34,15 +34,15 @@ export default function AdminBatchApproval() {
   const SIZE = 20;
 
   const STATUS_CFG = {
-    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-    PARTIALLY_APPROVED: { label: t('batch', 'partial_approved'), bg: 'bg-blue-50 text-blue-700 border-blue-200', icon: AlertCircle },
-    APPROVED: { label: t('status', 'approved'), bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-    REJECTED: { label: t('status', 'rejected_short'), bg: 'bg-red-50 text-red-700 border-red-200', icon: XCircle },
+    PENDING: { label: t('status', 'pending'), bg: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28', icon: Clock },
+    PARTIALLY_APPROVED: { label: t('batch', 'partial_approved'), bg: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/28', icon: AlertCircle },
+    APPROVED: { label: t('status', 'approved'), bg: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: CheckCircle },
+    REJECTED: { label: t('status', 'rejected_short'), bg: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/28', icon: XCircle },
   };
   const ITEM_STATUS_CFG = {
-    PENDING: { label: t('status', 'waiting'), bg: 'bg-amber-50 text-amber-700' },
-    APPROVED: { label: t('status', 'approved'), bg: 'bg-emerald-50 text-emerald-700' },
-    REJECTED: { label: t('status', 'rejected_short'), bg: 'bg-red-50 text-red-700' },
+    PENDING: { label: t('status', 'waiting'), bg: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300' },
+    APPROVED: { label: t('status', 'approved'), bg: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+    REJECTED: { label: t('status', 'rejected_short'), bg: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300' },
   };
 
   const fetchBatches = useCallback(async () => {
@@ -129,13 +129,13 @@ export default function AdminBatchApproval() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-[#F0EBE3]">
+      <div className="flex-shrink-0 px-6 py-4 bg-surface border-b border-line-soft">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>Duyệt phiếu sản phẩm</h1>
-            <p className="text-xs text-[#8E8878]">{total} phiếu</p>
+            <h1 className="text-xl font-bold text-ink" style={{ fontFamily: 'var(--font-display)' }}>Duyệt phiếu sản phẩm</h1>
+            <p className="text-xs text-muted">{total} phiếu</p>
           </div>
-          <button onClick={fetchBatches} className="p-2 rounded-xl text-[#8E8878] hover:bg-[#FAF7F2] transition-all">
+          <button onClick={fetchBatches} className="p-2 rounded-xl text-muted hover:bg-canvas transition-all">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
@@ -146,7 +146,7 @@ export default function AdminBatchApproval() {
             return (
               <button key={s} onClick={() => { setStatusFilter(s); setPage(0); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0
-                  ${statusFilter === s ? 'bg-[#C9A84C] text-white' : 'border border-[#E8DDD0] text-[#5C5C5C] hover:bg-[#FAF7F2]'}`}>
+                  ${statusFilter === s ? 'bg-gold text-white' : 'border border-line text-ink-2 hover:bg-canvas'}`}>
                 {s === 'ALL' ? 'Tất cả' : cfg.label}
               </button>
             );
@@ -158,10 +158,10 @@ export default function AdminBatchApproval() {
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : batches.length === 0 ? (
-          <div className="text-center py-16 text-[#8E8878]">
+          <div className="text-center py-16 text-muted">
             <FileText size={40} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm">Không có phiếu nào</p>
           </div>
@@ -173,30 +173,30 @@ export default function AdminBatchApproval() {
               return (
                 <div key={b.id}
                   onClick={() => openDetail(b)}
-                  className="bg-white rounded-2xl border border-[#F0EBE3] p-5 cursor-pointer hover:border-[#C9A84C]/50 hover:shadow-md transition-all">
+                  className="bg-surface rounded-2xl border border-line-soft p-5 cursor-pointer hover:border-gold/50 hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-bold text-[#1C1C1E]">{b.batchCode}</span>
+                        <span className="text-sm font-bold text-ink">{b.batchCode}</span>
                         <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.bg}`}>
                           <BIcon size={9} />{cfg.label}
                         </span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium
-                          ${b.type === 'CREATE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                          ${b.type === 'CREATE' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/28'}`}>
                           {b.type === 'CREATE' ? '+ Tạo mới' : '✎ Cập nhật'}
                         </span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-[#8E8878]">
-                        <span>Operator: <span className="text-[#5C5C5C]">{b.createdByName}</span></span>
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted">
+                        <span>Operator: <span className="text-ink-2">{b.createdByName}</span></span>
                         <span>{b.itemCount} sản phẩm</span>
                         <span>Gửi: {formatDate(b.createdAt)}</span>
                         {b.reviewedByName && <span>Duyệt bởi: {b.reviewedByName}</span>}
                       </div>
-                      {b.note && <p className="mt-1 text-xs text-[#8E8878] italic">"{b.note}"</p>}
+                      {b.note && <p className="mt-1 text-xs text-muted italic">"{b.note}"</p>}
                     </div>
                     <div className="text-right text-[10px] flex-shrink-0 space-y-0.5">
-                      {b.approvedCount > 0 && <div className="text-emerald-600 font-medium">✓ {b.approvedCount} duyệt</div>}
-                      {b.pendingCount > 0 && <div className="text-amber-600">⏳ {b.pendingCount} chờ</div>}
+                      {b.approvedCount > 0 && <div className="text-emerald-600 dark:text-emerald-300 font-medium">✓ {b.approvedCount} duyệt</div>}
+                      {b.pendingCount > 0 && <div className="text-amber-600 dark:text-amber-300">⏳ {b.pendingCount} chờ</div>}
                       {b.rejectedCount > 0 && <div className="text-red-500">✗ {b.rejectedCount} từ chối</div>}
                     </div>
                   </div>
@@ -210,16 +210,16 @@ export default function AdminBatchApproval() {
       {/* Detail Panel */}
       {detail && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-stretch justify-end">
-          <div className="w-full max-w-2xl bg-white flex flex-col h-full shadow-2xl">
+          <div className="w-full max-w-2xl bg-surface flex flex-col h-full shadow-2xl">
             {/* Panel header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE3] flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-line-soft flex-shrink-0">
               <div>
-                <h2 className="text-base font-bold text-[#1C1C1E]">{detail.batchCode}</h2>
-                <p className="text-xs text-[#8E8878]">
+                <h2 className="text-base font-bold text-ink">{detail.batchCode}</h2>
+                <p className="text-xs text-muted">
                   {detail.type === 'CREATE' ? 'Phiếu tạo mới' : 'Phiếu cập nhật'} — {detail.createdByName}
                 </p>
               </div>
-              <button onClick={() => setDetail(null)} className="p-2 rounded-xl text-[#8E8878] hover:bg-[#FAF7F2]">
+              <button onClick={() => setDetail(null)} className="p-2 rounded-xl text-muted hover:bg-canvas">
                 <X size={18} />
               </button>
             </div>
@@ -228,14 +228,14 @@ export default function AdminBatchApproval() {
             <div className="flex-1 overflow-y-auto p-5 space-y-3">
               {detailLoading ? (
                 <div className="flex items-center justify-center h-40">
-                  <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
                 <>
                   {/* Select all pending */}
                   {(detail.items || []).some(i => i.status === 'PENDING') && (
                     <button onClick={selectAllPending}
-                      className="text-xs text-[#C9A84C] hover:underline flex items-center gap-1">
+                      className="text-xs text-gold hover:underline flex items-center gap-1">
                       <CheckCheck size={12} /> Chọn tất cả chờ duyệt
                     </button>
                   )}
@@ -247,28 +247,28 @@ export default function AdminBatchApproval() {
                       <div key={item.id}
                         onClick={() => isPending && toggleItemSelect(item.id)}
                         className={`rounded-xl border p-4 transition-all ${isPending ? 'cursor-pointer' : ''}
-                          ${isSelected ? 'border-[#C9A84C] bg-[#C9A84C]/5' : 'border-[#F0EBE3] bg-white hover:border-[#E8DDD0]'}`}>
+                          ${isSelected ? 'border-gold bg-gold/5' : 'border-line-soft bg-surface hover:border-line'}`}>
                         <div className="flex items-start gap-3">
                           {isPending && (
                             <div className={`mt-0.5 w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center
-                              ${isSelected ? 'bg-[#C9A84C] border-[#C9A84C]' : 'border-[#D3CFC8]'}`}>
+                              ${isSelected ? 'bg-gold border-gold' : 'border-line'}`}>
                               {isSelected && <Check size={10} className="text-white" />}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-[#1C1C1E]">{item.productName}</span>
+                              <span className="text-sm font-semibold text-ink">{item.productName}</span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${iCfg.bg}`}>{iCfg.label}</span>
                             </div>
-                            <div className="mt-1 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5 text-xs text-[#8E8878]">
+                            <div className="mt-1 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5 text-xs text-muted">
                               {item.categoryName && <span>Danh mục: {item.categoryName}</span>}
                               {item.unit && <span>Đơn vị: {item.unit}</span>}
                               {item.basePrice != null && <span>Giá gốc: {formatPrice(item.basePrice)}</span>}
                               {item.vatRate != null && <span>VAT: {item.vatRate}% ({item.vatMode === 'INCLUSIVE' ? 'trong giá' : 'ngoài giá'})</span>}
                               {item.maxDiscountRate != null && item.maxDiscountRate > 0 && (
-                                <span className="text-orange-600">CK tối đa: {item.maxDiscountRate}%</span>
+                                <span className="text-orange-600 dark:text-orange-300">CK tối đa: {item.maxDiscountRate}%</span>
                               )}
-                              {item.existingProductId && <span className="text-blue-600">Cập nhật SP #{item.existingProductId}</span>}
+                              {item.existingProductId && <span className="text-blue-600 dark:text-blue-300">Cập nhật SP #{item.existingProductId}</span>}
                             </div>
                             {/* Tiers preview */}
                             {item.tiersJson && (() => {
@@ -278,7 +278,7 @@ export default function AdminBatchApproval() {
                                 return (
                                   <div className="mt-2 flex flex-wrap gap-1">
                                     {tiers.map((t, ti) => (
-                                      <span key={ti} className="text-[10px] px-2 py-0.5 bg-[#FAF7F2] border border-[#F0EBE3] rounded-full text-[#5C5C5C]">
+                                      <span key={ti} className="text-[10px] px-2 py-0.5 bg-canvas border border-line-soft rounded-full text-ink-2">
                                         {t.tierName}: {formatPrice(t.price)}
                                       </span>
                                     ))}
@@ -287,7 +287,7 @@ export default function AdminBatchApproval() {
                               } catch { return null; }
                             })()}
                             {item.reviewNote && (
-                              <p className="mt-1.5 text-[10px] text-red-600 italic">Lý do: {item.reviewNote}</p>
+                              <p className="mt-1.5 text-[10px] text-red-600 dark:text-red-300 italic">Lý do: {item.reviewNote}</p>
                             )}
                           </div>
                         </div>
@@ -300,13 +300,13 @@ export default function AdminBatchApproval() {
 
             {/* Actions */}
             {detail.status !== 'APPROVED' && detail.status !== 'REJECTED' && (
-              <div className="flex-shrink-0 px-5 pb-5 border-t border-[#F0EBE3] pt-4">
+              <div className="flex-shrink-0 px-5 pb-5 border-t border-line-soft pt-4">
                 <textarea
                   value={reviewNote}
                   onChange={e => setReviewNote(e.target.value)}
                   placeholder="Ghi chú duyệt / lý do từ chối (tuỳ chọn)..."
                   rows={2}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-[#E8DDD0] focus:outline-none focus:border-[#C9A84C] resize-none mb-3"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold resize-none mb-3"
                 />
                 <div className="flex gap-2">
                   {selectedItems.size > 0 && (
@@ -322,7 +322,7 @@ export default function AdminBatchApproval() {
                     {acting ? 'Đang xử lý...' : 'Duyệt tất cả'}
                   </button>
                   <button onClick={handleRejectBatch} disabled={acting}
-                    className="flex-1 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
+                    className="flex-1 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/28 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
                     <XCircle size={14} />
                     {acting ? '...' : t('common', 'reject')}
                   </button>

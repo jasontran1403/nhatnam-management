@@ -11,16 +11,16 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Mét', 'Cuộn'];
 
 const UNIT_COLORS = {
-  kg: 'bg-blue-50 text-blue-600 border-blue-200',
-  gr: 'bg-violet-50 text-violet-600 border-violet-200',
-  lít: 'bg-teal-50 text-teal-600 border-teal-200',
-  ml: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-  cái: 'bg-orange-50 text-orange-600 border-orange-200',
-  hộp: 'bg-amber-50 text-amber-600 border-amber-200',
-  cây: 'bg-green-50 text-green-600 border-green-200',
+  kg: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-500/28',
+  gr: 'bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-300 border-violet-200 dark:border-violet-500/28',
+  lít: 'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-300 border-teal-200 dark:border-teal-500/28',
+  ml: 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/28',
+  cái: 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 border-orange-200 dark:border-orange-500/28',
+  hộp: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-500/28',
+  cây: 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-300 border-green-200 dark:border-green-500/28',
 };
 const getUnitColor = (u) =>
-  UNIT_COLORS[u?.toLowerCase()] ?? 'bg-stone-50 text-stone-500 border-stone-200';
+  UNIT_COLORS[u?.toLowerCase()] ?? 'bg-canvas text-muted border-line';
 
 function getFullImageUrl(url) {
   if (!url) return null;
@@ -56,10 +56,10 @@ function ImagePicker({ value, onChange }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs text-[#8E8878] block">Ảnh nguyên liệu</label>
+      <label className="text-xs text-muted block">Ảnh nguyên liệu</label>
       <div
         onClick={() => !uploading && fileRef.current?.click()}
-        className="relative w-full h-32 rounded-xl border-2 border-dashed border-[#E8DDD0] bg-[#FAF8F3] flex items-center justify-center cursor-pointer overflow-hidden group hover:border-[#C9A84C] transition-colors"
+        className="relative w-full h-32 rounded-xl border-2 border-dashed border-line bg-canvas flex items-center justify-center cursor-pointer overflow-hidden group hover:border-gold transition-colors"
       >
         {previewUrl ? (
           <>
@@ -77,12 +77,12 @@ function ImagePicker({ value, onChange }) {
             </button>
           </>
         ) : uploading ? (
-          <div className="flex flex-col items-center gap-2 text-[#C9A84C]">
-            <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-2 text-gold">
+            <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
             <span className="text-xs">Đang upload...</span>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 text-[#C4B9A8]">
+          <div className="flex flex-col items-center gap-2 text-faint">
             <Image size={28} strokeWidth={1.5} />
             <span className="text-xs">Nhấn để chọn ảnh</span>
           </div>
@@ -172,17 +172,17 @@ export default function IngredientsPage() {
     <div className="h-full flex flex-col overflow-hidden">
 
       {/* Header */}
-      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
+      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-surface border-b border-line-soft">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
+            <h1 className="text-xl font-bold text-ink" style={{ fontFamily: 'var(--font-display)' }}>
               Nguyên liệu
             </h1>
-            <p className="text-xs text-[#8E8878]">{ingredients.length} nguyên liệu</p>
+            <p className="text-xs text-muted">{ingredients.length} nguyên liệu</p>
           </div>
           <div className="sm:ml-auto flex items-center gap-2">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 placeholder="Tìm nguyên liệu..."
@@ -191,7 +191,7 @@ export default function IngredientsPage() {
                 className="input-elegant rounded-xl pl-9 pr-4 py-2 text-sm w-44"
               />
             </div>
-            <button onClick={fetchAll} className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
+            <button onClick={fetchAll} className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors">
               <RefreshCw size={15} />
             </button>
             <button onClick={openCreate} className="btn-gold flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm">
@@ -205,10 +205,10 @@ export default function IngredientsPage() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2">
+          <div className="flex flex-col items-center justify-center py-16 text-muted gap-2">
             <Leaf size={36} strokeWidth={1} />
             <p className="text-sm">Không có nguyên liệu nào</p>
             <button onClick={openCreate} className="btn-gold rounded-xl px-4 py-2 text-sm mt-2">Thêm nguyên liệu</button>
@@ -216,12 +216,12 @@ export default function IngredientsPage() {
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden sm:block bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden">
+            <div className="hidden sm:block bg-surface rounded-2xl border border-line-soft overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
+                <thead className="bg-canvas border-b border-line-soft">
                   <tr>
                     {[t('ingredient','ingredient'), t('common','unit'), t('warehouse','stock'), t('common','actions')].map((h) => (
-                      <th key={h} className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">{h}</th>
+                      <th key={h} className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -229,27 +229,27 @@ export default function IngredientsPage() {
                   {filtered.map((item) => {
                     const img = getFullImageUrl(item.imageUrl);
                     return (
-                      <tr key={item.id} className="border-b border-[#F0EBE3] last:border-0 hover:bg-[#FAF7F2] transition-colors">
+                      <tr key={item.id} className="border-b border-line-soft last:border-0 hover:bg-canvas transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#F0EBE3] flex-shrink-0 flex items-center justify-center">
-                              {img ? <img src={img} alt={item.name} className="w-full h-full object-cover" /> : <Leaf size={14} className="text-[#C9A84C]" />}
+                            <div className="w-9 h-9 rounded-lg overflow-hidden bg-surface-2 flex-shrink-0 flex items-center justify-center">
+                              {img ? <img src={img} alt={item.name} className="w-full h-full object-cover" /> : <Leaf size={14} className="text-gold" />}
                             </div>
-                            <p className="font-medium text-[#1C1C1E] text-sm">{item.name}</p>
+                            <p className="font-medium text-ink text-sm">{item.name}</p>
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getUnitColor(item.unit)}`}>{item.unit}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm font-semibold text-[#1C1C1E]">{item.stockQuantity ?? 0}</span>
+                          <span className="text-sm font-semibold text-ink">{item.stockQuantity ?? 0}</span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
-                            <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] hover:text-[#1C1C1E] transition-colors">
+                            <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink transition-colors">
                               <Edit2 size={12} />
                             </button>
-                            <button onClick={() => handleDelete(item)} disabled={deletingId === item.id} className="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 transition-colors">
+                            <button onClick={() => handleDelete(item)} disabled={deletingId === item.id} className="p-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-400 hover:bg-red-100 dark:bg-red-500/18 transition-colors">
                               {deletingId === item.id
                                 ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
                                 : <Trash2 size={12} />}
@@ -268,23 +268,23 @@ export default function IngredientsPage() {
               {filtered.map((item) => {
                 const img = getFullImageUrl(item.imageUrl);
                 return (
-                  <div key={item.id} className="bg-white rounded-xl border border-[#F0EBE3] p-4">
+                  <div key={item.id} className="bg-surface rounded-xl border border-line-soft p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#F0EBE3] flex-shrink-0 flex items-center justify-center">
-                          {img ? <img src={img} alt={item.name} className="w-full h-full object-cover" /> : <Leaf size={16} className="text-[#C9A84C]" />}
+                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-surface-2 flex-shrink-0 flex items-center justify-center">
+                          {img ? <img src={img} alt={item.name} className="w-full h-full object-cover" /> : <Leaf size={16} className="text-gold" />}
                         </div>
                         <div>
-                          <p className="font-semibold text-[#1C1C1E] text-sm">{item.name}</p>
+                          <p className="font-semibold text-ink text-sm">{item.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${getUnitColor(item.unit)}`}>{item.unit}</span>
-                            <span className="text-xs text-[#8E8878]">Tồn: {item.stockQuantity ?? 0}</span>
+                            <span className="text-xs text-muted">Tồn: {item.stockQuantity ?? 0}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg bg-[#F0EBE3] text-[#8E8878]"><Edit2 size={13} /></button>
-                        <button onClick={() => handleDelete(item)} className="p-1.5 rounded-lg bg-red-50 text-red-400"><Trash2 size={13} /></button>
+                        <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg bg-surface-2 text-muted"><Edit2 size={13} /></button>
+                        <button onClick={() => handleDelete(item)} className="p-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-400"><Trash2 size={13} /></button>
                       </div>
                     </div>
                   </div>
@@ -299,19 +299,19 @@ export default function IngredientsPage() {
       {modal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModal({ open: false, item: null })} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE3]">
-              <h2 className="font-semibold text-[#1C1C1E] text-sm" style={{ fontFamily: 'var(--font-display)' }}>
+          <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm animate-fadeIn">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft">
+              <h2 className="font-semibold text-ink text-sm" style={{ fontFamily: 'var(--font-display)' }}>
                 {modal.item ? 'Cập nhật nguyên liệu' : 'Thêm nguyên liệu'}
               </h2>
-              <button onClick={() => setModal({ open: false, item: null })} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#F0EBE3]">
+              <button onClick={() => setModal({ open: false, item: null })} className="p-1.5 rounded-lg text-muted hover:bg-surface-2">
                 <X size={17} />
               </button>
             </div>
             <div className="px-5 py-4 space-y-4">
               <ImagePicker value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} />
               <div>
-                <label className="text-xs text-[#8E8878] mb-1 block font-medium">
+                <label className="text-xs text-muted mb-1 block font-medium">
                   Tên nguyên liệu <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -324,14 +324,14 @@ export default function IngredientsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-[#8E8878] mb-2 block font-medium">
+                <label className="text-xs text-muted mb-2 block font-medium">
                   Đơn vị tính
                 </label>
 
                 <select
                   value={form.unit}
                   onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-[#E8DDD0] text-sm text-[#8E8878] focus:outline-none focus:border-[#C9A84C]"
+                  className="w-full px-3 py-2 rounded-lg border border-line text-sm text-muted focus:outline-none focus:border-gold"
                 >
                   {UNITS.map((u) => (
                     <option key={u} value={u}>
@@ -344,7 +344,7 @@ export default function IngredientsPage() {
             <div className="px-5 pb-5 flex gap-3">
               <button
                 onClick={() => setModal({ open: false, item: null })}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-[#8E8878] text-sm font-medium hover:bg-[#F0EBE3] transition-colors"
+                className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-medium hover:bg-surface-2 transition-colors"
               >
                 Huỷ
               </button>

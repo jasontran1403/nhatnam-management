@@ -61,16 +61,16 @@ function Lightbox({ images, index, onClose }) {
 // ── Summary card ──────────────────────────────────────────────────────────────
 function SummaryCard({ icon: Icon, label, value, accent }) {
   const colors = {
-    gold:  { bg: 'bg-amber-50',   icon: 'text-amber-600',   val: 'text-amber-700'   },
-    green: { bg: 'bg-emerald-50', icon: 'text-emerald-600', val: 'text-emerald-700' },
-    blue:  { bg: 'bg-sky-50',     icon: 'text-sky-600',     val: 'text-sky-700'     },
+    gold:  { bg: 'bg-amber-50 dark:bg-amber-500/10',   icon: 'text-amber-600 dark:text-amber-300',   val: 'text-amber-700 dark:text-amber-300'   },
+    green: { bg: 'bg-emerald-50 dark:bg-emerald-500/10', icon: 'text-emerald-600 dark:text-emerald-300', val: 'text-emerald-700 dark:text-emerald-300' },
+    blue:  { bg: 'bg-sky-50 dark:bg-sky-500/10',     icon: 'text-sky-600 dark:text-sky-300',     val: 'text-sky-700 dark:text-sky-300'     },
   };
   const c = colors[accent] || colors.gold;
   return (
     <div className={`${c.bg} rounded-2xl p-4 flex items-center gap-3 border border-white/60`}>
-      <div className={`p-2.5 bg-white/70 rounded-xl ${c.icon}`}><Icon size={20} /></div>
+      <div className={`p-2.5 bg-surface/70 rounded-xl ${c.icon}`}><Icon size={20} /></div>
       <div>
-        <p className="text-xs text-[#8E8878] font-medium">{label}</p>
+        <p className="text-xs text-muted font-medium">{label}</p>
         <p className={`text-xl font-bold ${c.val}`}>{value}</p>
       </div>
     </div>
@@ -86,52 +86,52 @@ function VoucherRow({ v, onOpenLightbox, onOpenDetail }) {
   return (
     <>
       <tr
-        className="border-b border-[#F0EBE3] hover:bg-[#FAF7F2] cursor-pointer"
+        className="border-b border-line-soft hover:bg-canvas cursor-pointer"
         onClick={() => setOpen(o => !o)}
       >
-        <td className="px-3 py-3 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{v.receiptNumber || v.voucherCode}</td>
+        <td className="px-3 py-3 font-mono text-xs text-gold whitespace-nowrap">{v.receiptNumber || v.voucherCode}</td>
         <td className="px-3 py-3 max-w-[180px]">
-          <p className="font-medium text-[#1C1C1E] text-sm truncate">{v.reason}</p>
-          {v.payerName && <p className="text-xs text-[#8E8878] truncate">{v.payerName}</p>}
+          <p className="font-medium text-ink text-sm truncate">{v.reason}</p>
+          {v.payerName && <p className="text-xs text-muted truncate">{v.payerName}</p>}
         </td>
-        <td className="px-3 py-3 text-sm text-[#5C4E3D] whitespace-nowrap">{v.createdByName}</td>
-        <td className="px-3 py-3 text-left font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(total)}</td>
+        <td className="px-3 py-3 text-sm text-ink-2 whitespace-nowrap">{v.createdByName}</td>
+        <td className="px-3 py-3 text-left font-bold text-emerald-600 dark:text-emerald-300 whitespace-nowrap">{formatCurrency(total)}</td>
         <td className="px-3 py-3">
-          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28">
             <BadgeCheck size={10} /> Đã xác nhận
           </span>
         </td>
-        <td className="px-3 py-3 text-xs text-[#8E8878] whitespace-nowrap">{formatDateTime(v.createdAt)}</td>
-        <td className="px-2 py-3 text-[#8E8878]">
+        <td className="px-3 py-3 text-xs text-muted whitespace-nowrap">{formatDateTime(v.createdAt)}</td>
+        <td className="px-2 py-3 text-muted">
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </td>
       </tr>
 
       {open && (
-        <tr className="bg-[#FAF7F2]">
+        <tr className="bg-canvas">
           <td colSpan={8} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">{t('admin','income_items_label')}</p>
+                <p className="text-xs font-semibold text-muted uppercase mb-2">{t('admin','income_items_label')}</p>
                 <div className="space-y-1">
                   {(v.items || []).map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="text-[#5C4E3D]">{item.itemName}</span>
-                      <span className="font-semibold text-[#1C1C1E]">{formatCurrency(item.amount)}</span>
+                      <span className="text-ink-2">{item.itemName}</span>
+                      <span className="font-semibold text-ink">{formatCurrency(item.amount)}</span>
                     </div>
                   ))}
                 </div>
               </div>
               {(v.imageUrls || []).length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-[#8E8878] uppercase mb-2">
+                  <p className="text-xs font-semibold text-muted uppercase mb-2">
                     {t('admin','receipt_images')} ({v.imageUrls.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {v.imageUrls.map((url, i) => (
                       <button key={i}
                         onClick={e => { e.stopPropagation(); onOpenLightbox(v.imageUrls, i); }}
-                        className="w-20 h-20 rounded-lg overflow-hidden border border-[#E8DDD0] hover:border-[#C9A84C] hover:scale-105 transition-all"
+                        className="w-20 h-20 rounded-lg overflow-hidden border border-line hover:border-gold hover:scale-105 transition-all"
                       >
                         <img src={imgSrc(url)} alt="" className="w-full h-full object-cover" />
                       </button>
@@ -231,14 +231,14 @@ export default function IncomeVoucherPage() {
           />
           {/* FIX #3: Import / Export Phiếu thu */}
           <div className="flex items-center gap-2 ml-auto">
-            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold cursor-pointer transition-all">
               <Upload size={13} /> Import
               <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
                 if (e.target.files[0]) alert('Chức năng Import sẽ được xử lý ở backend');
               }} />
             </label>
             <button onClick={() => alert('Chức năng Export sẽ được xử lý ở backend')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold transition-all">
               <Download size={13} /> Export
             </button>
           </div>
@@ -249,12 +249,12 @@ export default function IncomeVoucherPage() {
       ) : vouchers.length === 0
           ? <EmptyState icon={TrendingUp} title="Không có phiếu thu nào" />
           : (
-            <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-x-auto">
+            <div className="bg-surface rounded-2xl border border-line overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
                 <thead>
-                  <tr className="bg-[#FAF7F2] border-b border-[#E8DDD0]">
+                  <tr className="bg-canvas border-b border-line">
                     {['Số phiếu thu', 'Lý do / Người nộp', 'Người lập', t('order','total_amount'), t('common','status'), 'Ngày tạo', ''].map(h => (
-                      <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-[#8E8878] uppercase whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted uppercase whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -276,14 +276,14 @@ export default function IncomeVoucherPage() {
           <div className="flex items-center justify-center gap-2 pt-2">
             <button
               onClick={() => load(page - 1)} disabled={page === 0}
-              className="px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-sm font-medium disabled:opacity-40 hover:bg-[#FAF7F2] transition"
+              className="px-3 py-1.5 rounded-lg border border-line text-sm font-medium disabled:opacity-40 hover:bg-canvas transition"
             >
               ← Trước
             </button>
-            <span className="text-sm text-[#8E8878]">{page + 1} / {totalPages}</span>
+            <span className="text-sm text-muted">{page + 1} / {totalPages}</span>
             <button
               onClick={() => load(page + 1)} disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 rounded-lg border border-[#E8DDD0] text-sm font-medium disabled:opacity-40 hover:bg-[#FAF7F2] transition"
+              className="px-3 py-1.5 rounded-lg border border-line text-sm font-medium disabled:opacity-40 hover:bg-canvas transition"
             >
               Tiếp →
             </button>

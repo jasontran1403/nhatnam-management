@@ -18,6 +18,7 @@ import { PageHeader, SectionCard, LoadingSpinner, EmptyState } from '../../compo
 import { useToast } from '../../components/common/Toast';
 import { roleLabelOf } from '../../components/common/ProfileButton';
 import { useLang } from '../../context/LangContext';
+import { BackButton, useSubPageNav } from '../../components/common/SubPageNav';
 
 const fmtTime = (ms) => {
   if (!ms) return '—';
@@ -60,20 +61,20 @@ function UnlockModal({ target, onClose, onDone }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
           <div className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center">
-              <Unlock size={16} className="text-[#C9A84C]" />
+            <span className="w-9 h-9 rounded-xl bg-gold/10 flex items-center justify-center">
+              <Unlock size={16} className="text-gold" />
             </span>
             <div>
-              <p className="font-bold text-[#1C1C1E] text-sm">Mở khoá xem lương</p>
-              <p className="text-xs text-[#8E8878]">
+              <p className="font-bold text-ink text-sm">Mở khoá xem lương</p>
+              <p className="text-xs text-muted">
                 {target.fullName || target.username} · @{target.username}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2]">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-canvas">
             <X size={18} />
           </button>
         </div>
@@ -97,16 +98,16 @@ function UnlockModal({ target, onClose, onDone }) {
               onClick={() => setReset(opt.val)}
               className={`w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl border transition
                 ${reset === opt.val
-                  ? 'border-[#C9A84C] bg-[#FDF8ED]'
-                  : 'border-[#F0EBE3] hover:border-[#C9A84C]/40 hover:bg-[#FAF7F2]'}`}
+                  ? 'border-gold bg-gold-tint'
+                  : 'border-line-soft hover:border-gold/40 hover:bg-canvas'}`}
             >
               <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0
-                ${reset === opt.val ? 'border-[#C9A84C] bg-[#C9A84C]' : 'border-[#E8DDD0]'}`}>
+                ${reset === opt.val ? 'border-gold bg-gold' : 'border-line'}`}>
                 {reset === opt.val && <Check size={10} className="text-white" strokeWidth={4} />}
               </span>
               <span>
-                <span className="block text-sm font-semibold text-[#1C1C1E]">{opt.title}</span>
-                <span className="block text-xs text-[#8E8878] mt-0.5 leading-relaxed">{opt.desc}</span>
+                <span className="block text-sm font-semibold text-ink">{opt.title}</span>
+                <span className="block text-xs text-muted mt-0.5 leading-relaxed">{opt.desc}</span>
               </span>
             </button>
           ))}
@@ -114,8 +115,8 @@ function UnlockModal({ target, onClose, onDone }) {
           <button
             onClick={submit}
             disabled={saving}
-            className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold
-                       hover:bg-[#B8923E] transition disabled:opacity-50
+            className="w-full py-2.5 rounded-xl bg-gold text-white font-semibold
+                       hover:bg-gold-strong transition disabled:opacity-50
                        flex items-center justify-center gap-2 mt-1"
           >
             {saving
@@ -134,6 +135,7 @@ function UnlockModal({ target, onClose, onDone }) {
 
 export default function PayrollPasscodeAdminPage() {
   const { t } = useLang();
+  const { from } = useSubPageNav();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -153,6 +155,10 @@ export default function PayrollPasscodeAdminPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5 w-full">
+      {/* Trang này còn nằm trong sidebar của HR nên nút Quay lại chỉ hiện khi
+          được mở từ nút trên trang Nhân viên của OWNER/ADMIN. */}
+      {from && <BackButton fallback={from} />}
+
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <PageHeader
           icon={ShieldAlert}
@@ -163,28 +169,28 @@ export default function PayrollPasscodeAdminPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white
-                     border border-black/10 shadow-sm text-sm font-semibold text-[#1C1C1E]
-                     hover:border-[#C9A84C]/50 transition-colors disabled:opacity-50"
+          className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-surface
+                     border border-hairline-2 shadow-sm text-sm font-semibold text-ink
+                     hover:border-gold/50 transition-colors disabled:opacity-50"
         >
-          <RefreshCw size={15} className={`text-[#C9A84C] ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw size={15} className={`text-gold ${loading ? 'animate-spin' : ''}`} />
           Tải lại
         </button>
       </div>
 
-      <div className="flex items-start gap-2.5 bg-[#FAF7F2] border border-black/5 rounded-2xl px-4 py-3">
-        <KeyRound size={15} className="text-[#C9A84C] shrink-0 mt-0.5" />
-        <p className="text-xs text-[#8E8878] leading-relaxed">
-          Mật khẩu xem lương mặc định của mọi nhân viên là <b className="text-[#1C1C1E]">000000</b>.
-          Nhân viên tự đổi trong <b className="text-[#1C1C1E]">Thông tin tài khoản → Xem lương</b>.
+      <div className="flex items-start gap-2.5 bg-canvas border border-hairline rounded-2xl px-4 py-3">
+        <KeyRound size={15} className="text-gold shrink-0 mt-0.5" />
+        <p className="text-xs text-muted leading-relaxed">
+          Mật khẩu xem lương mặc định của mọi nhân viên là <b className="text-ink">000000</b>.
+          Nhân viên tự đổi trong <b className="text-ink">Thông tin tài khoản → Xem lương</b>.
           Bị khoá thì chỉ trang này mở lại được.
         </p>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3">
           <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-600 font-medium">{error}</p>
+          <p className="text-sm text-red-600 dark:text-red-300 font-medium">{error}</p>
         </div>
       )}
 
@@ -204,15 +210,15 @@ export default function PayrollPasscodeAdminPage() {
             <SectionCard key={u.id}>
               <div className="p-5 space-y-3">
                 <div className="flex items-start gap-3">
-                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830]
+                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-deep
                                    flex items-center justify-center text-white font-bold shrink-0">
                     {(u.fullName || u.username || '?')[0]?.toUpperCase()}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-[#1C1C1E] truncate">
+                    <p className="text-sm font-bold text-ink truncate">
                       {u.fullName || u.username}
                     </p>
-                    <p className="text-xs text-[#8E8878] truncate">
+                    <p className="text-xs text-muted truncate">
                       @{u.username}{u.role ? ` · ${roleLabelOf(u.role, t)}` : ''}
                     </p>
                   </div>
@@ -220,23 +226,23 @@ export default function PayrollPasscodeAdminPage() {
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-[#8E8878] font-semibold">
+                    <p className="text-[10px] uppercase tracking-wide text-muted font-semibold">
                       Khoá lúc
                     </p>
-                    <p className="text-xs font-medium text-[#1C1C1E] mt-0.5">{fmtTime(u.lockedAt)}</p>
+                    <p className="text-xs font-medium text-ink mt-0.5">{fmtTime(u.lockedAt)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-[#8E8878] font-semibold">
+                    <p className="text-[10px] uppercase tracking-wide text-muted font-semibold">
                       Bộ phận
                     </p>
-                    <p className="text-xs font-medium text-[#1C1C1E] mt-0.5">
+                    <p className="text-xs font-medium text-ink mt-0.5">
                       {u.department || u.position || '—'}
                     </p>
                   </div>
                 </div>
 
                 {u.usingDefault && (
-                  <p className="text-[11px] text-[#8B6F2E] bg-[#FDF8ED] border border-[#C9A84C]/25
+                  <p className="text-[11px] text-gold-deep bg-gold-tint border border-gold/25
                                 rounded-lg px-2.5 py-1.5">
                     Đang dùng mật khẩu mặc định 000000
                   </p>
@@ -244,8 +250,8 @@ export default function PayrollPasscodeAdminPage() {
 
                 <button
                   onClick={() => setTarget(u)}
-                  className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold
-                             hover:bg-[#B8923E] transition flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-xl bg-gold text-white text-sm font-semibold
+                             hover:bg-gold-strong transition flex items-center justify-center gap-2"
                 >
                   <Unlock size={15} /> Mở khoá
                 </button>

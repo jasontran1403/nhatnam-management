@@ -15,16 +15,16 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const imgUrl = p => p?.startsWith('http') ? p : BASE_URL + '/api/auth' + p;
 
 const getMaintStatusCfg = (t) => ({
-  PLANNED:     { label: t('production', 'maint_status_planned'),     cls: 'bg-blue-100 text-blue-700' },
-  IN_PROGRESS: { label: t('production', 'maint_status_in_progress'), cls: 'bg-orange-100 text-orange-700' },
-  COMPLETED:   { label: t('production', 'maint_status_completed'),   cls: 'bg-emerald-100 text-emerald-700' },
-  ADJUSTED:    { label: t('production', 'maint_status_adjusted'),    cls: 'bg-purple-100 text-purple-700' },
-  MISSED:      { label: t('production', 'maint_status_missed'),      cls: 'bg-gray-100 text-gray-600' },
+  PLANNED:     { label: t('production', 'maint_status_planned'),     cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300' },
+  IN_PROGRESS: { label: t('production', 'maint_status_in_progress'), cls: 'bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300' },
+  COMPLETED:   { label: t('production', 'maint_status_completed'),   cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300' },
+  ADJUSTED:    { label: t('production', 'maint_status_adjusted'),    cls: 'bg-purple-100 dark:bg-purple-500/18 text-purple-700 dark:text-purple-300' },
+  MISSED:      { label: t('production', 'maint_status_missed'),      cls: 'bg-surface-2 text-ink-2' },
 });
 const getMachineStatusCfg = (t) => ({
-  ACTIVE:            { label: t('production', 'machine_status_active'),       cls: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400 animate-pulse' },
-  INACTIVE:          { label: t('production', 'machine_status_inactive'),     cls: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-300' },
-  UNDER_MAINTENANCE: { label: `🔧 ${t('production', 'machine_status_maintenance')}`, cls: 'bg-red-100 text-red-700', dot: 'bg-red-400 animate-pulse' },
+  ACTIVE:            { label: t('production', 'machine_status_active'),       cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-400 animate-pulse' },
+  INACTIVE:          { label: t('production', 'machine_status_inactive'),     cls: 'bg-surface-2 text-ink-2',       dot: 'bg-surface-3' },
+  UNDER_MAINTENANCE: { label: `🔧 ${t('production', 'machine_status_maintenance')}`, cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300', dot: 'bg-red-400 animate-pulse' },
 });
 const getVendorTypeLabels = (t) => ({
   MATERIAL: t('production', 'vendor_type_material'),
@@ -47,18 +47,18 @@ function ImageUploader({ label, onUpload, uploaded = [] }) {
   };
   return (
     <div>
-      {label && <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">{label}</p>}
+      {label && <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">{label}</p>}
       <div className="flex gap-2 flex-wrap">
-        {uploaded.map((u, i) => <div key={i} className="w-16 h-16 rounded-xl overflow-hidden border border-black/10"><img src={imgUrl(u)} alt="" className="w-full h-full object-cover"/></div>)}
+        {uploaded.map((u, i) => <div key={i} className="w-16 h-16 rounded-xl overflow-hidden border border-hairline-2"><img src={imgUrl(u)} alt="" className="w-full h-full object-cover"/></div>)}
         {previews.map((p, i) => (
-          <div key={`p${i}`} className="w-16 h-16 rounded-xl overflow-hidden border border-black/10 relative">
+          <div key={`p${i}`} className="w-16 h-16 rounded-xl overflow-hidden border border-hairline-2 relative">
             <img src={p} alt="" className="w-full h-full object-cover"/>
             {uploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={10} className="text-white animate-spin"/></div>}
           </div>
         ))}
         <button type="button" onClick={() => ref.current?.click()}
-          className="w-16 h-16 rounded-xl border-2 border-dashed border-[#C9A84C]/40 flex flex-col items-center justify-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5">
-          <Camera size={18} className="text-[#C9A84C]"/><span className="text-[10px] text-[#C9A84C] mt-0.5">{t('common', 'add')}</span>
+          className="w-16 h-16 rounded-xl border-2 border-dashed border-gold/40 flex flex-col items-center justify-center hover:border-gold hover:bg-gold/5">
+          <Camera size={18} className="text-gold"/><span className="text-[10px] text-gold mt-0.5">{t('common', 'add')}</span>
         </button>
         <input ref={ref} type="file" multiple accept="image/*" className="hidden" onChange={e => handleFiles(e.target.files)}/>
       </div>
@@ -100,29 +100,29 @@ function VendorSearchInput({ value, onChange, types = 'MACHINE,REPAIR', onCreate
   return (
     <div className="relative" ref={ref}>
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none"/>
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"/>
         <input className={`${inputCls} pl-8 pr-8`}
           placeholder={t('production', 'vendor_search_placeholder')}
           value={query} onFocus={handleOpen}
           onChange={e => { setQuery(e.target.value); setOpen(true); }}
         />
-        {value && <button onClick={clear} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"><X size={14}/></button>}
+        {value && <button onClick={clear} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"><X size={14}/></button>}
       </div>
       {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-black/10 rounded-xl shadow-lg overflow-hidden">
-          {loading && <div className="px-3 py-2 text-xs text-[#8E8878]">{t('production', 'vendor_searching')}</div>}
+        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-surface border border-hairline-2 rounded-xl shadow-lg overflow-hidden">
+          {loading && <div className="px-3 py-2 text-xs text-muted">{t('production', 'vendor_searching')}</div>}
           {!loading && results.length === 0 && (
-            <div className="px-3 py-2 text-xs text-[#8E8878]">{t('production', 'vendor_not_found')}</div>
+            <div className="px-3 py-2 text-xs text-muted">{t('production', 'vendor_not_found')}</div>
           )}
           {results.map(v => (
             <button key={v.id} onClick={() => select(v)}
-              className="w-full text-left px-3 py-2.5 hover:bg-[#FAF7F2] border-b border-black/5 last:border-0">
-              <p className="text-sm font-medium text-[#1C1C1E]">{v.name}</p>
-              <p className="text-xs text-[#8E8878]">{v.contactPerson} · {v.contactPhone} · <span className="text-[#C9A84C]">{VENDOR_TYPE_LABELS[v.vendorType]||v.vendorType}</span></p>
+              className="w-full text-left px-3 py-2.5 hover:bg-canvas border-b border-hairline last:border-0">
+              <p className="text-sm font-medium text-ink">{v.name}</p>
+              <p className="text-xs text-muted">{v.contactPerson} · {v.contactPhone} · <span className="text-gold">{VENDOR_TYPE_LABELS[v.vendorType]||v.vendorType}</span></p>
             </button>
           ))}
           <button onClick={onCreateNew}
-            className="w-full text-left px-3 py-2.5 text-xs text-[#C9A84C] font-semibold hover:bg-[#FAF7F2] flex items-center gap-1.5 border-t border-black/5">
+            className="w-full text-left px-3 py-2.5 text-xs text-gold font-semibold hover:bg-canvas flex items-center gap-1.5 border-t border-hairline">
             <Plus size={12}/> {t('production', 'vendor_add_new')}
           </button>
         </div>
@@ -149,7 +149,7 @@ function CreateVendorModal({ onClose, onCreated }) {
     <Modal open title={t('production', 'vendor_modal_title')} onClose={onClose} size="sm"
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'vendor_modal_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{t('production', 'vendor_modal_add')}</PrimaryButton></div>}>
       <div className="space-y-3">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
         <Field label={t('production', 'vendor_modal_name_label')} required><input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder={t('production', 'vendor_modal_name_placeholder')}/></Field>
         <Field label={t('production', 'vendor_modal_type_label')}>
           <select className={inputCls} value={form.vendorType} onChange={e => set('vendorType', e.target.value)}>
@@ -206,7 +206,7 @@ function MonthDayPickerInput({ label, value, onChange, showMonth = false }) {
 
   return (
     <div className="space-y-2">
-      {label && <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{label}</p>}
+      {label && <p className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</p>}
       <div className={`grid gap-2 ${showMonth ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {showMonth && (
           <select className={inputCls} value={month} onChange={e => { setMonth(e.target.value); update(day, e.target.value); }}>
@@ -325,19 +325,19 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
         onClose={onClose} size="md"
         footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'maint_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{isCorrective ? t('production', 'maint_submit_corrective') : t('production', 'maint_submit_preventive')}</PrimaryButton></div>}>
         <div className="space-y-4">
-          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
+          {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
           {isCorrective && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex gap-2 items-start">
-              <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5"/>
-              <p className="text-xs text-red-700">{t('production', 'maint_corrective_warning')}</p>
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl p-3 flex gap-2 items-start">
+              <AlertTriangle size={16} className="text-red-600 dark:text-red-300 flex-shrink-0 mt-0.5"/>
+              <p className="text-xs text-red-700 dark:text-red-300">{t('production', 'maint_corrective_warning')}</p>
             </div>
           )}
 
           {/* Machine label */}
-          <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-xs flex items-center gap-2">
-            <Settings2 size={14} className="text-[#C9A84C]"/>
-            <span className="font-semibold text-[#1C1C1E]">{machine.name}</span>
-            {machine.factoryName && <span className="text-[#8E8878]">— {machine.factoryName}</span>}
+          <div className="bg-canvas rounded-xl px-4 py-3 text-xs flex items-center gap-2">
+            <Settings2 size={14} className="text-gold"/>
+            <span className="font-semibold text-ink">{machine.name}</span>
+            {machine.factoryName && <span className="text-muted">— {machine.factoryName}</span>}
           </div>
 
           <Field label={t('production', 'maint_title_label')} required>
@@ -384,7 +384,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
                   }}/>
               </div>
               {form.plannedDowntimeHours > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
+                <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
                   <span>⏱</span>
                   <span>{t('production', 'maint_downtime_label')}: <b>{form.plannedDowntimeHours}h</b>
                     {form.plannedDowntimeHours > 10 && ` — ${t('production', 'maint_downtime_warning_days')}`}
@@ -393,8 +393,8 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
               )}
             </div>
           ) : (
-            <div className="space-y-3 bg-[#FAF7F2] rounded-xl p-3">
-              <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'maint_recurring_schedule_title')}</p>
+            <div className="space-y-3 bg-canvas rounded-xl p-3">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t('production', 'maint_recurring_schedule_title')}</p>
               {form.recurrenceType === 'MONTHLY' && (
                 <MonthDayInput label={t('production', 'maint_day_in_month_label')} value={form.recurrenceDay} onChange={v => set('recurrenceDay', v)}/>
               )}
@@ -439,7 +439,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
                 </Field>
               </div>
               {form.plannedDowntimeHours > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
+                <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
                   <span>⏱</span>
                   <span>{t('production', 'maint_downtime_label')}: <b>{form.plannedDowntimeHours}h</b>
                     {form.plannedDowntimeHours > 10 && ` — ${t('production', 'maint_downtime_warning_next_day')}`}
@@ -452,7 +452,7 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
           {/* Vendor selection */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">{t('production', 'maint_vendor_label')}</label>
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('production', 'maint_vendor_label')}</label>
             </div>
             <VendorSearchInput
               value={vendor} onChange={setVendor}
@@ -460,10 +460,10 @@ function CreateMaintenanceModal({ machine, type, onClose, onSaved }) {
               onCreateNew={() => setShowCreateVendor(true)}
             />
             {vendor && (
-              <div className="mt-2 bg-[#FAF7F2] rounded-xl px-3 py-2 text-xs space-y-0.5">
-                <p className="font-semibold text-[#1C1C1E]">{vendor.name}</p>
-                {vendor.contactPerson && <p className="text-[#8E8878]">{t('production', 'maint_vendor_contact')}: {vendor.contactPerson}</p>}
-                {vendor.contactPhone && <p className="text-[#8E8878]">{t('production', 'maint_vendor_phone')}: {vendor.contactPhone}</p>}
+              <div className="mt-2 bg-canvas rounded-xl px-3 py-2 text-xs space-y-0.5">
+                <p className="font-semibold text-ink">{vendor.name}</p>
+                {vendor.contactPerson && <p className="text-muted">{t('production', 'maint_vendor_contact')}: {vendor.contactPerson}</p>}
+                {vendor.contactPhone && <p className="text-muted">{t('production', 'maint_vendor_phone')}: {vendor.contactPhone}</p>}
               </div>
             )}
           </div>
@@ -525,10 +525,10 @@ function CompleteMaintenanceModal({ item, onClose, onSaved }) {
     <Modal open title={t('production', 'maint_complete_title')} onClose={onClose} size="md"
       footer={<div className="flex justify-end gap-2"><SecondaryButton onClick={onClose}>{t('production', 'maint_cancel')}</SecondaryButton><PrimaryButton onClick={submit} loading={saving}>{t('production', 'maint_complete_confirm')}</PrimaryButton></div>}>
       <div className="space-y-4">
-        {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{err}</p>}
-        <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 text-sm">
-          <p className="font-semibold text-[#1C1C1E]">{item.title}</p>
-          <p className="text-xs text-[#8E8878]">{item.machineName}</p>
+        {err && <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2">{err}</p>}
+        <div className="bg-canvas rounded-xl px-4 py-3 text-sm">
+          <p className="font-semibold text-ink">{item.title}</p>
+          <p className="text-xs text-muted">{item.machineName}</p>
         </div>
         <Field label={t('production', 'maint_actual_end_label')}>
           <input type="datetime-local" className={inputCls} value={form.actualEnd} onChange={e => set('actualEnd', e.target.value)}/>
@@ -599,20 +599,20 @@ export default function FactoryMachinePage() {
   const maintForMachine = id => maintenance.filter(m => m.machineId === id);
   const toggle = id => setExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 size={24} className="animate-spin text-[#C9A84C]"/></div>;
+  if (loading) return <div className="flex justify-center p-12"><Loader2 size={24} className="animate-spin text-gold"/></div>;
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 bg-[#F5F0EB] min-h-full">
-      <div className="bg-[#1A2B1A] rounded-2xl p-5 text-white">
-        <p className="text-[#7CB87C] text-xs uppercase tracking-widest font-medium">{t('production', 'machine_page_factory_label')}</p>
+    <div className="p-4 sm:p-6 space-y-4 bg-surface-2 min-h-full">
+      <div className="bg-forest-deep rounded-2xl p-5 text-white">
+        <p className="text-forest text-xs uppercase tracking-widest font-medium">{t('production', 'machine_page_factory_label')}</p>
         <h1 className="text-xl font-bold mt-0.5">{t('production', 'machine_page_title')}</h1>
         <p className="text-white/60 text-xs mt-1">{machines.filter(m => m.status === 'UNDER_MAINTENANCE').length} {t('production', 'machine_page_under_maintenance_suffix')}</p>
       </div>
 
       {factories.length > 1 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] font-medium">Xưởng:</span>
-          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+          <span className="text-xs text-muted font-medium">Xưởng:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-line bg-surface text-ink focus:outline-none focus:border-gold"
             value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">Tất cả</option>
             {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -622,40 +622,40 @@ export default function FactoryMachinePage() {
 
       <div className="space-y-3">
         {machines.length === 0 && (
-          <div className="bg-white rounded-2xl border border-black/5 p-8 text-center text-[#8E8878] text-sm">{t('production', 'machine_page_empty')}</div>
+          <div className="bg-surface rounded-2xl border border-hairline p-8 text-center text-muted text-sm">{t('production', 'machine_page_empty')}</div>
         )}
         {machines.map(machine => {
           const cfg = MACHINE_STATUS_CFG[machine.status] || MACHINE_STATUS_CFG.INACTIVE;
           const maints = maintForMachine(machine.id);
           const isExpanded = expanded.has(machine.id);
           return (
-            <div key={machine.id} className="bg-white border border-black/5 rounded-2xl overflow-hidden shadow-sm">
+            <div key={machine.id} className="bg-surface border border-hairline rounded-2xl overflow-hidden shadow-sm">
               <div className="p-4">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${cfg.dot} flex-shrink-0`}/>
                     <div>
-                      <p className="font-semibold text-[#1C1C1E]">{machine.name}</p>
+                      <p className="font-semibold text-ink">{machine.name}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
-                        {machine.factoryName && <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{machine.factoryName}</span>}
+                        {machine.factoryName && <span className="text-[10px] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-full">{machine.factoryName}</span>}
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     {canCreatePreventive && (
                       <button onClick={() => setCreateFor({ machine, type: 'PREVENTIVE' })}
-                        className="flex items-center gap-1 text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 font-medium">
+                        className="flex items-center gap-1 text-xs px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded-xl hover:bg-blue-100 dark:bg-blue-500/18 font-medium">
                         <Plus size={12}/> {t('production', 'machine_create_preventive_btn')}
                       </button>
                     )}
                     <button onClick={() => setCreateFor({ machine, type: 'CORRECTIVE' })}
-                      className="flex items-center gap-1 text-xs px-3 py-1.5 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-medium">
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 rounded-xl hover:bg-red-100 dark:bg-red-500/18 font-medium">
                       <AlertTriangle size={12}/> {t('production', 'machine_report_issue_btn')}
                     </button>
                     {maints.length > 0 && (
                       <button onClick={() => toggle(machine.id)}
-                        className="flex items-center gap-1 text-xs px-3 py-1.5 bg-[#FAF7F2] text-[#8E8878] rounded-xl hover:bg-[#F0EAE0] font-medium">
+                        className="flex items-center gap-1 text-xs px-3 py-1.5 bg-canvas text-muted rounded-xl hover:bg-surface-2 font-medium">
                         {maints.length} {t('production', 'machine_schedule_count_suffix')} {isExpanded ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
                       </button>
                     )}
@@ -664,28 +664,28 @@ export default function FactoryMachinePage() {
               </div>
 
               {isExpanded && maints.length > 0 && (
-                <div className="border-t border-black/5">
+                <div className="border-t border-hairline">
                   {maints.map(m => {
                     const sc = MAINT_STATUS_CFG[m.status] || MAINT_STATUS_CFG.PLANNED;
                     const isActive = ['PLANNED', 'IN_PROGRESS'].includes(m.status);
                     return (
-                      <div key={m.id} className="px-4 py-3 border-b border-black/5 last:border-0">
+                      <div key={m.id} className="px-4 py-3 border-b border-hairline last:border-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${m.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${m.maintenanceType === 'CORRECTIVE' ? 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300'}`}>
                                 {m.maintenanceType === 'CORRECTIVE' ? `🚨 ${t('production', 'machine_maint_type_corrective')}` : `🔧 ${t('production', 'machine_maint_type_preventive')}`}
                               </span>
-                              <p className="text-sm font-medium text-[#1C1C1E]">{m.title}</p>
+                              <p className="text-sm font-medium text-ink">{m.title}</p>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${sc.cls}`}>{sc.label}</span>
                             </div>
-                            <p className="text-xs text-[#8E8878] mt-0.5">{fmtDate(m.plannedStart)} → {fmtDate(m.plannedEnd)}</p>
-                            {m.vendorName && <p className="text-xs text-[#8E8878]">{t('production', 'machine_maint_vendor_label')}: {m.vendorName} {m.vendorPhone && `· ${m.vendorPhone}`}</p>}
-                            {m.actualCost && <p className="text-xs text-emerald-600 font-semibold">{t('production', 'machine_maint_cost_label')}: {fmtCurrency(m.actualCost)}</p>}
+                            <p className="text-xs text-muted mt-0.5">{fmtDate(m.plannedStart)} → {fmtDate(m.plannedEnd)}</p>
+                            {m.vendorName && <p className="text-xs text-muted">{t('production', 'machine_maint_vendor_label')}: {m.vendorName} {m.vendorPhone && `· ${m.vendorPhone}`}</p>}
+                            {m.actualCost && <p className="text-xs text-emerald-600 dark:text-emerald-300 font-semibold">{t('production', 'machine_maint_cost_label')}: {fmtCurrency(m.actualCost)}</p>}
                           </div>
                           {isActive && (
                             <button onClick={() => setCompleteFor(m)}
-                              className="flex-shrink-0 text-xs px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 font-medium flex items-center gap-1">
+                              className="flex-shrink-0 text-xs px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 dark:bg-emerald-500/18 font-medium flex items-center gap-1">
                               <CheckCircle2 size={12}/> {t('production', 'machine_maint_complete_btn')}
                             </button>
                           )}

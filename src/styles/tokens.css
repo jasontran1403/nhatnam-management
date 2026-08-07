@@ -1,0 +1,193 @@
+/**
+ * tokens.css — Nguồn sự thật duy nhất cho màu sắc & typography.
+ *
+ * Quy tắc: KHÔNG hardcode mã hex trong component nữa. Mọi màu đi qua token ở đây.
+ * Đổi 1 dòng trong file này = đổi toàn bộ app, cả light lẫn dark.
+ *
+ * Cách hoạt động (Tailwind v4):
+ *   1. `:root` khai báo giá trị light, `.dark` ghi đè giá trị dark.
+ *   2. `@theme inline` map biến thô (--c-*) sang biến theme (--color-*),
+ *      nhờ đó Tailwind sinh ra utility `bg-canvas`, `text-ink`, `border-line`...
+ *      `inline` giữ nguyên tham chiếu var() nên utility TỰ ĐỘNG đổi màu theo
+ *      class `.dark` — không cần viết `dark:` ở từng component.
+ *   3. Modifier opacity vẫn dùng được: `bg-gold/10`, `text-muted/70`.
+ */
+
+/* Bật biến thể `dark:` theo class thay vì theo prefers-color-scheme,
+   để người dùng chủ động chọn được theme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT — giữ nguyên 100% bảng màu gốc của thương hiệu (kem + vàng cổ + gỗ đen)
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  /* Nền / bề mặt (dùng với bg-, from-, to-) */
+  --c-canvas: #FAF7F2;        /* nền trang */
+  --c-surface: #FFFFFF;       /* thẻ, card, modal */
+  --c-surface-2: #F0EBE3;     /* vùng chìm: header bảng, ô input phụ */
+  --c-surface-3: #E8DDD0;     /* vùng chìm đậm hơn, thanh tiến trình */
+  --c-chrome: #1C1C1E;        /* sidebar / topbar — LUÔN tối ở cả 2 theme */
+  --c-forest-deep: #1A2B1A;   /* nền xanh rêu (khu sản xuất) */
+  --c-forest-mid: #243824;
+
+  /* Chữ / icon (dùng với text-, fill-, stroke-) */
+  --c-ink: #1C1C1E;           /* chữ chính */
+  --c-ink-2: #5C5C5C;         /* chữ phụ */
+  --c-muted: #8E8878;         /* nhãn, chú thích */
+  --c-faint: #C4B9A8;         /* placeholder, chữ mờ nhất */
+  --c-on-chrome: #FFFFFF;     /* chữ trên nền chrome/gold */
+
+  /* Đường kẻ */
+  --c-line: #E8DDD0;          /* viền rõ */
+  --c-line-soft: #F0EBE3;     /* viền nhạt */
+  --c-hairline: rgba(0, 0, 0, 0.05);     /* thay cho border-black/5 */
+  --c-hairline-2: rgba(0, 0, 0, 0.10);   /* thay cho border-black/10 */
+  --c-hairline-3: rgba(0, 0, 0, 0.20);
+
+  /* Thương hiệu — vàng cổ */
+  --c-gold: #C9A84C;
+  --c-gold-strong: #B8963D;   /* hover */
+  --c-gold-deep: #A07830;     /* active */
+  --c-gold-tint: #FDF8ED;     /* nền vàng rất nhạt */
+  --c-forest: #1A2B1A;        /* xanh rêu khi dùng làm CHỮ */
+
+  /* Trạng thái — mỗi trạng thái có 3 sắc độ:
+     -tint  nền chip, -*  màu chuẩn, -ink  chữ trên nền tint */
+  --c-success: #16A34A;
+  --c-success-tint: #DCFCE7;
+  --c-success-ink: #15803D;
+  --c-warning: #EA580C;
+  --c-warning-tint: #FFEDD5;
+  --c-warning-ink: #9A3412;
+  --c-danger: #DC2626;
+  --c-danger-tint: #FEE2E2;
+  --c-danger-ink: #B91C1C;
+  --c-info: #0284C7;
+  --c-info-tint: #E0F2FE;
+  --c-info-ink: #0369A1;
+  --c-steel: #1A3C6E;
+  --c-steel-tint: #EBF3FB;
+
+  /* Overlay & bóng */
+  --c-overlay: rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.12);
+
+  /* Typography — trước đây var(--font-display) được dùng ở 21 chỗ nhưng
+     CHƯA HỀ được định nghĩa, nên tiêu đề vẫn rơi về font mặc định. Sửa tại đây. */
+  --font-display: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK — không phải đảo ngược cơ học.
+   Nền đi theo hướng nâu-đen ấm (gỗ sơn mài) thay vì xám trung tính, để vàng cổ
+   #C9A84C vẫn nằm đúng trong thế giới của thương hiệu. Vàng được nâng sáng nhẹ
+   để giữ contrast >= 7:1 trên nền tối.
+   ───────────────────────────────────────────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+
+  --c-canvas: #14110D;
+  --c-surface: #1D1913;
+  --c-surface-2: #262019;
+  --c-surface-3: #2F281F;
+  --c-chrome: #0E0C09;
+  --c-forest-deep: #101A0F;
+  --c-forest-mid: #172216;
+
+  --c-ink: #F2ECE1;
+  --c-ink-2: #CBC2B2;
+  --c-muted: #9C9484;
+  --c-faint: #6E6759;
+  --c-on-chrome: #FFFFFF;
+
+  --c-line: #342C22;
+  --c-line-soft: #2A241C;
+  --c-hairline: rgba(255, 255, 255, 0.07);
+  --c-hairline-2: rgba(255, 255, 255, 0.13);
+  --c-hairline-3: rgba(255, 255, 255, 0.22);
+
+  --c-gold: #D8BB63;
+  --c-gold-strong: #E3CA7D;
+  --c-gold-deep: #C9A84C;
+  --c-gold-tint: #2A2214;
+  --c-forest: #8FBF8F;
+
+  --c-success: #34D399;
+  --c-success-tint: #12301F;
+  --c-success-ink: #6EE7B7;
+  --c-warning: #FB923C;
+  --c-warning-tint: #33200F;
+  --c-warning-ink: #FDBA74;
+  --c-danger: #F87171;
+  --c-danger-tint: #331617;
+  --c-danger-ink: #FCA5A5;
+  --c-info: #38BDF8;
+  --c-info-tint: #10263A;
+  --c-info-ink: #7DD3FC;
+  --c-steel: #7FA9DC;
+  --c-steel-tint: #121C2A;
+
+  --c-overlay: rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Đăng ký token với Tailwind.
+   `inline` = giữ nguyên var() → utility tự đổi màu khi .dark bật.
+   ───────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-surface-3: var(--c-surface-3);
+  --color-chrome: var(--c-chrome);
+  --color-forest-deep: var(--c-forest-deep);
+  --color-forest-mid: var(--c-forest-mid);
+
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-on-chrome: var(--c-on-chrome);
+
+  --color-line: var(--c-line);
+  --color-line-soft: var(--c-line-soft);
+  --color-hairline: var(--c-hairline);
+  --color-hairline-2: var(--c-hairline-2);
+  --color-hairline-3: var(--c-hairline-3);
+
+  --color-gold: var(--c-gold);
+  --color-gold-strong: var(--c-gold-strong);
+  --color-gold-deep: var(--c-gold-deep);
+  --color-gold-tint: var(--c-gold-tint);
+  --color-forest: var(--c-forest);
+
+  --color-success: var(--c-success);
+  --color-success-tint: var(--c-success-tint);
+  --color-success-ink: var(--c-success-ink);
+  --color-warning: var(--c-warning);
+  --color-warning-tint: var(--c-warning-tint);
+  --color-warning-ink: var(--c-warning-ink);
+  --color-danger: var(--c-danger);
+  --color-danger-tint: var(--c-danger-tint);
+  --color-danger-ink: var(--c-danger-ink);
+  --color-info: var(--c-info);
+  --color-info-tint: var(--c-info-tint);
+  --color-info-ink: var(--c-info-ink);
+  --color-steel: var(--c-steel);
+  --color-steel-tint: var(--c-steel-tint);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+/* Chặn nháy trắng khi tải trang ở chế độ dark (script inline trong index.html
+   đã gắn class .dark trước khi React mount). */
+html.dark {
+  background-color: #14110D;
+}

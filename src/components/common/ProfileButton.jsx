@@ -12,8 +12,8 @@ import { payrollPasscodeApi, parsePasscodeError } from '../../api/payrollPasscod
 function inputCls(hasErr) {
     return `w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none transition
     ${hasErr
-            ? 'border-red-400 bg-red-50/40 focus:border-red-400'
-            : 'border-black/10 focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20'}`;
+            ? 'border-red-400 bg-red-50/40 dark:bg-red-500/4 focus:border-red-400'
+            : 'border-hairline-2 focus:border-gold focus:ring-2 focus:ring-gold/20'}`;
 }
 
 export const ROLE_LABELS = {
@@ -70,13 +70,13 @@ export function roleLabelOf(role, t) {
 }
 
 const ROLE_COLORS = {
-    ADMIN: 'bg-red-100 text-red-700', OWNER: 'bg-purple-100 text-purple-700',
-    SELLER: 'bg-blue-100 text-blue-700', SUPER_SELLER: 'bg-blue-200 text-blue-800',
-    ACCOUNTANT: 'bg-green-100 text-green-700', SUPER_ACCOUNTANT: 'bg-green-200 text-green-800',
-    WAREHOUSE: 'bg-orange-100 text-orange-700', SUPER_WAREHOUSE: 'bg-orange-200 text-orange-800',
-    FACTORY_WORKER: 'bg-cyan-100 text-cyan-700', SUPER_FACTORY_WORKER: 'bg-cyan-200 text-cyan-800',
-    FACTORY_ACCOUNTANT: 'bg-teal-100 text-teal-700',
-    HR: 'bg-pink-100 text-pink-700', SUPERADMIN: 'bg-gray-200 text-gray-800',
+    ADMIN: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300', OWNER: 'bg-purple-100 dark:bg-purple-500/18 text-purple-700 dark:text-purple-300',
+    SELLER: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300', SUPER_SELLER: 'bg-blue-200 dark:bg-blue-500/28 text-blue-800 dark:text-blue-300',
+    ACCOUNTANT: 'bg-green-100 dark:bg-green-500/18 text-green-700 dark:text-green-300', SUPER_ACCOUNTANT: 'bg-green-200 dark:bg-green-500/28 text-green-800 dark:text-green-300',
+    WAREHOUSE: 'bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300', SUPER_WAREHOUSE: 'bg-orange-200 dark:bg-orange-500/28 text-orange-800 dark:text-orange-300',
+    FACTORY_WORKER: 'bg-cyan-100 dark:bg-cyan-500/18 text-cyan-700 dark:text-cyan-300', SUPER_FACTORY_WORKER: 'bg-cyan-200 dark:bg-cyan-500/28 text-cyan-800 dark:text-cyan-300',
+    FACTORY_ACCOUNTANT: 'bg-teal-100 dark:bg-teal-500/18 text-teal-700 dark:text-teal-300',
+    HR: 'bg-pink-100 dark:bg-pink-500/18 text-pink-700 dark:text-pink-300', SUPERADMIN: 'bg-surface-3 text-ink',
 };
 
 export default function ProfileButton({ compact = false }) {
@@ -274,17 +274,17 @@ export default function ProfileButton({ compact = false }) {
     return (
         <>
             <button onClick={handleOpen}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-[#FAF7F2] transition group"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-canvas transition group"
                 title={t('profile', 'my_profile')}>
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-deep flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                     {(authUser?.fullName || authUser?.username || '?')[0]?.toUpperCase()}
                 </div>
                 {!compact && (
                     <div className="hidden sm:block text-left">
-                        <p className="text-xs font-semibold text-[#1C1C1E] leading-tight truncate max-w-[120px]">
+                        <p className="text-xs font-semibold text-ink leading-tight truncate max-w-[120px]">
                             {authUser?.fullName || authUser?.username}
                         </p>
-                        <p className="text-[10px] text-[#8E8878] leading-tight">{displayRole}</p>
+                        <p className="text-[10px] text-muted leading-tight">{displayRole}</p>
                     </div>
                 )}
             </button>
@@ -292,32 +292,32 @@ export default function ProfileButton({ compact = false }) {
             {open && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                    <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
                         {redirecting && (
-                            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 rounded-2xl">
-                                <Loader2 size={28} className="animate-spin text-[#C9A84C]" />
-                                <p className="text-sm font-semibold text-[#1C1C1E]">{t('common', 'loading')}</p>
+                            <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 rounded-2xl">
+                                <Loader2 size={28} className="animate-spin text-gold" />
+                                <p className="text-sm font-semibold text-ink">{t('common', 'loading')}</p>
                             </div>
                         )}
 
                         {/* Header */}
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
                             <div className="flex items-center gap-3">
                                 {view !== 'menu' && (
                                     <button onClick={() => setView('menu')}
-                                        className="p-1 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2] mr-1">
+                                        className="p-1 rounded-lg text-muted hover:bg-canvas mr-1">
                                         <ChevronRight size={16} className="rotate-180" />
                                     </button>
                                 )}
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#A07830] flex items-center justify-center text-white font-bold">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-deep flex items-center justify-center text-white font-bold">
                                     {(authUser?.fullName || authUser?.username || '?')[0]?.toUpperCase()}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-[#1C1C1E]">{authUser?.fullName || authUser?.username}</p>
-                                    <p className="text-xs text-[#8E8878]">@{authUser?.username} · {displayRole}</p>
+                                    <p className="font-bold text-ink">{authUser?.fullName || authUser?.username}</p>
+                                    <p className="text-xs text-muted">@{authUser?.username} · {displayRole}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2]">
+                            <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg text-muted hover:bg-canvas">
                                 <X size={18} />
                             </button>
                         </div>
@@ -328,29 +328,29 @@ export default function ProfileButton({ compact = false }) {
                                 {/* Switch Role option — only if user has multiple roles */}
                                 {availableRoles.length > 1 && (
                                     <button onClick={() => setView('switch-role')}
-                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#FAF7F2] border border-[#F0EBE3] transition text-left group">
-                                        <div className="w-9 h-9 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
-                                            <RefreshCw size={16} className="text-[#C9A84C]" />
+                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-canvas border border-line-soft transition text-left group">
+                                        <div className="w-9 h-9 rounded-xl bg-gold/10 flex items-center justify-center flex-shrink-0">
+                                            <RefreshCw size={16} className="text-gold" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-[#1C1C1E]">Chuyển đổi vai trò</p>
-                                            <p className="text-xs text-[#8E8878]">Đang dùng: <span className={`px-1.5 py-0.5 rounded font-medium ${ROLE_COLORS[currentRole] || 'bg-gray-100 text-gray-700'}`}>{roleLabelOf(currentRole, t)}</span></p>
+                                            <p className="text-sm font-semibold text-ink">Chuyển đổi vai trò</p>
+                                            <p className="text-xs text-muted">Đang dùng: <span className={`px-1.5 py-0.5 rounded font-medium ${ROLE_COLORS[currentRole] || 'bg-surface-2 text-ink-2'}`}>{roleLabelOf(currentRole, t)}</span></p>
                                         </div>
-                                        <ChevronRight size={16} className="text-[#C4B9A8] group-hover:text-[#C9A84C] flex-shrink-0" />
+                                        <ChevronRight size={16} className="text-faint group-hover:text-gold flex-shrink-0" />
                                     </button>
                                 )}
 
                                 {/* Update profile */}
                                 <button onClick={handleOpenProfile}
-                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#FAF7F2] border border-[#F0EBE3] transition text-left group">
-                                    <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-canvas border border-line-soft transition text-left group">
+                                    <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center flex-shrink-0">
                                         <UserCircle size={16} className="text-blue-500" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-[#1C1C1E]">Thông tin tài khoản</p>
-                                        <p className="text-xs text-[#8E8878]">Cập nhật tên, email, mật khẩu</p>
+                                        <p className="text-sm font-semibold text-ink">Thông tin tài khoản</p>
+                                        <p className="text-xs text-muted">Cập nhật tên, email, mật khẩu</p>
                                     </div>
-                                    <ChevronRight size={16} className="text-[#C4B9A8] group-hover:text-[#C9A84C] flex-shrink-0" />
+                                    <ChevronRight size={16} className="text-faint group-hover:text-gold flex-shrink-0" />
                                 </button>
                             </div>
                         )}
@@ -358,7 +358,7 @@ export default function ProfileButton({ compact = false }) {
                         {/* ── View: Switch Role ── */}
                         {view === 'switch-role' && (
                             <div className="p-4 space-y-2">
-                                <p className="text-xs text-[#8E8878] px-1 mb-3">
+                                <p className="text-xs text-muted px-1 mb-3">
                                     Chọn vai trò để chuyển đổi. Nhấn ⭐ để đặt làm mặc định khi đăng nhập.
                                 </p>
                                 {availableRoles.map(r => {
@@ -369,21 +369,21 @@ export default function ProfileButton({ compact = false }) {
                                         <div key={r}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition
                                             ${isActive
-                                                    ? 'border-[#C9A84C] bg-[#FDF8ED]'
-                                                    : 'border-[#F0EBE3] hover:border-[#C9A84C]/40 hover:bg-[#FAF7F2]'}`}>
+                                                    ? 'border-gold bg-gold-tint'
+                                                    : 'border-line-soft hover:border-gold/40 hover:bg-canvas'}`}>
                                             {/* Role info - clickable to switch */}
                                             <button
                                                 onClick={() => handleSwitchRole(r)}
                                                 disabled={isActive || !!switchingRole}
                                                 className="flex items-center gap-3 flex-1 text-left disabled:cursor-default">
                                                 {isSwitching
-                                                    ? <Loader2 size={16} className="animate-spin text-[#C9A84C] flex-shrink-0" />
+                                                    ? <Loader2 size={16} className="animate-spin text-gold flex-shrink-0" />
                                                     : isActive
-                                                        ? <Check size={16} className="text-[#C9A84C] flex-shrink-0" />
-                                                        : <div className="w-4 h-4 rounded-full border-2 border-[#E8DDD0] flex-shrink-0" />
+                                                        ? <Check size={16} className="text-gold flex-shrink-0" />
+                                                        : <div className="w-4 h-4 rounded-full border-2 border-line flex-shrink-0" />
                                                 }
                                                 <div>
-                                                    <p className={`text-sm font-semibold ${isActive ? 'text-[#C9A84C]' : 'text-[#1C1C1E]'}`}>
+                                                    <p className={`text-sm font-semibold ${isActive ? 'text-gold' : 'text-ink'}`}>
                                                         {roleLabelOf(r, t)}
                                                     </p>
                                                 </div>
@@ -394,7 +394,7 @@ export default function ProfileButton({ compact = false }) {
                                                 disabled={!!settingDefault}
                                                 title={isDefault ? 'Bỏ mặc định' : 'Đặt làm mặc định khi đăng nhập'}
                                                 className={`p-1.5 rounded-lg transition flex-shrink-0
-                                                ${isDefault ? 'text-yellow-500 hover:text-yellow-600' : 'text-[#C4B9A8] hover:text-yellow-500'}
+                                                ${isDefault ? 'text-yellow-500 hover:text-yellow-600 dark:text-yellow-300' : 'text-faint hover:text-yellow-500'}
                                                 ${settingDefault === r ? 'animate-pulse' : ''}`}>
                                                 <Star size={14} fill={isDefault ? 'currentColor' : 'none'} />
                                             </button>
@@ -407,13 +407,13 @@ export default function ProfileButton({ compact = false }) {
                         {/* ── View: Profile ── */}
                         {view === 'profile' && (
                             <>
-                                <div className="flex border-b border-black/5">
+                                <div className="flex border-b border-hairline">
                                     {tabs.map(({ key, label, icon: Icon }) => (
                                         <button key={key} onClick={() => setTab(key)}
                                             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition border-b-2
                                             ${tab === key
-                                                    ? 'border-[#C9A84C] text-[#C9A84C]'
-                                                    : 'border-transparent text-[#8E8878] hover:text-[#1C1C1E] hover:bg-[#FAF7F2]'}`}>
+                                                    ? 'border-gold text-gold'
+                                                    : 'border-transparent text-muted hover:text-ink hover:bg-canvas'}`}>
                                             <Icon size={15} /> {label}
                                         </button>
                                     ))}
@@ -423,13 +423,13 @@ export default function ProfileButton({ compact = false }) {
                                     <div className="p-5 space-y-4">
                                         {loadingProfile ? (
                                             <div className="flex justify-center py-8">
-                                                <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
+                                                <Loader2 size={24} className="animate-spin text-gold" />
                                             </div>
                                         ) : (
                                             <>
                                                 <div>
-                                                    <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                        <UserCircle size={13} className="text-[#C9A84C]" /> {t('profile', 'full_name')}
+                                                    <label className="block text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5">
+                                                        <UserCircle size={13} className="text-gold" /> {t('profile', 'full_name')}
                                                     </label>
                                                     <input type="text" value={infoForm.fullName}
                                                         onChange={e => setInfoForm(p => ({ ...p, fullName: e.target.value }))}
@@ -437,8 +437,8 @@ export default function ProfileButton({ compact = false }) {
                                                         className={inputCls(false)} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                        <Mail size={13} className="text-[#C9A84C]" /> Email
+                                                    <label className="block text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5">
+                                                        <Mail size={13} className="text-gold" /> Email
                                                     </label>
                                                     <input type="email" value={infoForm.email}
                                                         onChange={e => { setInfoForm(p => ({ ...p, email: e.target.value })); setInfoErr(p => ({ ...p, email: '' })); }}
@@ -446,15 +446,15 @@ export default function ProfileButton({ compact = false }) {
                                                     {infoErr.email && <p className="text-xs text-red-500 mt-1">{infoErr.email}</p>}
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5 flex items-center gap-1.5">
-                                                        <Phone size={13} className="text-[#C9A84C]" /> {t('customer', 'phone')}
+                                                    <label className="block text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5">
+                                                        <Phone size={13} className="text-gold" /> {t('customer', 'phone')}
                                                     </label>
                                                     <input type="tel" value={infoForm.phoneNumber}
                                                         onChange={e => setInfoForm(p => ({ ...p, phoneNumber: e.target.value }))}
                                                         placeholder="0912 345 678" className={inputCls(false)} />
                                                 </div>
                                                 <button onClick={handleSaveInfo} disabled={savingInfo}
-                                                    className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                                    className="w-full py-2.5 rounded-xl bg-gold text-white font-semibold hover:bg-gold-strong transition disabled:opacity-50 flex items-center justify-center gap-2">
                                                     {savingInfo ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</> : <><Check size={16} /> {t('common', 'save_changes')}</>}
                                                 </button>
                                             </>
@@ -470,26 +470,26 @@ export default function ProfileButton({ compact = false }) {
                                             { key: 'confirmPassword', label: t('auth', 'confirm_password'), showKey: 'confirm' },
                                         ].map(({ key, label, showKey, hint }) => (
                                             <div key={key}>
-                                                <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">{label}</label>
+                                                <label className="block text-sm font-semibold text-ink mb-1.5">{label}</label>
                                                 <div className="relative">
                                                     <input type={showPwd[showKey] ? 'text' : 'password'} value={pwdForm[key]}
                                                         onChange={e => { setPwdForm(p => ({ ...p, [key]: e.target.value })); setPwdErr(p => ({ ...p, [key]: '' })); }}
                                                         placeholder="••••••••" className={`${inputCls(!!pwdErr[key])} pr-10`} />
                                                     <button type="button"
                                                         onClick={() => setShowPwd(p => ({ ...p, [showKey]: !p[showKey] }))}
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]">
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
                                                         {showPwd[showKey] ? <EyeOff size={15} /> : <Eye size={15} />}
                                                     </button>
                                                 </div>
                                                 {pwdErr[key] && <p className="text-xs text-red-500 mt-1">{pwdErr[key]}</p>}
-                                                {hint && !pwdErr[key] && <p className="text-xs text-[#8E8878] mt-1">{hint}</p>}
+                                                {hint && !pwdErr[key] && <p className="text-xs text-muted mt-1">{hint}</p>}
                                             </div>
                                         ))}
                                         <button onClick={handleChangePassword} disabled={savingPwd}
-                                            className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                            className="w-full py-2.5 rounded-xl bg-gold text-white font-semibold hover:bg-gold-strong transition disabled:opacity-50 flex items-center justify-center gap-2">
                                             {savingPwd ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</> : <><Lock size={16} /> {t('auth', 'change_password')}</>}
                                         </button>
-                                        <p className="text-xs text-[#8E8878] text-center">{t('auth', 'change_password_success_relogin')}</p>
+                                        <p className="text-xs text-muted text-center">{t('auth', 'change_password_success_relogin')}</p>
                                     </div>
                                 )}
 
@@ -498,14 +498,14 @@ export default function ProfileButton({ compact = false }) {
                                     <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
                                         {loadingPcStatus ? (
                                             <div className="flex justify-center py-8">
-                                                <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
+                                                <Loader2 size={24} className="animate-spin text-gold" />
                                             </div>
                                         ) : pcStatus?.locked ? (
                                             /* Đang bị khoá → KHÔNG cho tự đổi, tránh dò passcode qua đường vòng */
-                                            <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3.5">
+                                            <div className="flex items-start gap-2.5 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-2xl px-4 py-3.5">
                                                 <ShieldAlert size={16} className="text-red-500 shrink-0 mt-0.5" />
                                                 <div>
-                                                    <p className="text-sm font-bold text-red-700">Đã khoá xem lương</p>
+                                                    <p className="text-sm font-bold text-red-700 dark:text-red-300">Đã khoá xem lương</p>
                                                     <p className="text-xs text-red-600/90 mt-1 leading-relaxed">
                                                         Bạn đã nhập sai quá 3 lần nên không thể xem lương và không thể tự
                                                         đổi mật khẩu. Vui lòng liên hệ quản trị viên (Nhân sự) để được mở khoá.
@@ -514,18 +514,18 @@ export default function ProfileButton({ compact = false }) {
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="flex items-start gap-2.5 bg-[#FAF7F2] border border-black/5 rounded-2xl px-4 py-3">
-                                                    <Wallet size={15} className="text-[#C9A84C] shrink-0 mt-0.5" />
-                                                    <p className="text-xs text-[#8E8878] leading-relaxed">
-                                                        Mật khẩu 6 số dùng riêng cho màn hình <b className="text-[#1C1C1E]">Quản lý lương</b>,
+                                                <div className="flex items-start gap-2.5 bg-canvas border border-hairline rounded-2xl px-4 py-3">
+                                                    <Wallet size={15} className="text-gold shrink-0 mt-0.5" />
+                                                    <p className="text-xs text-muted leading-relaxed">
+                                                        Mật khẩu 6 số dùng riêng cho màn hình <b className="text-ink">Quản lý lương</b>,
                                                         không phải mật khẩu đăng nhập.
                                                     </p>
                                                 </div>
 
                                                 {pcStatus?.usingDefault && (
-                                                    <div className="flex items-start gap-2.5 bg-[#FDF8ED] border border-[#C9A84C]/30 rounded-2xl px-4 py-3">
-                                                        <KeyRound size={15} className="text-[#C9A84C] shrink-0 mt-0.5" />
-                                                        <p className="text-xs text-[#8B6F2E] leading-relaxed">
+                                                    <div className="flex items-start gap-2.5 bg-gold-tint border border-gold/30 rounded-2xl px-4 py-3">
+                                                        <KeyRound size={15} className="text-gold shrink-0 mt-0.5" />
+                                                        <p className="text-xs text-gold-deep leading-relaxed">
                                                             Bạn đang dùng mật khẩu mặc định <b>000000</b>. Nên đổi ngay để bảo mật.
                                                         </p>
                                                     </div>
@@ -563,29 +563,29 @@ export default function ProfileButton({ compact = false }) {
                                                 </div>
 
                                                 {pcErr && (
-                                                    <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3.5 py-2.5">
+                                                    <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl px-3.5 py-2.5">
                                                         <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
-                                                        <p className="text-xs font-semibold text-red-600 leading-snug">{pcErr}</p>
+                                                        <p className="text-xs font-semibold text-red-600 dark:text-red-300 leading-snug">{pcErr}</p>
                                                     </div>
                                                 )}
 
                                                 {pcOk && (
-                                                    <div className="flex items-start gap-2 bg-green-50 border border-green-100 rounded-xl px-3.5 py-2.5">
-                                                        <Check size={15} className="text-green-600 shrink-0 mt-0.5" />
-                                                        <p className="text-xs font-semibold text-green-700 leading-snug">
+                                                    <div className="flex items-start gap-2 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/18 rounded-xl px-3.5 py-2.5">
+                                                        <Check size={15} className="text-green-600 dark:text-green-300 shrink-0 mt-0.5" />
+                                                        <p className="text-xs font-semibold text-green-700 dark:text-green-300 leading-snug">
                                                             Đã đổi mật khẩu xem lương. Lần tới vào trang lương hãy dùng mật khẩu mới.
                                                         </p>
                                                     </div>
                                                 )}
 
                                                 <button onClick={handleChangePasscode} disabled={savingPc}
-                                                    className="w-full py-2.5 rounded-xl bg-[#C9A84C] text-white font-semibold hover:bg-[#B8923E] transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                                    className="w-full py-2.5 rounded-xl bg-gold text-white font-semibold hover:bg-gold-strong transition disabled:opacity-50 flex items-center justify-center gap-2">
                                                     {savingPc
                                                         ? <><Loader2 size={16} className="animate-spin" /> {t('common', 'processing')}</>
                                                         : <><Wallet size={16} /> Đổi mật khẩu xem lương</>}
                                                 </button>
 
-                                                <p className="text-xs text-[#8E8878] text-center leading-relaxed">
+                                                <p className="text-xs text-muted text-center leading-relaxed">
                                                     Nhập sai mật khẩu xem lương 3 lần sẽ bị khoá và phải liên hệ quản trị viên.
                                                 </p>
                                             </>

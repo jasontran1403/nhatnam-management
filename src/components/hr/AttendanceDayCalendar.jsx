@@ -28,11 +28,11 @@ const DAY_TYPE = {
   WORK: { cls: 'bg-emerald-500 text-white border-emerald-500', label: 'Đủ công', icon: Check },
   MISSING: { cls: 'bg-red-400 text-white border-red-400', label: 'Thiếu chấm công (0 công)', icon: AlertTriangle },
   EXCEPTION: { cls: 'bg-violet-500 text-white border-violet-500', label: 'Nghỉ có phép (đủ công)', icon: Plane },
-  HALF: { cls: 'bg-emerald-100 text-emerald-700 border-emerald-300', label: 'Nửa công', icon: Minus },
-  HOLIDAY: { cls: 'bg-violet-100 text-violet-700 border-violet-300', label: 'Lễ / Tết', icon: Sun },
-  LEAVE: { cls: 'bg-blue-100 text-blue-700 border-blue-300', label: 'Nghỉ phép', icon: Plane },
-  UNPAID: { cls: 'bg-red-100 text-red-700 border-red-300', label: 'Nghỉ không lương', icon: AlertCircle },
-  OFF: { cls: 'bg-[#FAF7F2] text-[#C4B9A8] border-black/5', label: 'Không chấm công', icon: Coffee },
+  HALF: { cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/35', label: 'Nửa công', icon: Minus },
+  HOLIDAY: { cls: 'bg-violet-100 dark:bg-violet-500/18 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/35', label: 'Lễ / Tết', icon: Sun },
+  LEAVE: { cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-500/35', label: 'Nghỉ phép', icon: Plane },
+  UNPAID: { cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/35', label: 'Nghỉ không lương', icon: AlertCircle },
+  OFF: { cls: 'bg-canvas text-faint border-hairline', label: 'Không chấm công', icon: Coffee },
 };
 
 /** Đổi số phút thành dạng "8h33" cho dễ đọc. */
@@ -58,56 +58,56 @@ function DayDetail({ day, month, year, onClose }) {
     : (day.checkIn || day.checkOut ? [{ in: day.checkIn, out: day.checkOut }] : []);
 
   return (
-    <div className="lg:h-full flex flex-col rounded-2xl border border-[#C9A84C]/30 overflow-hidden
-      bg-gradient-to-br from-[#C9A84C]/10 to-transparent">
+    <div className="lg:h-full flex flex-col rounded-2xl border border-gold/30 overflow-hidden
+      bg-gradient-to-br from-gold/10 to-transparent">
 
       <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3
-        border-b border-[#C9A84C]/20">
+        border-b border-gold/20">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${cfg.cls}`}>
             <Icon size={15} />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[#1C1C1E] leading-tight">
+            <p className="text-sm font-bold text-ink leading-tight">
               {dateStr} · Thứ {day.weekdayLabel}
             </p>
-            <p className="text-[11px] text-[#8E8878] mt-0.5">{cfg.label}</p>
+            <p className="text-[11px] text-muted mt-0.5">{cfg.label}</p>
           </div>
         </div>
         <button onClick={onClose}
-          className="p-1.5 rounded-lg text-[#8E8878] hover:text-[#1C1C1E]
-            hover:bg-white/60 transition-colors shrink-0">
+          className="p-1.5 rounded-lg text-muted hover:text-ink
+            hover:bg-surface/60 transition-colors shrink-0">
           <X size={15} />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {sessions.length === 0 ? (
-          <p className="text-sm text-[#8E8878] text-center py-3">
+          <p className="text-sm text-muted text-center py-3">
             Không có dữ liệu chấm công trong ngày này.
           </p>
         ) : (
           <div className="space-y-2">
             {sessions.map((s, i) => (
               <div key={i}
-                className="flex items-center gap-3 bg-white rounded-xl px-3.5 py-3 border border-black/5">
+                className="flex items-center gap-3 bg-surface rounded-xl px-3.5 py-3 border border-hairline">
                 {sessions.length > 1 && (
-                  <span className="w-6 h-6 rounded-lg bg-[#FAF7F2] flex items-center justify-center
-                    text-[11px] font-bold text-[#8E8878] shrink-0">{i + 1}</span>
+                  <span className="w-6 h-6 rounded-lg bg-canvas flex items-center justify-center
+                    text-[11px] font-bold text-muted shrink-0">{i + 1}</span>
                 )}
                 <div className="flex-1 flex items-center gap-2">
-                  <LogIn size={14} className="text-emerald-600 shrink-0" />
+                  <LogIn size={14} className="text-emerald-600 dark:text-emerald-300 shrink-0" />
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-[#8E8878] font-bold">Vào</p>
-                    <p className="text-base font-bold text-[#1C1C1E] leading-tight">{s.in || '--:--'}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted font-bold">Vào</p>
+                    <p className="text-base font-bold text-ink leading-tight">{s.in || '--:--'}</p>
                   </div>
                 </div>
-                <div className="w-px h-8 bg-black/5" />
+                <div className="w-px h-8 bg-hairline" />
                 <div className="flex-1 flex items-center gap-2">
-                  <LogOut size={14} className="text-orange-600 shrink-0" />
+                  <LogOut size={14} className="text-orange-600 dark:text-orange-300 shrink-0" />
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-[#8E8878] font-bold">Ra</p>
-                    <p className="text-base font-bold text-[#1C1C1E] leading-tight">{s.out || '--:--'}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted font-bold">Ra</p>
+                    <p className="text-base font-bold text-ink leading-tight">{s.out || '--:--'}</p>
                   </div>
                 </div>
               </div>
@@ -117,37 +117,37 @@ function DayDetail({ day, month, year, onClose }) {
 
         <div className="flex flex-wrap gap-2">
           <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg
-            bg-white border border-black/5 text-[#5A5548]">
-            Công ghi nhận: <strong className="text-[#1C1C1E]">{fmtNum(day.value)}</strong>
+            bg-surface border border-hairline text-ink-2">
+            Công ghi nhận: <strong className="text-ink">{fmtNum(day.value)}</strong>
           </span>
           {day.lateMinutes > 0 && (
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg
-              bg-amber-50 border border-amber-200 text-amber-700">
+              bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 text-amber-700 dark:text-amber-300">
               Đi trễ {day.lateMinutes} phút
             </span>
           )}
           {day.earlyMinutes > 0 && (
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg
-              bg-blue-50 border border-blue-200 text-blue-700">
+              bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 text-blue-700 dark:text-blue-300">
               Về sớm {day.earlyMinutes} phút
             </span>
           )}
           {day.workedMinutes > 0 && (
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg
-              bg-white border border-black/5 text-[#5A5548]"
+              bg-surface border border-hairline text-ink-2"
               title="Đã trừ 1 tiếng nghỉ trưa 12:00–13:00">
-              Thời gian làm: <strong className="text-[#1C1C1E]">{fmtDuration(day.workedMinutes)}</strong>
+              Thời gian làm: <strong className="text-ink">{fmtDuration(day.workedMinutes)}</strong>
               {day.requiredMinutes > 0 && (
-                <span className="text-[#8E8878]"> / {fmtDuration(day.requiredMinutes)}</span>
+                <span className="text-muted"> / {fmtDuration(day.requiredMinutes)}</span>
               )}
             </span>
           )}
         </div>
 
         {day.exception && (
-          <div className="flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2.5">
-            <Plane size={14} className="text-violet-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-violet-800 leading-snug">
+          <div className="flex items-start gap-2 bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/28 rounded-xl px-3 py-2.5">
+            <Plane size={14} className="text-violet-600 dark:text-violet-300 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-violet-800 dark:text-violet-300 leading-snug">
               <strong>{day.exception}</strong>
               {day.windowStart && ` — ca làm ngày này là ${day.windowStart}–${day.windowEnd}.`}
             </p>
@@ -155,9 +155,9 @@ function DayDetail({ day, month, year, onClose }) {
         )}
 
         {day.type === 'MISSING' && (
-          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
-            <AlertTriangle size={14} className="text-red-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-red-800 leading-snug">
+          <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2.5">
+            <AlertTriangle size={14} className="text-red-600 dark:text-red-300 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-red-800 dark:text-red-300 leading-snug">
               Ngày này thiếu giờ vào hoặc giờ ra nên <strong>không được tính công</strong>.
               Nếu có lý do chính đáng, hãy nộp đơn xin nghỉ / đi trễ cho bộ phận nhân sự.
             </p>
@@ -175,13 +175,13 @@ function DayDetail({ day, month, year, onClose }) {
 export function DayDetailPlaceholder({ description }) {
   return (
     <div className="hidden lg:flex flex-col items-center justify-center text-center
-      h-full px-8 rounded-2xl border border-dashed border-black/10 bg-[#FAF7F2]/60">
-      <span className="w-12 h-12 rounded-2xl bg-white border border-black/5
+      h-full px-8 rounded-2xl border border-dashed border-hairline-2 bg-canvas/60">
+      <span className="w-12 h-12 rounded-2xl bg-surface border border-hairline
         flex items-center justify-center shadow-sm">
-        <MousePointerClick size={20} className="text-[#C9A84C]" />
+        <MousePointerClick size={20} className="text-gold" />
       </span>
-      <p className="text-sm font-bold text-[#1C1C1E] mt-4">Chọn một ngày để xem chi tiết</p>
-      <p className="text-xs text-[#8E8878] mt-1.5 leading-relaxed max-w-[280px]">
+      <p className="text-sm font-bold text-ink mt-4">Chọn một ngày để xem chi tiết</p>
+      <p className="text-xs text-muted mt-1.5 leading-relaxed max-w-[280px]">
         {description}
       </p>
     </div>
@@ -203,12 +203,12 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
   if (!days.length) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12">
-        <span className="w-12 h-12 rounded-2xl bg-[#FAF7F2] border border-black/5
+        <span className="w-12 h-12 rounded-2xl bg-canvas border border-hairline
           flex items-center justify-center">
-          <Coffee size={20} className="text-[#C4B9A8]" />
+          <Coffee size={20} className="text-faint" />
         </span>
-        <p className="text-sm font-bold text-[#1C1C1E] mt-4">Chưa có dữ liệu chấm công</p>
-        <p className="text-xs text-[#8E8878] mt-1.5 max-w-[320px] leading-relaxed">
+        <p className="text-sm font-bold text-ink mt-4">Chưa có dữ liệu chấm công</p>
+        <p className="text-xs text-muted mt-1.5 max-w-[320px] leading-relaxed">
           Tháng này chưa có bảng chấm công cho nhân viên, hoặc mã chấm công của
           nhân viên không khớp với dòng nào trong file đã tải lên.
         </p>
@@ -226,12 +226,12 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
     <>
       {/* Tiêu đề — ẩn được khi component nằm trong Modal đã có tiêu đề riêng */}
       {showHeader && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-[#C9A84C]" />
-            <h3 className="text-sm font-bold text-[#1C1C1E]">Chi tiết ngày công</h3>
+            <Clock size={16} className="text-gold" />
+            <h3 className="text-sm font-bold text-ink">Chi tiết ngày công</h3>
           </div>
-          <span className="text-xs font-semibold text-[#8E8878]">
+          <span className="text-xs font-semibold text-muted">
             {fmtNum(attendance.actualDays)} / {fmtNum(attendance.standardDays)} công
           </span>
         </div>
@@ -243,14 +243,14 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
           {/* CỘT TRÁI — lưới lịch + chú thích */}
           <div>
             {hasPunchData && (
-              <p className="text-[11px] text-[#8E8878] mb-3 lg:hidden">
+              <p className="text-[11px] text-muted mb-3 lg:hidden">
                 Bấm vào một ngày để xem giờ chấm công vào / ra (tối đa 3 lượt).
               </p>
             )}
 
             <div className="grid grid-cols-[repeat(7,44px)] gap-1.5 mb-1.5">
               {[2, 3, 4, 5, 6, 7, 8].map(w => (
-                <div key={w} className="text-center text-[10px] font-bold text-[#8E8878]">
+                <div key={w} className="text-center text-[10px] font-bold text-muted">
                   {WEEKDAY_LABEL[w]}
                 </div>
               ))}
@@ -271,7 +271,7 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
                     className={`h-11 rounded-lg border flex items-center justify-center
                       text-[12px] font-bold leading-none transition-all ${cfg.cls}
                       ${clickable ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
-                      ${isSelected ? 'ring-2 ring-[#C9A84C] ring-offset-1 scale-110' : ''}`}
+                      ${isSelected ? 'ring-2 ring-gold ring-offset-1 scale-110' : ''}`}
                   >
                     {d.day}
                   </button>
@@ -279,14 +279,14 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
               })}
             </div>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-black/5
+            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-hairline
               max-w-[340px]">
               {usedTypes.map(t => {
                 const cfg = DAY_TYPE[t];
                 return (
                   <div key={t} className="flex items-center gap-1.5">
                     <span className={`w-3.5 h-3.5 rounded-md border ${cfg.cls}`} />
-                    <span className="text-[11px] text-[#8E8878] font-medium">{cfg.label}</span>
+                    <span className="text-[11px] text-muted font-medium">{cfg.label}</span>
                   </div>
                 );
               })}
@@ -307,37 +307,37 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
         </div>
 
         {/* Tổng kết */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-5 border-t border-black/5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-5 border-t border-hairline">
           {[
-            { label: 'Công chuẩn', value: fmtNum(attendance.standardDays), color: 'text-[#1C1C1E]' },
+            { label: 'Công chuẩn', value: fmtNum(attendance.standardDays), color: 'text-ink' },
             {
-              label: 'Tổng công tháng', value: fmtNum(attendance.actualDays), color: 'text-emerald-600',
+              label: 'Tổng công tháng', value: fmtNum(attendance.actualDays), color: 'text-emerald-600 dark:text-emerald-300',
               sub: `${attendance.presentDays ?? 0} ngày có chấm công`
             },
             {
               label: 'Tổng phút đi trễ', value: (attendance.lateMinutes ?? 0).toLocaleString('vi-VN'),
-              color: 'text-amber-600', sub: `${attendance.lateCount ?? 0} ngày`
+              color: 'text-amber-600 dark:text-amber-300', sub: `${attendance.lateCount ?? 0} ngày`
             },
             {
               label: 'Tổng phút về sớm', value: (attendance.earlyMinutes ?? 0).toLocaleString('vi-VN'),
-              color: 'text-blue-600', sub: `${attendance.earlyCount ?? 0} ngày`
+              color: 'text-blue-600 dark:text-blue-300', sub: `${attendance.earlyCount ?? 0} ngày`
             },
           ].map(st => (
-            <div key={st.label} className="bg-[#FAF7F2] rounded-xl px-3 py-2.5">
-              <p className="text-[11px] text-[#8E8878] font-medium">{st.label}</p>
+            <div key={st.label} className="bg-canvas rounded-xl px-3 py-2.5">
+              <p className="text-[11px] text-muted font-medium">{st.label}</p>
               <p className={`text-lg font-bold mt-0.5 leading-tight ${st.color}`}>{st.value}</p>
-              {st.sub && <p className="text-[10px] text-[#8E8878] mt-0.5">{st.sub}</p>}
+              {st.sub && <p className="text-[10px] text-muted mt-0.5">{st.sub}</p>}
             </div>
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] text-[#8E8878]">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] text-muted">
           {attendance.shiftStart && (
-            <span>Ca chuẩn: <strong className="text-[#1C1C1E]">
+            <span>Ca chuẩn: <strong className="text-ink">
               {attendance.shiftStart}–{attendance.shiftEnd}</strong></span>
           )}
           {attendance.employeeCode && (
-            <span>Mã chấm công: <strong className="text-[#1C1C1E]">{attendance.employeeCode}</strong></span>
+            <span>Mã chấm công: <strong className="text-ink">{attendance.employeeCode}</strong></span>
           )}
         </div>
       </div>

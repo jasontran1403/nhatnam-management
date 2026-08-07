@@ -230,7 +230,7 @@ export default function InventoryCheckExportModal({
 
       {/* Modal */}
       <div style={{
-        position: 'relative', background: '#fff', borderRadius: 20,
+        position: 'relative', background: 'var(--c-surface)', borderRadius: 20,
         boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
         width: '100%', maxWidth: 480, maxHeight: '88vh',
         display: 'flex', flexDirection: 'column',
@@ -240,18 +240,18 @@ export default function InventoryCheckExportModal({
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '18px 20px 14px',
-          borderBottom: '1px solid #F0EBE3',
+          borderBottom: '1px solid var(--c-surface-2)',
           flexShrink: 0,
         }}>
           <div>
-            <p style={{ fontSize: 10, color: '#8E8878', textTransform: 'uppercase', letterSpacing: 1, margin: 0 }}>
+            <p style={{ fontSize: 10, color: 'var(--c-muted)', textTransform: 'uppercase', letterSpacing: 1, margin: 0 }}>
               Xuất phiếu
             </p>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '2px 0 0' }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-ink)', margin: '2px 0 0' }}>
               Phiếu kiểm kho
             </h2>
             {warehouseName && (
-              <p style={{ fontSize: 12, color: '#8E8878', margin: '2px 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--c-muted)', margin: '2px 0 0' }}>
                 🏭 {warehouseName}
               </p>
             )}
@@ -259,8 +259,8 @@ export default function InventoryCheckExportModal({
           <button
             onClick={onClose}
             style={{
-              padding: 6, border: 'none', background: '#F0EBE3',
-              borderRadius: 10, cursor: 'pointer', color: '#8E8878',
+              padding: 6, border: 'none', background: 'var(--c-surface-2)',
+              borderRadius: 10, cursor: 'pointer', color: 'var(--c-muted)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -270,7 +270,7 @@ export default function InventoryCheckExportModal({
 
         {/* Body — chọn danh mục */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          <p style={{ fontSize: 12, color: '#5C5C5C', marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--c-ink-2)', marginBottom: 12 }}>
             Chọn danh mục muốn đưa vào phiếu. Có thể chọn nhiều danh mục.
           </p>
 
@@ -315,12 +315,12 @@ export default function InventoryCheckExportModal({
         {/* Footer */}
         <div style={{
           padding: '14px 20px 18px',
-          borderTop: '1px solid #F0EBE3',
+          borderTop: '1px solid var(--c-surface-2)',
           flexShrink: 0,
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
           {/* Preview count */}
-          <p style={{ fontSize: 12, color: '#8E8878', margin: 0, textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: 'var(--c-muted)', margin: 0, textAlign: 'center' }}>
             {itemsToExport.length > 0
               ? `Sẽ xuất ${itemsToExport.length} nguyên liệu`
               : 'Không có nguyên liệu nào trong danh mục đã chọn'}
@@ -331,8 +331,8 @@ export default function InventoryCheckExportModal({
               onClick={onClose}
               style={{
                 flex: 1, padding: '10px 0', borderRadius: 12,
-                border: '1px solid #E8DDD0', background: '#fff',
-                fontSize: 14, color: '#8E8878', cursor: 'pointer', fontWeight: 500,
+                border: '1px solid var(--c-line)', background: 'var(--c-surface)',
+                fontSize: 14, color: 'var(--c-muted)', cursor: 'pointer', fontWeight: 500,
               }}
             >
               Huỷ
@@ -343,8 +343,8 @@ export default function InventoryCheckExportModal({
               style={{
                 flex: 2, padding: '10px 0', borderRadius: 12,
                 border: 'none',
-                background: itemsToExport.length === 0 ? '#E8DDD0' : '#1A3C6E',
-                color: itemsToExport.length === 0 ? '#C4B9A8' : '#fff',
+                background: itemsToExport.length === 0 ? 'var(--c-line)' : 'var(--c-steel)',
+                color: itemsToExport.length === 0 ? 'var(--c-faint)' : 'var(--c-surface)',
                 fontSize: 14, fontWeight: 700, cursor: itemsToExport.length === 0 ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 transition: 'all 0.2s',
@@ -373,11 +373,11 @@ function CategoryOption({ label, count, selected, onToggle, icon, imageUrl, high
         padding: '11px 14px', marginBottom: 8,
         borderRadius: 12, cursor: 'pointer',
         border: selected
-          ? '2px solid #1A3C6E'
-          : '1px solid #E8DDD0',
+          ? '2px solid var(--c-steel)'
+          : '1px solid var(--c-line)',
         background: selected
-          ? (highlight ? '#EBF3FB' : '#F5F8FF')
-          : '#FAFAFA',
+          ? (highlight ? 'var(--c-steel-tint)' : 'var(--c-steel-tint)')
+          : 'var(--c-surface-2)',
         transition: 'all 0.15s',
         userSelect: 'none',
       }}
@@ -385,7 +385,7 @@ function CategoryOption({ label, count, selected, onToggle, icon, imageUrl, high
       {/* Icon / ảnh */}
       <div style={{
         width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-        background: selected ? 'rgba(26,60,110,0.1)' : '#F0EBE3',
+        background: selected ? 'rgba(26,60,110,0.1)' : 'var(--c-surface-2)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden', fontSize: 18,
       }}>
@@ -400,18 +400,18 @@ function CategoryOption({ label, count, selected, onToggle, icon, imageUrl, high
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
           margin: 0, fontSize: 14, fontWeight: selected ? 700 : 500,
-          color: selected ? '#1A3C6E' : '#1C1C1E',
+          color: selected ? 'var(--c-steel)' : 'var(--c-ink)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {label}
         </p>
-        <p style={{ margin: 0, fontSize: 11, color: '#8E8878' }}>
+        <p style={{ margin: 0, fontSize: 11, color: 'var(--c-muted)' }}>
           {count} nguyên liệu
         </p>
       </div>
 
       {/* Checkbox */}
-      <div style={{ color: selected ? '#1A3C6E' : '#C4B9A8', flexShrink: 0 }}>
+      <div style={{ color: selected ? 'var(--c-steel)' : 'var(--c-faint)', flexShrink: 0 }}>
         {selected ? <CheckSquare size={20} /> : <Square size={20} />}
       </div>
     </div>
@@ -423,7 +423,7 @@ function Spinner() {
     <div style={{
       width: 16, height: 16,
       border: '2px solid rgba(255,255,255,0.4)',
-      borderTopColor: '#fff',
+      borderTopColor: 'var(--c-surface)',
       borderRadius: '50%',
       animation: 'spin 0.7s linear infinite',
     }} />

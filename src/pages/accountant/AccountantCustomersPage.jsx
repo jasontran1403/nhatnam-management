@@ -128,60 +128,60 @@ export default function AccountantCustomersPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#FAF7F2]">
+    <div className="flex flex-col h-full bg-canvas">
       {/* Header - giữ nguyên */}
-      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
+      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-surface border-b border-line-soft">
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-bold text-[#1C1C1E]">{t('customer', 'customer')}</h1>
-            <p className="text-[10px] sm:text-xs text-[#8E8878]">{total} {t('customer', 'customer').toLowerCase()}</p>
+            <h1 className="text-lg sm:text-xl font-bold text-ink">{t('customer', 'customer')}</h1>
+            <p className="text-[10px] sm:text-xs text-muted">{total} {t('customer', 'customer').toLowerCase()}</p>
           </div>
           <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all disabled:opacity-60">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold transition-all disabled:opacity-60">
             {exportingDebt
-              ? <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+              ? <span className="w-3 h-3 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               : <FileText size={13} />}
             {exportingDebt ? 'Đang xuất...' : 'Báo cáo công nợ'}
           </button>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] cursor-pointer transition-all">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
               if (e.target.files[0]) toast(t('common', 'info'), 'info');
             }} />
           </label>
           <button onClick={() => toast(t('common', 'info'), 'info')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8DDD0] text-xs text-[#5C5C5C] hover:border-[#C9A84C] transition-all">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold transition-all">
             <Download size={13} /> Export
           </button>
           <button onClick={() => fetchCustomers(0)}
-            className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0] transition-colors">
+            className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input type="text" {...{ placeholder: t("customer", "customer_name") }}
             value={searchInput} onChange={e => setSearchInput(e.target.value)}
-            className="w-full border border-[#E8DDD0] rounded-xl pl-9 pr-4 py-2 text-sm bg-white
-              focus:outline-none focus:border-[#C9A84C]" />
+            className="w-full border border-line rounded-xl pl-9 pr-4 py-2 text-sm bg-surface
+              focus:outline-none focus:border-gold" />
         </div>
 
         {/* Bộ lọc trạng thái + sắp xếp công nợ */}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           {/* Dropdown trạng thái: Đang hoạt động / Đang khóa */}
           <div className="relative">
-            <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+            <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="appearance-none border border-[#E8DDD0] rounded-xl pl-8 pr-8 py-2 text-xs bg-white
-                text-[#5C5C5C] cursor-pointer focus:outline-none focus:border-[#C9A84C]"
+              className="appearance-none border border-line rounded-xl pl-8 pr-8 py-2 text-xs bg-surface
+                text-ink-2 cursor-pointer focus:outline-none focus:border-gold"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="ACTIVE">Đang hoạt động</option>
               <option value="LOCKED">Đang khóa</option>
             </select>
-            <ChevronRight size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-[#8E8878] pointer-events-none" />
+            <ChevronRight size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-muted pointer-events-none" />
           </div>
 
           {/* Nút sắp xếp theo công nợ tăng dần */}
@@ -189,8 +189,8 @@ export default function AccountantCustomersPage() {
             onClick={() => setSortDebt(v => !v)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs transition-all
               ${sortDebt
-                ? 'border-[#C9A84C] bg-[#FBF6E9] text-[#8A6D1F] font-semibold'
-                : 'border-[#E8DDD0] bg-white text-[#5C5C5C] hover:border-[#C9A84C]'}`}
+                ? 'border-gold bg-gold-tint text-gold-deep font-semibold'
+                : 'border-line bg-surface text-ink-2 hover:border-gold'}`}
             title="Sắp xếp công nợ từ nhỏ đến lớn"
           >
             <ArrowUp size={13} />
@@ -203,33 +203,33 @@ export default function AccountantCustomersPage() {
       <div className="flex-1 overflow-auto px-4 sm:px-6 py-4">
         {loading && customers.length === 0 ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : customers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2">
+          <div className="flex flex-col items-center justify-center py-16 text-muted gap-2">
             <Search size={32} strokeWidth={1} />
             <p className="text-sm">{t('common', 'no_data')}</p>
           </div>
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden md:block bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden shadow-sm">
+            <div className="hidden md:block bg-surface rounded-2xl border border-line-soft overflow-hidden shadow-sm">
               <table className="w-full text-sm">
-                <thead className="bg-[#FAF7F2] border-b border-[#F0EBE3]">
+                <thead className="bg-canvas border-b border-line-soft">
                   <tr>
-                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                    <th className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3">
                       {t('customer', 'customer')}
                     </th>
-                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                    <th className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3">
                       TT Liên hệ {/* Đã đổi từ "Tên người liên hệ" */}
                     </th>
-                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                    <th className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3">
                       {t('common', 'type')}
                     </th>
-                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                    <th className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3">
                       {t('payment', 'debt')}
                     </th>
-                    <th className="text-left text-[10px] font-bold text-[#8E8878] uppercase tracking-wider px-4 py-3">
+                    <th className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3">
                       {t('common', 'note')}
                     </th>
                   </tr>
@@ -245,12 +245,12 @@ export default function AccountantCustomersPage() {
                     return (
                       <tr key={c.id}
                         onClick={() => setHistoryCustomerId(c.id)}
-                        className={`border-b border-[#F0EBE3] last:border-0 cursor-pointer transition-colors hover:bg-[#FAF7F2]
-                          ${urgency === 'critical' ? 'bg-red-50/40' : urgency === 'warning' ? 'bg-amber-50/40' : ''}`}>
+                        className={`border-b border-line-soft last:border-0 cursor-pointer transition-colors hover:bg-canvas
+                          ${urgency === 'critical' ? 'bg-red-50/40 dark:bg-red-500/4' : urgency === 'warning' ? 'bg-amber-50/40 dark:bg-amber-500/4' : ''}`}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 relative
-                              ${c.customerType === 'COMPANY' ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+                              ${c.customerType === 'COMPANY' ? 'bg-blue-500' : 'bg-gold'}`}>
                               {c.customerType === 'COMPANY' ? <Building2 size={14} /> : <UserIcon size={14} />}
                               {urgency && (
                                 <span className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white
@@ -259,47 +259,47 @@ export default function AccountantCustomersPage() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="font-semibold text-xs text-[#1C1C1E] truncate">
+                                <p className="font-semibold text-xs text-ink truncate">
                                   {c.customerType === 'COMPANY' ? (c.companyName || c.name) : (c.name || '—')}
                                 </p>
                                 {c.isActive === false && (
-                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-red-50 text-red-600 border border-red-200 flex-shrink-0">
+                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/28 flex-shrink-0">
                                     Đã khóa
                                   </span>
                                 )}
                               </div>
-                              {c.customerCode && <p className="text-[10px] text-[#8E8878]">#{c.customerCode}</p>}
+                              {c.customerCode && <p className="text-[10px] text-muted">#{c.customerCode}</p>}
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-[#1C1C1E]">
+                        <td className="px-4 py-3 text-xs text-ink">
                           {c.phone || '—'} {/* TT Liên hệ hiển thị số điện thoại */}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
                             ${c.customerType === 'COMPANY'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                              ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/28'
+                              : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28'}`}>
                             {c.customerType === 'COMPANY' ? t('customer', 'company') : t('customer', 'retail')}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {/* Công nợ hiển thị số tiền */}
                           {c.unpaidDebt > 0
-                            ? <span className="text-xs font-bold text-orange-600">{formatPrice(c.unpaidDebt)}</span>
-                            : <span className="text-xs text-[#C4B9A8]">0 đ</span>
+                            ? <span className="text-xs font-bold text-orange-600 dark:text-orange-300">{formatPrice(c.unpaidDebt)}</span>
+                            : <span className="text-xs text-faint">0 đ</span>
                           }
                         </td>
                         <td className="px-4 py-3">
                           {/* Note: số ngày công nợ của đơn cũ nhất */}
                           {c.oldestDebtDays !== null && c.oldestDebtDays !== undefined && c.oldestDebtDays > 0
                             ? <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
-                              ${c.oldestDebtDays <= 3 ? 'bg-red-50 text-red-600 border-red-200'
-                                : c.oldestDebtDays <= 6 ? 'bg-amber-50 text-amber-600 border-amber-200'
-                                : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                              ${c.oldestDebtDays <= 3 ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/28'
+                                : c.oldestDebtDays <= 6 ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-500/28'
+                                : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-500/28'}`}>
                                 {c.oldestDebtDays} ngày
                               </span>
-                            : <span className="text-[10px] text-[#C4B9A8]">—</span>
+                            : <span className="text-[10px] text-faint">—</span>
                           }
                         </td>
                       </tr>
@@ -320,11 +320,11 @@ export default function AccountantCustomersPage() {
                 return (
                   <div key={c.id}
                     onClick={() => setHistoryCustomerId(c.id)}
-                    className={`bg-white rounded-2xl p-4 border cursor-pointer transition-all hover:shadow-md
-                      ${urgency === 'critical' ? 'border-red-300 ring-1 ring-red-300' : urgency === 'warning' ? 'border-amber-300 ring-1 ring-amber-300' : 'border-[#F0EBE3]'}`}>
+                    className={`bg-surface rounded-2xl p-4 border cursor-pointer transition-all hover:shadow-md
+                      ${urgency === 'critical' ? 'border-red-300 dark:border-red-500/35 ring-1 ring-red-300 dark:ring-red-500/35' : urgency === 'warning' ? 'border-amber-300 dark:border-amber-500/35 ring-1 ring-amber-300 dark:ring-amber-500/35' : 'border-line-soft'}`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 relative
-                        ${c.customerType === 'COMPANY' ? 'bg-blue-500' : 'bg-[#C9A84C]'}`}>
+                        ${c.customerType === 'COMPANY' ? 'bg-blue-500' : 'bg-gold'}`}>
                         {c.customerType === 'COMPANY' ? <Building2 size={15} /> : <UserIcon size={15} />}
                         {urgency && (
                           <span className={`absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white
@@ -333,22 +333,22 @@ export default function AccountantCustomersPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-sm text-[#1C1C1E] truncate">
+                          <p className="font-semibold text-sm text-ink truncate">
                             {c.customerType === 'COMPANY' ? (c.companyName || c.name) : (c.name || '—')}
                           </p>
                           {/* TRẠNG THÁI KHOÁ — chỉ HIỂN THỊ. Kế toán viên cần biết
                               để không ghi nhận đơn mới, nhưng quyền khoá/mở khoá
                               thuộc SUPER_ACCOUNTANT/OWNER/ADMIN. */}
                           {c.isActive === false && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 flex-shrink-0">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/28 flex-shrink-0">
                               Đã khóa
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-[#8E8878]">{c.phone}</p>
+                        <p className="text-xs text-muted">{c.phone}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border
-                            ${c.customerType === 'COMPANY' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                            ${c.customerType === 'COMPANY' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/28' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28'}`}>
                             {c.customerType === 'COMPANY' ? t('customer', 'company').substring(0, 2) : t('customer', 'retail')}
                           </span>
                           {c.unpaidDebt > 0 && (
@@ -356,13 +356,13 @@ export default function AccountantCustomersPage() {
                           )}
                           {c.oldestDebtDays !== null && c.oldestDebtDays !== undefined && c.oldestDebtDays > 0 && (
                             <span className={`text-[10px] font-semibold
-                              ${c.oldestDebtDays <= 3 ? 'text-red-600' : c.oldestDebtDays <= 6 ? 'text-amber-600' : 'text-blue-600'}`}>
+                              ${c.oldestDebtDays <= 3 ? 'text-red-600 dark:text-red-300' : c.oldestDebtDays <= 6 ? 'text-amber-600 dark:text-amber-300' : 'text-blue-600 dark:text-blue-300'}`}>
                               📋 {c.oldestDebtDays} ngày
                             </span>
                           )}
                         </div>
                       </div>
-                      <ChevronRight size={16} className="text-[#C4B9A8] shrink-0" />
+                      <ChevronRight size={16} className="text-faint shrink-0" />
                     </div>
                   </div>
                 );
@@ -375,12 +375,12 @@ export default function AccountantCustomersPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-4">
             <button onClick={() => fetchCustomers(page - 1)} disabled={page === 0 || loading}
-              className="p-2 rounded-xl bg-white border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              className="p-2 rounded-xl bg-surface border border-line text-muted hover:border-gold disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
               <ChevronLeft size={15} />
             </button>
-            <span className="text-sm text-[#8E8878] px-3">{page + 1} / {totalPages}</span>
+            <span className="text-sm text-muted px-3">{page + 1} / {totalPages}</span>
             <button onClick={() => fetchCustomers(page + 1)} disabled={page >= totalPages - 1 || loading}
-              className="p-2 rounded-xl bg-white border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              className="p-2 rounded-xl bg-surface border border-line text-muted hover:border-gold disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
               <ChevronRight size={15} />
             </button>
           </div>

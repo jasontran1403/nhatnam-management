@@ -26,7 +26,7 @@ import {
 } from '../../utils/costCalc';
 
 const inputCls =
-  'w-full px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40';
+  'w-full px-3 py-2 rounded-lg border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MODAL NHẬP GIÁ VỐN
@@ -167,15 +167,15 @@ function CostModal({ receipt, onClose, onDone }) {
   return (
     <Modal open onClose={onClose} title={`Nhập giá vốn — ${receipt.receiptCode}`} size="lg">
       <div className="mt-3 space-y-5">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-          <p className="text-sm text-blue-800">
+        <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 rounded-xl p-3">
+          <p className="text-sm text-blue-800 dark:text-blue-300">
             Kho: <span className="font-semibold">{receipt.warehouseName}</span>
           </p>
         </div>
 
         {/* ── Chọn loại giá nhập ── */}
         <div>
-          <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
             Loại giá nhập
           </p>
           <div className="flex gap-2">
@@ -183,8 +183,8 @@ function CostModal({ receipt, onClose, onDone }) {
               onClick={() => switchMode('UNIT')}
               className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${
                 priceMode === 'UNIT'
-                  ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                  : 'bg-white text-[#8E8878] border-black/10'
+                  ? 'bg-gold text-white border-gold'
+                  : 'bg-surface text-muted border-hairline-2'
               }`}>
               Đơn giá / 1 đơn vị
             </button>
@@ -192,13 +192,13 @@ function CostModal({ receipt, onClose, onDone }) {
               onClick={() => switchMode('TOTAL')}
               className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${
                 priceMode === 'TOTAL'
-                  ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                  : 'bg-white text-[#8E8878] border-black/10'
+                  ? 'bg-gold text-white border-gold'
+                  : 'bg-surface text-muted border-hairline-2'
               }`}>
               Tổng tiền của mặt hàng
             </button>
           </div>
-          <p className="text-[11px] text-[#8E8878] mt-1.5">
+          <p className="text-[11px] text-muted mt-1.5">
             Được nhập tối đa {MONEY_DECIMALS} số sau dấu thập phân.
             {priceMode === 'TOTAL' && ' Hệ thống tự chia cho số lượng để ra đơn giá.'}
           </p>
@@ -210,27 +210,27 @@ function CostModal({ receipt, onClose, onDone }) {
             const r = alloc.get(item.id);
             const up = unitPrices[item.id] || 0;
             return (
-              <div key={item.id} className="bg-[#FAF7F2] rounded-xl p-3">
+              <div key={item.id} className="bg-canvas rounded-xl p-3">
                 <div className="flex items-center gap-3">
                   {item.imageUrl && (
                     <img src={item.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[#1C1C1E] text-sm">{item.ingredientName}</p>
-                    <p className="text-xs text-[#8E8878]">
-                      SL: <span className="font-medium text-[#1C1C1E]">{item.quantity} {item.unit}</span>
+                    <p className="font-semibold text-ink text-sm">{item.ingredientName}</p>
+                    <p className="text-xs text-muted">
+                      SL: <span className="font-medium text-ink">{item.quantity} {item.unit}</span>
                       {item.expiryDate && ` · HSD: ${item.expiryDate}`}
                     </p>
                   </div>
                 </div>
                 <div className="mt-2">
-                  <label className="text-xs font-semibold text-[#1C1C1E] mb-1 block">
+                  <label className="text-xs font-semibold text-ink mb-1 block">
                     {priceMode === 'UNIT'
                       ? `Đơn giá / ${item.unit || 'đơn vị'} (đ) *`
                       : 'Tổng tiền của mặt hàng (đ) *'}
                   </label>
                   <div className="relative">
-                    <DollarSign size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+                    <DollarSign size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                     <input
                       type="text"
                       inputMode="decimal"
@@ -241,11 +241,11 @@ function CostModal({ receipt, onClose, onDone }) {
                     />
                   </div>
                   {up > 0 && (
-                    <p className="text-xs text-[#8E8878] mt-1">
+                    <p className="text-xs text-muted mt-1">
                       {priceMode === 'TOTAL' ? (
-                        <>Đơn giá: <b className="text-[#1C1C1E]">{fmtMoney(up)} đ/{item.unit}</b></>
+                        <>Đơn giá: <b className="text-ink">{fmtMoney(up)} đ/{item.unit}</b></>
                       ) : (
-                        <>Thành tiền: <b className="text-[#1C1C1E]">{fmtMoney(r?.lineValue)} đ</b></>
+                        <>Thành tiền: <b className="text-ink">{fmtMoney(r?.lineValue)} đ</b></>
                       )}
                     </p>
                   )}
@@ -258,17 +258,17 @@ function CostModal({ receipt, onClose, onDone }) {
         {/* ── Thuế / phí ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider">
               Thuế / phí (tuỳ chọn)
             </p>
             <button onClick={addFee}
-              className="flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:underline">
+              className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline">
               <Plus size={13} /> Thêm thuế/phí
             </button>
           </div>
 
           {fees.length === 0 ? (
-            <p className="text-xs text-[#8E8878] flex items-start gap-1.5">
+            <p className="text-xs text-muted flex items-start gap-1.5">
               <Info size={12} className="mt-0.5 flex-shrink-0" />
               Không có thuế/phí → giá vốn = đơn giá nhập. Nếu có, mỗi dòng là 1 loại riêng
               (tên tự đặt) và sẽ được phân bổ theo tỷ trọng giá trị của từng nguyên liệu.
@@ -276,7 +276,7 @@ function CostModal({ receipt, onClose, onDone }) {
           ) : (
             <div className="space-y-3">
               {fees.map((f) => (
-                <div key={f.key} className="bg-white border border-black/10 rounded-xl p-3 space-y-2">
+                <div key={f.key} className="bg-surface border border-hairline-2 rounded-xl p-3 space-y-2">
                   <div className="flex gap-2">
                     <input
                       className={inputCls}
@@ -295,12 +295,12 @@ function CostModal({ receipt, onClose, onDone }) {
                       }}
                     />
                     <button onClick={() => { removeFee(f.key); setShowPreview(false); }}
-                      className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition flex-shrink-0">
+                      className="p-2 rounded-lg hover:bg-red-50 dark:bg-red-500/10 text-red-400 transition flex-shrink-0">
                       <Trash2 size={14} />
                     </button>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#8E8878] mb-1">Áp dụng cho nguyên liệu:</p>
+                    <p className="text-[10px] text-muted mb-1">Áp dụng cho nguyên liệu:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {items.map((it) => {
                         const checked = f.itemIds.includes(it.id);
@@ -309,8 +309,8 @@ function CostModal({ receipt, onClose, onDone }) {
                             onClick={() => { toggleFeeItem(f.key, it.id); setShowPreview(false); }}
                             className={`text-xs px-2 py-1 rounded-full border transition ${
                               checked
-                                ? 'bg-[#C9A84C]/10 border-[#C9A84C] text-[#C9A84C] font-semibold'
-                                : 'bg-white border-black/10 text-[#8E8878]'
+                                ? 'bg-gold/10 border-gold text-gold font-semibold'
+                                : 'bg-surface border-hairline-2 text-muted'
                             }`}>
                             {checked ? '✓ ' : ''}{it.ingredientName}
                           </button>
@@ -323,8 +323,8 @@ function CostModal({ receipt, onClose, onDone }) {
                   </div>
                 </div>
               ))}
-              <p className="text-right text-xs text-[#8E8878]">
-                Tổng thuế/phí: <b className="text-[#1C1C1E]">{fmtMoney(totalFee)} đ</b>
+              <p className="text-right text-xs text-muted">
+                Tổng thuế/phí: <b className="text-ink">{fmtMoney(totalFee)} đ</b>
               </p>
             </div>
           )}
@@ -332,14 +332,14 @@ function CostModal({ receipt, onClose, onDone }) {
 
         {/* ── PREVIEW giá vốn tạm tính ── */}
         {showPreview && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
-            <p className="text-sm font-bold text-emerald-800 flex items-center gap-1.5">
+          <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl p-3 space-y-2">
+            <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
               <Eye size={14} /> Giá vốn tạm tính
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-[#6b7280] border-b border-emerald-200">
+                  <tr className="text-ink-2 border-b border-emerald-200 dark:border-emerald-500/28">
                     <th className="text-left py-1.5 font-semibold">Nguyên liệu</th>
                     <th className="text-right py-1.5 font-semibold">SL</th>
                     <th className="text-right py-1.5 font-semibold">Đơn giá</th>
@@ -352,14 +352,14 @@ function CostModal({ receipt, onClose, onDone }) {
                     const r = alloc.get(it.id);
                     if (!r) return null;
                     return (
-                      <tr key={it.id} className="border-b border-emerald-100 last:border-0">
-                        <td className="py-1.5 text-[#1C1C1E]">{it.ingredientName}</td>
+                      <tr key={it.id} className="border-b border-emerald-100 dark:border-emerald-500/18 last:border-0">
+                        <td className="py-1.5 text-ink">{it.ingredientName}</td>
                         <td className="py-1.5 text-right tabular-nums">{it.quantity} {it.unit}</td>
                         <td className="py-1.5 text-right tabular-nums">{fmtMoney(r.unitPrice)}</td>
-                        <td className="py-1.5 text-right tabular-nums text-amber-700">
+                        <td className="py-1.5 text-right tabular-nums text-amber-700 dark:text-amber-300">
                           {r.feeShare > 0 ? fmtMoney(r.feeShare) : '—'}
                         </td>
-                        <td className="py-1.5 text-right tabular-nums font-bold text-emerald-800">
+                        <td className="py-1.5 text-right tabular-nums font-bold text-emerald-800 dark:text-emerald-300">
                           {fmtDong(r.unitCost)}
                         </td>
                       </tr>
@@ -368,15 +368,15 @@ function CostModal({ receipt, onClose, onDone }) {
                 </tbody>
               </table>
             </div>
-            <div className="pt-2 border-t border-emerald-200 flex justify-between text-xs">
-              <span className="text-emerald-700">
+            <div className="pt-2 border-t border-emerald-200 dark:border-emerald-500/28 flex justify-between text-xs">
+              <span className="text-emerald-700 dark:text-emerald-300">
                 Giá trị hàng: <b>{fmtMoney(totalValue)} đ</b> + Thuế/phí: <b>{fmtMoney(totalFee)} đ</b>
               </span>
-              <span className="font-bold text-emerald-800">
+              <span className="font-bold text-emerald-800 dark:text-emerald-300">
                 Tổng giá vốn nhập kho: {fmtDong(totalCost)} đ
               </span>
             </div>
-            <p className="text-[10px] text-emerald-700">
+            <p className="text-[10px] text-emerald-700 dark:text-emerald-300">
               Giá vốn được làm tròn tới hàng đơn vị đồng ở bước cuối; các bước tính trung gian giữ nguyên phần thập phân.
             </p>
           </div>
@@ -385,11 +385,11 @@ function CostModal({ receipt, onClose, onDone }) {
         {/* ── Actions ── */}
         <div className="flex gap-2 pt-1">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-black/10 text-[#555] hover:bg-gray-50 font-medium transition">
+            className="flex-1 py-2.5 rounded-xl border border-hairline-2 text-ink-2 hover:bg-canvas font-medium transition">
             Huỷ
           </button>
           <button onClick={handlePreview} disabled={!canSubmit}
-            className="flex-1 py-2.5 rounded-xl border border-[#C9A84C] text-[#C9A84C] font-semibold hover:bg-[#C9A84C]/10 transition disabled:opacity-40 flex items-center justify-center gap-2">
+            className="flex-1 py-2.5 rounded-xl border border-gold text-gold font-semibold hover:bg-gold/10 transition disabled:opacity-40 flex items-center justify-center gap-2">
             <Eye size={16} /> Xem trước giá vốn
           </button>
           <button onClick={handleConfirm} disabled={confirming || !canSubmit || !showPreview}
@@ -443,20 +443,20 @@ export default function AccountantWarehouseReceiptsPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Warehouse size={24} className="text-[#C9A84C]" />
+          <Warehouse size={24} className="text-gold" />
           <div>
-            <h1 className="text-2xl font-bold text-[#1C1C1E]">Phiếu nhập kho chờ giá vốn</h1>
-            <p className="text-sm text-[#8E8878]">
+            <h1 className="text-2xl font-bold text-ink">Phiếu nhập kho chờ giá vốn</h1>
+            <p className="text-sm text-muted">
               Tồn kho đã cộng khi nhập hàng — nhập giá vốn để chốt giá cho các lô
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="bg-orange-100 text-orange-700 text-sm font-semibold px-3 py-1 rounded-full">
+          <span className="bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300 text-sm font-semibold px-3 py-1 rounded-full">
             {receipts.length} chờ xử lý
           </span>
           <button onClick={loadPending} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-black/10 text-sm text-[#555] hover:bg-[#FAF7F2] transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-hairline-2 text-sm text-ink-2 hover:bg-canvas transition disabled:opacity-50"
             title="Làm mới">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Làm mới</span>
@@ -466,34 +466,34 @@ export default function AccountantWarehouseReceiptsPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
         </div>
       ) : receipts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm text-center py-16">
+        <div className="bg-surface rounded-2xl border border-hairline shadow-sm text-center py-16">
           <CheckCircle size={48} className="mx-auto mb-3 text-green-400" />
-          <p className="text-lg font-semibold text-[#1C1C1E]">Không có phiếu chờ xử lý</p>
-          <p className="text-sm text-[#8E8878] mt-1">Tất cả phiếu nhập kho đã được xác nhận giá vốn</p>
+          <p className="text-lg font-semibold text-ink">Không có phiếu chờ xử lý</p>
+          <p className="text-sm text-muted mt-1">Tất cả phiếu nhập kho đã được xác nhận giá vốn</p>
         </div>
       ) : (
         <div className="grid gap-4">
           {receipts.map((r) => (
-            <div key={r.id} className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 hover:shadow-md transition">
+            <div key={r.id} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 hover:shadow-md transition">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-[#C9A84C]">{r.receiptCode}</span>
-                    <span className="flex items-center gap-1 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+                    <span className="font-mono text-sm font-bold text-gold">{r.receiptCode}</span>
+                    <span className="flex items-center gap-1 text-xs bg-orange-100 dark:bg-orange-500/18 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full font-medium">
                       <Clock size={11} /> Chờ giá vốn
                     </span>
                   </div>
-                  <p className="text-[#1C1C1E] font-medium mt-1">{r.warehouseName}</p>
-                  <p className="text-xs text-[#8E8878] mt-0.5">
+                  <p className="text-ink font-medium mt-1">{r.warehouseName}</p>
+                  <p className="text-xs text-muted mt-0.5">
                     Người nhập kho: {r.createdByName} · {r.itemCount} mặt hàng
                     {r.referenceCode && ` · Mã NCC: ${r.referenceCode}`}
                   </p>
                 </div>
                 <button onClick={() => openDetail(r.id)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#C9A84C] text-white rounded-xl text-sm font-semibold hover:bg-[#B8923E] transition">
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold-strong transition">
                   <DollarSign size={14} /> Nhập giá vốn
                 </button>
               </div>

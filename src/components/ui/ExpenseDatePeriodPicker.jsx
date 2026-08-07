@@ -60,7 +60,7 @@ export default function ExpenseDatePeriodPicker({ value, onChange }) {
   return (
     <div className="space-y-2">
       {/* Segmented toggle Ngày | Kỳ */}
-      <div className="inline-flex gap-1 bg-[#FAF7F2] border border-black/5 rounded-xl p-1">
+      <div className="inline-flex gap-1 bg-canvas border border-hairline rounded-xl p-1">
         {tabs.map(tb => {
           const active = mode === tb.id;
           return (
@@ -69,7 +69,7 @@ export default function ExpenseDatePeriodPicker({ value, onChange }) {
               type="button"
               onClick={() => switchMode(tb.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
-                ${active ? 'bg-[#C9A84C] text-white shadow-sm' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}
+                ${active ? 'bg-gold text-white shadow-sm' : 'text-muted hover:text-ink'}`}
             >
               <tb.icon size={13} />
               {tb.label}

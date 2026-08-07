@@ -29,11 +29,11 @@ import {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const STATUS_STYLE = {
-  PENDING:           { cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-  APPROVED_PAID:     { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: Check },
-  APPROVED_UNPAID:   { cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: Check },
-  APPROVED_DEDUCTED: { cls: 'bg-orange-50 text-orange-700 border-orange-200', icon: MinusCircle },
-  REJECTED:          { cls: 'bg-red-50 text-red-700 border-red-200', icon: X },
+  PENDING:           { cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28', icon: Clock },
+  APPROVED_PAID:     { cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: Check },
+  APPROVED_UNPAID:   { cls: 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/28', icon: Check },
+  APPROVED_DEDUCTED: { cls: 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/28', icon: MinusCircle },
+  REJECTED:          { cls: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/28', icon: X },
 };
 
 function StatusBadge({ status, label }) {
@@ -238,8 +238,8 @@ function CreateForm({ config, onCreated }) {
               <button key={t.value} type="button" onClick={() => setTypeValue(t.value)}
                 className={`px-3.5 py-2 rounded-xl text-sm font-medium border transition-all
                   ${typeValue === t.value
-                    ? 'bg-[#1C1C1E] text-white border-[#1C1C1E] shadow-sm'
-                    : 'bg-white text-[#8E8878] border-black/10 hover:border-[#C9A84C] hover:text-[#C9A84C]'}`}>
+                    ? 'bg-chrome text-white border-chrome shadow-sm'
+                    : 'bg-surface text-muted border-hairline-2 hover:border-gold hover:text-gold'}`}>
                 {t.label}
               </button>
             ))}
@@ -287,7 +287,7 @@ function CreateForm({ config, onCreated }) {
         {type?.allowPartialDay && dayList.length > 0 && (
           <Field label="Buổi nghỉ từng ngày" required
             hint="Bỏ tick để nghỉ nửa ngày. Bỏ cả hai buổi thì ngày đó không nghỉ.">
-            <div className="rounded-xl border border-black/10 divide-y divide-black/5 overflow-hidden">
+            <div className="rounded-xl border border-hairline-2 divide-y divide-hairline overflow-hidden">
               {dayList.map(d => {
                 const ss = sessions[d] || {};
                 const off = !ss.morning && !ss.afternoon;
@@ -295,9 +295,9 @@ function CreateForm({ config, onCreated }) {
                 const [yy, mm, dd] = d.split('-');
                 return (
                   <div key={d}
-                    className={`flex items-center gap-3 px-3 py-2.5 ${off ? 'bg-[#FAF7F2]' : 'bg-white'}`}>
+                    className={`flex items-center gap-3 px-3 py-2.5 ${off ? 'bg-canvas' : 'bg-surface'}`}>
                     <span className={`text-sm font-medium w-24 flex-shrink-0
-                      ${off ? 'text-[#C4B9A8] line-through' : 'text-[#1C1C1E]'}`}>
+                      ${off ? 'text-faint line-through' : 'text-ink'}`}>
                       {dd}/{mm}/{yy}
                     </span>
 
@@ -305,14 +305,14 @@ function CreateForm({ config, onCreated }) {
                       <label key={k} className="flex items-center gap-1.5 cursor-pointer select-none">
                         <input type="checkbox" checked={!!ss[k]}
                           onChange={e => set(k, e.target.checked)}
-                          className="w-4 h-4 accent-[#C9A84C] cursor-pointer" />
-                        <span className={`text-sm ${ss[k] ? 'text-[#1C1C1E]' : 'text-[#8E8878]'}`}>
+                          className="w-4 h-4 accent-gold cursor-pointer" />
+                        <span className={`text-sm ${ss[k] ? 'text-ink' : 'text-muted'}`}>
                           {label}
                         </span>
                       </label>
                     ))}
 
-                    <span className="ml-auto text-xs text-[#8E8878]">
+                    <span className="ml-auto text-xs text-muted">
                       {off ? 'không nghỉ'
                            : (ss.morning && ss.afternoon) ? '1 ngày' : '0,5 ngày'}
                     </span>
@@ -326,7 +326,7 @@ function CreateForm({ config, onCreated }) {
             <Modal open={!!dropConfirm} onClose={() => setDropConfirm(null)}
               title="Bỏ ngày này khỏi lịch nghỉ?" size="sm">
               <div className="space-y-4">
-                <p className="text-sm text-[#1C1C1E]">
+                <p className="text-sm text-ink">
                   Ngày <b>{dropConfirm ? dropConfirm.split('-').reverse().join('/') : ''}</b> sẽ
                   không còn buổi nghỉ nào. Vì đây là ngày ở đầu/cuối khoảng, khoảng ngày
                   xin phép sẽ được rút lại.
@@ -337,9 +337,9 @@ function CreateForm({ config, onCreated }) {
                     .filter(d => sessions[d]?.morning || sessions[d]?.afternoon);
                   const f = (x) => x.split('-').reverse().join('/');
                   return (
-                    <div className="rounded-xl bg-[#FAF7F2] px-3 py-2.5 text-sm">
-                      <span className="text-[#8E8878]">Khoảng ngày mới: </span>
-                      <b className="text-[#1C1C1E]">
+                    <div className="rounded-xl bg-canvas px-3 py-2.5 text-sm">
+                      <span className="text-muted">Khoảng ngày mới: </span>
+                      <b className="text-ink">
                         {kept.length === 0 ? '(không còn ngày nào)'
                           : kept.length === 1 ? f(kept[0])
                           : `${f(kept[0])} → ${f(kept[kept.length - 1])}`}
@@ -355,10 +355,10 @@ function CreateForm({ config, onCreated }) {
             </Modal>
 
             <div className="flex items-center justify-between mt-2 px-1">
-              <span className="text-xs text-[#8E8878]">
+              <span className="text-xs text-muted">
                 {dayList.filter(d => sessions[d]?.morning || sessions[d]?.afternoon).length} ngày được chọn
               </span>
-              <span className="text-sm font-semibold text-[#C9A84C]">
+              <span className="text-sm font-semibold text-gold">
                 Tổng {String(
                   dayList.reduce((sum, d) => {
                     const ss = sessions[d] || {};
@@ -415,22 +415,22 @@ function DetailDrawer({ item, onClose, onCancelled }) {
   };
 
   const Row = ({ label, children }) => (
-    <div className="flex gap-3 py-2.5 border-b border-black/5 last:border-0">
-      <span className="text-xs text-[#8E8878] uppercase tracking-wider w-32 flex-shrink-0 pt-0.5">{label}</span>
-      <div className="text-sm text-[#1C1C1E] min-w-0 flex-1">{children}</div>
+    <div className="flex gap-3 py-2.5 border-b border-hairline last:border-0">
+      <span className="text-xs text-muted uppercase tracking-wider w-32 flex-shrink-0 pt-0.5">{label}</span>
+      <div className="text-sm text-ink min-w-0 flex-1">{children}</div>
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5 sticky top-0 bg-white">
+      <div className="relative bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline sticky top-0 bg-surface">
           <div className="min-w-0">
-            <h3 className="font-bold text-[#1C1C1E]">{item.typeLabel}</h3>
-            <p className="text-xs text-[#8E8878] mt-0.5">Phiếu #{item.id}</p>
+            <h3 className="font-bold text-ink">{item.typeLabel}</h3>
+            <p className="text-xs text-muted mt-0.5">Phiếu #{item.id}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-[#8E8878] hover:bg-[#FAF7F2]">
+          <button onClick={onClose} className="p-2 rounded-lg text-muted hover:bg-canvas">
             <X size={16} />
           </button>
         </div>
@@ -444,7 +444,7 @@ function DetailDrawer({ item, onClose, onCancelled }) {
 
           {item.status === 'APPROVED_DEDUCTED' && (
             <Row label="Công bị trừ">
-              <span className="font-semibold text-orange-600">{item.deductedDays} công</span>
+              <span className="font-semibold text-orange-600 dark:text-orange-300">{item.deductedDays} công</span>
             </Row>
           )}
           {item.decisionNote && (
@@ -458,10 +458,10 @@ function DetailDrawer({ item, onClose, onCancelled }) {
         </div>
 
         {item.status === 'PENDING' && (
-          <div className="px-5 py-4 border-t border-black/5 bg-[#FAF7F2] flex justify-end">
+          <div className="px-5 py-4 border-t border-hairline bg-canvas flex justify-end">
             <button onClick={cancel} disabled={busy}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold
-                text-red-600 border border-red-200 bg-white hover:bg-red-50 transition-colors disabled:opacity-50">
+                text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/28 bg-surface hover:bg-red-50 dark:bg-red-500/10 transition-colors disabled:opacity-50">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
               Huỷ phiếu
             </button>
@@ -548,7 +548,7 @@ export default function MyRequestsPage() {
           ) : (
             <Table>
               <Thead>
-                <Tr className="bg-[#FAF7F2] text-[#8E8878]">
+                <Tr className="bg-canvas text-muted">
                   <Th>Loại</Th>
                   <Th>Thời gian</Th>
                   <Th>Lý do</Th>
@@ -560,14 +560,14 @@ export default function MyRequestsPage() {
               <tbody>
                 {items.map(it => (
                   <Tr key={it.id} onClick={() => setSelected(it)}>
-                    <Td className="font-medium text-[#1C1C1E] whitespace-nowrap">{it.typeLabel}</Td>
-                    <Td className="text-[#1C1C1E] whitespace-nowrap">{it.periodText}</Td>
-                    <Td className="text-[#8E8878] max-w-[240px] truncate">{it.reason}</Td>
+                    <Td className="font-medium text-ink whitespace-nowrap">{it.typeLabel}</Td>
+                    <Td className="text-ink whitespace-nowrap">{it.periodText}</Td>
+                    <Td className="text-muted max-w-[240px] truncate">{it.reason}</Td>
                     <Td><StatusBadge status={it.status} label={it.statusLabel} /></Td>
-                    <Td right className="text-[#8E8878] text-xs whitespace-nowrap">
+                    <Td right className="text-muted text-xs whitespace-nowrap">
                       {formatDateTime(it.createdAt)}
                     </Td>
-                    <Td right><ChevronRight size={14} className="text-[#C4B9A8]" /></Td>
+                    <Td right><ChevronRight size={14} className="text-faint" /></Td>
                   </Tr>
                 ))}
               </tbody>

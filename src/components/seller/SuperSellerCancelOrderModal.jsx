@@ -95,19 +95,19 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
               <AlertTriangle size={16} className="text-red-500" />
             </div>
             <div>
-              <p className="text-xs text-[#8E8878]">Xác nhận hủy đơn hàng</p>
-              <p className="font-bold text-[#1C1C1E] font-mono text-sm">{orderCode}</p>
+              <p className="text-xs text-muted">Xác nhận hủy đơn hàng</p>
+              <p className="font-bold text-ink font-mono text-sm">{orderCode}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-black/5 text-[#8E8878]">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hairline text-muted">
             <X size={18} />
           </button>
         </div>
@@ -115,13 +115,13 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
         <div className="p-5 space-y-4">
           {/* Cảnh báo thanh toán / phiếu thu */}
           {checking ? (
-            <div className="flex items-center gap-2 text-xs text-[#8E8878] bg-[#FAF7F2] rounded-xl px-3 py-2.5">
+            <div className="flex items-center gap-2 text-xs text-muted bg-canvas rounded-xl px-3 py-2.5">
               <Loader2 size={13} className="animate-spin" /> Đang kiểm tra thông tin đơn hàng...
             </div>
           ) : cancelInfo?.isPaid && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-              <Receipt size={15} className="text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-xs text-amber-700">
+            <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2.5">
+              <Receipt size={15} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-700 dark:text-amber-300">
                 <p className="font-semibold">Đơn này đã được thanh toán.</p>
                 {cancelInfo.hasIncomeVoucher ? (
                   <p className="mt-0.5">
@@ -135,7 +135,7 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
             </div>
           )}
 
-          <p className="text-sm text-[#5C5C5C]">
+          <p className="text-sm text-ink-2">
             Hành động này sẽ hủy đơn <strong>{orderCode}</strong> (trạng thái hiện tại:{' '}
             <strong>{order.status}</strong>) và hoàn lại toàn bộ tồn kho đã trừ.
             <strong className="text-red-500"> Không thể hoàn tác.</strong>
@@ -143,37 +143,37 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
 
           {/* Ô 1: Người yêu cầu hủy */}
           <div>
-            <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">
+            <label className="block text-xs font-semibold text-ink-2 mb-1.5">
               Người yêu cầu hủy <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878] pointer-events-none" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               <input
-                className="w-full h-10 pl-8 pr-3 rounded-xl border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-red-400/30"
+                className="w-full h-10 pl-8 pr-3 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400/30"
                 placeholder="Tìm theo tên nhân viên..."
                 value={staffSearch}
                 onChange={e => { searchStaff(e.target.value); setError(''); }} />
-              {loadingStaff && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878] animate-spin" />}
+              {loadingStaff && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted animate-spin" />}
             </div>
             {staffResults.length > 0 && !requestedBy && (
-              <div className="mt-1 border border-black/10 rounded-xl overflow-hidden shadow-sm">
+              <div className="mt-1 border border-hairline-2 rounded-xl overflow-hidden shadow-sm">
                 {staffResults.map(s => (
                   <button key={s.id} onClick={() => selectStaff(s)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#FAF7F2] text-left transition-colors">
-                    <User size={14} className="text-[#8E8878] flex-shrink-0" />
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-canvas text-left transition-colors">
+                    <User size={14} className="text-muted flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-sm text-[#1C1C1E] font-medium truncate">{s.fullName}</p>
-                      <p className="text-xs text-[#8E8878]">{s.role}</p>
+                      <p className="text-sm text-ink font-medium truncate">{s.fullName}</p>
+                      <p className="text-xs text-muted">{s.role}</p>
                     </div>
                   </button>
                 ))}
               </div>
             )}
             {requestedBy && (
-              <div className="mt-1.5 flex items-center gap-2 bg-red-50 text-red-600 rounded-xl px-3 py-2">
+              <div className="mt-1.5 flex items-center gap-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 rounded-xl px-3 py-2">
                 <User size={13} />
                 <span className="text-sm font-medium flex-1">{requestedBy}</span>
-                <button onClick={clearStaff} className="text-[#8E8878] hover:text-red-500">
+                <button onClick={clearStaff} className="text-muted hover:text-red-500">
                   <X size={13} />
                 </button>
               </div>
@@ -183,7 +183,7 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
           {/* Role selector — khi nhân viên có nhiều role */}
           {requestedBy && requestedByRoles.length > 1 && (
             <div>
-              <label className="block text-xs font-semibold text-[#5C5C5C] mb-1.5">
+              <label className="block text-xs font-semibold text-ink-2 mb-1.5">
                 Role yêu cầu <span className="text-red-500">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
@@ -192,7 +192,7 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
                       requestedByRole === r
                         ? 'bg-red-500 text-white border-red-500'
-                        : 'bg-white text-[#5C5C5C] border-black/10 hover:border-red-300'
+                        : 'bg-surface text-ink-2 border-hairline-2 hover:border-red-300 dark:border-red-500/35'
                     }`}>
                     {r}
                   </button>
@@ -203,7 +203,7 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
 
           {/* Ô 2: Lý do hủy */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#1C1C1E]">
+            <label className="text-xs font-semibold text-ink">
               Lý do hủy đơn <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -211,7 +211,7 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
               onChange={e => { setCancelReason(e.target.value); setError(''); }}
               placeholder="Nhập lý do hủy đơn..."
               rows={3} autoFocus
-              className="w-full px-3 py-2.5 border border-[#E8DDD0] rounded-xl text-sm text-[#1C1C1E]
+              className="w-full px-3 py-2.5 border border-line rounded-xl text-sm text-ink
                 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400/20 resize-none"
             />
             {error && (
@@ -224,8 +224,8 @@ export default function SuperSellerCancelOrderModal({ order, onClose, onCancelle
 
         <div className="flex gap-2 px-5 pb-5">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#8E8878]
-              hover:bg-[#F0EBE3] transition-colors font-medium">
+            className="flex-1 py-2.5 rounded-xl border border-line text-sm text-muted
+              hover:bg-surface-2 transition-colors font-medium">
             Hủy bỏ
           </button>
           <button onClick={handleConfirm} disabled={!canSubmit}

@@ -36,26 +36,26 @@ function SearchSelect({ options, value, onChange, placeholder, disabled, emptyTe
   return (
     <div className="relative" ref={boxRef}>
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input className={inputCls + ' pl-9 pr-8'} disabled={disabled} placeholder={placeholder}
           value={open ? query : (selected ? selected.label : '')}
           onFocus={() => { if (!disabled) { setOpen(true); setQuery(''); } }}
           onChange={e => { setQuery(e.target.value); setOpen(true); }} />
         {selected && !disabled && (
-          <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8E8878] hover:text-[#1C1C1E]"
+          <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
             onClick={() => { onChange(''); setQuery(''); setOpen(false); }}><X size={14} /></button>
         )}
       </div>
       {open && !disabled && (
-        <div className="absolute z-30 mt-1 w-full max-h-52 overflow-auto rounded-xl border border-[#E8DDD0] bg-white shadow-lg">
+        <div className="absolute z-30 mt-1 w-full max-h-52 overflow-auto rounded-xl border border-line bg-surface shadow-lg">
           {filtered.length === 0
-            ? <p className="px-3 py-3 text-xs text-[#8E8878]">{emptyText || 'Không có kết quả'}</p>
+            ? <p className="px-3 py-3 text-xs text-muted">{emptyText || 'Không có kết quả'}</p>
             : filtered.map(o => (
               <button key={o.value} type="button"
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] ${o.value === value ? 'bg-[#FAF7F2] font-semibold' : ''}`}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-canvas ${o.value === value ? 'bg-canvas font-semibold' : ''}`}
                 onClick={() => { onChange(o.value); setOpen(false); setQuery(''); }}>
-                <span className="text-[#1C1C1E]">{o.label}</span>
-                {o.hint && <span className="block text-[11px] text-[#8E8878]">{o.hint}</span>}
+                <span className="text-ink">{o.label}</span>
+                {o.hint && <span className="block text-[11px] text-muted">{o.hint}</span>}
               </button>
             ))}
         </div>
@@ -86,7 +86,7 @@ function MaterialLine({ options, line, onChange, onRemove, canRemove }) {
           emptyText="Không có nguyên liệu phù hợp"
         />
         {selected && (
-          <p className="text-[11px] text-[#8E8878] mt-1 ml-1">
+          <p className="text-[11px] text-muted mt-1 ml-1">
             Tồn khả dụng: {fmtNum(selected.availableQuantity, 3)} {selected.unit}
           </p>
         )}
@@ -96,7 +96,7 @@ function MaterialLine({ options, line, onChange, onRemove, canRemove }) {
         onChange={e => onChange({ ...line, quantity: e.target.value })} />
       {canRemove && (
         <button type="button" onClick={onRemove}
-          className="mt-2 text-[#8E8878] hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
+          className="mt-2 text-muted hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
       )}
     </div>
   );
@@ -146,7 +146,7 @@ export function ExportMaterialModal({ factoryId, sourceMaterials, onClose, onDon
             placeholder="VD: Hư hỏng, tiêu hao, kiểm kê..." />
         </Field>
         <div>
-          <label className="block text-xs font-medium text-[#8E8878] mb-1.5">Nguyên liệu *</label>
+          <label className="block text-xs font-medium text-muted mb-1.5">Nguyên liệu *</label>
           <div className="space-y-2">
             {lines.map((l, i) => (
               <MaterialLine key={i} options={options} line={l}
@@ -156,7 +156,7 @@ export function ExportMaterialModal({ factoryId, sourceMaterials, onClose, onDon
             ))}
           </div>
           <button type="button" onClick={() => setLines([...lines, emptyLine()])}
-            className="mt-2 flex items-center gap-1 text-xs font-semibold text-[#1A2B1A] hover:underline">
+            className="mt-2 flex items-center gap-1 text-xs font-semibold text-forest hover:underline">
             <Plus size={13} /> Thêm nguyên liệu
           </button>
         </div>
@@ -224,7 +224,7 @@ export function TransferMaterialModal({ factoryId, onClose, onDone }) {
   return (
     <Modal open onClose={onClose} title="Chuyển kho nguyên liệu xưởng">
       <div className="space-y-4">
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2">
           HSD và giá vốn của từng lô được chuyển nguyên vẹn sang kho đích. Chỉ hiện
           nguyên liệu mà kho đích <strong>đã có (trùng tên)</strong>.
         </p>
@@ -238,11 +238,11 @@ export function TransferMaterialModal({ factoryId, onClose, onDone }) {
         </Field>
 
         <div>
-          <label className="block text-xs font-medium text-[#8E8878] mb-1.5">
-            Nguyên liệu * {!targetKey && <span className="text-[#B0A99A]">(chọn kho đích trước)</span>}
+          <label className="block text-xs font-medium text-muted mb-1.5">
+            Nguyên liệu * {!targetKey && <span className="text-faint">(chọn kho đích trước)</span>}
           </label>
           {loadingMats
-            ? <p className="text-xs text-[#8E8878]">Đang tải...</p>
+            ? <p className="text-xs text-muted">Đang tải...</p>
             : targetKey && materials.length === 0
               ? <p className="text-xs text-red-500">Kho đích không có nguyên liệu nào trùng tên với kho xưởng.</p>
               : (
@@ -258,7 +258,7 @@ export function TransferMaterialModal({ factoryId, onClose, onDone }) {
           }
           {targetKey && materials.length > 0 && (
             <button type="button" onClick={() => setLines([...lines, emptyLine()])}
-              className="mt-2 flex items-center gap-1 text-xs font-semibold text-[#1A2B1A] hover:underline">
+              className="mt-2 flex items-center gap-1 text-xs font-semibold text-forest hover:underline">
               <Plus size={13} /> Thêm nguyên liệu
             </button>
           )}
@@ -363,7 +363,7 @@ export function MixModal({ factoryId, sourceMaterials, onClose, onDone }) {
         </Field>
 
         <div>
-          <label className="block text-xs font-medium text-[#8E8878] mb-1.5">Nguyên liệu đầu vào *</label>
+          <label className="block text-xs font-medium text-muted mb-1.5">Nguyên liệu đầu vào *</label>
           <div className="space-y-2">
             {lines.map((l, i) => (
               <MaterialLine key={i} options={inputOptions} line={l}
@@ -373,15 +373,15 @@ export function MixModal({ factoryId, sourceMaterials, onClose, onDone }) {
             ))}
           </div>
           <button type="button" onClick={() => setLines([...lines, emptyLine()])}
-            className="mt-2 flex items-center gap-1 text-xs font-semibold text-[#1A2B1A] hover:underline">
+            className="mt-2 flex items-center gap-1 text-xs font-semibold text-forest hover:underline">
             <Plus size={13} /> Thêm nguyên liệu
           </button>
         </div>
 
         {/* Kết quả kiểm tra tồn */}
         {checkResult && (
-          <div className="rounded-xl border border-[#E8DDD0] p-3 space-y-1.5">
-            <p className="text-xs font-semibold text-[#8E8878] mb-1">Kết quả kiểm tra tồn</p>
+          <div className="rounded-xl border border-line p-3 space-y-1.5">
+            <p className="text-xs font-semibold text-muted mb-1">Kết quả kiểm tra tồn</p>
             {checkResult.inputs.map((s, i) => (
               <div key={i} className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-1.5">
@@ -390,13 +390,13 @@ export function MixModal({ factoryId, sourceMaterials, onClose, onDone }) {
                     : <AlertCircle size={14} className="text-red-500" />}
                   {s.materialName}
                 </span>
-                <span className={s.enough ? 'text-[#1C1C1E]' : 'text-red-600 font-medium'}>
+                <span className={s.enough ? 'text-ink' : 'text-red-600 dark:text-red-300 font-medium'}>
                   cần {fmtNum(s.required, 3)} / tồn {fmtNum(s.available, 3)} {s.unit}
                 </span>
               </div>
             ))}
             {checkResult.sufficient && checkResult.totalInputCost != null && (
-              <p className="text-xs text-[#8E8878] pt-1 border-t border-[#E8DDD0] mt-1">
+              <p className="text-xs text-muted pt-1 border-t border-line mt-1">
                 Tổng giá vốn đầu vào: <strong>{fmtNum(checkResult.totalInputCost, 0)} đ</strong>
               </p>
             )}
@@ -405,8 +405,8 @@ export function MixModal({ factoryId, sourceMaterials, onClose, onDone }) {
 
         {/* Form nhập HSD + SL khi đủ tồn */}
         {showMixForm && (
-          <div className="rounded-xl bg-[#FAF7F2] border border-[#E8DDD0] p-3 space-y-3">
-            <p className="text-xs font-semibold text-[#1A2B1A] flex items-center gap-1.5">
+          <div className="rounded-xl bg-canvas border border-line p-3 space-y-3">
+            <p className="text-xs font-semibold text-forest flex items-center gap-1.5">
               <FlaskConical size={14} /> Thông tin lô thành phẩm
             </p>
             <Field label={`Số lượng mix được * (${output?.unit || ''})`}>

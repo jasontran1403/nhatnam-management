@@ -102,27 +102,27 @@ function SearchDropdown({
       <button type="button" ref={triggerRef} disabled={disabled}
         onClick={() => { setOpen(o => !o); setQ(''); }}
         className={`${selectCls} flex items-center justify-between text-left ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
-        <span className={value ? 'text-[#1C1C1E] truncate' : 'text-[#8E8878]/70'}>
+        <span className={value ? 'text-ink truncate' : 'text-muted/70'}>
           {label || placeholder}
         </span>
-        <ChevronDown size={14} className="text-[#8E8878] flex-shrink-0 ml-2" />
+        <ChevronDown size={14} className="text-muted flex-shrink-0 ml-2" />
       </button>
 
       {open && rect && createPortal(
         <div ref={panelRef}
           style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 }}
-          className="bg-white rounded-xl border border-black/10 shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-black/5">
+          className="bg-surface rounded-xl border border-hairline-2 shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-hairline">
             <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
               <input autoFocus value={q} onChange={e => setQ(e.target.value)}
                 placeholder="Tìm kiếm..."
-                className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-black/10 focus:outline-none focus:border-[#C9A84C]" />
+                className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-hairline-2 focus:outline-none focus:border-gold" />
             </div>
           </div>
           <div className="max-h-64 overflow-y-auto">
             {loading ? (
-              <p className="px-3 py-4 text-sm text-[#8E8878] text-center">Đang tải…</p>
+              <p className="px-3 py-4 text-sm text-muted text-center">Đang tải…</p>
             ) : options.length === 0 ? (
               /* KHÔNG TÌM THẤY → mời tạo nhanh ngay tại chỗ.
                  Trước đây tới đây là cụt đường: người lập phiếu phải bỏ dở đi
@@ -130,24 +130,24 @@ function SearchDropdown({
               onQuickCreate ? (
                 <button type="button"
                   onClick={() => { onQuickCreate(q.trim()); setOpen(false); }}
-                  className="w-full text-left px-3 py-4 hover:bg-[#FAF7F2]">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-[#C9A84C]">
+                  className="w-full text-left px-3 py-4 hover:bg-canvas">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gold">
                     <Plus size={14} className="flex-shrink-0" />
                     {q.trim() ? <>Tạo nhanh “{q.trim()}”</> : 'Tạo mới'}
                   </div>
-                  <div className="text-xs text-[#8E8878] mt-1">
+                  <div className="text-xs text-muted mt-1">
                     {quickCreateHint || 'Không tìm thấy kết quả nào phù hợp.'}
                   </div>
                 </button>
               ) : (
-                <p className="px-3 py-4 text-sm text-[#8E8878] text-center">Không có kết quả</p>
+                <p className="px-3 py-4 text-sm text-muted text-center">Không có kết quả</p>
               )
             ) : options.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { onPick(o); setOpen(false); }}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-[#FAF7F2] border-b border-black/5 last:border-0">
-                <div className="text-[#1C1C1E] font-medium">{o._label ?? o.name}</div>
-                {o._sub && <div className="text-xs text-[#8E8878] mt-0.5">{o._sub}</div>}
+                className="w-full text-left px-3 py-2.5 text-sm hover:bg-canvas border-b border-hairline last:border-0">
+                <div className="text-ink font-medium">{o._label ?? o.name}</div>
+                {o._sub && <div className="text-xs text-muted mt-0.5">{o._sub}</div>}
               </button>
             ))}
           </div>
@@ -158,7 +158,7 @@ function SearchDropdown({
             <button type="button"
               onClick={() => { onQuickCreate(q.trim()); setOpen(false); }}
               className="w-full flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold
-                         text-[#C9A84C] hover:bg-[#FAF7F2] border-t border-black/5">
+                         text-gold hover:bg-canvas border-t border-hairline">
               <Plus size={13} className="flex-shrink-0" />
               {q.trim() ? <>Không có trong danh sách — tạo nhanh “{q.trim()}”</> : 'Tạo nhãn mới'}
             </button>
@@ -169,7 +169,7 @@ function SearchDropdown({
 }
 
 function StatusPill({ status }) {
-  const meta = SUPPLY_STATUS[status] || { label: status, cls: 'bg-gray-100 text-gray-600 ring-gray-200' };
+  const meta = SUPPLY_STATUS[status] || { label: status, cls: 'bg-surface-2 text-ink-2 ring-line' };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ${meta.cls}`}>
       {meta.label}
@@ -225,7 +225,7 @@ function SupplyItemAutocomplete({ value, onPick, onManual, locked }) {
     <div ref={boxRef} className="relative">
       <div className="relative">
         <input
-          className={`${inputCls} ${locked ? 'bg-[#FAF7F2] pr-9' : ''}`}
+          className={`${inputCls} ${locked ? 'bg-canvas pr-9' : ''}`}
           value={q}
           readOnly={locked}
           placeholder="VD: Nước rửa chén"
@@ -233,22 +233,22 @@ function SupplyItemAutocomplete({ value, onPick, onManual, locked }) {
           onChange={e => { setQ(e.target.value); onManual(e.target.value); setOpen(true); }}
         />
         {locked && (
-          <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
         )}
       </div>
 
       {open && !locked && (
-        <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-black/10 shadow-lg max-h-56 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full bg-surface rounded-xl border border-hairline-2 shadow-lg max-h-56 overflow-y-auto">
           {options.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-[#8E8878] text-center">
+            <p className="px-3 py-3 text-xs text-muted text-center">
               Chưa có vật dụng nào khớp — cứ gõ tiếp để tạo mới.
             </p>
           ) : options.map(o => (
             <button key={o.id} type="button"
               onClick={() => { onPick(o); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-[#FAF7F2] border-b border-black/5 last:border-0">
-              <div className="text-[#1C1C1E]">{o.name}</div>
-              <div className="text-xs text-[#8E8878]">
+              className="w-full text-left px-3 py-2 text-sm hover:bg-canvas border-b border-hairline last:border-0">
+              <div className="text-ink">{o.name}</div>
+              <div className="text-xs text-muted">
                 {o.specification || '(không có quy cách)'} · {o.unit}
               </div>
             </button>
@@ -337,15 +337,15 @@ function QuickCategoryModal({ open, initialName, onClose, onCreated }) {
                 onClick={() => setForm(f => ({ ...f, categoryKind: k }))}
                 className={`flex-1 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors
                   ${form.categoryKind === k
-                    ? 'bg-[#C9A84C]/10 border-[#C9A84C] text-[#1C1C1E]'
-                    : 'bg-white border-black/10 text-[#8E8878] hover:bg-[#FAF7F2]'}`}>
+                    ? 'bg-gold/10 border-gold text-ink'
+                    : 'bg-surface border-hairline-2 text-muted hover:bg-canvas'}`}>
                 {KIND_LABEL[k]}
               </button>
             ))}
           </div>
         </Field>
 
-        <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
+        <p className="flex items-start gap-1.5 text-xs text-muted">
           <Info size={13} className="mt-0.5 flex-shrink-0" />
           {isConsumable
             ? 'Đồ dùng tiêu hao sẽ được NHẬP KHO khi bạn xác nhận nhận hàng. Tồn kho gộp theo tên + quy cách + ĐVT, không phụ thuộc nhà cung cấp.'
@@ -373,12 +373,12 @@ function QuickCategoryModal({ open, initialName, onClose, onCreated }) {
         {isConsumable && (
           <>
             {locked && (
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#FAF7F2] border border-black/5">
-                <span className="text-xs text-[#8E8878]">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-canvas border border-hairline">
+                <span className="text-xs text-muted">
                   Đang dùng vật dụng có sẵn — tên, quy cách, ĐVT đã khoá để không tách tồn kho.
                 </span>
                 <button type="button" onClick={unlock}
-                  className="text-xs font-semibold text-[#C9A84C] hover:text-[#B69842] whitespace-nowrap ml-2">
+                  className="text-xs font-semibold text-gold hover:text-gold-strong whitespace-nowrap ml-2">
                   Tạo mới
                 </button>
               </div>
@@ -386,13 +386,13 @@ function QuickCategoryModal({ open, initialName, onClose, onCreated }) {
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Quy cách" required>
-                <input className={`${inputCls} ${locked ? 'bg-[#FAF7F2]' : ''}`}
+                <input className={`${inputCls} ${locked ? 'bg-canvas' : ''}`}
                   readOnly={locked} value={form.specification}
                   onChange={e => setForm(f => ({ ...f, specification: e.target.value }))}
                   placeholder="VD: 4L/chai" />
               </Field>
               <Field label="Đơn vị tính" required>
-                <input className={`${inputCls} ${locked ? 'bg-[#FAF7F2]' : ''}`}
+                <input className={`${inputCls} ${locked ? 'bg-canvas' : ''}`}
                   readOnly={locked} value={form.unit}
                   onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
                   placeholder="VD: Chai" />
@@ -406,7 +406,7 @@ function QuickCategoryModal({ open, initialName, onClose, onCreated }) {
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
         </Field>
 
-        {err && <p className="text-xs text-red-600">{err}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300">{err}</p>}
 
         <div className="flex items-center justify-end gap-2">
           <SecondaryButton onClick={onClose}>Huỷ</SecondaryButton>
@@ -563,26 +563,26 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
           </Field>
         </div>
 
-        <div className="rounded-xl border border-black/5 overflow-hidden">
-          <div className="px-4 py-2.5 bg-[#FAF7F2] flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">Danh sách mặt hàng</span>
+        <div className="rounded-xl border border-hairline overflow-hidden">
+          <div className="px-4 py-2.5 bg-canvas flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted uppercase tracking-wider">Danh sách mặt hàng</span>
             <button type="button" onClick={() => setRows(rs => [...rs, emptyRow()])}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[#C9A84C] hover:text-[#B69842]">
+              className="inline-flex items-center gap-1 text-xs font-semibold text-gold hover:text-gold-strong">
               <Plus size={13} /> Thêm dòng
             </button>
           </div>
 
-          <div className="divide-y divide-black/5">
+          <div className="divide-y divide-hairline">
             {rows.map((r, idx) => {
               const cat = r.expenseCategoryId ? catById[r.expenseCategoryId] : null;
               const isService = cat && cat.categoryKind === 'SERVICE';
               return (
                 <div key={r.key} className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[#8E8878]">Mặt hàng #{idx + 1}</span>
+                    <span className="text-xs font-semibold text-muted">Mặt hàng #{idx + 1}</span>
                     {rows.length > 1 && (
                       <button type="button" onClick={() => setRows(rs => rs.filter(x => x.key !== r.key))}
-                        className="text-[#8E8878] hover:text-red-600"><Trash2 size={14} /></button>
+                        className="text-muted hover:text-red-600 dark:text-red-300"><Trash2 size={14} /></button>
                     )}
                   </div>
 
@@ -609,11 +609,11 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
                       Dịch vụ không có 2 giá trị này → người dùng chỉ nhập số lượng. */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <Field label="Quy cách">
-                      <input readOnly className={`${inputCls} bg-[#FAF7F2] cursor-default`}
+                      <input readOnly className={`${inputCls} bg-canvas cursor-default`}
                         value={cat?.specification || (isService ? '—' : '')} placeholder="—" />
                     </Field>
                     <Field label="Đơn vị tính">
-                      <input readOnly className={`${inputCls} bg-[#FAF7F2] cursor-default`}
+                      <input readOnly className={`${inputCls} bg-canvas cursor-default`}
                         value={cat?.unit || (isService ? '—' : '')} placeholder="—" />
                     </Field>
                     <Field label="Số lượng" required>
@@ -629,7 +629,7 @@ function OrderFormModal({ open, editing, onClose, onSaved, warehouses }) {
                   </div>
 
                   {isService && (
-                    <p className="flex items-start gap-1.5 text-xs text-[#8E8878]">
+                    <p className="flex items-start gap-1.5 text-xs text-muted">
                       <Info size={13} className="mt-0.5 flex-shrink-0" />
                       Đây là khoản <b className="mx-1">dịch vụ</b> — sẽ không nhập kho khi nhận hàng.
                     </p>
@@ -716,19 +716,19 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <StatusPill status={order.status} />
-            <span className="text-sm text-[#8E8878] inline-flex items-center gap-1.5">
+            <span className="text-sm text-muted inline-flex items-center gap-1.5">
               <Warehouse size={14} /> {order.supplyWarehouseName || '—'}
             </span>
-            <span className="text-sm text-[#8E8878]">Tạo: {fmtDateTime(order.createdAt)}</span>
+            <span className="text-sm text-muted">Tạo: {fmtDateTime(order.createdAt)}</span>
             {order.requiredBy && (
-              <span className="text-sm text-[#8E8878]">Cần trước: {fmtDate(order.requiredBy)}</span>
+              <span className="text-sm text-muted">Cần trước: {fmtDate(order.requiredBy)}</span>
             )}
           </div>
 
           {order.status === 'REJECTED' && (
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
-              <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-red-700">
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28">
+              <AlertTriangle size={16} className="text-red-600 dark:text-red-300 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-red-700 dark:text-red-300">
                 <b>Phiếu đã bị từ chối.</b> {order.rejectReason}
                 <p className="text-xs text-red-600/80 mt-1">
                   Trạng thái này là cuối cùng — vui lòng lập phiếu mới nếu vẫn cần hàng.
@@ -739,13 +739,13 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
 
           {/* ── Mặt hàng ── */}
           <SectionCard>
-            <div className="px-4 py-2.5 bg-[#FAF7F2] text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+            <div className="px-4 py-2.5 bg-canvas text-xs font-semibold text-muted uppercase tracking-wider">
               Mặt hàng
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#FAF7F2]/50 text-xs uppercase text-[#8E8878]">
+                  <tr className="bg-canvas/50 text-xs uppercase text-muted">
                     <th className="px-3 py-2 text-left">Tên</th>
                     <th className="px-3 py-2 text-left">Quy cách</th>
                     <th className="px-3 py-2 text-left">ĐVT</th>
@@ -760,21 +760,21 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
                   {order.items.map(i => {
                     const rs = RECEIVE_STATUS[i.receiveStatus] || {};
                     return (
-                      <tr key={i.id} className="border-t border-black/5">
+                      <tr key={i.id} className="border-t border-hairline">
                         <td className="px-3 py-2">
-                          <div className="text-[#1C1C1E]">{i.itemName}</div>
-                          {i.note && <div className="text-xs text-[#8E8878] mt-0.5">{i.note}</div>}
+                          <div className="text-ink">{i.itemName}</div>
+                          {i.note && <div className="text-xs text-muted mt-0.5">{i.note}</div>}
                           {i.categoryKind === 'SERVICE' && (
-                            <span className="text-[10px] font-semibold text-[#8E8878]">Dịch vụ — không nhập kho</span>
+                            <span className="text-[10px] font-semibold text-muted">Dịch vụ — không nhập kho</span>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-[#8E8878]">{i.specification || '—'}</td>
-                        <td className="px-3 py-2 text-[#8E8878]">{i.unit}</td>
+                        <td className="px-3 py-2 text-muted">{i.specification || '—'}</td>
+                        <td className="px-3 py-2 text-muted">{i.unit}</td>
                         <td className="px-3 py-2 text-right">{fmtQty(i.orderedQuantity)}</td>
                         <td className="px-3 py-2 text-right font-medium">{fmtQty(i.receivedQuantity)}</td>
-                        <td className="px-3 py-2 text-[#8E8878]">{i.supplierName || '—'}</td>
+                        <td className="px-3 py-2 text-muted">{i.supplierName || '—'}</td>
                         <td className="px-3 py-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${rs.cls || 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${rs.cls || 'bg-surface-2 text-muted'}`}>
                             {rs.label || '—'}
                           </span>
                         </td>
@@ -790,28 +790,28 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
           {/* ── Nhóm NCC ── */}
           {order.groups?.length > 0 && (
             <SectionCard>
-              <div className="px-4 py-2.5 bg-[#FAF7F2] text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+              <div className="px-4 py-2.5 bg-canvas text-xs font-semibold text-muted uppercase tracking-wider">
                 Nhà cung cấp
               </div>
-              <div className="divide-y divide-black/5">
+              <div className="divide-y divide-hairline">
                 {order.groups.map(g => {
                   const gs = GROUP_STATUS[g.status] || {};
                   return (
                     <div key={g.id} className="px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-                      <span className="font-medium text-[#1C1C1E]">{g.supplierName}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${gs.cls || 'bg-gray-100'}`}>
+                      <span className="font-medium text-ink">{g.supplierName}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${gs.cls || 'bg-surface-2'}`}>
                         {gs.label || g.status}
                       </span>
                       {g.expectedDeliveryAt && (
-                        <span className="text-xs text-[#8E8878]">Giao dự kiến: {fmtDate(g.expectedDeliveryAt)}</span>
+                        <span className="text-xs text-muted">Giao dự kiến: {fmtDate(g.expectedDeliveryAt)}</span>
                       )}
                       {g.contactName && (
-                        <span className="text-xs text-[#8E8878]">
+                        <span className="text-xs text-muted">
                           LH: {g.contactName}{g.contactPhone ? ` · ${g.contactPhone}` : ''}
                         </span>
                       )}
                       {g.totalAmount != null && (
-                        <span className="ml-auto font-semibold text-[#1C1C1E]">{fmtMoney(g.totalAmount)}</span>
+                        <span className="ml-auto font-semibold text-ink">{fmtMoney(g.totalAmount)}</span>
                       )}
                     </div>
                   );
@@ -823,14 +823,14 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
           {/* ── Nhập đợt nhận hàng ── */}
           {canReceive && openLines.length > 0 && (
             <SectionCard>
-              <div className="px-4 py-2.5 bg-[#FAF7F2] flex items-center gap-2">
-                <PackageCheck size={14} className="text-[#C9A84C]" />
-                <span className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+              <div className="px-4 py-2.5 bg-canvas flex items-center gap-2">
+                <PackageCheck size={14} className="text-gold" />
+                <span className="text-xs font-semibold text-muted uppercase tracking-wider">
                   Nhận hàng — đợt mới
                 </span>
               </div>
               <div className="p-4 space-y-3">
-                <p className="text-xs text-[#8E8878]">
+                <p className="text-xs text-muted">
                   Chỉ nhập các dòng THỰC GIAO trong đợt này. NCC giao thiếu thì để trống,
                   đợt sau nhận bù. Tích <b>“Chốt nhận”</b> khi không nhận thêm nữa (dù còn thiếu).
                 </p>
@@ -839,10 +839,10 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
                   const v = receipt[i.id] || {};
                   const remaining = num(i.orderedQuantity) - num(i.receivedQuantity);
                   return (
-                    <div key={i.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end p-3 rounded-xl bg-[#FAF7F2]/50">
+                    <div key={i.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end p-3 rounded-xl bg-canvas/50">
                       <div className="sm:col-span-4">
-                        <div className="text-sm text-[#1C1C1E]">{i.itemName}</div>
-                        <div className="text-xs text-[#8E8878]">
+                        <div className="text-sm text-ink">{i.itemName}</div>
+                        <div className="text-xs text-muted">
                           {i.specification ? `${i.specification} · ` : ''}Còn lại: {fmtQty(remaining)} {i.unit}
                         </div>
                       </div>
@@ -860,10 +860,10 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
                         </Field>
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="inline-flex items-center gap-2 text-sm text-[#1C1C1E] cursor-pointer py-2.5">
+                        <label className="inline-flex items-center gap-2 text-sm text-ink cursor-pointer py-2.5">
                           <input type="checkbox" checked={!!v.closeLine}
                             onChange={e => setReceipt(s => ({ ...s, [i.id]: { ...s[i.id], closeLine: e.target.checked } }))}
-                            className="rounded border-black/20 text-[#C9A84C] focus:ring-[#C9A84C]" />
+                            className="rounded border-hairline-3 text-gold focus:ring-gold" />
                           Chốt nhận
                         </label>
                       </div>
@@ -891,21 +891,21 @@ function OrderDetailModal({ open, orderId, onClose, onChanged }) {
           {/* ── Lịch sử các đợt ── */}
           {order.receipts?.length > 0 && (
             <SectionCard>
-              <div className="px-4 py-2.5 bg-[#FAF7F2] text-xs font-semibold text-[#8E8878] uppercase tracking-wider">
+              <div className="px-4 py-2.5 bg-canvas text-xs font-semibold text-muted uppercase tracking-wider">
                 Lịch sử nhận hàng
               </div>
-              <div className="divide-y divide-black/5">
+              <div className="divide-y divide-hairline">
                 {order.receipts.map(r => (
                   <div key={r.id} className="px-4 py-3">
                     <div className="flex items-center gap-3 text-sm">
-                      <span className="font-medium text-[#1C1C1E]">Đợt {r.sequenceNo}</span>
-                      <span className="text-xs text-[#8E8878]">{fmtDateTime(r.receivedAt)}</span>
-                      <span className="text-xs text-[#8E8878]">{r.receivedByName}</span>
+                      <span className="font-medium text-ink">Đợt {r.sequenceNo}</span>
+                      <span className="text-xs text-muted">{fmtDateTime(r.receivedAt)}</span>
+                      <span className="text-xs text-muted">{r.receivedByName}</span>
                     </div>
-                    <div className="mt-1.5 text-xs text-[#8E8878]">
+                    <div className="mt-1.5 text-xs text-muted">
                       {r.items.map(li => `${li.itemName}: ${fmtQty(li.qty)} ${li.unit}`).join(' · ')}
                     </div>
-                    {r.notes && <div className="mt-1 text-xs text-[#8E8878] italic">{r.notes}</div>}
+                    {r.notes && <div className="mt-1 text-xs text-muted italic">{r.notes}</div>}
                   </div>
                 ))}
               </div>
@@ -990,9 +990,9 @@ export default function SupplyOrderPage() {
       />
 
       {warehouses.length === 0 && (
-        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-          <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-amber-800">
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28">
+          <AlertTriangle size={16} className="text-amber-600 dark:text-amber-300 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-300">
             Bạn chưa được gán kho văn phòng phẩm nào nên chưa tạo phiếu được.
             Vui lòng liên hệ chủ doanh nghiệp để được phân quyền kho.
           </p>
@@ -1002,13 +1002,13 @@ export default function SupplyOrderPage() {
       {/* Bộ lọc gom vào một thẻ trắng: trước đây TabBar và ô tìm kiếm nằm trần
           trên nền, cao thấp khác nhau nên nhìn rời rạc. Ô tìm kiếm cũng bị kéo
           giãn hết chiều ngang màn hình — nay giới hạn bề rộng lại. */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-3
+      <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-3
                       flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="min-w-0 overflow-x-auto">
           <TabBar tabs={tabs} active={status} onChange={setStatus} />
         </div>
         <div className="relative w-full lg:w-72 lg:ml-auto flex-shrink-0">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm mã phiếu, tên mặt hàng…" className={`${inputCls} pl-9`} />
         </div>
@@ -1025,11 +1025,11 @@ export default function SupplyOrderPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {orders.map(o => (
                 <div key={o.id}
-                  className="bg-white rounded-2xl border border-black/5 shadow-sm p-4 hover:border-[#C9A84C]/40 transition-colors">
+                  className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 hover:border-gold/40 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <button onClick={() => setDetailId(o.id)} className="text-left min-w-0 flex-1">
-                      <div className="font-semibold text-[#1C1C1E]">{o.requestCode}</div>
-                      <div className="text-xs text-[#8E8878] mt-0.5 inline-flex items-center gap-1.5">
+                      <div className="font-semibold text-ink">{o.requestCode}</div>
+                      <div className="text-xs text-muted mt-0.5 inline-flex items-center gap-1.5">
                         <Warehouse size={12} /> {o.supplyWarehouseName || '—'} · {fmtDate(o.createdAt)}
                       </div>
                     </button>
@@ -1037,7 +1037,7 @@ export default function SupplyOrderPage() {
                       {/* Còn NEW thì vẫn sửa được — kế toán chưa xử lý gì cả */}
                       {o.status === 'NEW' && (
                         <button onClick={() => openEdit(o.id)} title="Sửa phiếu"
-                          className="p-1.5 rounded-lg text-[#8E8878] hover:text-[#C9A84C] hover:bg-[#FAF7F2]">
+                          className="p-1.5 rounded-lg text-muted hover:text-gold hover:bg-canvas">
                           <Pencil size={14} />
                         </button>
                       )}
@@ -1046,11 +1046,11 @@ export default function SupplyOrderPage() {
                   </div>
 
                   <button onClick={() => setDetailId(o.id)} className="text-left w-full">
-                    <div className="mt-2.5 text-sm text-[#8E8878] line-clamp-2">
+                    <div className="mt-2.5 text-sm text-muted line-clamp-2">
                       {o.items.map(i => `${i.itemName} × ${fmtQty(i.orderedQuantity)} ${i.unit}`).join(' · ')}
                     </div>
                     {o.grandTotal > 0 && (
-                      <div className="mt-2 text-sm font-semibold text-[#1C1C1E]">
+                      <div className="mt-2 text-sm font-semibold text-ink">
                         Tổng: {fmtMoney(o.grandTotal)}
                       </div>
                     )}

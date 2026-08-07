@@ -118,8 +118,8 @@ export default function SuperFactoryWorkerDashboard() {
 
       {factories.length > 1 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#8E8878] font-medium">{t('production','mstock_factory_label')}:</span>
-          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#E8DDD0] bg-white text-[#1C1C1E] focus:outline-none focus:border-[#C9A84C]"
+          <span className="text-xs text-muted font-medium">{t('production','mstock_factory_label')}:</span>
+          <select className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-line bg-surface text-ink focus:outline-none focus:border-gold"
             value={factoryId || ''} onChange={e => setFactoryId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">{t('common','all')}</option>
             {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -127,10 +127,10 @@ export default function SuperFactoryWorkerDashboard() {
         </div>
       )}
 
-      <div className="flex gap-1 bg-white border border-black/5 rounded-xl p-1 w-fit shadow-sm">
+      <div className="flex gap-1 bg-surface border border-hairline rounded-xl p-1 w-fit shadow-sm">
         {[{ id: 'orders', label: t('production','dash_tab_orders'), icon: ClipboardList }, { id: 'machines', label: t('production','dash_tab_machines'), icon: Settings2 }].map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-[#1C1C1E] text-white' : 'text-[#8E8878] hover:text-[#1C1C1E]'}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-chrome text-white' : 'text-muted hover:text-ink'}`}>
             <s.icon size={14} />{s.label}
           </button>
         ))}
@@ -151,7 +151,7 @@ export default function SuperFactoryWorkerDashboard() {
       {activeSection === 'machines' && (
         <SectionCard>
           <SectionHeader title={t('production','dash_machines_gantt_title')}
-            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-[#C9A84C] font-semibold hover:underline"><Plus size={12} />{t('production','dash_add_machine')}</button>} />
+            action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-gold font-semibold hover:underline"><Plus size={12} />{t('production','dash_add_machine')}</button>} />
           <div className="p-4">
             {/* Không truyền onMachineClick — click vào máy không chuyển qua trang Metric */}
             <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy}

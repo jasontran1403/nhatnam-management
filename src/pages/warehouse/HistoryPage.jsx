@@ -306,7 +306,7 @@ function SkeletonTable() {
           {[1, 2, 3, 4, 5].map(i => (
             <tr key={i}>
               {[1, 2, 3, 4, 5, 6].map(j => (
-                <td key={j}><div style={{ height: 16, background: '#f0ebe3', borderRadius: 4 }} /></td>
+                <td key={j}><div style={{ height: 16, background: 'var(--c-surface-2)', borderRadius: 4 }} /></td>
               ))}
             </tr>
           ))}

@@ -22,12 +22,12 @@ export default function SaleTypeModal({ product, onConfirm, onClose }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xs animate-fadeIn">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-xs animate-fadeIn">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#F0EBE3]">
-          <h3 className="font-semibold text-[#1C1C1E] text-sm">{t('product', 'select_sale_type')} — {product.name}</h3>
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-line-soft">
+          <h3 className="font-semibold text-ink text-sm">{t('product', 'select_sale_type')} — {product.name}</h3>
           <button onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[#C4B9A8] hover:bg-[#F0EBE3]">
+            className="w-7 h-7 rounded-full flex items-center justify-center text-faint hover:bg-surface-2">
             <X size={14} />
           </button>
         </div>
@@ -37,16 +37,16 @@ export default function SaleTypeModal({ product, onConfirm, onClose }) {
           {/* Box */}
           <button
             onClick={() => onConfirm({ saleType: 'BOX' })}
-            className="flex items-center gap-3 p-4 rounded-xl border-2 border-[#E8DDD0] hover:border-[#C9A84C] hover:bg-[#FAF7F2] transition-all text-left group">
-            <div className="w-10 h-10 rounded-full bg-[#C9A84C]/15 flex items-center justify-center shrink-0 group-hover:bg-[#C9A84C]/25 transition-colors">
-              <Package size={20} className="text-[#C9A84C]" />
+            className="flex items-center gap-3 p-4 rounded-xl border-2 border-line hover:border-gold hover:bg-canvas transition-all text-left group">
+            <div className="w-10 h-10 rounded-full bg-gold/15 flex items-center justify-center shrink-0 group-hover:bg-gold/25 transition-colors">
+              <Package size={20} className="text-gold" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-[#1C1C1E]">{t('product', 'box')}</p>
-              <p className="text-xs text-[#8E8878] mt-0.5">
+              <p className="font-semibold text-sm text-ink">{t('product', 'box')}</p>
+              <p className="text-xs text-muted mt-0.5">
                 {t('product', 'box_unit_count').replace('{n}', unitsPerBox).replace('{unit}', unit)}
               </p>
-              <p className="text-xs font-bold text-[#C9A84C] mt-1">
+              <p className="text-xs font-bold text-gold mt-1">
                 {formatPrice(boxPrice)} {t('product', 'per_box')}
               </p>
             </div>
@@ -55,16 +55,16 @@ export default function SaleTypeModal({ product, onConfirm, onClose }) {
           {/* Retail */}
           <button
             onClick={() => onConfirm({ saleType: 'RETAIL' })}
-            className="flex items-center gap-3 p-4 rounded-xl border-2 border-[#E8DDD0] hover:border-[#C9A84C] hover:bg-[#FAF7F2] transition-all text-left group">
-            <div className="w-10 h-10 rounded-full bg-[#8E8878]/10 flex items-center justify-center shrink-0 group-hover:bg-[#8E8878]/20 transition-colors">
-              <ShoppingBag size={20} className="text-[#8E8878]" />
+            className="flex items-center gap-3 p-4 rounded-xl border-2 border-line hover:border-gold hover:bg-canvas transition-all text-left group">
+            <div className="w-10 h-10 rounded-full bg-muted/10 flex items-center justify-center shrink-0 group-hover:bg-muted/20 transition-colors">
+              <ShoppingBag size={20} className="text-muted" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-[#1C1C1E]">{t('product', 'retail')}</p>
-              <p className="text-xs text-[#8E8878] mt-0.5">
+              <p className="font-semibold text-sm text-ink">{t('product', 'retail')}</p>
+              <p className="text-xs text-muted mt-0.5">
                 {t('product', 'per_unit').replace('{unit}', unit)}
               </p>
-              <p className="text-xs font-bold text-[#C9A84C] mt-1">
+              <p className="text-xs font-bold text-gold mt-1">
                 {formatPrice(unitPrice)} / {unit}
               </p>
             </div>

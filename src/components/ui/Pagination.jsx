@@ -19,7 +19,7 @@ export default function Pagination({ page, totalPages, onChange }) {
       <button
         onClick={() => go(page - 1)}
         disabled={page === 0}
-        className="p-2 rounded-lg border border-black/10 bg-white hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed"
+        className="p-2 rounded-lg border border-hairline-2 bg-surface hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <ChevronLeft size={16} />
       </button>
@@ -29,8 +29,8 @@ export default function Pagination({ page, totalPages, onChange }) {
           onClick={() => go(p)}
           className={`min-w-[34px] h-9 px-2 rounded-lg text-sm font-medium transition-colors ${
             p === page
-              ? 'bg-[#C9A84C] text-white'
-              : 'bg-white border border-black/10 text-[#1C1C1E] hover:bg-[#FAF7F2]'
+              ? 'bg-gold text-white'
+              : 'bg-surface border border-hairline-2 text-ink hover:bg-canvas'
           }`}
         >
           {p + 1}
@@ -39,7 +39,7 @@ export default function Pagination({ page, totalPages, onChange }) {
       <button
         onClick={() => go(page + 1)}
         disabled={page >= totalPages - 1}
-        className="p-2 rounded-lg border border-black/10 bg-white hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed"
+        className="p-2 rounded-lg border border-hairline-2 bg-surface hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <ChevronRight size={16} />
       </button>

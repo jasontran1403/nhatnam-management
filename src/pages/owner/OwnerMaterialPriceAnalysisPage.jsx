@@ -53,8 +53,8 @@ export default function OwnerMaterialPriceAnalysisPage() {
   const trend = stats?.priceTrendPct;
   const TrendIcon = trend == null || Number(trend) === 0 ? Minus
     : Number(trend) > 0 ? TrendingUp : TrendingDown;
-  const trendColor = trend == null || Number(trend) === 0 ? 'text-[#8E8878]'
-    : Number(trend) > 0 ? 'text-red-600' : 'text-emerald-600';
+  const trendColor = trend == null || Number(trend) === 0 ? 'text-muted'
+    : Number(trend) > 0 ? 'text-red-600 dark:text-red-300' : 'text-emerald-600 dark:text-emerald-300';
 
   const back = () => navigate(from === 'categories'
     ? '/owner/production/expense-categories'
@@ -72,7 +72,7 @@ export default function OwnerMaterialPriceAnalysisPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <button onClick={back}
-        className="flex items-center gap-1.5 text-sm text-[#8E8878] hover:text-[#1C1C1E] font-medium">
+        className="flex items-center gap-1.5 text-sm text-muted hover:text-ink font-medium">
         <ChevronLeft size={16} /> {backLabel}
       </button>
 
@@ -87,7 +87,7 @@ export default function OwnerMaterialPriceAnalysisPage() {
         } />
 
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-[#FAF7F2] rounded-xl animate-pulse" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-canvas rounded-xl animate-pulse" />)}</div>
       ) : !stats || stats.purchaseCount === 0 ? (
         <EmptyState icon={BarChart3}
           title={t('production', 'mprice_empty_title')}
@@ -95,11 +95,11 @@ export default function OwnerMaterialPriceAnalysisPage() {
       ) : (
         <div className="space-y-5">
           {/* Giá gần nhất + xu hướng */}
-          <div className="bg-gradient-to-r from-[#FAF7F2] to-white rounded-2xl border border-[#E8DDD0] p-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-canvas to-white rounded-2xl border border-line p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs text-[#8E8878]">{t('production', 'mprice_latest')}</p>
-              <p className="text-2xl font-bold text-[#1C1C1E] mt-0.5">{money(stats.latestPrice)}</p>
-              <p className="text-[11px] text-[#8E8878] mt-0.5">
+              <p className="text-xs text-muted">{t('production', 'mprice_latest')}</p>
+              <p className="text-2xl font-bold text-ink mt-0.5">{money(stats.latestPrice)}</p>
+              <p className="text-[11px] text-muted mt-0.5">
                 {fmtDate(stats.latestAt)}
                 {stats.latestVendorName ? ` · ${stats.latestVendorName}` : ''}
               </p>
@@ -110,11 +110,11 @@ export default function OwnerMaterialPriceAnalysisPage() {
                   <TrendIcon size={18} />
                   {Number(trend) > 0 ? '+' : ''}{trend}%
                 </div>
-                <p className="text-[11px] text-[#8E8878]">{t('production', 'mprice_vs_first')}</p>
+                <p className="text-[11px] text-muted">{t('production', 'mprice_vs_first')}</p>
               </div>
             ) : (
               // Chưa có lần trước để so sánh (mới mua/chi đúng 1 lần)
-              <p className="text-[11px] text-[#8E8878] italic">
+              <p className="text-[11px] text-muted italic">
                 {isExpense ? t('production', 'mprice_first_expense') : t('production', 'mprice_first_purchase')}
               </p>
             )}
@@ -207,7 +207,7 @@ function PriceHistoryTable({ stats }) {
     return (
       <th className={`px-3 py-2 text-xs font-semibold uppercase select-none ${align === 'right' ? 'text-right' : 'text-left'}`}>
         <button onClick={() => toggle(keyName)}
-          className={`inline-flex items-center gap-1 hover:text-[#C9A84C] transition-colors ${active ? 'text-[#C9A84C]' : ''} ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+          className={`inline-flex items-center gap-1 hover:text-gold transition-colors ${active ? 'text-gold' : ''} ${align === 'right' ? 'flex-row-reverse' : ''}`}>
           {label} <Icon size={12} />
         </button>
       </th>
@@ -216,13 +216,13 @@ function PriceHistoryTable({ stats }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
         {t('production', 'mprice_history_title', { n: rows.length })}
       </p>
-      <div className="rounded-xl border border-black/5 overflow-x-auto">
+      <div className="rounded-xl border border-hairline overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-[#FAF7F2] text-[#8E8878]">
+            <tr className="bg-canvas text-muted">
               <SortHeader label={t('common', 'date')} keyName="date" />
               <th className="text-left px-3 py-2 text-xs font-semibold uppercase">{t('production', 'mprice_col_request')}</th>
               <th className="text-left px-3 py-2 text-xs font-semibold uppercase">{t('production', 'metrics_vendor')}</th>
@@ -235,21 +235,21 @@ function PriceHistoryTable({ stats }) {
               const isMin = Number(p.unitPrice) === Number(stats.minPrice);
               const isMax = Number(p.unitPrice) === Number(stats.maxPrice);
               return (
-                <tr key={i} className="border-t border-[#F0EBE3]">
-                  <td className="px-3 py-2 text-[#8E8878] whitespace-nowrap">{fmtDate(p.at)}</td>
-                  <td className="px-3 py-2 font-mono text-xs text-[#C9A84C] whitespace-nowrap">{p.requestCode}</td>
-                  <td className="px-3 py-2 text-[#1C1C1E]">
+                <tr key={i} className="border-t border-line-soft">
+                  <td className="px-3 py-2 text-muted whitespace-nowrap">{fmtDate(p.at)}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-gold whitespace-nowrap">{p.requestCode}</td>
+                  <td className="px-3 py-2 text-ink">
                     <span className="inline-flex items-center gap-1.5">
-                      <Building2 size={12} className="text-[#8E8878] flex-shrink-0" />
+                      <Building2 size={12} className="text-muted flex-shrink-0" />
                       {p.vendorName || '—'}
                     </span>
                   </td>
-                  <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isMin ? 'text-emerald-600' : isMax ? 'text-red-600' : 'text-[#1C1C1E]'}`}>
+                  <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isMin ? 'text-emerald-600 dark:text-emerald-300' : isMax ? 'text-red-600 dark:text-red-300' : 'text-ink'}`}>
                     {money(p.unitPrice)}
                     {isMin && <span className="ml-1 text-[10px]">▼</span>}
                     {isMax && <span className="ml-1 text-[10px]">▲</span>}
                   </td>
-                  <td className="px-3 py-2 text-right text-[#8E8878] whitespace-nowrap">{qtyFmt(p.quantity)} {p.unit}</td>
+                  <td className="px-3 py-2 text-right text-muted whitespace-nowrap">{qtyFmt(p.quantity)} {p.unit}</td>
                 </tr>
               );
             })}
@@ -261,22 +261,22 @@ function PriceHistoryTable({ stats }) {
 }
 
 function PriceCell({ label, value, hint, accent, good, bad }) {
-  const color = good ? 'text-emerald-600' : bad ? 'text-red-600' : accent ? 'text-[#C9A84C]' : 'text-[#1C1C1E]';
+  const color = good ? 'text-emerald-600 dark:text-emerald-300' : bad ? 'text-red-600 dark:text-red-300' : accent ? 'text-gold' : 'text-ink';
   return (
-    <div className="bg-[#FAF7F2] rounded-xl p-3">
-      <p className="text-xs text-[#8E8878]">{label}</p>
+    <div className="bg-canvas rounded-xl p-3">
+      <p className="text-xs text-muted">{label}</p>
       <p className={`text-lg font-bold mt-0.5 ${color}`}>{value}</p>
-      {hint && <p className="text-[11px] text-[#8E8878] mt-0.5">{hint}</p>}
+      {hint && <p className="text-[11px] text-muted mt-0.5">{hint}</p>}
     </div>
   );
 }
 
 function MiniStat({ label, value, sub }) {
   return (
-    <div className="border border-black/5 rounded-xl p-2.5">
-      <p className="text-[11px] text-[#8E8878]">{label}</p>
-      <p className="text-sm font-semibold text-[#1C1C1E] mt-0.5">{value}</p>
-      {sub && <p className="text-[10px] text-[#8E8878] mt-0.5">{sub}</p>}
+    <div className="border border-hairline rounded-xl p-2.5">
+      <p className="text-[11px] text-muted">{label}</p>
+      <p className="text-sm font-semibold text-ink mt-0.5">{value}</p>
+      {sub && <p className="text-[10px] text-muted mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -302,17 +302,17 @@ function PriceSparkline({ points }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-[#8E8878] uppercase tracking-wider mb-2">
+      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
         {t('production', 'mprice_sparkline_title')}
       </p>
-      <div className="bg-[#FAF7F2] rounded-xl p-3">
+      <div className="bg-canvas rounded-xl p-3">
         <svg viewBox="0 0 300 80" className="w-full h-20" preserveAspectRatio="none">
-          <path d={path} fill="none" stroke="#C9A84C" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <path d={path} fill="none" stroke="var(--c-gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
           {dots.map((d, i) => (
-            <circle key={i} cx={d.x} cy={d.y} r="2.5" fill="#C9A84C" />
+            <circle key={i} cx={d.x} cy={d.y} r="2.5" fill="var(--c-gold)" />
           ))}
         </svg>
-        <div className="flex items-center justify-between text-[11px] text-[#8E8878] mt-1">
+        <div className="flex items-center justify-between text-[11px] text-muted mt-1">
           <span>{fmtDate(points[0].at)}</span>
           <span>{fmtDate(points[points.length - 1].at)}</span>
         </div>

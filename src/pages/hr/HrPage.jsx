@@ -169,17 +169,17 @@ function SalaryModal({ user, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title={`${t('hr', 'update_salary')} — ${user.fullName}`} size="xl">
       {loadingCurrent ? (
-        <div className="py-6 flex justify-center"><Loader2 size={20} className="animate-spin text-[#8E8878]" /></div>
+        <div className="py-6 flex justify-center"><Loader2 size={20} className="animate-spin text-muted" /></div>
       ) : (
         <div className="grid md:grid-cols-2 gap-5">
           {/* ── Cột trái: form nhập ── */}
           <div className="space-y-3 py-1">
             {current && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                 Lương hiện tại: <strong>{Number(current.baseSalary || 0).toLocaleString('vi-VN')}đ</strong>
                 {statusLabel && <span> — {statusLabel}</span>}
-                {current.rejectReason && <p className="mt-1 text-red-600">Lý do từ chối: {current.rejectReason}</p>}
-                <p className="mt-1 text-amber-600">Lưu lại sẽ tạo phiếu lương mới chờ Owner duyệt.</p>
+                {current.rejectReason && <p className="mt-1 text-red-600 dark:text-red-300">Lý do từ chối: {current.rejectReason}</p>}
+                <p className="mt-1 text-amber-600 dark:text-amber-300">Lưu lại sẽ tạo phiếu lương mới chờ Owner duyệt.</p>
               </div>
             )}
 
@@ -196,15 +196,15 @@ function SalaryModal({ user, onClose, onSaved }) {
             {/* Phụ cấp động */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-[#1C1C1E]">Phụ cấp</label>
+                <label className="text-sm font-medium text-ink">Phụ cấp</label>
                 <button type="button" onClick={addAllowance}
-                  className="text-xs text-[#8B6F47] font-medium flex items-center gap-1 hover:underline">
+                  className="text-xs text-gold-deep font-medium flex items-center gap-1 hover:underline">
                   <Plus size={13} /> Thêm khoản
                 </button>
               </div>
               <div className="space-y-2">
                 {allowances.length === 0 && (
-                  <p className="text-xs text-[#A8A090]">Chưa có phụ cấp. Bấm "Thêm khoản" để thêm (cơm trưa, xăng xe…).</p>
+                  <p className="text-xs text-muted">Chưa có phụ cấp. Bấm "Thêm khoản" để thêm (cơm trưa, xăng xe…).</p>
                 )}
                 {allowances.map((a, i) => (
                   <div key={i} className="flex flex-wrap items-center gap-1.5">
@@ -214,8 +214,8 @@ function SalaryModal({ user, onClose, onSaved }) {
                           onChange={e => setNewLabelText(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && confirmNewLabel(i)}
                           placeholder="Tên khoản phụ cấp mới" />
-                        <button type="button" className="text-emerald-600" onClick={() => confirmNewLabel(i)}><Check size={16} /></button>
-                        <button type="button" className="text-[#8E8878]" onClick={() => setNewLabelFor(-1)}><X size={16} /></button>
+                        <button type="button" className="text-emerald-600 dark:text-emerald-300" onClick={() => confirmNewLabel(i)}><Check size={16} /></button>
+                        <button type="button" className="text-muted" onClick={() => setNewLabelFor(-1)}><X size={16} /></button>
                       </div>
                     ) : (
                       <select className={`${selectCls} !py-1.5 text-sm flex-1 min-w-[130px]`}
@@ -229,7 +229,7 @@ function SalaryModal({ user, onClose, onSaved }) {
                       <MoneyInput className={`${inputCls} !py-1.5 text-sm`} value={a.amount}
                         onChange={v => updateAllowance(i, { amount: v })} placeholder="Số tiền" />
                     </div>
-                    <button type="button" className="text-red-400 hover:text-red-600 p-1" onClick={() => removeAllowance(i)}>
+                    <button type="button" className="text-red-400 hover:text-red-600 dark:text-red-300 p-1" onClick={() => removeAllowance(i)}>
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -253,15 +253,15 @@ function SalaryModal({ user, onClose, onSaved }) {
           </div>
 
           {/* ── Cột phải: preview giống màn Owner ── */}
-          <div className="md:border-l md:border-[#E8E0D6] md:pl-5">
+          <div className="md:border-l md:border-line md:pl-5">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-[#8E8878] uppercase tracking-wider">Xem trước chi tiết lương</p>
-              {previewing && <Loader2 size={13} className="animate-spin text-[#8E8878]" />}
+              <p className="text-xs font-bold text-muted uppercase tracking-wider">Xem trước chi tiết lương</p>
+              {previewing && <Loader2 size={13} className="animate-spin text-muted" />}
             </div>
             {preview ? (
               <SalaryBreakdownCards row={preview} />
             ) : (
-              <div className="text-xs text-[#A8A090] py-8 text-center">Nhập lương cơ bản để xem chi tiết bảo hiểm, thuế và lương thực nhận.</div>
+              <div className="text-xs text-muted py-8 text-center">Nhập lương cơ bản để xem chi tiết bảo hiểm, thuế và lương thực nhận.</div>
             )}
           </div>
         </div>
@@ -308,7 +308,7 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
 
   return (
     <Modal open onClose={onClose} title={`Set lương hàng loạt (${userIds.length} nhân viên)`}>
-      <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-3">
+      <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-2 mb-3">
         Lương thực nhận, lương đóng thuế/BH, phụ cấp, thưởng, số người phụ thuộc dưới đây sẽ được áp dụng cho tất cả nhân viên đã chọn.
       </p>
       <div className="space-y-3 py-1">
@@ -338,7 +338,7 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
             onChange={e => setDependents(e.target.value)} placeholder="0" />
         </Field>
         {totalReceived > 0 && (
-          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700 flex items-center justify-between">
+          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
             <span>Lương thực nhận cuối cùng (mỗi người):</span>
             <strong className="text-sm">{totalReceived.toLocaleString('vi-VN')}đ</strong>
           </div>
@@ -472,14 +472,14 @@ function InfoModal({ user, onClose, onSaved }) {
         </Field>
 
         {form.workStartDate && (
-          <p className="text-xs text-[#8E8878] leading-relaxed">
+          <p className="text-xs text-muted leading-relaxed">
             Thâm niên được CHỐT khi Chủ bấm “Hoàn tất” phiếu lương của tháng, tính
             theo số năm tròn từ ngày này tới ngày hoàn tất chấm công. Đủ 1 năm được
             2% lương cơ bản, mỗi năm sau +1%, tối đa 10%.
           </p>
         )}
 
-        <p className="text-xs text-[#8E8878] leading-relaxed">
+        <p className="text-xs text-muted leading-relaxed">
           Role hưởng lương được đặt tự động theo chức vụ. Nhân viên kiêm nhiệm vẫn
           giữ nguyên các quyền truy cập khác — ví dụ Nhân viên kinh doanh kiêm coi
           kho vẫn vào được màn hình kho nhưng lương luôn tính ở bộ phận Kinh doanh.
@@ -643,16 +643,16 @@ function CreateOtModal({ users, onClose, onSaved }) {
             onChange={e => set('reason', e.target.value)} placeholder="Lý do làm thêm giờ…" />
         </Field>
         <Field label={`Nhân viên OT (đã chọn ${form.userIds.length})`} required>
-          <div className="max-h-48 overflow-y-auto space-y-1 border border-black/10 rounded-xl p-2">
+          <div className="max-h-48 overflow-y-auto space-y-1 border border-hairline-2 rounded-xl p-2">
             {users.map(u => {
               const checked = form.userIds.includes(u.id);
               return (
                 <label key={u.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-colors
-                  ${checked ? 'bg-amber-50 border border-amber-200' : 'bg-[#FAF7F2] border border-transparent hover:border-[#E8DDD0]'}`}>
+                  ${checked ? 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28' : 'bg-canvas border border-transparent hover:border-line'}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggleUser(u.id)}
                     className="w-4 h-4 accent-amber-500 rounded" />
-                  <span className={`text-sm font-medium ${checked ? 'text-amber-700' : 'text-[#1C1C1E]'}`}>{u.fullName}</span>
-                  {u.department && <span className="text-xs text-[#8E8878]">({u.department})</span>}
+                  <span className={`text-sm font-medium ${checked ? 'text-amber-700 dark:text-amber-300' : 'text-ink'}`}>{u.fullName}</span>
+                  {u.department && <span className="text-xs text-muted">({u.department})</span>}
                 </label>
               );
             })}
@@ -704,30 +704,30 @@ function ImportEmployeesModal({ onClose, onDone }) {
       size="sm">
       {step === 'upload' ? (
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="w-14 h-14 rounded-full bg-[#C9A84C]/10 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-full bg-gold/10 flex items-center justify-center">
             {uploading
-              ? <div className="w-7 h-7 border-[3px] border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-              : <Upload size={24} className="text-[#C9A84C]" />}
+              ? <div className="w-7 h-7 border-[3px] border-gold border-t-transparent rounded-full animate-spin" />
+              : <Upload size={24} className="text-gold" />}
           </div>
           <div className="text-center space-y-1.5">
-            <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
-            <p className="text-xs text-[#8E8878]">Hệ thống cập nhật đúng nhân viên theo cột <strong>ID</strong> — không dùng thứ tự dòng.</p>
-            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
+            <p className="text-sm font-semibold text-ink">{uploading ? 'Đang xử lý...' : 'Chọn file Excel để import'}</p>
+            <p className="text-xs text-muted">Hệ thống cập nhật đúng nhân viên theo cột <strong>ID</strong> — không dùng thứ tự dòng.</p>
+            <p className="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-1.5">
               ⚠ Chỉ import được file vừa Export, và số lượng nhân viên phải khớp với hiện tại.
             </p>
-            <p className="text-xs text-[#8E8878]">
+            <p className="text-xs text-muted">
               Cột <strong>Ngày vào làm</strong> để trống thì hệ thống lấy <strong>ngày import</strong> làm mốc
               tính thâm niên (chỉ với nhân viên chưa có ngày nào).
             </p>
             {uploadError && (
-              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-left">
+              <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2.5 text-left">
                 <span className="text-red-500 shrink-0 mt-0.5">✕</span>
-                <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+                <p className="text-xs text-red-600 dark:text-red-300 font-medium">{uploadError}</p>
               </div>
             )}
           </div>
           {!uploading && (
-            <label className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold cursor-pointer hover:bg-[#A07830] transition-colors">
+            <label className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold cursor-pointer hover:bg-gold-deep transition-colors">
               <Upload size={14} /> Chọn file .xlsx
               <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
                 onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
@@ -737,20 +737,20 @@ function ImportEmployeesModal({ onClose, onDone }) {
       ) : (
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
-              <p className="text-2xl font-bold text-emerald-600">{result?.updated ?? 0}</p>
-              <p className="text-xs text-emerald-700 mt-0.5">Cập nhật thành công</p>
+            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl px-4 py-3 text-center">
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">{result?.updated ?? 0}</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Cập nhật thành công</p>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-4 py-3 text-center">
               <p className="text-2xl font-bold text-red-500">{result?.skipped ?? 0}</p>
-              <p className="text-xs text-red-600 mt-0.5">Bỏ qua / lỗi</p>
+              <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">Bỏ qua / lỗi</p>
             </div>
           </div>
           {result?.backfilled > 0 && (
             /* Ghi dữ liệu mà HR không chủ động yêu cầu → phải nói ra, kèm số
                lượng, để họ biết đường vào sửa lại ai có ngày vào làm thật khác. */
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-              <p className="text-xs text-amber-700">
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 rounded-xl px-3 py-2.5">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
                 Đã tự điền <strong>ngày hôm nay</strong> làm ngày vào làm cho{' '}
                 <strong>{result.backfilled}</strong> nhân viên còn để trống.
                 Ai có ngày vào làm thật khác thì sửa lại ở nút “Bộ phận / Chức vụ”,
@@ -759,10 +759,10 @@ function ImportEmployeesModal({ onClose, onDone }) {
             </div>
           )}
           {result?.errors?.length > 0 && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-h-40 overflow-y-auto">
-              <p className="text-xs font-semibold text-red-600 mb-1.5">Chi tiết lỗi:</p>
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl p-3 max-h-40 overflow-y-auto">
+              <p className="text-xs font-semibold text-red-600 dark:text-red-300 mb-1.5">Chi tiết lỗi:</p>
               {result.errors.map((err, i) => (
-                <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 last:border-0">{err}</p>
+                <p key={i} className="text-xs text-red-500 py-0.5 border-b border-red-100 dark:border-red-500/18 last:border-0">{err}</p>
               ))}
             </div>
           )}
@@ -841,7 +841,7 @@ function EmployeesTab() {
       {/* Toolbar */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input className={`${inputCls} pl-8`} value={q}
             onChange={e => { setQ(e.target.value); setPage(0); }}
             placeholder="Tìm nhân viên…" />
@@ -888,8 +888,8 @@ function EmployeesTab() {
                   <Td><input type="checkbox" checked={selected.includes(u.id)}
                     onChange={() => toggleOne(u.id)} className="w-4 h-4 accent-amber-500" /></Td>
                   <Td>
-                    <div className="font-medium text-[#1C1C1E]">{u.fullName}</div>
-                    <div className="text-xs text-[#8E8878]">{u.username}</div>
+                    <div className="font-medium text-ink">{u.fullName}</div>
+                    <div className="text-xs text-muted">{u.username}</div>
                   </Td>
                   <Td><span className="text-sm">{u.department || '—'}</span></Td>
                   {/* <Td><span className="text-sm">{u.division || '—'}</span></Td> */}
@@ -898,24 +898,24 @@ function EmployeesTab() {
                     {u.workStartDate ? (
                       <div>
                         <span className="text-sm">{formatDate(u.workStartDate)}</span>
-                        <div className="text-xs text-[#8E8878]">
+                        <div className="text-xs text-muted">
                           {seniorityYearsOf(u.workStartDate)} năm
                         </div>
                       </div>
                     ) : (
-                      <span className="text-sm text-[#8E8878]">—</span>
+                      <span className="text-sm text-muted">—</span>
                     )}
                   </Td>
                   {/* <Td><Badge variant="default">{u.role}</Badge></Td> */}
                   <Td right>
                     {cs ? (
                       <div>
-                        <p className="text-sm font-semibold text-[#1C1C1E]">{Number(cs.baseSalary || 0).toLocaleString('vi-VN')}đ</p>
+                        <p className="text-sm font-semibold text-ink">{Number(cs.baseSalary || 0).toLocaleString('vi-VN')}đ</p>
                         <Badge variant={cs.status === 'APPROVED' ? 'success' : cs.status === 'REJECTED' ? 'danger' : 'warning'}>
                           {cs.status === 'APPROVED' ? 'Đã duyệt' : cs.status === 'REJECTED' ? 'Bị từ chối' : 'Chờ duyệt'}
                         </Badge>
                       </div>
-                    ) : <span className="text-xs text-[#8E8878]">Chưa nhập</span>}
+                    ) : <span className="text-xs text-muted">Chưa nhập</span>}
                   </Td>
                   <Td right>
                     <div className="flex gap-1 justify-end">
@@ -934,7 +934,7 @@ function EmployeesTab() {
           </Table>
         )}
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-black/5">
+          <div className="px-4 py-3 border-t border-hairline">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}
@@ -1003,7 +1003,7 @@ function LeavesTab() {
                 <Tr key={l.id}>
                   <Td>
                     <div className="font-medium">{l.userFullName}</div>
-                    {l.department && <div className="text-xs text-[#8E8878]">{l.department}</div>}
+                    {l.department && <div className="text-xs text-muted">{l.department}</div>}
                   </Td>
                   <Td>
                     <Badge variant={l.leaveType === 'PAID' ? 'success' : 'warning'}>
@@ -1021,7 +1021,7 @@ function LeavesTab() {
           </Table>
         )}
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-black/5">
+          <div className="px-4 py-3 border-t border-hairline">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}
@@ -1091,7 +1091,7 @@ function OtTab() {
                       {(o.employees || []).map(e => e.fullName).join(', ')}
                     </div>
                   </Td>
-                  <Td><span className="text-sm text-[#8E8878] line-clamp-1">{o.reason}</span></Td>
+                  <Td><span className="text-sm text-muted line-clamp-1">{o.reason}</span></Td>
                   <Td>{formatDateTime(o.createdAt)}</Td>
                 </Tr>
               ))}
@@ -1099,7 +1099,7 @@ function OtTab() {
           </Table>
         )}
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-black/5">
+          <div className="px-4 py-3 border-t border-hairline">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}
@@ -1145,9 +1145,9 @@ function DriverReportModal({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#1A1A2E] to-[#2D2D44] px-5 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-chrome to-chrome px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
               <Download size={16} className="text-white" />
@@ -1165,7 +1165,7 @@ function DriverReportModal({ onClose }) {
         <div className="p-5 space-y-4">
           {/* Date range */}
           <div>
-            <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">KHOẢNG THỜI GIAN</p>
+            <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">KHOẢNG THỜI GIAN</p>
             <DateRangePicker
               from={from}
               to={to}
@@ -1179,29 +1179,29 @@ function DriverReportModal({ onClose }) {
 
           {/* Salary rates */}
           <div>
-            <p className="text-[10px] font-bold text-[#8E8878] uppercase tracking-wider mb-2">Lương theo km</p>
+            <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Lương theo km</p>
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-sky-50 border border-sky-200 p-3">
-                <label className="block text-[11px] font-bold text-sky-700 mb-1.5">🏍️ Xe máy (đ/km)</label>
+              <div className="rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/28 p-3">
+                <label className="block text-[11px] font-bold text-sky-700 dark:text-sky-300 mb-1.5">🏍️ Xe máy (đ/km)</label>
                 <input type="number" min="0" value={bikeRate} onChange={e => setBikeRate(e.target.value)}
                   placeholder="VD: 2000"
-                  className="w-full h-8 px-2 rounded-lg border border-sky-200 text-sm focus:outline-none focus:border-sky-400 bg-white" />
+                  className="w-full h-8 px-2 rounded-lg border border-sky-200 dark:border-sky-500/28 text-sm focus:outline-none focus:border-sky-400 bg-surface" />
               </div>
-              <div className="rounded-xl bg-orange-50 border border-orange-200 p-3">
-                <label className="block text-[11px] font-bold text-orange-700 mb-1.5">🚛 Xe tải (đ/km)</label>
+              <div className="rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/28 p-3">
+                <label className="block text-[11px] font-bold text-orange-700 dark:text-orange-300 mb-1.5">🚛 Xe tải (đ/km)</label>
                 <input type="number" min="0" value={truckRate} onChange={e => setTruckRate(e.target.value)}
                   placeholder="VD: 5000"
-                  className="w-full h-8 px-2 rounded-lg border border-orange-200 text-sm focus:outline-none focus:border-orange-400 bg-white" />
+                  className="w-full h-8 px-2 rounded-lg border border-orange-200 dark:border-orange-500/28 text-sm focus:outline-none focus:border-orange-400 bg-surface" />
               </div>
             </div>
-            <p className="text-[10px] text-[#8E8878] mt-1.5 italic">Để trống = không tính lương km (chỉ thống kê)</p>
+            <p className="text-[10px] text-muted mt-1.5 italic">Để trống = không tính lương km (chỉ thống kê)</p>
           </div>
         </div>
 
-        <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-[#E8DDD0]">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#E8DDD0] text-sm text-[#5C5C5C] hover:bg-[#F0EBE3] font-medium">Hủy</button>
+        <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-line">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-surface-2 font-medium">Hủy</button>
           <button onClick={handleExport} disabled={exporting || !from || !to}
-            className="flex-1 py-2.5 rounded-xl bg-[#1A1A2E] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2D2D44] disabled:opacity-40 transition-colors">
+            className="flex-1 py-2.5 rounded-xl bg-chrome text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-chrome disabled:opacity-40 transition-colors">
             {exporting
               ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
               : <><Download size={14} /> Xuất Excel</>}
@@ -1214,14 +1214,14 @@ function DriverReportModal({ onClose }) {
 
 // ── Payroll Tab — Tính lương hàng tháng ───────────────────────────────────────
 const PAYROLL_STATUS_LABEL = {
-  DRAFT: { label: 'Đã export, chưa import', cls: 'bg-amber-50 text-amber-700' },
-  PENDING_APPROVAL: { label: 'Chờ Owner duyệt', cls: 'bg-blue-50 text-blue-700' },
-  APPROVED: { label: 'Đã duyệt', cls: 'bg-emerald-50 text-emerald-700' },
-  REJECTED: { label: 'Bị từ chối', cls: 'bg-red-50 text-red-700' },
+  DRAFT: { label: 'Đã export, chưa import', cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300' },
+  PENDING_APPROVAL: { label: 'Chờ Owner duyệt', cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300' },
+  APPROVED: { label: 'Đã duyệt', cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+  REJECTED: { label: 'Bị từ chối', cls: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300' },
 };
 
 function PayrollStatusBadge({ status }) {
-  const cfg = PAYROLL_STATUS_LABEL[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = PAYROLL_STATUS_LABEL[status] || { label: status, cls: 'bg-surface-2 text-ink-2' };
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
@@ -1265,7 +1265,7 @@ function CreatePayrollModal({ onClose, onExported }) {
   return (
     <Modal open onClose={onClose} title="Tạo phiếu lương tháng">
       <div className="space-y-4 py-1">
-        <p className="text-sm text-[#8E8878]">
+        <p className="text-sm text-muted">
           Hệ thống sẽ export file Excel danh sách nhân viên đã được duyệt lương cơ bản.
           Điền số ngày công, số người phụ thuộc, thưởng, phụ cấp, lương đóng BHXH/BHYT/BHTN
           rồi import lại để tính lương.
@@ -1326,21 +1326,21 @@ function ImportPayrollModal({ onClose, onDone }) {
     <Modal open onClose={onClose} title="Import file tính lương" size="sm">
       {step === 'upload' ? (
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
             {uploading
               ? <div className="w-7 h-7 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              : <Calculator size={24} className="text-emerald-600" />}
+              : <Calculator size={24} className="text-emerald-600 dark:text-emerald-300" />}
           </div>
           <div className="text-center space-y-1.5">
-            <p className="text-sm font-semibold text-[#1C1C1E]">{uploading ? 'Đang tính lương...' : 'Chọn file Excel đã điền'}</p>
-            <p className="text-xs text-[#8E8878]">Hệ thống sẽ tự tính BHXH/BHYT/BHTN và thuế TNCN theo luật hiện hành.</p>
-            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
+            <p className="text-sm font-semibold text-ink">{uploading ? 'Đang tính lương...' : 'Chọn file Excel đã điền'}</p>
+            <p className="text-xs text-muted">Hệ thống sẽ tự tính BHXH/BHYT/BHTN và thuế TNCN theo luật hiện hành.</p>
+            <p className="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-1.5">
               ⚠ Chỉ import được file vừa tạo phiếu lương — mỗi file chỉ import 1 lần.
             </p>
             {uploadError && (
-              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-left">
+              <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2.5 text-left">
                 <span className="text-red-500 shrink-0 mt-0.5">✕</span>
-                <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+                <p className="text-xs text-red-600 dark:text-red-300 font-medium">{uploadError}</p>
               </div>
             )}
           </div>
@@ -1354,13 +1354,13 @@ function ImportPayrollModal({ onClose, onDone }) {
         </div>
       ) : (
         <div className="space-y-4 py-2">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-emerald-600">{result?.employeeCount ?? 0}</p>
-            <p className="text-xs text-emerald-700 mt-0.5">
+          <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 rounded-xl px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">{result?.employeeCount ?? 0}</p>
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
               Nhân viên đã tính lương — tháng {result?.month}/{result?.year}
             </p>
           </div>
-          <p className="text-sm text-[#8E8878] text-center">
+          <p className="text-sm text-muted text-center">
             Phiếu lương đã được gửi cho Owner duyệt. Bạn có thể xem chi tiết ở danh sách bên dưới.
           </p>
           <SecondaryButton onClick={onClose} className="w-full">Đóng</SecondaryButton>
@@ -1407,14 +1407,14 @@ function PayrollDetailModal({ batch, onClose }) {
                 <Tr key={p.id}>
                   <Td>
                     <div className="font-medium">{p.userFullName}</div>
-                    <div className="text-xs text-[#8E8878]">{p.department || '—'} {p.division ? `· ${p.division}` : ''}</div>
+                    <div className="text-xs text-muted">{p.department || '—'} {p.division ? `· ${p.division}` : ''}</div>
                   </Td>
                   <Td right>{formatCurrency(p.grossSalary)}</Td>
                   <Td right>{p.dependents ?? 0}</Td>
                   <Td right>{formatCurrency(p.totalInsuranceAmount)}</Td>
                   <Td right>{formatCurrency(p.taxableIncome)}</Td>
                   <Td right>{formatCurrency(p.personalIncomeTax)}</Td>
-                  <Td right><span className="font-semibold text-emerald-700">{formatCurrency(p.netSalary)}</span></Td>
+                  <Td right><span className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(p.netSalary)}</span></Td>
                 </Tr>
               ))}
             </tbody>
@@ -1461,7 +1461,7 @@ function PayrollTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 items-center justify-between">
-        <p className="text-sm text-[#8E8878]">
+        <p className="text-sm text-muted">
           Tạo phiếu lương tháng → điền file Excel → import để tính lương → chờ Owner duyệt → tải phiếu lương về chi lương.
         </p>
         <div className="flex gap-2">
@@ -1581,7 +1581,7 @@ export default function HrPage() {
       <div className="flex items-start justify-between gap-3">
         <PageHeader icon={UserCog} title="Nhân sự" subtitle="Quản lý lương, nghỉ phép, tăng ca" />
         <button onClick={() => setShowDriverReport(true)}
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1A1A2E] text-white text-sm font-semibold hover:bg-[#2D2D44] transition-colors shadow-sm mt-1">
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-chrome text-white text-sm font-semibold hover:bg-chrome transition-colors shadow-sm mt-1">
           <Download size={14} /> Báo cáo tài xế
         </button>
       </div>

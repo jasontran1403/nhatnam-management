@@ -8,6 +8,8 @@ import {
   LogOut, Menu, X, ChevronRight,
 } from 'lucide-react';
 import ProfileButton from '../common/ProfileButton';
+import BrandLogo from '../common/BrandLogo';
+import ThemeToggle, { ThemeToggleOnChrome } from '../common/ThemeToggle';
 
 export default function SellerLayout() {
   const { user, token, logout } = useAuth();
@@ -23,23 +25,18 @@ export default function SellerLayout() {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAF7F2]">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)} />
       )}
 
-      <aside className={`fixed lg:relative inset-y-0 left-0 z-50 w-60 bg-[#1C1C1E] flex flex-col
+      <aside className={`fixed lg:relative inset-y-0 left-0 z-50 w-60 bg-chrome flex flex-col
         transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="px-6 py-6 border-b border-white/10">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-white font-bold text-lg leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-                Nhất Nam
-              </h1>
-              <p className="text-[#C9A84C] text-xs tracking-widest uppercase">Fine Foods</p>
-            </div>
+            <BrandLogo size="md" />
             <button className="lg:hidden text-white/50 hover:text-white" onClick={() => setSidebarOpen(false)}>
               <X size={18} />
             </button>
@@ -47,11 +44,11 @@ export default function SellerLayout() {
         </div>
 
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          <p className="text-[#8E8878] text-xs uppercase tracking-wider px-3 mb-2">Menu</p>
+          <p className="text-muted text-xs uppercase tracking-wider px-3 mb-2">Menu</p>
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 transition-all duration-200
-                ${isActive ? 'bg-[#C9A84C]/20 text-[#C9A84C]' : 'text-[#8E8878] hover:text-white hover:bg-white/5'}`}>
+                ${isActive ? 'bg-gold/20 text-gold' : 'text-muted hover:text-white hover:bg-white/5'}`}>
               {({ isActive }) => (
                 <>
                   <Icon size={17} />
@@ -65,7 +62,7 @@ export default function SellerLayout() {
 
         <div className="px-3 py-4 border-t border-white/10">
           <button onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-[#8E8878] hover:text-red-400 hover:bg-red-500/10 transition-all duration-200">
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200">
             <LogOut size={17} />
             <span className="text-sm font-medium">{t('profile', 'logout')}</span>
           </button>
@@ -73,20 +70,18 @@ export default function SellerLayout() {
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="lg:hidden bg-[#1C1C1E] px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <header className="lg:hidden bg-chrome px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="text-white p-1">
             <Menu size={22} />
           </button>
-          <div className="flex-1">
-            <h1 className="text-white text-sm font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-              Nhất Nam Fine Foods
-            </h1>
-          </div>
+          <BrandLogo inline className="flex-1" />
+          <ThemeToggleOnChrome />
         </header>
 
-        <div className="flex items-center justify-end px-6 py-2 border-b border-[#F0EBE3] bg-white flex-shrink-0">
+        <div className="flex items-center justify-end px-6 py-2 border-b border-line-soft bg-surface flex-shrink-0">
+          <ThemeToggle variant="ghost" />
           <ProfileButton />
-          <div className="w-px h-5 bg-black/10" />
+          <div className="w-px h-5 bg-hairline-2" />
           <NotificationBell role={user?.role} token={token} />
         </div>
 

@@ -10,6 +10,7 @@ import {
   ClipboardCheck, X, Filter, Layers, Factory
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { BackButton, useSubPageNav } from '../../components/common/SubPageNav';
 import { useFmt } from '../../utils/useFmt';
 
 const NO_CAT = '__none__';
@@ -22,11 +23,11 @@ const getPresets = (t) => [
 ];
 
 const getColMeta = (t) => ({
-  opening: { label: t('production', 'oinv_col_opening'), cls: 'text-[#5C4E3D]', sign: '' },
-  nhap:    { label: t('production', 'oinv_col_import'),  cls: 'text-emerald-600', sign: '+' },
-  ban:     { label: t('production', 'oinv_col_sold'),    cls: 'text-blue-600',    sign: '−' },
+  opening: { label: t('production', 'oinv_col_opening'), cls: 'text-ink-2', sign: '' },
+  nhap:    { label: t('production', 'oinv_col_import'),  cls: 'text-emerald-600 dark:text-emerald-300', sign: '+' },
+  ban:     { label: t('production', 'oinv_col_sold'),    cls: 'text-blue-600 dark:text-blue-300',    sign: '−' },
   xuat:    { label: t('production', 'oinv_col_export'),  cls: 'text-red-500',     sign: '−' },
-  closing: { label: t('production', 'oinv_col_closing'), cls: 'text-[#C9A84C] font-bold', sign: '' },
+  closing: { label: t('production', 'oinv_col_closing'), cls: 'text-gold font-bold', sign: '' },
 });
 
 export default function OwnerInventoryPage() {
@@ -42,6 +43,7 @@ export default function OwnerInventoryPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState('ALL');
+  const { from } = useSubPageNav();
   const [catFilter, setCatFilter] = useState('');
   const [subFilter, setSubFilter] = useState('');
   const [data, setData] = useState(null);
@@ -151,16 +153,18 @@ export default function OwnerInventoryPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-10">
+      {from && <BackButton fallback={from} />}
+
       <div className="flex items-center gap-3">
-        <Package size={22} className="text-[#C9A84C]" />
-        <h1 className="text-xl font-bold text-[#1C1C1E]">{t('production', 'oinv_title')}</h1>
+        <Package size={22} className="text-gold" />
+        <h1 className="text-xl font-bold text-ink">{t('production', 'oinv_title')}</h1>
         <div className="ml-auto flex items-center gap-2">
           <button onClick={() => setShowConfirm(true)}
-            className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-[#C9A84C] text-white text-sm font-semibold hover:bg-[#B8923E] transition"
+            className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong transition"
             title={t('production', 'oinv_btn_confirm')}>
             <ClipboardCheck size={16} /> <span className="hidden sm:inline">{t('production', 'oinv_btn_confirm')}</span>
           </button>
-          <button onClick={load} className="p-2 rounded-xl border border-[#E8DDD0] text-[#8E8878] hover:bg-[#FAF7F2] transition"
+          <button onClick={load} className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition"
             title={t('common', 'refresh')}>
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -170,7 +174,7 @@ export default function OwnerInventoryPage() {
       <div className="flex items-center gap-2 flex-wrap">
         {PRESETS.map(p => (
           <button key={p.key} onClick={() => applyPreset(p.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${preset === p.key ? 'bg-[#C9A84C] text-white' : 'bg-white border border-[#E8DDD0] text-[#8E8878] hover:border-[#C9A84C]'}`}>
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${preset === p.key ? 'bg-gold text-white' : 'bg-surface border border-line text-muted hover:border-gold'}`}>
             {p.label}
           </button>
         ))}
@@ -180,14 +184,14 @@ export default function OwnerInventoryPage() {
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
             placeholder={t('production', 'oinv_search_ph')}
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C]" />
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-line text-sm focus:outline-none focus:border-gold" />
         </div>
         <select value={scope} onChange={e => setScope(e.target.value)}
           title={t('production', 'oinv_select_warehouse')}
-          className="px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]">
+          className="px-3 py-2 rounded-xl border border-line text-sm bg-surface focus:outline-none focus:border-gold">
           <option value="ALL">🏬 {t('production', 'oinv_all_warehouses')}</option>
           {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
           {factoryBlocks.length > 0 && (
@@ -200,20 +204,28 @@ export default function OwnerInventoryPage() {
         </select>
         <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setSubFilter(''); }}
           title={t('production', 'oinv_parent_category')}
-          className="px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]">
+          className="px-3 py-2 rounded-xl border border-line text-sm bg-surface focus:outline-none focus:border-gold">
           <option value="">{t('production', 'oinv_all_categories')}</option>
           {categoryOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        {/* Danh mục con phụ thuộc danh mục cha: chưa chọn cha thì khoá lại và
+            hiện lời nhắc, tránh việc chọn được một danh mục con "mồ côi" rồi
+            không hiểu vì sao bảng trống. */}
         <select value={subFilter} onChange={e => setSubFilter(e.target.value)}
           title={t('production', 'oinv_sub_category')}
-          disabled={catFilter === NO_CAT}
-          className="px-3 py-2 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C] disabled:opacity-50">
-          <option value="">{t('production', 'oinv_all_subcategories')}</option>
-          {subCategoryOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          disabled={!catFilter || catFilter === NO_CAT}
+          className="px-3 py-2 rounded-xl border border-line text-sm bg-surface focus:outline-none focus:border-gold disabled:opacity-50 disabled:cursor-not-allowed">
+          <option value="">
+            {!catFilter || catFilter === NO_CAT
+              ? t('production', 'oinv_pick_parent_first')
+              : t('production', 'oinv_all_subcategories')}
+          </option>
+          {(!catFilter || catFilter === NO_CAT ? [] : subCategoryOptions)
+            .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {(catFilter || subFilter) && (
           <button onClick={() => { setCatFilter(''); setSubFilter(''); }}
-            className="text-xs text-[#C9A84C] font-semibold hover:underline flex items-center gap-1">
+            className="text-xs text-gold font-semibold hover:underline flex items-center gap-1">
             <Filter size={12} /> {t('production', 'fg_clear_filter')}
           </button>
         )}
@@ -225,7 +237,7 @@ export default function OwnerInventoryPage() {
           const fid = String(scope).slice(2);
           const block = factoryBlocks.find(b => String(b.factoryId) === fid);
           if (!block) return (
-            <div className="text-center py-16 text-[#8E8878]">
+            <div className="text-center py-16 text-muted">
               <Package size={40} className="mx-auto mb-3 opacity-30" />
               <p className="font-medium">Kho xưởng trống</p>
             </div>
@@ -234,7 +246,7 @@ export default function OwnerInventoryPage() {
             <CollapsibleCard
               title={`${t('production', 'oinv_stock_movement')} · ${block.factoryName} — Kho xưởng`}
               icon={Factory} open={showTable} onToggle={() => setShowTable(v => !v)}>
-              <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#E8DDD0]">
+              <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-line">
                 <FactoryStockList title="Kho nguyên liệu" rows={block.materials} fmtQty={fmtQty} />
                 <FactoryStockList title="Kho thành phẩm" rows={block.finishedGoods} fmtQty={fmtQty} />
               </div>
@@ -242,9 +254,9 @@ export default function OwnerInventoryPage() {
           );
         })()
       ) : loading ? (
-        <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+        <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-surface-2 rounded-2xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-[#8E8878]">
+        <div className="text-center py-16 text-muted">
           <Package size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">{t('production', 'oinv_empty')}</p>
           <p className="text-sm mt-1">
@@ -268,11 +280,11 @@ export default function OwnerInventoryPage() {
           icon={Factory} open={showFactory} onToggle={() => setShowFactory(v => !v)}>
           <div className="p-3 space-y-4">
             {factoryBlocks.map(block => (
-              <div key={block.factoryId} className="rounded-xl border border-[#E8DDD0] overflow-hidden">
-                <div className="px-4 py-2 bg-[#FAF7F2] font-semibold text-sm text-[#1C1C1E] flex items-center gap-2">
-                  <Factory size={14} className="text-[#C9A84C]" /> {block.factoryName}
+              <div key={block.factoryId} className="rounded-xl border border-line overflow-hidden">
+                <div className="px-4 py-2 bg-canvas font-semibold text-sm text-ink flex items-center gap-2">
+                  <Factory size={14} className="text-gold" /> {block.factoryName}
                 </div>
-                <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#E8DDD0]">
+                <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-line">
                   <FactoryStockList title="Kho nguyên liệu" rows={block.materials} fmtQty={fmtQty} />
                   <FactoryStockList title="Kho thành phẩm" rows={block.finishedGoods} fmtQty={fmtQty} />
                 </div>
@@ -293,17 +305,17 @@ export default function OwnerInventoryPage() {
 function FactoryStockList({ title, rows, fmtQty }) {
   return (
     <div className="p-3">
-      <p className="text-xs font-semibold text-[#8E8878] mb-2">{title}</p>
+      <p className="text-xs font-semibold text-muted mb-2">{title}</p>
       {(!rows || rows.length === 0) ? (
-        <p className="text-xs text-[#B0A99A] italic py-2">Trống</p>
+        <p className="text-xs text-faint italic py-2">Trống</p>
       ) : (
         <div className="space-y-1">
           {rows.map((r, i) => (
-            <div key={i} className="flex items-center justify-between text-sm px-2.5 py-1.5 rounded-lg bg-[#FAF7F2]">
-              <span className="text-[#1C1C1E] truncate mr-2">{r.name}</span>
-              <span className="text-[#1A2B1A] font-medium whitespace-nowrap">
+            <div key={i} className="flex items-center justify-between text-sm px-2.5 py-1.5 rounded-lg bg-canvas">
+              <span className="text-ink truncate mr-2">{r.name}</span>
+              <span className="text-forest font-medium whitespace-nowrap">
                 {fmtQty(r.quantity)} {r.unit}
-                {r.lotCount > 0 && <span className="text-[10px] text-[#8E8878] ml-1">({r.lotCount} lô)</span>}
+                {r.lotCount > 0 && <span className="text-[10px] text-muted ml-1">({r.lotCount} lô)</span>}
               </span>
             </div>
           ))}
@@ -314,12 +326,12 @@ function FactoryStockList({ title, rows, fmtQty }) {
 }
 
 function CollapsibleCard({ title, icon: Icon, open, onToggle, children }) {  return (
-    <div className="bg-white rounded-2xl border border-[#E8DDD0] overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FAF7F2] transition">
-        <span className="flex items-center gap-2 text-sm font-semibold text-[#1C1C1E]">
-          <Icon size={16} className="text-[#C9A84C]" /> {title}
+    <div className="bg-surface rounded-2xl border border-line overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 hover:bg-canvas transition">
+        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <Icon size={16} className="text-gold" /> {title}
         </span>
-        {open ? <ChevronDown size={16} className="text-[#8E8878]" /> : <ChevronRight size={16} className="text-[#8E8878]" />}
+        {open ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
       </button>
       {open && <div className="overflow-x-auto">{children}</div>}
     </div>
@@ -342,7 +354,7 @@ function GroupedTable({ tree, valueOf, columns, catOpen, subOpen, toggleCat, tog
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="bg-[#FAF7F2] text-[#8E8878] text-xs">
+        <tr className="bg-canvas text-muted text-xs">
           <th className="text-left px-4 py-2 font-semibold">{t('production', 'oinv_col_ingredient')}</th>
           {columns.map(c => <th key={c} className={`text-right px-4 py-2 font-semibold ${COL_META[c].cls}`}>{COL_META[c].label}</th>)}
         </tr>
@@ -352,10 +364,10 @@ function GroupedTable({ tree, valueOf, columns, catOpen, subOpen, toggleCat, tog
           const co = catOpen(cat.key);
           return (
             <FragmentRows key={cat.key}>
-              <tr className="border-t border-black/5 bg-[#FBF8F2] cursor-pointer" onClick={() => toggleCat(cat.key)}>
-                <td colSpan={colSpan} className="px-3 py-2 font-bold text-[#1C1C1E]">
+              <tr className="border-t border-hairline bg-canvas cursor-pointer" onClick={() => toggleCat(cat.key)}>
+                <td colSpan={colSpan} className="px-3 py-2 font-bold text-ink">
                   <span className="inline-flex items-center gap-1">
-                    {co ? <ChevronDown size={14} className="text-[#C9A84C]" /> : <ChevronRight size={14} className="text-[#8E8878]" />}
+                    {co ? <ChevronDown size={14} className="text-gold" /> : <ChevronRight size={14} className="text-muted" />}
                     {cat.name}
                   </span>
                 </td>
@@ -366,8 +378,8 @@ function GroupedTable({ tree, valueOf, columns, catOpen, subOpen, toggleCat, tog
                 return (
                   <FragmentRows key={sub.key}>
                     {!isNoSub && (
-                      <tr className="border-t border-black/5 cursor-pointer" onClick={() => toggleSub(cat.key, sub.key)}>
-                        <td colSpan={colSpan} className="pl-8 pr-3 py-1.5 text-xs font-semibold text-[#8E8878]">
+                      <tr className="border-t border-hairline cursor-pointer" onClick={() => toggleSub(cat.key, sub.key)}>
+                        <td colSpan={colSpan} className="pl-8 pr-3 py-1.5 text-xs font-semibold text-muted">
                           <span className="inline-flex items-center gap-1">
                             {so ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                             {sub.name} <span className="text-[10px] font-normal">({sub.items.length})</span>
@@ -378,9 +390,9 @@ function GroupedTable({ tree, valueOf, columns, catOpen, subOpen, toggleCat, tog
                     {so && sub.items.map(ing => {
                       const v = valueOf(ing);
                       return (
-                        <tr key={ing.ingredientId} className="border-t border-black/5 hover:bg-[#FAF7F2]/50">
-                          <td className={`${isNoSub ? 'pl-8' : 'pl-12'} pr-4 py-2 text-[#1C1C1E]`}>
-                            {ing.name} <span className="text-[10px] text-[#8E8878]">({ing.unit})</span>
+                        <tr key={ing.ingredientId} className="border-t border-hairline hover:bg-canvas/50">
+                          <td className={`${isNoSub ? 'pl-8' : 'pl-12'} pr-4 py-2 text-ink`}>
+                            {ing.name} <span className="text-[10px] text-muted">({ing.unit})</span>
                           </td>
                           {columns.map(c => (
                             <td key={c} className={`text-right px-4 py-2 ${COL_META[c].cls}`}>{cellVal(v, c)}</td>
@@ -464,75 +476,75 @@ function ConfirmModal({ warehouses, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] lg:max-h-[70vh]">
-        <div className="flex items-center justify-between p-5 border-b border-black/5 flex-shrink-0">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] lg:max-h-[70vh]">
+        <div className="flex items-center justify-between p-5 border-b border-hairline flex-shrink-0">
           <div className="flex items-center gap-2">
-            <ClipboardCheck size={20} className="text-[#C9A84C]" />
-            <h2 className="text-lg font-bold text-[#1C1C1E]">{t('production', 'oinv_btn_confirm')}</h2>
+            <ClipboardCheck size={20} className="text-gold" />
+            <h2 className="text-lg font-bold text-ink">{t('production', 'oinv_btn_confirm')}</h2>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[#FAF7F2] text-[#8E8878]"><X size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted"><X size={20} /></button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-4" style={{ overflowY: 'auto', position: 'relative' }}>
-          <p className="text-xs text-[#8E8878]">
+          <p className="text-xs text-muted">
             {t('production', 'oinv_confirm_desc')}
           </p>
 
           <div>
-            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+            <label className="block text-sm font-semibold text-ink mb-1.5">
               {t('production', 'oinv_warehouse')} <span className="text-red-500">*</span>
             </label>
             <select value={warehouseId} onChange={e => setWarehouseId(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-[#E8DDD0] text-sm bg-white focus:outline-none focus:border-[#C9A84C]">
+              className="w-full px-4 py-2.5 rounded-xl border border-line text-sm bg-surface focus:outline-none focus:border-gold">
               <option value="">{t('production', 'oinv_select_warehouse')}</option>
               {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select>
           </div>
 
           <div className="relative" style={{ position: 'relative', zIndex: 1 }}>
-            <label className="block text-sm font-semibold text-[#1C1C1E] mb-1.5">
+            <label className="block text-sm font-semibold text-ink mb-1.5">
               {t('production', 'oinv_add_ingredient')} <span className="text-red-500">*</span>
             </label>
             <div className="relative" style={{ position: 'relative' }}>
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 ref={inputRef}
                 value={ingSearch}
                 onChange={e => { setIngSearch(e.target.value); setDropOpen(true); }}
                 onFocus={() => setDropOpen(true)}
                 placeholder={t('production', 'oinv_add_ingredient_ph')}
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#E8DDD0] text-sm focus:outline-none focus:border-[#C9A84C]" />
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-line text-sm focus:outline-none focus:border-gold" />
             </div>
           </div>
 
           {rows.length === 0 ? (
-            <div className="text-center py-6 text-sm text-[#8E8878] border border-dashed border-[#E8DDD0] rounded-xl">
+            <div className="text-center py-6 text-sm text-muted border border-dashed border-line rounded-xl">
               {t('production', 'oinv_no_ingredient_selected')}
             </div>
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#8E8878]">
+                <span className="text-xs font-semibold text-muted">
                   {t('production', 'oinv_selected', { n: rows.length })}
                 </span>
-                <button onClick={() => setRows([])} className="text-xs text-red-400 hover:text-red-600 hover:underline">
+                <button onClick={() => setRows([])} className="text-xs text-red-400 hover:text-red-600 dark:text-red-300 hover:underline">
                   {t('production', 'oinv_clear_all')}
                 </button>
               </div>
               {rows.map(r => {
                 const invalid = r.qty === '' || Number.isNaN(Number(r.qty)) || Number(r.qty) < 0;
                 return (
-                  <div key={r.id} className="flex items-center gap-2 bg-[#FAF7F2] rounded-xl px-3 py-2">
+                  <div key={r.id} className="flex items-center gap-2 bg-canvas rounded-xl px-3 py-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1C1C1E] truncate">{r.name}</p>
-                      <p className="text-[10px] text-[#8E8878]">{t('production', 'oinv_unit')}: {r.unit}</p>
+                      <p className="text-sm font-medium text-ink truncate">{r.name}</p>
+                      <p className="text-[10px] text-muted">{t('production', 'oinv_unit')}: {r.unit}</p>
                     </div>
                     <input
                       type="number" step="any" min="0" value={r.qty}
                       onChange={e => setQty(r.id, e.target.value)}
                       placeholder={t('production', 'oinv_qty_ph')}
-                      className={`w-32 px-3 py-2 rounded-lg border text-sm text-right bg-white focus:outline-none ${invalid ? 'border-red-300 focus:border-red-400' : 'border-[#E8DDD0] focus:border-[#C9A84C]'}`} />
-                    <button onClick={() => removeRow(r.id)} className="p-1.5 rounded-lg text-[#8E8878] hover:bg-red-50 hover:text-red-500 transition"
+                      className={`w-32 px-3 py-2 rounded-lg border text-sm text-right bg-surface focus:outline-none ${invalid ? 'border-red-300 dark:border-red-500/35 focus:border-red-400' : 'border-line focus:border-gold'}`} />
+                    <button onClick={() => removeRow(r.id)} className="p-1.5 rounded-lg text-muted hover:bg-red-50 dark:bg-red-500/10 hover:text-red-500 transition"
                       title={t('common', 'delete')}>
                       <X size={15} />
                     </button>
@@ -543,30 +555,30 @@ function ConfirmModal({ warehouses, onClose, onDone }) {
           )}
         </div>
 
-        <div className="p-5 border-t border-black/5 flex gap-3 flex-shrink-0">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-semibold text-[#8E8878] hover:bg-[#FAF7F2] transition">
+        <div className="p-5 border-t border-hairline flex gap-3 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
             {t('common', 'cancel')}
           </button>
           <button onClick={submit} disabled={saving}
-            className="flex-1 py-3 rounded-xl bg-[#C9A84C] text-white text-sm font-bold hover:bg-[#B8923E] transition disabled:opacity-50">
+            className="flex-1 py-3 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-strong transition disabled:opacity-50">
             {saving ? t('common', 'processing') : `${t('production', 'oinv_btn_confirm')}${rows.length ? ` (${rows.length})` : ''}`}
           </button>
         </div>
       </div>
 
       {dropOpen && options.length > 0 && (
-        <div className="fixed z-[9999] bg-white border border-[#E8DDD0] rounded-xl shadow-2xl max-h-52 overflow-y-auto"
+        <div className="fixed z-[9999] bg-surface border border-line rounded-xl shadow-2xl max-h-52 overflow-y-auto"
           style={{ top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width || '100%', maxWidth: 'calc(100% - 32px)' }}>
           {options.map(i => (
             <button key={i.id} type="button" onClick={() => addRow(i)}
-              className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#FAF7F2] transition border-b border-black/5 last:border-0">
-              {i.name} <span className="text-[10px] text-[#8E8878]">({i.unit})</span>
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-canvas transition border-b border-hairline last:border-0">
+              {i.name} <span className="text-[10px] text-muted">({i.unit})</span>
             </button>
           ))}
         </div>
       )}
       {dropOpen && ingSearch && options.length === 0 && (
-        <div className="fixed z-[9999] bg-white border border-[#E8DDD0] rounded-xl shadow-2xl px-4 py-3 text-xs text-[#8E8878]"
+        <div className="fixed z-[9999] bg-surface border border-line rounded-xl shadow-2xl px-4 py-3 text-xs text-muted"
           style={{ top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width || '100%', maxWidth: 'calc(100% - 32px)' }}>
           {t('production', 'oinv_not_found')}
         </div>

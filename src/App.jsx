@@ -4,6 +4,8 @@ import { AuthProvider } from './context/AuthContext';
 import { WarehouseProvider } from './context/WarehouseContext';
 import { ToastProvider, useToast } from './components/common/Toast';
 import { LangProvider } from './context/LangContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { BRAND } from './config/brand';
 import AppRoutes from './routes';
 
 function SessionExpiredListener() {
@@ -37,23 +39,23 @@ function VersionUpdateModal({
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl">
+      <div className="bg-surface rounded-xl w-full max-w-md p-6 shadow-xl">
         <h3 className="text-lg font-semibold mb-3">
           Có phiên bản mới
         </h3>
 
-        <p className="text-sm text-gray-600 mb-2">
+        <p className="text-sm text-ink-2 mb-2">
           Phiên bản mới: <strong>{version}</strong>
         </p>
 
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-ink-2 mb-6">
           {message || 'Hệ thống đã được cập nhật.'}
         </p>
 
         <div className="flex justify-end gap-2">
           <button
             onClick={onLater}
-            className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 border rounded-lg hover:bg-canvas"
           >
             Để sau
           </button>
@@ -176,19 +178,21 @@ function VersionListener() {
 
 export default function App() {
   return (
-    <LangProvider>
-      <AuthProvider>
-        <WarehouseProvider>
-          <ToastProvider>
-            <SessionExpiredListener />
-            <VersionListener />
+    <ThemeProvider>
+      <LangProvider>
+        <AuthProvider>
+          <WarehouseProvider>
+            <ToastProvider>
+              <SessionExpiredListener />
+              <VersionListener />
 
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </ToastProvider>
-        </WarehouseProvider>
-      </AuthProvider>
-    </LangProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </ToastProvider>
+          </WarehouseProvider>
+        </AuthProvider>
+      </LangProvider>
+    </ThemeProvider>
   );
 }

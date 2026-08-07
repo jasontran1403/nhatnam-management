@@ -115,7 +115,7 @@ function FormShell({ title, warehouseName, onSubmit, loading, error, success, ch
           bottom: 0,
           left: 0,
           right: 0,
-          background: 'var(--wh-surface, #fff)',
+          background: 'var(--wh-surface, var(--c-surface))',
           paddingTop: 12,
           paddingBottom: 'max(36px, env(safe-area-inset-bottom))',
           marginLeft: -16,
@@ -179,7 +179,7 @@ function ImportForm() {
       <div style={{
         background: 'rgba(201,168,76,.08)', border: '1px solid rgba(201,168,76,.3)',
         borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-        fontSize: 12, color: '#92681a', lineHeight: 1.5,
+        fontSize: 12, color: 'var(--c-gold-deep)', lineHeight: 1.5,
       }}>
         ℹ️ Sau khi tạo phiếu, <strong>Kế toán trưởng</strong> sẽ nhập giá vốn và xác nhận.
         Tồn kho sẽ được cộng sau khi kế toán trưởng xác nhận.
@@ -456,7 +456,7 @@ function TransferForm() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '8px 14px', borderRadius: 8,
-          background: 'rgba(2,132,199,.07)', color: '#0284c7',
+          background: 'rgba(2,132,199,.07)', color: 'var(--c-info)',
           fontSize: 13, marginBottom: 14,
         }}>
           <span style={{ fontWeight: 600 }}>{myWarehouse.name}</span>
@@ -588,7 +588,7 @@ function AdjustForm() {
       <div style={{
         background: 'rgba(201,168,76,.08)', border: '1px solid rgba(201,168,76,.3)',
         borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-        fontSize: 12, color: '#92681a', lineHeight: 1.5,
+        fontSize: 12, color: 'var(--c-gold-deep)', lineHeight: 1.5,
       }}>
         ℹ️ Kho quản lý theo <strong>lô</strong> — mỗi lô có giá vốn và hạn sử dụng riêng.
         Hãy sửa số lượng / HSD trên từng lô; tổng tồn sẽ được tính lại bằng tổng các lô.

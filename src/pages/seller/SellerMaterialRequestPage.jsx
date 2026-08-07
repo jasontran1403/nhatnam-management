@@ -15,10 +15,10 @@ import {
 } from '../../components/ui';
 
 const STATUS_META = {
-  NEW:       { label: 'Mới tạo',      cls: 'bg-gray-100 text-gray-700 ring-gray-200' },
-  ORDERED:   { label: 'Đã đặt hàng',  cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
-  RECEIVED:  { label: 'Đã nhận',      cls: 'bg-indigo-50 text-indigo-700 ring-indigo-200' },
-  COMPLETED: { label: 'Hoàn thành',   cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  NEW:       { label: 'Mới tạo',      cls: 'bg-surface-2 text-ink-2 ring-line' },
+  ORDERED:   { label: 'Đã đặt hàng',  cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28' },
+  RECEIVED:  { label: 'Đã nhận',      cls: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-500/28' },
+  COMPLETED: { label: 'Hoàn thành',   cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28' },
 };
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -78,31 +78,31 @@ function IngredientSelect({ value, onChange }) {
     <>
       <button type="button" ref={triggerRef} onClick={() => setOpen((o) => !o)}
         className={`${inputCls} flex items-center justify-between text-left`}>
-        <span className={value ? 'text-[#1C1C1E] truncate' : 'text-[#8E8878]'}>
+        <span className={value ? 'text-ink truncate' : 'text-muted'}>
           {value ? `${value.name}${value.unit ? ` (${value.unit})` : ''}` : 'Chọn nguyên liệu...'}
         </span>
-        <Search size={15} className="text-[#8E8878] shrink-0" />
+        <Search size={15} className="text-muted shrink-0" />
       </button>
       {open && rect && createPortal(
         <div ref={panelRef}
           style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 80 }}
-          className="bg-white rounded-xl shadow-xl border border-[#E8DDD0] overflow-hidden">
-          <div className="p-2 border-b border-[#F0E9DF]">
+          className="bg-surface rounded-xl shadow-xl border border-line overflow-hidden">
+          <div className="p-2 border-b border-line-soft">
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
               placeholder="Gõ tên nguyên liệu..." className={inputCls} />
           </div>
           <div className="max-h-56 overflow-auto">
-            {loading && <p className="px-3 py-3 text-sm text-[#8E8878]">Đang tìm...</p>}
+            {loading && <p className="px-3 py-3 text-sm text-muted">Đang tìm...</p>}
             {!loading && options.length === 0 && (
-              <p className="px-3 py-3 text-sm text-[#8E8878]">Không có nguyên liệu phù hợp</p>
+              <p className="px-3 py-3 text-sm text-muted">Không có nguyên liệu phù hợp</p>
             )}
             {!loading && options.map((o) => (
               <button key={o.id} type="button"
                 onClick={() => { onChange(o); setOpen(false); setQ(''); }}
-                className="w-full text-left px-3 py-2 hover:bg-[#FBF7F0] flex items-center gap-2">
-                <Package size={14} className="text-[#C9A84C] shrink-0" />
-                <span className="text-sm text-[#1C1C1E] flex-1 truncate">{o.name}</span>
-                {o.unit && <span className="text-xs text-[#8E8878]">{o.unit}</span>}
+                className="w-full text-left px-3 py-2 hover:bg-canvas flex items-center gap-2">
+                <Package size={14} className="text-gold shrink-0" />
+                <span className="text-sm text-ink flex-1 truncate">{o.name}</span>
+                {o.unit && <span className="text-xs text-muted">{o.unit}</span>}
               </button>
             ))}
           </div>
@@ -239,10 +239,10 @@ export default function SellerMaterialRequestPage() {
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-[#1C1C1E]">{r.requestCode}</span>
+                      <span className="font-semibold text-ink">{r.requestCode}</span>
                       <Badge className={meta.cls}>{meta.label}</Badge>
                     </div>
-                    <p className="text-xs text-[#8E8878] mt-1">
+                    <p className="text-xs text-muted mt-1">
                       {r.itemCount} nguyên liệu
                       {r.estimatedDelivery ? ` · Giao dự kiến ${new Date(r.estimatedDelivery).toLocaleDateString('vi-VN')}` : ''}
                     </p>
@@ -285,7 +285,7 @@ export default function SellerMaterialRequestPage() {
               <div className="col-span-1 pb-2">
                 {rows.length > 1 && (
                   <button onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}
-                    className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
+                    className="text-red-400 hover:text-red-600 dark:text-red-300"><Trash2 size={16} /></button>
                 )}
               </div>
             </div>
@@ -308,12 +308,12 @@ export default function SellerMaterialRequestPage() {
         {receiveTarget && (
           <div className="space-y-3">
             {/* Gán kho nhanh */}
-            <div className="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-[#FBF7F0] border border-[#EFE7DA]">
-              <button onClick={toggleAll} className="flex items-center gap-1 text-sm text-[#5C5C5C]">
-                {allSelected ? <CheckSquare size={16} className="text-[#C9A84C]" /> : <Square size={16} />} Chọn tất cả
+            <div className="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-canvas border border-line-soft">
+              <button onClick={toggleAll} className="flex items-center gap-1 text-sm text-ink-2">
+                {allSelected ? <CheckSquare size={16} className="text-gold" /> : <Square size={16} />} Chọn tất cả
               </button>
               <div className="flex-1" />
-              <Warehouse size={15} className="text-[#8E8878]" />
+              <Warehouse size={15} className="text-muted" />
               <select value={bulkWarehouse} onChange={(e) => setBulkWarehouse(e.target.value)} className={selectCls + ' w-48'}>
                 <option value="">Gán kho cho mục đã chọn...</option>
                 {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -325,13 +325,13 @@ export default function SellerMaterialRequestPage() {
               {(receiveTarget.items || []).map((it) => {
                 const r = recvItems[it.id] || {};
                 return (
-                  <div key={it.id} className="rounded-xl border border-[#EFE7DA] p-3">
+                  <div key={it.id} className="rounded-xl border border-line-soft p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <button onClick={() => patchRecv(it.id, { selected: !r.selected })}>
-                        {r.selected ? <CheckSquare size={16} className="text-[#C9A84C]" /> : <Square size={16} className="text-[#8E8878]" />}
+                        {r.selected ? <CheckSquare size={16} className="text-gold" /> : <Square size={16} className="text-muted" />}
                       </button>
-                      <span className="font-medium text-[#1C1C1E] flex-1">{it.materialName}</span>
-                      <span className="text-xs text-[#8E8878]">Đặt: {formatNumber(it.qtyRequested)} {it.unit}</span>
+                      <span className="font-medium text-ink flex-1">{it.materialName}</span>
+                      <span className="text-xs text-muted">Đặt: {formatNumber(it.qtyRequested)} {it.unit}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <Field label="Thực nhận">
@@ -354,7 +354,7 @@ export default function SellerMaterialRequestPage() {
                 );
               })}
             </div>
-            <p className="text-xs text-[#8E8878]">
+            <p className="text-xs text-muted">
               Sau khi nhận, kế toán trưởng nhập giá vốn — lúc đó lô hàng mới thực sự nhập kho.
             </p>
           </div>

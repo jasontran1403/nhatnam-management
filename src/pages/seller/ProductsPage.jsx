@@ -68,17 +68,17 @@ export default function ProductsPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-[#F0EBE3]">
+      <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-surface border-b border-line-soft">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1E]" style={{ fontFamily: 'var(--font-display)' }}>
+            <h1 className="text-xl font-bold text-ink" style={{ fontFamily: 'var(--font-display)' }}>
               {t('product','product_name_label')}
             </h1>
-            <p className="text-xs text-[#8E8878]">t('product','product_count').replace('{n}',products.length)</p>
+            <p className="text-xs text-muted">t('product','product_count').replace('{n}',products.length)</p>
           </div>
           <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8878]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 {...{placeholder: t("product","search_placeholder")}}
@@ -89,7 +89,7 @@ export default function ProductsPage() {
             </div>
             <button
               onClick={fetchAll}
-              className="p-2 rounded-xl bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]"
+              className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3"
             >
               <RefreshCw size={15} />
             </button>
@@ -107,7 +107,7 @@ export default function ProductsPage() {
           <button
             onClick={() => setCatFilter('ALL')}
             className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              catFilter === 'ALL' ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'
+              catFilter === 'ALL' ? 'bg-gold text-white' : 'bg-surface-2 text-muted hover:bg-surface-3'
             }`}
           >
             Tất cả
@@ -117,7 +117,7 @@ export default function ProductsPage() {
               key={c.id}
               onClick={() => setCatFilter(c.id)}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                catFilter == c.id ? 'bg-[#C9A84C] text-white' : 'bg-[#F0EBE3] text-[#8E8878] hover:bg-[#E8DDD0]'
+                catFilter == c.id ? 'bg-gold text-white' : 'bg-surface-2 text-muted hover:bg-surface-3'
               }`}
             >
               {c.name}
@@ -130,10 +130,10 @@ export default function ProductsPage() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#8E8878] gap-2">
+          <div className="flex flex-col items-center justify-center py-16 text-muted gap-2">
             <Package size={36} strokeWidth={1} />
             <p className="text-sm">{t('common','no_data')}</p>
             <button
@@ -151,10 +151,10 @@ export default function ProductsPage() {
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-2xl border border-[#F0EBE3] overflow-hidden hover:border-[#C9A84C] hover:shadow-lg transition-all duration-200 animate-fadeIn"
+                  className="bg-surface rounded-2xl border border-line-soft overflow-hidden hover:border-gold hover:shadow-lg transition-all duration-200 animate-fadeIn"
                 >
                   {/* Image */}
-                  <div className="aspect-video bg-[#F0EBE3] relative overflow-hidden">
+                  <div className="aspect-video bg-surface-2 relative overflow-hidden">
                     {imgUrl ? (
                       <img src={imgUrl} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
@@ -170,33 +170,33 @@ export default function ProductsPage() {
                   {/* Info */}
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-[#1C1C1E] text-sm line-clamp-1">{p.name}</h3>
+                      <h3 className="font-semibold text-ink text-sm line-clamp-1">{p.name}</h3>
                     </div>
                     {p.category && (
-                      <p className="text-[10px] text-[#8E8878] mb-2">{p.category}</p>
+                      <p className="text-[10px] text-muted mb-2">{p.category}</p>
                     )}
                     {defaultPrice && (
-                      <p className="text-sm font-bold text-[#C9A84C]">{formatPrice(defaultPrice.price)}</p>
+                      <p className="text-sm font-bold text-gold">{formatPrice(defaultPrice.price)}</p>
                     )}
                     {p.prices?.length > 1 && (
-                      <p className="text-[10px] text-[#8E8878]">+{p.prices.length - 1} mức giá</p>
+                      <p className="text-[10px] text-muted">+{p.prices.length - 1} mức giá</p>
                     )}
                     {p.variants?.length > 0 && (
-                      <p className="text-[10px] text-[#8E8878]">{p.variants.length} phân loại</p>
+                      <p className="text-[10px] text-muted">{p.variants.length} phân loại</p>
                     )}
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F0EBE3]">
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line-soft">
                       <button
                         onClick={() => setFormModal({ open: true, product: p })}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#F0EBE3] text-[#1C1C1E] text-xs font-medium hover:bg-[#E8DDD0] transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-surface-2 text-ink text-xs font-medium hover:bg-surface-3 transition-colors"
                       >
                         <Edit2 size={12} /> Sửa
                       </button>
                       <button
                         onClick={() => handleDelete(p)}
                         disabled={deletingId === p.id}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-50 text-red-400 text-xs font-medium hover:bg-red-100 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-100 dark:bg-red-500/18 transition-colors"
                       >
                         {deletingId === p.id
                           ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />

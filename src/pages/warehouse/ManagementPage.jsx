@@ -28,8 +28,8 @@ function daysUntil(dateStr) {
 //   Thay dropdown cũ (bị card overflow:hidden cắt mất) bằng nút màu mở MODAL.
 //   Màu badge do BE tính (freshnessBadge), giống trang kho OWNER/ADMIN.
 const FRESHNESS = {
-  EXPIRED_OR_CRITICAL: { bar: '#ea580c', label: 'Có lô đã/sắp hết hạn (dưới 7 ngày)' },
-  NEAR_EXPIRY:         { bar: '#f59e0b', label: 'Có lô gần hết hạn (trong 1 tháng)' },
+  EXPIRED_OR_CRITICAL: { bar: 'var(--c-warning)', label: 'Có lô đã/sắp hết hạn (dưới 7 ngày)' },
+  NEAR_EXPIRY:         { bar: 'var(--c-warning)', label: 'Có lô gần hết hạn (trong 1 tháng)' },
   NEWLY_STOCKED:       { bar: '#38bdf8', label: 'Có lô mới nhập (dưới 1 tháng)' },
 };
 
@@ -55,14 +55,14 @@ function LotDetailModal({ open, onClose, item }) {
   return (
     <Modal open={open} onClose={onClose} title={`Chi tiết lô — ${item.ingredientName}`} size="lg">
       {lots.length === 0 ? (
-        <p style={{ fontSize: 13, color: '#8E8878', textAlign: 'center', padding: '32px 0' }}>
+        <p style={{ fontSize: 13, color: 'var(--c-muted)', textAlign: 'center', padding: '32px 0' }}>
           Nguyên liệu này chưa có lô nào còn hàng.
         </p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.5px', color: '#8E8878', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
+              <tr style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--c-muted)', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
                 <th style={{ padding: '8px 12px', textAlign: 'left' }}>Thời gian nhập</th>
                 <th style={{ padding: '8px 12px', textAlign: 'right' }}>Số lượng tồn</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left' }}>Hạn sử dụng</th>
@@ -71,19 +71,19 @@ function LotDetailModal({ open, onClose, item }) {
             <tbody>
               {lots.map((lot, i) => {
                 const d = daysUntil(lot.expiryDate);
-                const expColor = d == null ? '#8E8878' : d < 7 ? '#ea580c' : d <= 30 ? '#d97706' : '#1C1C1E';
+                const expColor = d == null ? 'var(--c-muted)' : d < 7 ? 'var(--c-warning)' : d <= 30 ? '#d97706' : 'var(--c-ink)';
                 const imported = fmtDateTime(lot.importedAt);
                 const expText = lot.expiryDate
                   ? `${fmtDate(lot.expiryDate)}${d != null ? (d < 0 ? ' (đã hết hạn)' : ` (còn ${d} ngày)`) : ''}`
                   : (lot.tracked === false ? '—' : 'Không có hạn');
                 return (
                   <tr key={i} style={{ borderBottom: '1px solid rgba(0,0,0,.05)' }}>
-                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#1C1C1E' }}>
-                      {imported || <span style={{ color: '#8E8878', fontStyle: 'italic' }}>Không rõ</span>}
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: 'var(--c-ink)' }}>
+                      {imported || <span style={{ color: 'var(--c-muted)', fontStyle: 'italic' }}>Không rõ</span>}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>
                       {Number(lot.quantity).toLocaleString('vi-VN')}
-                      <span style={{ fontSize: 11, color: '#8E8878', fontWeight: 400, marginLeft: 4 }}>{item.unit}</span>
+                      <span style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 400, marginLeft: 4 }}>{item.unit}</span>
                     </td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: expColor, fontWeight: d != null && d <= 30 ? 600 : 400 }}>{expText}</td>
                   </tr>
@@ -92,16 +92,16 @@ function LotDetailModal({ open, onClose, item }) {
             </tbody>
             <tfoot>
               <tr style={{ borderTop: '1px solid rgba(0,0,0,.1)', fontWeight: 600 }}>
-                <td style={{ padding: '10px 12px', textAlign: 'right', color: '#8E8878' }}>Tổng</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--c-muted)' }}>Tổng</td>
                 <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                   {totalQty.toLocaleString('vi-VN')}
-                  <span style={{ fontSize: 11, color: '#8E8878', fontWeight: 400, marginLeft: 4 }}>{item.unit}</span>
+                  <span style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 400, marginLeft: 4 }}>{item.unit}</span>
                 </td>
                 <td />
               </tr>
             </tfoot>
           </table>
-          <p style={{ fontSize: 11, color: '#8E8878', marginTop: 8 }}>
+          <p style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 8 }}>
             Sắp theo hạn sử dụng gần nhất trước; lô không có hạn xếp cuối.
             {lots.some(l => l.tracked === false) && ' Dòng "Không rõ" là phần tồn chưa gắn lô.'}
           </p>
@@ -148,7 +148,8 @@ function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
     });
   }, [ingredients, cat.id, subCats]);
 
-  if (ingredients.length === 0 && subCats.length === 0) return null;
+  // Danh mục không còn nguyên liệu nào thì không hiện lên giao diện.
+  if (ingredients.length === 0) return null;
 
   return (
     <div style={{ marginBottom: 12 }}>
@@ -197,11 +198,6 @@ function CategorySection({ cat, subCats, ingredients, categoryMap, search }) {
           {catIngredients.map(s => (
             <IngredientRow key={s.ingredientId} s={s} indent={subCats.length > 0} />
           ))}
-          {subCats.length === 0 && catIngredients.length === 0 && (
-            <div style={{ padding: '12px 14px', color: 'var(--wh-muted)', fontSize: 13, fontStyle: 'italic' }}>
-              Không có nguyên liệu
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -214,6 +210,8 @@ function SubCategorySection({ sub, allIngredients, search }) {
     () => allIngredients.filter(s => String(s.subCategoryId) === String(sub.id)),
     [allIngredients, sub.id]
   );
+  // Chốt chặn cuối: dữ liệu đã được lọc ở trang, nhưng giữ lại để component này
+  // dùng lại được ở chỗ khác mà không bao giờ vẽ ra một mục con trống.
   if (subIngredients.length === 0) return null;
 
   return (
@@ -256,10 +254,12 @@ function SubCategorySection({ sub, allIngredients, search }) {
 function IngredientRow({ s, indent = false, subIndent = false }) {
   const isLow = Number(s.stockQuantity) < 5;
   // Nền hàng theo tình trạng lô — cùng bảng màu với chấm trong ExpiryCell.
+  // Sắc nền pha từ token bằng color-mix, không dùng rgba cứng — rgba cam 7% trên
+  // nền trắng thì nhạt vừa phải, nhưng trên nền tối lại gần như biến mất.
   const ROW_BG = {
-    EXPIRED_OR_CRITICAL: { bg: 'rgba(234,88,12,.07)',  bar: '#ea580c' },
-    NEAR_EXPIRY:         { bg: 'rgba(245,158,11,.08)', bar: '#f59e0b' },
-    NEWLY_STOCKED:       { bg: 'rgba(56,189,248,.08)', bar: '#38bdf8' },
+    EXPIRED_OR_CRITICAL: { bg: 'color-mix(in srgb, var(--c-warning) 9%, var(--c-surface))',  bar: 'var(--c-warning)' },
+    NEAR_EXPIRY:         { bg: 'color-mix(in srgb, var(--c-warning) 6%, var(--c-surface))', bar: 'var(--c-warning)' },
+    NEWLY_STOCKED:       { bg: 'color-mix(in srgb, var(--c-info) 9%, var(--c-surface))', bar: 'var(--c-info)' },
   };
   const fresh = ROW_BG[s.freshnessBadge];
   const basePadLeft = subIndent ? 52 : indent ? 36 : 14;
@@ -270,14 +270,14 @@ function IngredientRow({ s, indent = false, subIndent = false }) {
       alignItems: 'center', gap: 12,
       padding: `9px 14px 9px ${basePadLeft}px`,
       borderBottom: '1px solid var(--wh-border)',
-      background: fresh ? fresh.bg : 'white',
+      background: fresh ? fresh.bg : 'var(--c-surface)',
       // Dải màu bên trái cho dễ nhận, không phá layout grid.
       boxShadow: fresh ? `inset 3px 0 0 ${fresh.bar}` : 'none',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-          background: '#f5f0eb', overflow: 'hidden',
+          background: 'var(--c-surface-2)', overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
         }}>
           {s.imageUrl
@@ -358,16 +358,27 @@ export default function ManagementPage() {
     warehouseApi.getAllSubCategories()
       .then(r => setSubCategories(r.data?.data || []))
       .catch(() => { });
-    warehouseApi.getIngredients()
+  }, []);
+
+  // Danh mục nguyên liệu phải theo ĐÚNG kho đang xem — nếu lấy danh mục dùng
+  // chung thì nguyên liệu đã gỡ khỏi kho vẫn được gán category và hiện lên cây.
+  //
+  // Tồn kho và danh mục luôn tải theo CÙNG một id kho: tài khoản chưa gán kho sẽ
+  // rơi vào kho đầu tiên, nếu hai lời gọi dùng hai id khác nhau thì cây danh mục
+  // và bảng tồn sẽ lệch nhau.
+  const loadForWarehouse = (whId) => {
+    if (!whId) return;
+    loadStock(whId);
+    warehouseApi.getIngredients(whId)
       .then(r => setIngredientMeta(r.data?.data || []))
       .catch(() => { });
-  }, []);
+  };
 
   useEffect(() => {
     if (!warehouseId) {
       warehouseApi.getAll().then(res => {
         const list = res.data;
-        if (list.length > 0) { setWarehouseInfo(list[0]); loadStock(list[0].id); }
+        if (list.length > 0) { setWarehouseInfo(list[0]); loadForWarehouse(list[0].id); }
       });
       return;
     }
@@ -375,7 +386,7 @@ export default function ManagementPage() {
       const found = res.data.find(w => w.id === Number(warehouseId));
       if (found) setWarehouseInfo(found);
     });
-    loadStock(warehouseId);
+    loadForWarehouse(warehouseId);
   }, [warehouseId]);
 
   const loadStock = (whId) => {
@@ -388,17 +399,26 @@ export default function ManagementPage() {
   const enrichedStocks = useMemo(() => {
     const metaMap = {};
     ingredientMeta.forEach(i => { metaMap[i.id] = i; });
-    return stocks.map(s => {
-      const meta = metaMap[s.ingredientId] || {};
-      return {
-        ...s,
-        categoryId: meta.categoryId ?? null,
-        subCategoryId: meta.subCategoryId ?? null,
-      };
-    });
-  }, [stocks, ingredientMeta]);
 
-  const rootCats = useMemo(() => categories, [categories]);
+    // Chốt chặn phía FE: chỉ hiện nguyên liệu CÓ TRONG danh mục của kho đang xem.
+    // Backend đã lọc ở cả /stock lẫn /all-ingredients, nhưng nếu một bản build
+    // cũ còn trả dư thì giao diện vẫn đúng.
+    //
+    // Chỉ áp dụng khi đã tải xong danh mục — ingredientMeta rỗng lúc đầu, lọc
+    // ngay sẽ làm cả bảng trắng một nhịp.
+    const ready = ingredientMeta.length > 0;
+
+    return stocks
+      .filter(s => !ready || metaMap[s.ingredientId])
+      .map(s => {
+        const meta = metaMap[s.ingredientId] || {};
+        return {
+          ...s,
+          categoryId: meta.categoryId ?? null,
+          subCategoryId: meta.subCategoryId ?? null,
+        };
+      });
+  }, [stocks, ingredientMeta]);
 
   const subCatMap = useMemo(() => {
     const m = {};
@@ -428,7 +448,36 @@ export default function ManagementPage() {
     return m;
   }, [filteredStocks]);
 
-  const uncategorized = stocksByCat['__none__'] || [];
+  // CÂY DANH MỤC CHỈ GỒM MỤC CÓ NGUYÊN LIỆU.
+  //
+  // Danh mục / danh mục con rỗng bị loại ngay ở đây thay vì để component con tự
+  // trả null: gom một chỗ thì đếm số mục, hiển thị trạng thái rỗng và render đều
+  // nhìn cùng một dữ liệu, không lệch nhau.
+  const visibleCats = useMemo(() => {
+    return categories
+      .map(cat => {
+        const catStocks = stocksByCat[String(cat.id)] || [];
+        if (catStocks.length === 0) return null;
+
+        const subs = (subCatMap[cat.id] || [])
+          .filter(sub => catStocks.some(s => String(s.subCategoryId) === String(sub.id)));
+
+        return { cat, stocks: catStocks, subs };
+      })
+      .filter(Boolean);
+  }, [categories, stocksByCat, subCatMap]);
+
+  // Nguyên liệu chưa gắn danh mục, CỘNG những nguyên liệu trỏ tới một danh mục
+  // không còn tồn tại (đã xoá / ngừng hoạt động). Nếu không gom vào đây chúng sẽ
+  // biến mất khỏi giao diện trong khi tồn kho vẫn còn.
+  const knownCatIds = useMemo(
+    () => new Set(categories.map(c => String(c.id))),
+    [categories]);
+
+  const uncategorized = useMemo(
+    () => filteredStocks.filter(s =>
+      !s.categoryId || !knownCatIds.has(String(s.categoryId))),
+    [filteredStocks, knownCatIds]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
@@ -453,7 +502,7 @@ export default function ManagementPage() {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', borderRadius: 12,
-              background: '#1A3C6E', color: '#fff',
+              background: 'var(--c-steel)', color: 'var(--c-surface)',
               border: 'none', cursor: 'pointer',
               fontSize: 13, fontWeight: 600,
               boxShadow: '0 2px 8px rgba(26,60,110,0.25)',
@@ -539,20 +588,15 @@ export default function ManagementPage() {
         </div>
       ) : (
         <div>
-          {rootCats.map(cat => {
-            const subCats = subCatMap[cat.id] || [];
-            const directAndSub = filteredStocks.filter(s => String(s.categoryId) === String(cat.id));
-            if (directAndSub.length === 0) return null;
-            return (
-              <CategorySection
-                key={cat.id}
-                cat={cat}
-                subCats={subCats.filter(sub => filteredStocks.some(s => String(s.subCategoryId) === String(sub.id)))}
-                ingredients={directAndSub}
-                search={search}
-              />
-            );
-          })}
+          {visibleCats.map(({ cat, subs, stocks: catStocks }) => (
+            <CategorySection
+              key={cat.id}
+              cat={cat}
+              subCats={subs}
+              ingredients={catStocks}
+              search={search}
+            />
+          ))}
           <UncategorizedSection ingredients={uncategorized} />
         </div>
       )}
@@ -592,7 +636,7 @@ function LoadingRows() {
           {[1, 2, 3, 4].map(i => (
             <tr key={i}>
               {[1, 2, 3, 4].map(j => (
-                <td key={j}><div style={{ height: 18, background: '#f0ebe3', borderRadius: 4, animation: 'pulse 1.5s infinite' }} /></td>
+                <td key={j}><div style={{ height: 18, background: 'var(--c-surface-2)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} /></td>
               ))}
             </tr>
           ))}
