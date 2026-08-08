@@ -709,7 +709,6 @@ export default function SuperAccountantCustomers() {
   const fetchCustomersForReport = useCallback(async ({ q, page: p = 0, size = 20 }) => {
     const res = await adminCustomerApi.list({
       q: q || undefined, page: p, size, sort: 'id,desc',
-      isActive: true,                                // chỉ khách đang hoạt động
     });
     const content = res?.content || [];
     const totalElements = res?.totalElements ?? res?.totalItems ?? content.length;
