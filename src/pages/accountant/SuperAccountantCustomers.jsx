@@ -709,6 +709,11 @@ export default function SuperAccountantCustomers() {
   const fetchCustomersForReport = useCallback(async ({ q, page: p = 0, size = 20 }) => {
     const res = await adminCustomerApi.list({
       q: q || undefined, page: p, size, sort: 'id,desc',
+      // KHÔNG lọc isActive ở đây.
+      //
+      // Khách bị khoá vẫn có thể đang nợ tiền — thậm chí đó thường là lý do họ
+      // bị khoá. Lọc bỏ khách khoá khiến chính những khoản nợ cần đòi nhất lại
+      // không tìm thấy trong modal chọn khách của báo cáo công nợ.
     });
     const content = res?.content || [];
     const totalElements = res?.totalElements ?? res?.totalItems ?? content.length;
@@ -723,9 +728,12 @@ export default function SuperAccountantCustomers() {
       const activeFilters = (customerIds && customerIds.length)
         ? { customerIds }                       // chọn tay ở modal → chỉ xuất đúng các KH này
         : {
+          // "Xuất tất cả" đi theo đúng bộ lọc đang hiển thị trên trang. Không ép
+          // isActive: true — cùng lý do với modal chọn khách ở trên; nếu người
+          // dùng muốn giới hạn thì đã có sẵn bộ lọc Trạng thái.
           q: debouncedQ || undefined,
           type: filters.type || undefined,
-          isActive: true,
+          isActive: filters.isActive !== '' ? filters.isActive : undefined,
           sellerId: filters.sellerId !== '' ? filters.sellerId : undefined,
         };
       const res = await reportApi.exportAgedReceivables(undefined, activeFilters); // asOf = hôm nay
