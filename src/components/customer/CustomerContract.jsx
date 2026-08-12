@@ -198,7 +198,8 @@ export function ContractUploadModal({ customer, onClose }) {
       toast(hadContract ? 'Đã cập nhật hợp đồng mới' : 'Đã tải hợp đồng lên', 'success');
       onClose?.(true);
     } catch (e) {
-      toast(e?.response?.data?.message || 'Tải hợp đồng thất bại', 'error');
+      // toast(e?.response?.data?.message || 'Tải hợp đồng thất bại', 'error');
+      toast(e?.response?.data?.message || e?.response?.data?.message, e);
     } finally { setSaving(false); }
   };
 
