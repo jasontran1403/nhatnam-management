@@ -197,26 +197,9 @@ export function ContractUploadModal({ customer, onClose }) {
       await customerContractApi.upload(customer.id, files);
       toast(hadContract ? 'Đã cập nhật hợp đồng mới' : 'Đã tải hợp đồng lên', 'success');
       onClose?.(true);
-      // } catch (e) {
-      //   // toast(e?.response?.data?.message || 'Tải hợp đồng thất bại', 'error');
-      //   toast(e?.response?.data?.message || e?.response?.data?.message, e);
-      // } finally { setSaving(false); }
     } catch (e) {
-      // DEBUG trên Android: gom hết thông tin lỗi thành 1 chuỗi
-      const r = e?.response;
-      let body = r?.data;
-      if (body && typeof body !== 'string') {
-        try { body = JSON.stringify(body); } catch { body = String(body); }
-      }
-      const diag =
-        `status=${r?.status ?? 'NO-RESPONSE'} | ` +
-        `code=${e?.code ?? '-'} | ` +
-        `msg=${e?.message ?? '-'} | ` +
-        `resp=${e?.request ? 'yes' : 'no'} | ` +
-        `body=${body ? String(body).slice(0, 300) : '-'}`;
-
-      alert(diag);              // alert chắc chắn hiện trên mobile, không bị rỗng như toast
-      toast(diag, 'error', 8000);
+      alert(`${e}`);
+      toast(e?.response?.data?.message || 'Tải hợp đồng thất bại', 'error');
     } finally { setSaving(false); }
   };
 
