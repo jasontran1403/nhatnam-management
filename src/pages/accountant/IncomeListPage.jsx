@@ -248,7 +248,8 @@ export default function IncomeListPage({ adminMode = false }) {
       {showCreate && <IncomeCreateModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(0); }} />}
       {detailVoucher && (
         <IncomeDetailModal voucher={detailVoucher}
-          onClose={() => setDetailVoucher(null)} onEdit={handleEdit} />
+          onClose={() => setDetailVoucher(null)} onEdit={handleEdit}
+          onChanged={() => load(page)} />
       )}
       {editVoucher && (
         <IncomeCreateModal editVoucher={editVoucher}

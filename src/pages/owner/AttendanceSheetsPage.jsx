@@ -18,7 +18,7 @@ import {
   ClipboardCheck, Upload, RefreshCw, AlertCircle, CheckCircle2, Trash2,
   FileSpreadsheet, Calculator, Download, CalendarDays, ChevronDown, Gift, Wallet,
   CalendarClock, UserCheck, Clock, Lock, Unlock, Users, Receipt, Truck, Route, ShieldCheck,
-  PiggyBank, Plus, X, Search,
+  PiggyBank, Plus, X, Search, CornerDownRight, MapPin, User as UserIcon, Package, Eye,
 } from 'lucide-react';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import { BackButton } from '../../components/common/SubPageNav';
@@ -450,28 +450,126 @@ function ImportResultModal({ result, title, onClose }) {
 function AdjustmentResultModal({ result, title, onClose }) {
   if (!result) return null;
 
+  const savedItems = result.savedItems || [];
+  const unmatched = result.unmatchedItems || [];
   const errors = result.errors || [];
   const warnings = result.warnings || [];
 
+  const savedTotal = savedItems.reduce((s, i) => s + (i.amount || 0), 0);
+  const newItems = savedItems.filter(i => !i.alreadyExisted);
+  const existedItems = savedItems.filter(i => i.alreadyExisted);
+
   return (
-    <Modal open onClose={onClose} title={title} size="md">
-      <div className="space-y-3 py-1">
-        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28
-          rounded-xl px-4 py-3">
-          <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-300 shrink-0" />
-          <p className="text-xs text-emerald-800 dark:text-emerald-300">
-            Đã lưu <strong>{result.saved ?? 0}</strong> khoản
-            {result.label ? <> · nhãn <strong>{result.label}</strong></> : null}
-            {result.totalAmount > 0 && <> · tổng <strong>{formatCurrency(result.totalAmount)}</strong></>}
-          </p>
+    <Modal open onClose={onClose} title={title} size="lg">
+      <div className="space-y-4 py-1">
+        {/* Tóm tắt */}
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/28 px-3 py-2.5">
+            <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300 tracking-wider">Đã lưu</p>
+            <p className="text-sm font-bold text-ink mt-0.5">{result.saved ?? 0} khoản</p>
+            {result.totalAmount > 0 && <p className="text-[10px] text-muted">{formatCurrency(result.totalAmount)}</p>}
+          </div>
+          {existedItems.length > 0 && (
+            <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 px-3 py-2.5">
+              <p className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-300 tracking-wider">Đã có sẵn</p>
+              <p className="text-sm font-bold text-ink mt-0.5">{existedItems.length} người</p>
+              <p className="text-[10px] text-muted">bỏ qua, giữ số cũ</p>
+            </div>
+          )}
+          {unmatched.length > 0 && (
+            <div className="rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 px-3 py-2.5">
+              <p className="text-[10px] uppercase font-bold text-red-700 dark:text-red-300 tracking-wider">Không tìm thấy</p>
+              <p className="text-sm font-bold text-ink mt-0.5">{unmatched.length} dòng</p>
+              <p className="text-[10px] text-muted">import nhầm file / sai tên</p>
+            </div>
+          )}
         </div>
 
+        {/* PHẦN 1: Danh sách đã xử lý */}
+        {savedItems.length > 0 && (
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300 mb-1.5">
+              Nhân viên đã xử lý ({savedItems.length}) · Tổng {formatCurrency(savedTotal)}
+            </p>
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/28 overflow-hidden max-h-64 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-emerald-50 dark:bg-emerald-500/10 sticky top-0">
+                  <tr className="text-left text-emerald-700 dark:text-emerald-300">
+                    <th className="px-3 py-1.5 font-semibold">Nhân viên</th>
+                    <th className="px-3 py-1.5 font-semibold">Khoản</th>
+                    <th className="px-3 py-1.5 font-semibold text-right">Số tiền</th>
+                    <th className="px-3 py-1.5 font-semibold text-center">Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {savedItems.map((it, i) => (
+                    <tr key={i} className="border-t border-emerald-100 dark:border-emerald-500/20">
+                      <td className="px-3 py-1.5 font-medium text-ink">{it.employeeName || `#${it.userId}`}</td>
+                      <td className="px-3 py-1.5 text-ink">{it.label || '—'}</td>
+                      <td className="px-3 py-1.5 text-right font-semibold text-gold">{formatCurrency(it.amount)}</td>
+                      <td className="px-3 py-1.5 text-center text-[10px]">
+                        {it.alreadyExisted
+                          ? <span className="text-amber-600 dark:text-amber-300">Đã có, giữ nguyên</span>
+                          : <span className="text-emerald-600 dark:text-emerald-300">Thêm mới</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* PHẦN 2: Không tìm thấy — thường do import nhầm file khác bộ phận */}
+        {unmatched.length > 0 && (
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-red-600 dark:text-red-300 mb-1.5">
+              Không tìm thấy nhân viên ({unmatched.length})
+            </p>
+            <p className="text-[10px] text-muted mb-1.5">
+              Các dòng dưới đây không khớp được nhân viên nào trong bộ phận. Kiểm tra
+              xem có phải import nhầm file của bộ phận khác không, hoặc tên bị gõ sai.
+            </p>
+            <div className="rounded-xl border border-red-200 dark:border-red-500/28 overflow-hidden max-h-56 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-red-50 dark:bg-red-500/10 sticky top-0">
+                  <tr className="text-left text-red-700 dark:text-red-300">
+                    <th className="px-3 py-1.5 font-semibold">Dòng</th>
+                    <th className="px-3 py-1.5 font-semibold">Tên trong file</th>
+                    <th className="px-3 py-1.5 font-semibold">Khoản / lý do</th>
+                    <th className="px-3 py-1.5 font-semibold text-right">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unmatched.map((it, i) => (
+                    <tr key={i} className="border-t border-red-100 dark:border-red-500/20">
+                      <td className="px-3 py-1.5 text-muted">{it.rowNumber}</td>
+                      <td className="px-3 py-1.5 font-medium text-ink">
+                        {it.rawName || <span className="italic text-muted">(trống)</span>}
+                        {it.rawIdString && <span className="text-[10px] text-muted ml-1">ID: {it.rawIdString}</span>}
+                      </td>
+                      <td className="px-3 py-1.5 text-[11px]">
+                        {it.label && <div className="text-ink">{it.label}</div>}
+                        <div className="text-red-600 dark:text-red-300 text-[10px]">{it.reason}</div>
+                      </td>
+                      <td className="px-3 py-1.5 text-right text-ink">
+                        {it.amount != null ? formatCurrency(it.amount) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Cảnh báo/lỗi khác (VD nhãn phụ cấp không có trong danh mục) */}
         {errors.length > 0 && (
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-red-600 dark:text-red-300 mb-1.5">
-              Dòng bị bỏ qua ({errors.length})
+              Lỗi khác ({errors.length})
             </p>
-            <div className="space-y-1 max-h-52 overflow-y-auto">
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {errors.map((e, i) => (
                 <p key={i} className="text-[11px] text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28
                   rounded-lg px-3 py-2 leading-snug">{e}</p>
@@ -485,7 +583,7 @@ function AdjustmentResultModal({ result, title, onClose }) {
             <p className="text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300 mb-1.5">
               Cảnh báo ({warnings.length})
             </p>
-            <div className="space-y-1 max-h-40 overflow-y-auto">
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {warnings.map((w, i) => (
                 <p key={i} className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28
                   rounded-lg px-3 py-2 leading-snug">{w}</p>
@@ -508,9 +606,10 @@ function AdjustmentResultModal({ result, title, onClose }) {
 
 function AdjustmentSlot({ icon: Icon, title, description, hint, count, rowLabel,
                           onUpload, onClear, onTemplate, uploading, clearing,
-                          batches, onDeleteBatch, deletingLabel }) {
+                          batches, onDeleteBatch, deletingLabel, onPreview }) {
   const fileRef = useRef(null);
   const has = (count ?? 0) > 0;
+  const isBonus = Array.isArray(batches);
 
   return (
     <div className={`rounded-2xl border overflow-hidden transition-colors
@@ -536,10 +635,8 @@ function AdjustmentSlot({ icon: Icon, title, description, hint, count, rowLabel,
       <div className="px-4 py-3.5 space-y-3">
         <p className="text-[11px] text-muted leading-relaxed">{hint}</p>
 
-        {/* Liệt kê TỪNG KHOẢN đã tải lên. Một tháng có thể có nhiều khoản
-            thưởng khác nhau, mỗi khoản một file; chỉ hiện con số tổng thì
-            OWNER không biết đã tải những khoản nào và thiếu khoản nào. */}
-        {Array.isArray(batches) && batches.length > 0 && (
+        {/* Liệt kê TỪNG KHOẢN đã tải lên (BONUS). Mỗi khoản có nút Xem + Xoá. */}
+        {isBonus && batches.length > 0 && (
           <div className="space-y-1.5">
             {batches.map(b => (
               <div key={b.label}
@@ -550,6 +647,14 @@ function AdjustmentSlot({ icon: Icon, title, description, hint, count, rowLabel,
                     {b.employeeCount} người · {formatCurrency(b.totalAmount)}
                   </p>
                 </div>
+                {onPreview && (
+                  <button
+                    onClick={() => onPreview('BONUS', b.label)}
+                    title={`Xem lại nội dung khoản "${b.label}"`}
+                    className="p-1.5 rounded-lg text-muted hover:text-gold hover:bg-canvas transition-colors shrink-0">
+                    <Eye size={13} />
+                  </button>
+                )}
                 {onDeleteBatch && (
                   <button
                     onClick={() => onDeleteBatch(b.label)}
@@ -563,6 +668,15 @@ function AdjustmentSlot({ icon: Icon, title, description, hint, count, rowLabel,
               </div>
             ))}
           </div>
+        )}
+
+        {/* Phụ cấp: nút Xem toàn khối (không có batch riêng). */}
+        {!isBonus && has && onPreview && (
+          <button type="button" onClick={() => onPreview('ALLOWANCE')}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-hairline-2
+              bg-surface hover:bg-canvas text-ink text-[11px] font-semibold transition-colors">
+            <Eye size={13} /> Xem lại nội dung đã import
+          </button>
         )}
 
         <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
@@ -1380,48 +1494,8 @@ function PayrollTables({ data, loading }) {
         </div>
       </SectionCard>
 
-      {/* ── BẢNG 2: CHỈ CÒN CHO TÀI XẾ — số km chạy theo tháng ──────────────
-          Bảng "Chi tiết ngày công" của các bộ phận chấm công đã được BỎ: nó chỉ
-          hiện số tổng, trùng thông tin và không xem được từng ngày. Thay bằng
-          nút "Chi tiết ngày công" ở mỗi dòng Phiếu lương phía trên. */}
-      {isDriver && (
-        <SectionCard>
-          <div className="flex items-center gap-2 px-5 py-4 border-b border-hairline">
-            <Route size={16} className="text-gold" />
-            <h3 className="text-sm font-bold text-ink">
-              Chi tiết số km theo tháng — {data.periodLabel}
-            </h3>
-          </div>
-
-          <div className="overflow-x-auto">
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>Tài xế</Th>
-                  <Th right>Tổng km</Th>
-                  <Th right>Số đơn đã giao</Th>
-                </Tr>
-              </Thead>
-              <tbody>
-                {rows.map(r => (
-                  <Tr key={r.userId}>
-                    <Td>
-                      <div className="font-medium">{r.userFullName}</div>
-                      <div className="text-xs text-muted">{r.roleLabel || '—'}</div>
-                    </Td>
-                    <Td right><span className="font-semibold text-gold">
-                      {fmtNum(r.totalKm, 1)} km</span></Td>
-                    <Td right>{r.totalOrders ?? 0}</Td>
-                  </Tr>
-                ))}
-                {rows.length === 0 && (
-                  <Tr><Td className="text-center text-muted py-8">Không có dữ liệu</Td></Tr>
-                )}
-              </tbody>
-            </Table>
-          </div>
-        </SectionCard>
-      )}
+      {/* Bảng "Chi tiết số km theo tháng" đã BỎ — thông tin km/số đơn đã hiện
+          đầy đủ trong bảng "Lương tài xế theo km & lượt giao" ở panel bên trên. */}
 
       {/* Modal chi tiết ngày công của nhân viên vừa bấm */}
       <EmployeeAttendanceModal
@@ -1530,6 +1604,740 @@ function SalaryDetailModal({ row, onClose }) {
 // TRANG CHÍNH
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// LƯƠNG TÀI XẾ — OWNER nhập giá xăng + đơn giá thưởng (xe máy & xe tải),
+// xem bảng lương tách theo loại xe. Bấm 1 dòng → modal 2 tab (đơn hàng + lương).
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Format số kiểu Việt Nam: 1234 → "1.234"
+const fmtVN = (v) => {
+  if (v == null || v === '') return '';
+  const n = String(v).replace(/[^\d]/g, '');
+  if (!n) return '';
+  return n.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+const parseVN = (v) => {
+  const n = Number(String(v ?? '').replace(/[^\d]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Ô nhập số kiểu VN: gõ ký tự → format ngay, gợi ý "vnđ" phía sau. */
+function VNMoneyInput({ value, onChange, placeholder, disabled }) {
+  return (
+    <div className={`relative ${disabled ? 'opacity-60' : ''}`}>
+      <input
+        inputMode="numeric" disabled={disabled}
+        value={fmtVN(value)}
+        onChange={e => onChange(String(e.target.value).replace(/[^\d]/g, ''))}
+        placeholder={placeholder}
+        className="w-full pl-4 pr-14 py-2.5 rounded-xl border border-hairline-2 text-sm text-right
+          focus:outline-none focus:ring-2 focus:ring-gold bg-surface disabled:cursor-not-allowed
+          disabled:bg-canvas"
+      />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted pointer-events-none">
+        vnđ
+      </span>
+    </div>
+  );
+}
+
+function DriverPayrollPanel({ month, year, onSaved }) {
+  const toast = useToast();
+  const [cfg, setCfg] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [gasPrice, setGasPrice] = useState('');
+  const [bonusMoto, setBonusMoto] = useState('');
+  const [bonusTruck, setBonusTruck] = useState('');
+  const [modalDriver, setModalDriver] = useState(null); // { userId, name, vehicleType }
+
+  const finalized = cfg?.finalized === true;
+
+  const load = useCallback(async () => {
+    if (!month || !year) return;
+    setLoading(true);
+    try {
+      const data = await factoryPayrollApi.driverConfig(month, year);
+      setCfg(data);
+      setGasPrice(data?.gasPrice != null ? String(data.gasPrice) : '');
+      setBonusMoto(data?.bonusUnitPrice != null ? String(data.bonusUnitPrice) : '');
+      setBonusTruck(data?.truckBonusUnitPrice != null ? String(data.truckBonusUnitPrice) : '');
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không tải được lương tài xế', 'error');
+    } finally { setLoading(false); }
+  }, [month, year]); // eslint-disable-line
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const data = await factoryPayrollApi.saveDriverConfig(
+        month, year, parseVN(gasPrice), parseVN(bonusMoto), parseVN(bonusTruck));
+      setCfg(data);
+      toast('Đã lưu giá xăng và đơn giá thưởng. Bấm "Hoàn tất" để chốt lương.', 'success');
+      onSaved && onSaved();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi khi lưu', 'error');
+    } finally { setSaving(false); }
+  };
+
+  const rows = cfg?.rows || [];
+
+  return (
+    <SectionCard>
+      <div className="px-5 py-5 space-y-5">
+        <div className="flex items-start gap-3">
+          <span className="w-10 h-10 rounded-xl bg-canvas flex items-center justify-center shrink-0">
+            <Truck size={17} className="text-gold" />
+          </span>
+          <div>
+            <p className="text-sm font-bold text-ink">Lương tài xế theo km &amp; lượt giao</p>
+            <p className="text-xs text-muted mt-1 leading-relaxed max-w-2xl">
+              Lương xe máy = <strong>tổng km × giá xăng</strong> +{' '}
+              <strong>lượt xe máy × đơn giá thưởng xe máy</strong>.
+              Xe tải chỉ tính <strong>lượt xe tải × đơn giá thưởng xe tải</strong> (lương cứng
+              xe tải quản lý riêng ở phần Nhân sự).
+              {finalized && (
+                <span className="block mt-1 text-emerald-600 dark:text-emerald-300 font-semibold">
+                  Đã Hoàn tất — bấm "Mở lại" ở trên để chỉnh sửa.
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Nhập giá xăng + 2 đơn giá thưởng */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="block text-xs font-semibold text-muted mb-1">
+              Giá xăng <span className="font-normal">(đồng / km, cho xe máy)</span>
+            </label>
+            <VNMoneyInput value={gasPrice} onChange={setGasPrice}
+              placeholder="VD: 3.000" disabled={finalized || loading} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted mb-1">
+              Đơn giá thưởng xe máy <span className="font-normal">(đồng / lượt)</span>
+            </label>
+            <VNMoneyInput value={bonusMoto} onChange={setBonusMoto}
+              placeholder="VD: 20.000" disabled={finalized || loading} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted mb-1">
+              Đơn giá thưởng xe tải <span className="font-normal">(đồng / lượt)</span>
+            </label>
+            <VNMoneyInput value={bonusTruck} onChange={setBonusTruck}
+              placeholder="VD: 30.000" disabled={finalized || loading} />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <PrimaryButton onClick={save} disabled={saving || loading || finalized}>
+            {saving ? 'Đang lưu...' : 'Lưu giá xăng & đơn giá thưởng'}
+          </PrimaryButton>
+        </div>
+
+        {loading ? (
+          <LoadingSpinner />
+        ) : rows.length === 0 ? (
+          <EmptyState title="Chưa có tài xế" description="Không có tài xế nào có tài khoản để tính lương." />
+        ) : (
+          <>
+            {/* ── DESKTOP: bảng, mỗi tài xế 1 dòng xe máy (chính) + 1 dòng xe tải ── */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-hairline">
+              <table className="w-full text-xs">
+                <thead className="bg-canvas">
+                  <tr className="text-left text-muted">
+                    <th className="px-3 py-2 font-semibold">Tài xế</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tổng km</th>
+                    <th className="px-3 py-2 font-semibold text-right">Số đơn</th>
+                    <th className="px-3 py-2 font-semibold text-right">Số lượt</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tiền xăng</th>
+                    <th className="px-3 py-2 font-semibold text-right">Thưởng</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tổng theo loại</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tổng lương tài xế</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(r => <DriverSalaryRows key={r.userId} row={r} onOpen={setModalDriver} />)}
+                </tbody>
+              </table>
+              <div className="flex justify-end p-3 text-sm bg-canvas border-t border-hairline">
+                <span className="text-muted mr-2">Tổng chi lương tài xế:</span>
+                <span className="font-bold text-gold">{formatCurrency(cfg?.grandTotalSalary || 0)}</span>
+              </div>
+            </div>
+
+            {/* ── MOBILE: mỗi tài xế 1 card, có card con nếu chạy cả 2 loại ── */}
+            <div className="md:hidden space-y-3">
+              {rows.map(r => <DriverSalaryCard key={r.userId} row={r} onOpen={setModalDriver} />)}
+              <div className="rounded-xl bg-canvas p-3 flex items-center justify-between text-sm">
+                <span className="text-muted font-semibold">Tổng chi lương tài xế</span>
+                <span className="font-bold text-gold">{formatCurrency(cfg?.grandTotalSalary || 0)}</span>
+              </div>
+            </div>
+
+            {(cfg?.gasPrice == null || cfg?.bonusUnitPrice == null || cfg?.truckBonusUnitPrice == null) && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-300 flex items-center gap-1">
+                <AlertCircle size={12} /> Cần nhập & lưu đủ 3 giá trên trước khi Hoàn tất.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      {modalDriver && (
+        <DriverDetailModal driver={modalDriver} month={month} year={year}
+          onClose={() => setModalDriver(null)} />
+      )}
+    </SectionCard>
+  );
+}
+
+/** 1 dòng chính (xe máy) + 1 dòng phụ (xe tải) cho 1 tài xế, hoặc đảo lại nếu
+    chỉ có xe tải. Rowspan cột "Tổng lương tài xế" gộp 2 dòng. */
+function DriverSalaryRows({ row, onOpen }) {
+  const hasMoto = !!row.motorbike;
+  const hasTruck = !!row.truck;
+  const rowspan = (hasMoto && hasTruck) ? 2 : 1;
+  const nameCell = (
+    <td rowSpan={rowspan} className="px-3 py-2 font-medium text-ink align-top border-t border-hairline">
+      <button onClick={() => onOpen({ userId: row.userId, name: row.driverName, vehicleType: row.vehicleType })}
+        className="text-left hover:text-gold">
+        {row.driverName}
+        <span className="block text-[10px] text-muted font-normal">
+          {row.vehicleType === 'BOTH' ? 'Xe máy + Xe tải'
+            : row.vehicleType === 'TRUCK' ? 'Xe tải' : 'Xe máy'}
+        </span>
+      </button>
+    </td>
+  );
+  const grandCell = (
+    <td rowSpan={rowspan} className="px-3 py-2 text-right align-middle border-t border-hairline">
+      <span className="font-bold text-gold">
+        {row.grandTotalSalary != null ? formatCurrency(row.grandTotalSalary) : '—'}
+      </span>
+    </td>
+  );
+
+  // Dòng chính: XE MÁY nếu có, ngược lại XE TẢI (khi tài xế chỉ chạy xe tải).
+  const first = hasMoto ? { kind: 'MOTO', s: row.motorbike } : { kind: 'TRUCK', s: row.truck };
+  const second = (hasMoto && hasTruck) ? { kind: 'TRUCK', s: row.truck } : null;
+
+  return (
+    <>
+      <tr className="hover:bg-canvas cursor-pointer" onClick={() =>
+        onOpen({ userId: row.userId, name: row.driverName, vehicleType: row.vehicleType })}>
+        {nameCell}
+        <SalaryCells s={first.s} kind={first.kind} />
+        {grandCell}
+      </tr>
+      {second && (
+        <tr className="hover:bg-canvas cursor-pointer" onClick={() =>
+          onOpen({ userId: row.userId, name: row.driverName, vehicleType: row.vehicleType })}>
+          <SalaryCells s={second.s} kind={second.kind} subRow />
+        </tr>
+      )}
+    </>
+  );
+}
+
+function SalaryCells({ s, kind, subRow }) {
+  const isTruck = kind === 'TRUCK';
+  const label = isTruck ? 'Xe tải' : 'Xe máy';
+  return (
+    <>
+      <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>
+        <div className="flex items-center justify-end gap-1">
+          {subRow && <CornerDownRight size={11} className="text-muted" />}
+          <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-canvas text-muted">{label}</span>
+          {!isTruck && <span className="text-ink font-medium ml-1">{fmtNum(s?.totalKm, 1)}</span>}
+        </div>
+      </td>
+      <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>{s?.totalOrders ?? 0}</td>
+      <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>{s?.totalTrips ?? 0}</td>
+      <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>
+        {isTruck ? '—' : (s?.fuelPay != null ? formatCurrency(s.fuelPay) : '—')}
+      </td>
+      <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>
+        {s?.bonusPay != null ? formatCurrency(s.bonusPay) : '—'}
+      </td>
+      <td className={`px-3 py-2 text-right font-semibold ${subRow ? '' : 'border-t border-hairline'}`}>
+        {s?.totalSalary != null ? formatCurrency(s.totalSalary) : '—'}
+      </td>
+    </>
+  );
+}
+
+/** Card cho mobile: 1 card chính + card con nếu tài xế chạy cả 2 loại. */
+function DriverSalaryCard({ row, onOpen }) {
+  const hasMoto = !!row.motorbike;
+  const hasTruck = !!row.truck;
+  return (
+    <div onClick={() => onOpen({ userId: row.userId, name: row.driverName, vehicleType: row.vehicleType })}
+      className="rounded-2xl border border-hairline bg-surface p-3 cursor-pointer active:scale-[0.99] transition-transform">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-ink">{row.driverName}</p>
+          <p className="text-[11px] text-muted">
+            {row.vehicleType === 'BOTH' ? 'Xe máy + Xe tải'
+              : row.vehicleType === 'TRUCK' ? 'Xe tải' : 'Xe máy'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] text-muted uppercase tracking-wider">Tổng lương</p>
+          <p className="text-base font-bold text-gold">
+            {row.grandTotalSalary != null ? formatCurrency(row.grandTotalSalary) : '—'}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 space-y-2">
+        {hasMoto && <VehicleSubCard s={row.motorbike} kind="MOTO" />}
+        {hasTruck && <VehicleSubCard s={row.truck} kind="TRUCK" />}
+      </div>
+    </div>
+  );
+}
+
+function VehicleSubCard({ s, kind }) {
+  const isTruck = kind === 'TRUCK';
+  const label = isTruck ? 'Xe tải' : 'Xe máy';
+  return (
+    <div className="rounded-xl bg-canvas p-2.5">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+          isTruck ? 'bg-blue-500/10 text-blue-600 dark:text-blue-300'
+                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-300'}`}>
+          {label}
+        </span>
+        <span className="text-sm font-bold text-ink">
+          {s?.totalSalary != null ? formatCurrency(s.totalSalary) : '—'}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+        {!isTruck && (
+          <>
+            <span className="text-muted">Tổng km</span>
+            <span className="text-right text-ink font-medium">{fmtNum(s?.totalKm, 1)} km</span>
+          </>
+        )}
+        <span className="text-muted">Số đơn</span>
+        <span className="text-right text-ink font-medium">{s?.totalOrders ?? 0}</span>
+        <span className="text-muted">Số lượt</span>
+        <span className="text-right text-ink font-medium">{s?.totalTrips ?? 0}</span>
+        {!isTruck && (
+          <>
+            <span className="text-muted">Tiền xăng</span>
+            <span className="text-right text-ink font-medium">
+              {s?.fuelPay != null ? formatCurrency(s.fuelPay) : '—'}
+            </span>
+          </>
+        )}
+        <span className="text-muted">Thưởng</span>
+        <span className="text-right text-ink font-medium">
+          {s?.bonusPay != null ? formatCurrency(s.bonusPay) : '—'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Modal chi tiết: Tab 1 = đơn hàng theo ngày, Tab 2 = chi tiết lương. */
+function DriverDetailModal({ driver, month, year, onClose }) {
+  const toast = useToast();
+  const [tab, setTab] = useState('orders');
+  const [dm, setDm] = useState(null);      // DriverMonthDto (đơn hàng theo ngày)
+  const [salary, setSalary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openDays, setOpenDays] = useState({}); // day -> collapsed?
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const [d, s] = await Promise.all([
+          factoryPayrollApi.employeeDriver(driver.userId, month, year),
+          factoryPayrollApi.driverSalaryDetail(driver.userId, month, year),
+        ]);
+        if (!alive) return;
+        setDm(d); setSalary(s);
+        // Mặc định mở tất cả ngày có đơn
+        const init = {};
+        (d?.days || []).forEach(day => { if ((day.orderCount || 0) > 0) init[day.day] = true; });
+        setOpenDays(init);
+      } catch (e) {
+        toast(e?.response?.data?.message || 'Không tải được chi tiết', 'error');
+      } finally { setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, [driver.userId, month, year]); // eslint-disable-line
+
+  // Danh sách ngày có đơn, sort tăng dần (đã có trong dm.days)
+  const daysWithOrders = (dm?.days || []).filter(d => (d.orders?.length || 0) > 0);
+
+  const payStatusColor = (st) => st === 'PAID'
+    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+    : st === 'PARTIAL'
+      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
+      : 'bg-red-500/10 text-red-600 dark:text-red-300';
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-hairline">
+          <div>
+            <p className="font-bold text-ink text-sm sm:text-base">{driver.name}</p>
+            <p className="text-xs text-muted">Tháng {month}/{year}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-hairline shrink-0">
+          {[
+            { k: 'orders', label: 'Đơn hàng trong tháng' },
+            { k: 'salary', label: 'Chi tiết lương' },
+          ].map(t => (
+            <button key={t.k} onClick={() => setTab(t.k)}
+              className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+                tab === t.k ? 'text-gold border-b-2 border-gold' : 'text-muted hover:text-ink'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          {loading ? <LoadingSpinner /> : tab === 'orders' ? (
+            <>
+              {daysWithOrders.length === 0 ? (
+                <EmptyState title="Không có đơn" description="Tài xế chưa giao đơn nào trong tháng này." />
+              ) : (
+                <div className="space-y-2">
+                  {daysWithOrders.map(day => (
+                    <div key={day.day} className="rounded-xl border border-hairline overflow-hidden">
+                      <button onClick={() => setOpenDays(o => ({ ...o, [day.day]: !o[day.day] }))}
+                        className="w-full flex items-center justify-between px-3 sm:px-4 py-2.5 bg-canvas hover:bg-surface-2 transition">
+                        <div className="flex items-center gap-2">
+                          <ChevronDown size={14}
+                            className={`text-muted transition-transform ${openDays[day.day] ? '' : '-rotate-90'}`} />
+                          <span className="text-sm font-bold text-ink">
+                            {String(day.day).padStart(2, '0')}/{String(month).padStart(2, '0')}/{year}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-canvas text-muted">
+                            {day.weekdayLabel}
+                          </span>
+                        </div>
+                        <span className="text-xs font-semibold text-gold">{day.orders.length} đơn</span>
+                      </button>
+                      {openDays[day.day] && (
+                        <div className="p-2 space-y-2 bg-surface">
+                          {day.orders.map(o => <OrderRow key={o.orderId} o={o} payStatusColor={payStatusColor} />)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <SalaryDetailTab salary={salary} days={dm?.days || []} month={month} year={year} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Lịch tháng của tài xế: màu ô theo điểm danh + 2 badge (số đơn / tổng km). */
+function MonthCalendar({ days, month, year }) {
+  if (!days || days.length === 0) return null;
+
+  // Bắt đầu tuần T2. weekday: 2..7 = T2..T7, 8 = CN → cột 1..7
+  const colOf = (wd) => (wd === 8 ? 7 : Math.max(1, wd - 1));
+  const first = days[0];
+  const leading = colOf(first.weekday) - 1;
+
+  const colorCls = (c) => c === 'GREEN'
+    ? 'bg-emerald-500/15 border-emerald-500/40'
+    : c === 'YELLOW'
+      ? 'bg-amber-400/15 border-amber-400/40'
+      : 'bg-canvas border-hairline';
+
+  return (
+    <div className="rounded-2xl border border-hairline bg-surface p-4">
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <p className="text-sm font-bold text-ink">Điểm danh tháng {month}/{year}</p>
+        <div className="flex items-center gap-2.5 text-[10px] text-muted">
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded bg-emerald-500/60" /> Đủ</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded bg-amber-400/70" /> Thiếu 1</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded bg-hairline-2" /> Không</span>
+        </div>
+      </div>
+
+      {/* Nhãn thứ */}
+      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+        {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(w => (
+          <div key={w} className="text-[11px] text-muted text-center font-semibold py-1">{w}</div>
+        ))}
+      </div>
+
+      {/* Các ô ngày */}
+      <div className="grid grid-cols-7 gap-1.5">
+        {Array.from({ length: leading }).map((_, i) => <div key={`x${i}`} />)}
+        {days.map(d => {
+          const orders = d.orderCount || 0;
+          const km = d.totalKm || 0;
+          return (
+            <div key={d.day}
+              className={`aspect-square rounded-lg border p-1.5 flex flex-col ${colorCls(d.dayColor)}`}>
+              <span className="text-xs font-bold text-ink leading-none">{d.day}</span>
+              {(orders > 0 || km > 0) && (
+                <div className="mt-auto flex flex-col items-end gap-0.5">
+                  {orders > 0 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500 text-white leading-none">
+                      {orders} đơn
+                    </span>
+                  )}
+                  {km > 0 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white leading-none">
+                      {Math.round(km)} km
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function OrderRow({ o, payStatusColor }) {
+  const fmtDT = (ts) => ts ? new Date(ts).toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  }) : '—';
+  return (
+    <div className="rounded-lg bg-canvas p-3 space-y-1.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-gold font-mono">{o.orderCode}</p>
+          {o.customerName && (
+            <p className="text-[11px] text-muted flex items-center gap-1 mt-0.5">
+              <UserIcon size={10} /> {o.customerName}
+            </p>
+          )}
+        </div>
+        <span className={`text-[10px] px-2 py-0.5 rounded font-bold whitespace-nowrap ${payStatusColor(o.paymentStatus)}`}>
+          {o.paymentStatusLabel}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+        <span className="text-muted">Số tiền đơn</span>
+        <span className="text-right text-ink font-semibold">{formatCurrency(o.finalAmount || 0)}</span>
+        <span className="text-muted">Đã thanh toán</span>
+        <span className="text-right text-emerald-600 dark:text-emerald-300 font-semibold">
+          {formatCurrency(o.paidAmount || 0)}
+        </span>
+        <span className="text-muted">Đặt lúc</span>
+        <span className="text-right text-ink">{fmtDT(o.placedAt)}</span>
+        <span className="text-muted">Bắt đầu giao</span>
+        <span className="text-right text-ink">{fmtDT(o.deliveredAt)}</span>
+      </div>
+      {o.deliveryAddress && (
+        <p className="text-[11px] text-muted flex items-start gap-1 pt-1 border-t border-hairline">
+          <MapPin size={11} className="mt-0.5 shrink-0" />
+          <span className="line-clamp-2">{o.deliveryAddress}</span>
+        </p>
+      )}
+      {(o.tripsMotorbike > 0 || o.tripsTruck > 0) && (
+        <div className="flex items-center gap-2 text-[10px] pt-1">
+          {o.tripsMotorbike > 0 && (
+            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-300 font-semibold">
+              Xe máy × {o.tripsMotorbike}
+            </span>
+          )}
+          {o.tripsTruck > 0 && (
+            <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-300 font-semibold">
+              Xe tải × {o.tripsTruck}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SalaryDetailTab({ salary, days, month, year }) {
+  if (!salary) return <EmptyState title="Chưa có" description="Không có dữ liệu lương." />;
+  return (
+    // Mobile (mặc định flex-col): calendar TRƯỚC, khối lương ở dưới.
+    // Desktop (md+): 2 cột — lương 7/12, calendar 5/12; gap rộng hơn cho thoáng.
+    <div className="flex flex-col md:grid md:grid-cols-12 md:gap-5 gap-3">
+      <div className="order-2 md:order-1 md:col-span-7 space-y-3">
+        <DriverEmployeeCard salary={salary} />
+        <DriverEmployerCard salary={salary} />
+      </div>
+      <div className="order-1 md:order-2 md:col-span-5">
+        <div className="md:sticky md:top-2">
+          <MonthCalendar days={days} month={month} year={year} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Card "Của doanh nghiệp phải trả" — copy nguyên từ SalaryBreakdownCards
+    (bản mới), giữ đúng layout với các bộ phận khác. Tách ra vì phải bỏ Card 1
+    NLĐ (đã có DriverEmployeeCard riêng). */
+function DriverEmployerCard({ salary: row }) {
+  const fmt = (n) => formatCurrency(n || 0);
+  const noIns = row.insuranceExempt != null ? !!row.insuranceExempt : !(row.insuranceSalary > 0);
+  const employerIns = row.employerInsuranceTotal || 0;
+  const employeeIns = row.employeeInsuranceTotal || 0;
+  const pit = row.personalIncomeTax || 0;
+  const insuranceBothSides = employerIns + employeeIns;
+
+  const Row = ({ label, val, sub, bold, green }) => (
+    <div className={`flex items-center justify-between ${sub ? 'pl-4 py-0.5' : 'py-1'}`}>
+      <span className={`text-sm ${sub ? 'text-muted italic' : bold ? 'font-bold text-ink' : 'text-ink'}`}>{label}</span>
+      <span className={`text-sm whitespace-nowrap ${bold ? 'font-bold' : 'font-medium'} ${
+        green ? 'text-emerald-700 dark:text-emerald-300' : 'text-ink'}`}>{val}</span>
+    </div>
+  );
+  const Divider = () => <div className="h-px bg-surface-2 my-1" />;
+
+  return (
+    <div className="bg-canvas rounded-xl p-4 space-y-2">
+      <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+        Của doanh nghiệp phải trả (VNĐ)
+      </p>
+      <Row label="Lương thực nhận trả cho nhân viên" val={fmt(row.netSalary)} />
+      {noIns ? (
+        <>
+          <Divider />
+          <Row label="Bảo hiểm bắt buộc" val="Không tham gia" />
+          {pit > 0 && (<><Divider /><Row label="Thuế TNCN doanh nghiệp nộp thay" val={`+ ${fmt(pit)}`} /></>)}
+        </>
+      ) : (
+        <>
+          <Divider />
+          <Row label="Bảo hiểm doanh nghiệp đóng (21,5%)" val={`+ ${fmt(employerIns)}`} bold />
+          <Row sub label="Bảo hiểm xã hội (17%)" val={`+ ${fmt(row.employerSocialInsurance)}`} />
+          <Row sub label="BH Tai nạn LĐ - Bệnh nghề nghiệp (0,5%)" val={`+ ${fmt(row.employerAccidentInsurance)}`} />
+          <Row sub label="Bảo hiểm y tế (3%)" val={`+ ${fmt(row.employerHealthInsurance)}`} />
+          <Row sub label="Bảo hiểm thất nghiệp (1%)" val={`+ ${fmt(row.employerUnemploymentInsurance)}`} />
+          <Divider />
+          <Row label="Bảo hiểm cá nhân đóng (10,5%) — DN trả thay" val={`+ ${fmt(employeeIns)}`} bold />
+          <Row sub label="Bảo hiểm xã hội (8%)" val={`+ ${fmt(row.employeeSocialInsurance)}`} />
+          <Row sub label="Bảo hiểm y tế (1,5%)" val={`+ ${fmt(row.employeeHealthInsurance)}`} />
+          <Row sub label="Bảo hiểm thất nghiệp (1%)" val={`+ ${fmt(row.employeeUnemploymentInsurance)}`} />
+          <Row label="Thuế TNCN — DN nộp thay" val={`+ ${fmt(pit)}`} bold />
+          {(row.pitBrackets || []).map((b, i) => (
+            <Row key={i} sub label={`Bậc ${b.ratePercent}% trên ${fmt(b.incomeInBracket)}`}
+              val={`+ ${fmt(b.taxInBracket)}`} />
+          ))}
+          <Divider />
+          <Row label="TỔNG TIỀN BẢO HIỂM (cả 2 phần — 32%)" val={fmt(insuranceBothSides)} bold />
+        </>
+      )}
+      <Divider />
+      <Row label="TỔNG DOANH NGHIỆP PHẢI CHI TRẢ" val={fmt(row.totalCost)} bold green />
+    </div>
+  );
+}
+
+/** Card "Của người lao động" riêng cho TÀI XẾ — chỉ hiện các dòng theo yêu cầu:
+    Lương cơ bản → phụ cấp (cơm, xăng, …) → Tổng phụ cấp → Thưởng đơn hàng →
+    Thưởng KPI → LƯƠNG THỰC NHẬN. */
+function DriverEmployeeCard({ salary }) {
+  const fmt = (n) => formatCurrency(n || 0);
+  const allowances = salary.allowances || [];
+  const totalAllowance = allowances.reduce((s, a) => s + (a.amount || 0), 0);
+  const kpi = salary.kpiPercent != null ? salary.kpiPercent : 100;
+  const kpiStr = Number.isInteger(kpi) ? `${kpi}%` : `${kpi.toFixed(2)}%`;
+  // Tách rõ: KPI thuần vs bonus items import (Chuyên cần, Tháng 13…). Field
+  // effectiveBonus cũ gộp cả 2 → sẽ hiện Chuyên cần thành "Thưởng KPI".
+  const bonusItems = salary.bonusItems || [];
+  const bonusItemsTotal = salary.bonusItemsTotal
+    || bonusItems.reduce((s, b) => s + (b.amount || 0), 0);
+  const effBonusKpi = salary.effectiveBonusKpiOnly != null
+    ? salary.effectiveBonusKpiOnly
+    : ((salary.effectiveBonus || 0) - bonusItemsTotal);
+  const orderBonus = salary.driverOrderBonus || 0;
+  const totalBonus = orderBonus + (salary.effectiveBonus || 0);
+  const bonusSourceCount = (orderBonus > 0 ? 1 : 0)
+    + bonusItems.length + (effBonusKpi > 0 ? 1 : 0);
+
+  const Row = ({ label, val, sub, bold, green }) => (
+    <div className={`flex items-center justify-between ${sub ? 'pl-4 py-0.5' : 'py-1'}`}>
+      <span className={`text-sm ${sub ? 'text-muted italic' : bold ? 'font-bold text-ink' : 'text-ink'}`}>
+        {label}
+      </span>
+      <span className={`text-sm whitespace-nowrap ${bold ? 'font-bold' : 'font-medium'} ${
+        green ? 'text-emerald-700 dark:text-emerald-300' : 'text-ink'}`}>{val}</span>
+    </div>
+  );
+  const Divider = () => <div className="h-px bg-surface-2 my-1" />;
+
+  return (
+    <div className="bg-canvas rounded-xl p-4 space-y-2">
+      <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+        Của người lao động (VNĐ)
+      </p>
+      <Row label="Lương cơ bản" val={fmt(salary.baseSalary)} />
+
+      {allowances.length > 0 && (
+        <>
+          <Divider />
+          {allowances.map((a, i) => (
+            <Row key={i} label={a.label || 'Phụ cấp'} val={`+ ${fmt(a.amount)}`} />
+          ))}
+          {allowances.length > 1 && (
+            <Row sub label="Tổng phụ cấp" val={`+ ${fmt(totalAllowance)}`} />
+          )}
+        </>
+      )}
+
+      <Divider />
+      {/* Thưởng đơn hàng — nếu có DETAIL thì hiện 3 dòng (xe máy / xe tải / tổng) */}
+      {salary.driverOrderBonusDetail ? (
+        <>
+          {(salary.driverOrderBonusDetail.motorbikeAmount || 0) > 0 && (
+            <Row label={`Thưởng đơn hàng (xe máy × ${salary.driverOrderBonusDetail.motorbikeTrips || 0} lượt)`}
+              val={`+ ${fmt(salary.driverOrderBonusDetail.motorbikeAmount)}`} />
+          )}
+          {(salary.driverOrderBonusDetail.truckAmount || 0) > 0 && (
+            <Row label={`Thưởng đơn hàng (xe tải × ${salary.driverOrderBonusDetail.truckTrips || 0} lượt)`}
+              val={`+ ${fmt(salary.driverOrderBonusDetail.truckAmount)}`} />
+          )}
+          {(salary.driverOrderBonusDetail.motorbikeAmount || 0) > 0
+            && (salary.driverOrderBonusDetail.truckAmount || 0) > 0 && (
+            <Row sub label="Tổng thưởng đơn hàng"
+              val={`+ ${fmt(salary.driverOrderBonusDetail.totalAmount)}`} />
+          )}
+        </>
+      ) : orderBonus > 0 && (
+        <Row label="Thưởng đơn hàng" val={`+ ${fmt(orderBonus)}`} />
+      )}
+      {bonusItems.map((b, i) => (
+        <Row key={i} label={b.label || 'Thưởng khác'} val={`+ ${fmt(b.amount)}`} />
+      ))}
+      <Row label={`Thưởng KPI — đạt ${kpiStr}`} val={`+ ${fmt(effBonusKpi)}`} />
+      {bonusSourceCount > 1 && (
+        <Row sub label="Tổng thưởng" val={`+ ${fmt(totalBonus)}`} />
+      )}
+
+      <Divider />
+      <Row label="LƯƠNG THỰC NHẬN" val={fmt(salary.netSalary)} bold green />
+    </div>
+  );
+}
+
 export default function AttendanceSheetsPage() {
   const [periods, setPeriods] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -1548,6 +2356,9 @@ export default function AttendanceSheetsPage() {
   // Mỗi khoản thưởng là một nhãn riêng, tải lên từ một file riêng.
   const [bonusBatches, setBonusBatches] = useState([]);   // [{ label, employeeCount, totalAmount }]
   const [deletingLabel, setDeletingLabel] = useState(null);
+  // Preview modal state — hiển thị nội dung 1 khoản đã import cho OWNER xem lại.
+  const [preview, setPreview] = useState(null);       // PreviewResult
+  const [previewLoading, setPreviewLoading] = useState(false);
   // Mức thưởng cố định cho MỘT bảo vệ xưởng, nhập lúc bấm tính KPI.
   // Chuỗi rỗng = chưa nhập → gửi null để backend giữ nguyên mức cũ của tháng.
   const [securityRate, setSecurityRate] = useState('');
@@ -1589,15 +2400,15 @@ export default function AttendanceSheetsPage() {
   useEffect(() => { loadStatus(selected); }, [selected, loadStatus]);
 
   // ── Số dòng thưởng/phụ cấp đã import + quỹ KPI của kỳ ─────────────────────
-  const loadAdjustments = useCallback(async (p) => {
+  const loadAdjustments = useCallback(async (p, dept) => {
     if (!p) { setAdjustments(null); setBonusBatches([]); return; }
     try {
-      setAdjustments(await factoryPayrollApi.adjustmentStatus(p.month, p.year));
+      setAdjustments(await factoryPayrollApi.adjustmentStatus(p.month, p.year, dept));
     } catch {
       setAdjustments(null);
     }
     try {
-      const b = await factoryPayrollApi.bonusBatches(p.month, p.year);
+      const b = await factoryPayrollApi.bonusBatches(p.month, p.year, dept);
       setBonusBatches(Array.isArray(b) ? b : []);
     } catch {
       setBonusBatches([]);
@@ -1614,15 +2425,25 @@ export default function AttendanceSheetsPage() {
     }
   }, []);
 
-  useEffect(() => { loadAdjustments(selected); }, [selected, loadAdjustments]);
+  useEffect(() => { loadAdjustments(selected, department); }, [selected, department, loadAdjustments]);
   useEffect(() => { loadKpi(selected, department); }, [selected, department, loadKpi]);
 
   // ── Nạp 2 bảng lương khi đã HOÀN TẤT ──────────────────────────────────────
   const loadPayroll = useCallback(async (p, dept, finalized) => {
-    if (!p || !finalized) { setPayroll(null); return; }
+    // Reset ngay khi đổi tháng/tab để không hiển thị nhãn bộ phận CŨ trong lúc
+    // chờ fetch (bug: đổi tab Xưởng vẫn thấy "Phiếu lương — Tài xế").
+    setPayroll(null);
+    if (!p || !finalized) return;
     setLoadingPayroll(true);
     try {
-      setPayroll(await factoryPayrollApi.departmentPayroll(p.month, p.year, dept));
+      const res = await factoryPayrollApi.departmentPayroll(p.month, p.year, dept);
+      // Chỉ nhận kết quả nếu vẫn khớp với bộ phận đang chọn (tránh race khi bấm
+      // nhanh giữa các tab).
+      if (res?.department === dept || res?.departmentCode === dept) {
+        setPayroll(res);
+      } else {
+        setPayroll(res);   // BE không trả cờ dept: chấp nhận (đã reset đúng thời điểm gọi)
+      }
     } catch (e) {
       toast(e?.response?.data?.message || 'Không tải được bảng lương', 'error');
       setPayroll(null);
@@ -1687,7 +2508,7 @@ export default function AttendanceSheetsPage() {
       const fn = kind === 'bonus'
         ? factoryPayrollApi.uploadBonus
         : factoryPayrollApi.uploadAllowance;
-      const res = await fn(file, selected.month, selected.year);
+      const res = await fn(file, selected.month, selected.year, department);
 
       const errs = res?.errors || [];
       const warns = res?.warnings || [];
@@ -1701,12 +2522,10 @@ export default function AttendanceSheetsPage() {
           + (errs.length ? ` · ${errs.length} dòng lỗi` : ''),
         errs.length ? 'warning' : 'success'
       );
-      // Lỗi/cảnh báo theo dòng hiện trong modal chung với các import khác
-      if (errs.length || warns.length) {
-        setAdjResultTitle(kind === 'bonus' ? 'Kết quả import thưởng' : 'Kết quả import phụ cấp');
-        setAdjResult(res);
-      }
-      await loadAdjustments(selected);
+      // LUÔN mở modal kết quả để owner thấy chi tiết đã xử lý ai/không tìm thấy ai.
+      setAdjResultTitle(kind === 'bonus' ? 'Kết quả import thưởng' : 'Kết quả import phụ cấp');
+      setAdjResult(res);
+      await loadAdjustments(selected, department);
     } catch (e) {
       toast(e?.response?.data?.message || 'Không import được file', 'error');
     } finally {
@@ -1718,9 +2537,9 @@ export default function AttendanceSheetsPage() {
     if (!selected) return;
     setDeletingLabel(label);
     try {
-      await factoryPayrollApi.clearBonusLabel(selected.month, selected.year, label);
+      await factoryPayrollApi.clearBonusLabel(selected.month, selected.year, label, department);
       toast(`Đã xoá khoản "${label}"`, 'success');
-      await loadAdjustments(selected);
+      await loadAdjustments(selected, department);
     } catch (e) {
       toast(e?.response?.data?.message || 'Không xoá được khoản thưởng', 'error');
     } finally {
@@ -1728,13 +2547,29 @@ export default function AttendanceSheetsPage() {
     }
   };
 
+  const openPreview = async (type, label) => {
+    if (!selected) return;
+    setPreviewLoading(true);
+    setPreview({ type, label, department, rows: [], rowCount: 0, totalAmount: 0 });
+    try {
+      const res = await factoryPayrollApi.adjustmentPreview(
+        selected.month, selected.year, type, { label, department });
+      setPreview(res || null);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không tải được xem trước', 'error');
+      setPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const clearAdjustment = async (type) => {
     if (!selected) return;
     setDeleting(type.toLowerCase());
     try {
-      await factoryPayrollApi.clearAdjustments(type, selected.month, selected.year);
+      await factoryPayrollApi.clearAdjustments(type, selected.month, selected.year, department);
       toast('Đã xoá dữ liệu đã import', 'success');
-      await loadAdjustments(selected);
+      await loadAdjustments(selected, department);
     } catch (e) {
       toast(e?.response?.data?.message || 'Không xoá được', 'error');
     } finally {
@@ -1918,63 +2753,62 @@ export default function AttendanceSheetsPage() {
                     sẽ tạo ra nguồn sự thật thứ hai, và file tải lên sau sẽ ghi
                     đè kết quả duyệt trên app. */}
               </div>
-
-              {/* ── THƯỞNG & PHỤ CẤP THEO THÁNG ─────────────────────────────
-                  Hai khoản này KHÔNG cố định nên không nằm trong hồ sơ lương;
-                  OWNER import Excel riêng cho từng kỳ. Import lại = thay thế. */}
-              <div className="grid gap-4 lg:grid-cols-2">
-                <AdjustmentSlot
-                  icon={Gift}
-                  title="Thưởng theo tháng"
-                  description="Nhiều khoản khác nhau — mỗi khoản một file, phân biệt bằng nhãn ở ô B2"
-                  hint={'Tải mẫu → gõ nhãn thưởng ở ô B2 → điền số tiền từng người → tải lên. '
-                    + 'Tải lại cùng nhãn CHỈ thêm người chưa có, không ghi đè số của người cũ — '
-                    + 'dùng khi vừa thêm nhân viên. Muốn sửa số đã nhập thì xoá khoản đó rồi tải lại.'}
-                  count={adjustments?.bonus}
-                  rowLabel="dòng"
-                  batches={bonusBatches}
-                  onDeleteBatch={clearBonusLabel}
-                  deletingLabel={deletingLabel}
-                  uploading={busy === 'bonus'}
-                  clearing={deleting === 'bonus'}
-                  onUpload={f => uploadAdjustment('bonus', f)}
-                  onClear={() => clearAdjustment('BONUS')}
-                  onTemplate={() => template('bonus')}
-                />
-
-                <AdjustmentSlot
-                  icon={Wallet}
-                  title="Phụ cấp theo tháng"
-                  description="Xăng xe, điện thoại… — chọn nhãn từ danh mục phụ cấp"
-                  hint="Mỗi nhân viên tối đa 4 khoản. Phụ cấp cơm KHÔNG nhập ở đây, hệ thống tự tính theo ngày đi làm."
-                  count={adjustments?.allowance}
-                  rowLabel="khoản phụ cấp"
-                  uploading={busy === 'allowance'}
-                  clearing={deleting === 'allowance'}
-                  onUpload={f => uploadAdjustment('allowance', f)}
-                  onClear={() => clearAdjustment('ALLOWANCE')}
-                  onTemplate={() => template('allowance')}
-                />
-              </div>
             </>
           ) : (
-            <SectionCard>
-              <div className="flex items-start gap-3 px-5 py-5">
-                <span className="w-10 h-10 rounded-xl bg-canvas flex items-center justify-center shrink-0">
-                  <Truck size={17} className="text-gold" />
-                </span>
-                <div>
-                  <p className="text-sm font-bold text-ink">Tài xế không dùng bảng chấm công</p>
-                  <p className="text-xs text-muted mt-1 leading-relaxed max-w-2xl">
-                    Số công của tài xế được tính theo <strong>tổng số km chạy mỗi ngày</strong>, ước tính
-                    từ các đơn hàng đã và đang giao được phân công trong ngày. Ngày nào kho có chốt odo
-                    vào ca / kết ca thì hệ thống lấy đúng số km thật. Bạn chỉ cần bấm
-                    <strong> Hoàn tất</strong> để chốt lương tháng cho bộ phận này.
-                  </p>
-                </div>
-              </div>
-            </SectionCard>
+            selected && (
+              <DriverPayrollPanel
+                month={selected.month}
+                year={selected.year}
+                onSaved={() => loadStatus(selected)}
+              />
+            )
           )}
+
+          {/* ── THƯỞNG & PHỤ CẤP THEO THÁNG — DÙNG CHUNG CHO MỌI BỘ PHẬN ─────
+              Hai khoản này KHÔNG cố định nên không nằm trong hồ sơ lương;
+              OWNER import Excel riêng cho từng kỳ. Import lại = thay thế.
+              Tài xế cũng có thể có phụ cấp cơm, phụ cấp điện thoại... nên
+              vẫn hiển thị 2 slot dưới đây cho tab Tài xế. */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <AdjustmentSlot
+              icon={Gift}
+              title="Thưởng theo tháng"
+              description="Nhiều khoản khác nhau — mỗi khoản một file, phân biệt bằng nhãn ở ô B2"
+              hint={'Tải mẫu → gõ nhãn thưởng ở ô B2 → điền số tiền từng người → tải lên. '
+                + 'Tải lại cùng nhãn CHỈ thêm người chưa có, không ghi đè số của người cũ — '
+                + 'dùng khi vừa thêm nhân viên. Muốn sửa số đã nhập thì xoá khoản đó rồi tải lại.'}
+              count={adjustments?.bonus}
+              rowLabel="dòng"
+              batches={bonusBatches}
+              onDeleteBatch={clearBonusLabel}
+              deletingLabel={deletingLabel}
+              uploading={busy === 'bonus'}
+              clearing={deleting === 'bonus'}
+              onUpload={f => uploadAdjustment('bonus', f)}
+              onClear={() => clearAdjustment('BONUS')}
+              onTemplate={() => template('bonus')}
+              onPreview={(type, label) => openPreview(type, label)}
+            />
+
+            <AdjustmentSlot
+              icon={Wallet}
+              title="Phụ cấp theo tháng"
+              description={attendanceBased
+                ? "Xăng xe, điện thoại… — chọn nhãn từ danh mục phụ cấp"
+                : "Phụ cấp khác ngoài xăng xe & cơm trưa (điện thoại, chuyên cần…) — hệ thống đã tự tính xăng theo km và cơm theo ngày điểm danh"}
+              hint={attendanceBased
+                ? "Mỗi nhân viên tối đa 4 khoản. Phụ cấp cơm KHÔNG nhập ở đây, hệ thống tự tính theo ngày đi làm."
+                : "Mỗi tài xế tối đa 4 khoản. Phụ cấp xăng xe & cơm trưa KHÔNG nhập ở đây — hệ thống tự tính."}
+              count={adjustments?.allowance}
+              rowLabel="khoản phụ cấp"
+              uploading={busy === 'allowance'}
+              clearing={deleting === 'allowance'}
+              onUpload={f => uploadAdjustment('allowance', f)}
+              onClear={() => clearAdjustment('ALLOWANCE')}
+              onTemplate={() => template('allowance')}
+              onPreview={() => openPreview('ALLOWANCE')}
+            />
+          </div>
 
           {/* Tổng hợp quỹ thưởng KPI — chỉ Xưởng và chỉ khi đã tính */}
           {department === 'FACTORY' && <KpiSummary kpi={kpi} />}
@@ -2072,6 +2906,161 @@ export default function AttendanceSheetsPage() {
         departmentLabel={status?.departmentLabel}
         onClose={() => setMembersOpen(false)}
       />
+
+      {/* Preview nội dung đã import — read-only */}
+      {preview && (
+        <AdjustmentPreviewModal
+          preview={preview} loading={previewLoading}
+          departmentLabel={status?.departmentLabel}
+          onClose={() => setPreview(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Modal xem lại nội dung đã import — CHỈ đọc, không sửa. */
+function AdjustmentPreviewModal({ preview, loading, departmentLabel, onClose }) {
+  const isBonus = preview?.type === 'BONUS';
+  const title = isBonus
+    ? `Xem lại file thưởng — ${preview?.label || '(không nhãn)'}`
+    : 'Xem lại file phụ cấp';
+  const headers = preview?.fileHeaders || [];
+  const rows = preview?.fileRows || [];
+  const hasFile = headers.length > 0 || rows.length > 0;
+
+  // Với ALLOWANCE, pivot dạng "wide" (mỗi cặp Khoản/Số tiền là 1 cột) sang
+  // "long" (mỗi khoản là 1 dòng riêng dưới nhân viên). Bỏ khoản trống.
+  // Cấu trúc gốc: [ID, Họ tên, Khoản 1, Số tiền 1, Khoản 2, Số tiền 2, ...]
+  const pivoted = !isBonus && hasFile
+    ? rows.map(row => {
+        const id = row[0] || '';
+        const name = row[1] || '';
+        const items = [];
+        for (let c = 2; c + 1 < row.length; c += 2) {
+          const label = (row[c] || '').trim();
+          const amount = (row[c + 1] || '').trim();
+          if (label || amount) items.push({ label, amount });
+        }
+        return { id, name, items };
+      }).filter(r => r.id || r.name || r.items.length > 0)
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-hairline">
+          <div className="min-w-0">
+            <p className="font-bold text-ink text-base sm:text-lg truncate">{title}</p>
+            <p className="text-xs text-muted truncate">
+              {departmentLabel || '—'}
+              {preview?.fileName && <> · <span className="font-mono">{preview.fileName}</span></>}
+              {' · '}Tổng {formatCurrency(preview?.totalAmount || 0)}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          {loading ? <LoadingSpinner /> : !hasFile ? (
+            <EmptyState title="Không có file gốc"
+              description="Khoản này được import trước khi hệ thống bắt đầu lưu file gốc. Import lại để có preview." />
+          ) : pivoted ? (
+            // ── Bảng dọc cho PHỤ CẤP: mỗi khoản có data là 1 dòng riêng ─────
+            <div className="overflow-auto rounded-xl border border-hairline">
+              <table className="w-full text-xs border-collapse">
+                <thead className="bg-canvas sticky top-0">
+                  <tr>
+                    <th className="px-2 py-1.5 text-[10px] font-bold text-muted border-b border-r border-hairline w-10">#</th>
+                    <th className="px-3 py-1.5 text-left text-[11px] font-bold text-ink border-b border-hairline w-16">ID</th>
+                    <th className="px-3 py-1.5 text-left text-[11px] font-bold text-ink border-b border-hairline">Họ tên</th>
+                    <th className="px-3 py-1.5 text-left text-[11px] font-bold text-ink border-b border-hairline">Khoản phụ cấp</th>
+                    <th className="px-3 py-1.5 text-right text-[11px] font-bold text-ink border-b border-hairline w-32">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pivoted.map((p, r) => {
+                    // Không có khoản nào → vẫn hiện 1 dòng với "—"
+                    const items = p.items.length > 0 ? p.items : [{ label: '', amount: '' }];
+                    return items.map((it, i) => (
+                      <tr key={`${r}-${i}`} className="hover:bg-canvas/60">
+                        {i === 0 && (
+                          <>
+                            <td rowSpan={items.length}
+                              className="px-2 py-1.5 text-[10px] text-muted border-b border-r border-hairline text-center bg-canvas/40 align-top">
+                              {r + 1}
+                            </td>
+                            <td rowSpan={items.length}
+                              className="px-3 py-1.5 text-ink border-b border-hairline align-top font-medium">
+                              {p.id || <span className="text-muted italic">—</span>}
+                            </td>
+                            <td rowSpan={items.length}
+                              className="px-3 py-1.5 text-ink border-b border-hairline align-top">
+                              {p.name || <span className="text-muted italic">—</span>}
+                            </td>
+                          </>
+                        )}
+                        <td className="px-3 py-1.5 text-ink border-b border-hairline whitespace-nowrap">
+                          {it.label || <span className="text-muted italic">—</span>}
+                        </td>
+                        <td className="px-3 py-1.5 text-ink border-b border-hairline whitespace-nowrap text-right font-semibold">
+                          {it.amount
+                            ? <>{it.amount}<span className="text-muted">đ</span></>
+                            : <span className="text-muted italic">—</span>}
+                        </td>
+                      </tr>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            // ── Bảng ngang cho THƯỞNG: giữ layout gốc (ID | Họ tên | Số tiền) ──
+            <div className="overflow-auto rounded-xl border border-hairline">
+              <table className="w-full text-xs border-collapse">
+                <thead className="bg-canvas sticky top-0">
+                  <tr>
+                    <th className="px-2 py-1.5 text-[10px] font-bold text-muted border-b border-r border-hairline w-10">#</th>
+                    {headers.map((h, i) => {
+                      const isMoney = i === headers.length - 1;   // cột "Số tiền thưởng"
+                      return (
+                        <th key={i}
+                          className={`px-3 py-1.5 text-[11px] font-bold text-ink border-b border-hairline whitespace-nowrap ${
+                            isMoney ? 'text-right' : 'text-left'}`}>
+                          {h || <span className="text-muted italic">Cột {String.fromCharCode(65 + i)}</span>}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, r) => (
+                    <tr key={r} className="hover:bg-canvas/60">
+                      <td className="px-2 py-1.5 text-[10px] text-muted border-b border-r border-hairline text-center bg-canvas/40">
+                        {r + 1}
+                      </td>
+                      {row.map((cell, c) => {
+                        const isMoney = c === row.length - 1;
+                        return (
+                          <td key={c}
+                            className={`px-3 py-1.5 text-ink border-b border-hairline whitespace-nowrap ${
+                              isMoney ? 'text-right font-semibold' : ''}`}>
+                            {cell
+                              ? (isMoney ? <>{cell}<span className="text-muted">đ</span></> : cell)
+                              : <span className="text-muted italic">—</span>}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

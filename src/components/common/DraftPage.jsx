@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { draftApi, orderApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
+import { receiverMissingRegion, MISSING_REGION_MESSAGE } from '../../utils/receiverRegion';
 import ScheduledOrderModal from './ScheduledOrderModal';
 
 // ── Countdown hook ────────────────────────────────────────────────────────
@@ -171,12 +172,23 @@ export default function DraftsPage() {
 
   // Xác nhận tạo đơn thật từ SCHEDULED
   const handleConfirmScheduled = async (draft, opts) => {
+    // Chặn tạo đơn khi dữ liệu nháp thiếu tỉnh/phường (khách cũ).
+    if (receiverMissingRegion({
+      receiverAddress: draft.receiverAddress || draft.shippingAddress,
+      provinceName: draft.provinceName,
+      wardName: draft.wardName,
+    })) {
+      toast(MISSING_REGION_MESSAGE, 'error');
+      return;
+    }
     try {
       const payload = {
         customerId:       draft.customerId,
         customerName:     draft.customerName,
         customerPhone:    draft.customerPhone,
         shippingAddress:  draft.shippingAddress,
+        provinceName:     draft.provinceName || null,
+        wardName:         draft.wardName || null,
         receiverName:     opts.receiverName || draft.receiverName,
         receiverPhone:    draft.receiverPhone,
         receiverAddress:  draft.receiverAddress,

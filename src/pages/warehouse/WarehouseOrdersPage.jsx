@@ -25,13 +25,25 @@ const fmtVnd = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(n)
 /** BE trả canDeliver; fallback tự tính cho trường hợp API cũ chưa có field. */
 function canDeliverOrder(order) {
   if (order?.canDeliver !== undefined) return !!order.canDeliver;
-  if (!order?.requirePrepayment) return true;
+  if (!mustPrepay(order)) return true;
   return order.paymentStatus === 'PAID';
+}
+
+/**
+ * Đơn có bắt buộc thu tiền trước không.
+ *
+ * <p>Ưu tiên `requirePrepaymentEffective` do server tính — cờ đó gộp cả cấu hình của
+ * khách LẪN quy tắc "giao ngoài địa bàn TP.HCM". Chỉ đọc `requirePrepayment` (cờ cấu
+ * hình thuần của khách) thì đơn đi Bình Dương của khách không bật cờ sẽ hiện nút bấm
+ * được rồi mới nhận lỗi từ server.
+ */
+function mustPrepay(order) {
+  return !!(order?.requirePrepaymentEffective ?? order?.requirePrepayment);
 }
 
 /** Badge cảnh báo "chưa thanh toán" hiển thị trên card + trong modal. */
 function PrepayBadge({ order, compact = false }) {
-  if (!order?.requirePrepayment) return null;
+  if (!mustPrepay(order)) return null;
   const ok = canDeliverOrder(order);
   return (
     <span className={`inline-flex items-center gap-1 font-semibold rounded-full border
@@ -64,6 +76,7 @@ function formatQty(n) {
 // ── Driver Picker ─────────────────────────────────────────────────────────────
 function DriverPicker({ selectedDrivers, onChange }) {
   const { t } = useLang();
+  const toast = useToast();
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState([]);
   const [open, setOpen]         = useState(false);
@@ -101,13 +114,30 @@ function DriverPicker({ selectedDrivers, onChange }) {
   const createDriver = async () => {
     const name = query.trim();
     if (!name) return;
+
+    // Chặn sớm ở client nếu tên đã có trong kết quả tìm kiếm / danh sách đã chọn.
+    const dupLocal = results.some(r => r.name?.trim().toLowerCase() === name.toLowerCase())
+      || selectedDrivers.some(d => d.name?.trim().toLowerCase() === name.toLowerCase());
+    if (dupLocal) {
+      toast(`Đã có tài xế tên "${name}"`, 'warning');
+      return;
+    }
+
     setCreating(true);
     try {
       const r = await api.post('/api/warehouse/drivers', { name });
+      // BE trả HTTP 200 kèm body lỗi khi trùng tên → phải tự kiểm tra success.
+      if (r.data?.success === false) {
+        toast(r.data.message || `Đã có tài xế tên "${name}"`, 'warning');
+        return;
+      }
       const d = r.data?.data;
       if (d) { onChange([...selectedDrivers, d]); setQuery(''); }
-    } catch (_) {}
-    setCreating(false);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không tạo được tài xế', 'error');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const showCreate = query.trim() && !results.some(r => r.name.toLowerCase() === query.trim().toLowerCase());
@@ -315,7 +345,7 @@ function OrderDetailModal({ order, onClose, onDeliver, onCancel, delivering }) {
         </div>
 
         {/* Cảnh báo yêu cầu thanh toán trước */}
-        {order.requirePrepayment && !deliverAllowed && (
+        {mustPrepay(order) && !deliverAllowed && (
           <div className="mx-5 mb-3 px-3 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28
             flex items-start gap-2 flex-shrink-0">
             <Lock size={14} className="text-red-500 mt-0.5 flex-shrink-0" />

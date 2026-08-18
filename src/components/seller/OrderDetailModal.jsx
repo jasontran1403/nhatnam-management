@@ -1,10 +1,13 @@
 import { useLang } from '../../context/LangContext';
 import { customerContractApi } from '../../api/customerContractApi';
-import { X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote } from 'lucide-react';
+import { X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote , Ticket,
+} from 'lucide-react';
+import VoucherPaymentModal from '../payment/VoucherPaymentModal';
 import { orderApi } from '../../api/services';
 import { useToast } from '../common/Toast';
 import { useState, useEffect } from 'react';
 import { formatPrice } from '../../utils/formatPrice';
+import { formatDeliveryAddress } from '../../utils/format';
 
 function formatDate(ts) {
   if (!ts) return '—';
@@ -222,6 +225,7 @@ function ConfirmCompleteModal({ order, onClose, onSuccess }) {
 }
 
 function PartialPaymentModal({ order, onClose, onSuccess }) {
+  const [voucherOpen, setVoucherOpen] = useState(false);
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [rawInput, setRawInput] = useState('');
@@ -275,6 +279,15 @@ function PartialPaymentModal({ order, onClose, onSuccess }) {
               : <><div className="flex justify-between text-blue-700 dark:text-blue-300"><span>Tổng đã thu sau lần này</span><span className="font-bold">{formatPrice(afterPay)}</span></div><div className="flex justify-between text-blue-600 dark:text-blue-300"><span>Còn nợ</span><span className="font-bold">{formatPrice(finalAmount - afterPay)}</span></div><p className="text-blue-500 pt-0.5">Đơn sẽ giữ trạng thái <strong>Chờ thanh toán</strong></p></>}
           </div>
         )}
+        {/* Voucher là luồng riêng, không phải một lựa chọn của biểu mẫu trên: khách đưa
+            mã, hệ thống kiểm tra rồi mới trừ, số tiền do voucher quyết định. */}
+        <button onClick={() => setVoucherOpen(true)}
+          className="mt-2 w-full py-2 rounded-xl border-2 border-dashed border-gold/50
+                     text-[11px] font-semibold text-gold hover:bg-gold/10 transition-colors
+                     flex items-center justify-center gap-1.5">
+          <Ticket size={13} /> Thanh toán bằng voucher
+        </button>
+
         <div className="flex gap-2 mt-4">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line-soft text-sm text-muted hover:bg-surface-2">Huỷ</button>
           <button onClick={handleSave} disabled={loading || isEmpty || isOverpay}
@@ -283,6 +296,14 @@ function PartialPaymentModal({ order, onClose, onSuccess }) {
           </button>
         </div>
       </div>
+
+      {voucherOpen && (
+        <VoucherPaymentModal
+          order={order}
+          onClose={() => setVoucherOpen(false)}
+          onSuccess={() => { setVoucherOpen(false); onSuccess?.(); onClose?.(); }}
+        />
+      )}
     </div>
   );
 }
@@ -340,7 +361,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
 
   const handleActionSuccess = () => { onRefresh?.(); onClose(); };
 
-  const deliveryAddr = o.deliveryAddress || o.shippingAddress || '—';
+  const deliveryAddr = formatDeliveryAddress(o);
   const recipientName = o.contactName || o.receiverName || o.customerName || '—';
   const orderedByName = o.orderedByName || o.contactName || '—';
 

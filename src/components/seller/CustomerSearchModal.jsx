@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { customerApi } from '../../api/services';
 import { useToast } from '../common/Toast';
+import DatePicker from '../ui/DatePicker';
+import AddressSelect from '../common/AddressSelect';
+import PickupToggle, { PICKUP_AT_WAREHOUSE } from '../common/PickupToggle';
 
 // ── Sanitize customer code ────────────────────────────────────────
 function sanitizeCode(raw) {
@@ -144,12 +147,35 @@ function ReceiverCard({ receiver, index, isOnly, errors, required, onCopyFromAbo
           )}
         </div>
       </div>
-      <div>
-        <input type="text" placeholder="Địa chỉ nhận hàng *"
-          value={receiver.receiverAddress}
+      <div className="space-y-1.5">
+        <PickupToggle
+          checked={receiver.receiverAddress === PICKUP_AT_WAREHOUSE}
+          onChange={on => {
+            onChange('receiverAddress', on ? PICKUP_AT_WAREHOUSE : '');
+            onChange('provinceName', '');
+            onChange('wardName', '');
+          }}
+        />
+
+        {/* Bật "nhận tại kho" thì khoá hết ô bên dưới — không có gì để nhập, và cho sửa
+            sẽ sinh ra bản ghi mâu thuẫn. */}
+        <input type="text" placeholder="Số nhà, tên đường *"
+          value={receiver.receiverAddress === PICKUP_AT_WAREHOUSE ? '' : receiver.receiverAddress}
           onChange={e => onChange('receiverAddress', e.target.value)}
+          disabled={receiver.receiverAddress === PICKUP_AT_WAREHOUSE}
           className={`w-full px-3 py-2 rounded-lg border text-xs focus:outline-none transition-colors
+            disabled:bg-surface-2 disabled:text-faint disabled:cursor-not-allowed
             ${errors?.receiverAddress ? 'border-red-400 bg-red-50/40 dark:bg-red-500/4' : 'border-line focus:border-gold'}`} />
+
+        {receiver.receiverAddress !== PICKUP_AT_WAREHOUSE && (
+          <AddressSelect
+            compact
+            province={receiver.provinceName}
+            ward={receiver.wardName}
+            onChange={(prov, w) => { onChange('provinceName', prov); onChange('wardName', w); }}
+            error={errors?.wardName}
+          />
+        )}
         {errors?.receiverAddress && <p className="text-[10px] text-red-400 mt-0.5">{errors.receiverAddress}</p>}
       </div>
       <div>
@@ -260,13 +286,38 @@ function PhoneCheckInput({ value, onChange, placeholder, className }) {
   );
 }
 
+
+
 // ── InlineForm ────────────────────────────────────────────────────
 function InlineForm({ form, onChange, onSave, onCancel, saving, phoneError }) {
   return (
     <div className="border border-gold/40 rounded-xl p-3 space-y-2 bg-gold-tint">
-      <input type="text" placeholder="Địa chỉ nhận hàng *" value={form.receiverAddress}
-        onChange={e => onChange('receiverAddress', e.target.value)}
-        className="w-full px-3 py-2 rounded-lg border border-line text-xs focus:outline-none focus:border-gold" />
+      <div className="space-y-1.5">
+        <PickupToggle
+          checked={form.receiverAddress === PICKUP_AT_WAREHOUSE}
+          onChange={on => {
+            onChange('receiverAddress', on ? PICKUP_AT_WAREHOUSE : '');
+            onChange('provinceName', '');
+            onChange('wardName', '');
+          }}
+        />
+
+        <input type="text" placeholder="Số nhà, tên đường *"
+          value={form.receiverAddress === PICKUP_AT_WAREHOUSE ? '' : form.receiverAddress}
+          onChange={e => onChange('receiverAddress', e.target.value)}
+          disabled={form.receiverAddress === PICKUP_AT_WAREHOUSE}
+          className="w-full px-3 py-2 rounded-lg border border-line text-xs focus:outline-none focus:border-gold
+                     disabled:bg-surface-2 disabled:text-faint disabled:cursor-not-allowed" />
+
+        {form.receiverAddress !== PICKUP_AT_WAREHOUSE && (
+          <AddressSelect
+            compact
+            province={form.provinceName}
+            ward={form.wardName}
+            onChange={(prov, w) => { onChange('provinceName', prov); onChange('wardName', w); }}
+          />
+        )}
+      </div>
       <input type="text" placeholder="Tên người nhận (tuỳ chọn)" value={form.receiverName}
         onChange={e => onChange('receiverName', e.target.value)}
         className="w-full px-3 py-2 rounded-lg border border-line text-xs focus:outline-none focus:border-gold" />
@@ -296,12 +347,14 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
     companyName: '', taxCode: '', companyPhone: '', companyAddress: '',
     pricingType: 'RETAIL_PRICE',
     contractName: '',
+    // Ngày sinh nhật — BẮT BUỘC với khách lẻ (backend từ chối nếu thiếu).
+    birthday: null,
   });
   // Tên trên hợp đồng MẶC ĐỊNH = tên công ty (COMPANY) / họ tên (RETAIL).
   // Chừng nào user chưa tự sửa ô này, nó tự bám theo tên khách. Sửa 1 lần → dừng bám.
   const [contractTouched, setContractTouched] = useState(false);
   const [receivers, setReceivers] = useState([
-    { receiverName: '', receiverPhone: '', receiverAddress: '', isDefault: true }
+    { receiverName: '', receiverPhone: '', receiverAddress: '', provinceName: '', wardName: '', isDefault: true }
   ]);
   const [errors, setErrors] = useState({});
   const [receiverErrors, setReceiverErrors] = useState([{}]);
@@ -334,7 +387,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
   };
 
   const addReceiver = () => {
-    setReceivers(prev => [...prev, { receiverName: '', receiverPhone: '', receiverAddress: '', isDefault: false }]);
+    setReceivers(prev => [...prev, { receiverName: '', receiverPhone: '', receiverAddress: '', provinceName: '', wardName: '', isDefault: false }]);
     setReceiverErrors(prev => [...prev, {}]);
   };
 
@@ -381,10 +434,13 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
 
       // Receiver là tuỳ chọn cho cả khách lẻ và công ty
     } else {
-      // RETAIL: bắt buộc phải có tên HOẶC SĐT
       // RETAIL: tên và SĐT đều tuỳ chọn — để trống sẽ lưu là "Khách vãng lai"
       // Email optional — chỉ validate format nếu có nhập
       if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
+
+      // Ngày sinh BẮT BUỘC với khách lẻ. Chặn ở đây thay vì để backend từ chối:
+      // form không có ô nhập nên người dùng nhận lỗi mà không biết sửa ở đâu.
+      if (!form.birthday) { errs.birthday = 'Vui lòng nhập ngày sinh nhật'; ok = false; }
     }
 
     setErrors(errs);
@@ -398,6 +454,27 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
       if (anyFilled) {
         if (!r.receiverAddress.trim()) { rErrs[i].receiverAddress = 'Địa chỉ là bắt buộc'; ok = false; }
       }
+    });
+
+    // PHẢI CÓ ÍT NHẤT MỘT ĐỊA CHỈ NHẬN HÀNG (cả khách lẻ lẫn công ty).
+    // Không có địa chỉ thì đơn của khách này không giao được, và quy tắc thu tiền
+    // theo vùng cũng không xác định được — mọi đơn sẽ bị coi là ngoài địa bàn.
+    // Khách nhận tại kho thì bấm nút "Nhận tại kho" để điền sẵn địa chỉ đó.
+    const hasAnyAddress = receivers.some(r => r.receiverAddress.trim());
+    if (!hasAnyAddress) {
+      rErrs[0] = { ...rErrs[0], receiverAddress: 'Cần ít nhất 1 địa chỉ nhận hàng' };
+      ok = false;
+    }
+
+    // BẮT BUỘC CHỌN PHƯỜNG/XÃ cho mọi dòng có địa chỉ.
+    // Quy tắc COD tra theo đúng cặp (tỉnh, phường) — thiếu phường thì đơn của khách này
+    // luôn rơi vào diện phải thu tiền trước, kho không giao được mà không ai hiểu vì sao.
+    receivers.forEach((r, i) => {
+      if (!r.receiverAddress.trim()) return;
+      // Nhận tại kho không có địa chỉ giao nên không cần tỉnh/phường.
+      if (r.receiverAddress === PICKUP_AT_WAREHOUSE) return;
+      if (!r.provinceName) { rErrs[i].wardName = 'Vui lòng chọn tỉnh/thành phố'; ok = false; }
+      else if (!r.wardName) { rErrs[i].wardName = 'Vui lòng chọn Phường/Xã/Đặc khu'; ok = false; }
     });
 
     const mainPhone = form.companyPhone;
@@ -443,6 +520,8 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
         pricingType: form.pricingType || 'RETAIL_PRICE',
         // Tên trên hợp đồng — gửi '' để BE hiểu là dùng tên mặc định
         contractName: form.contractName.trim(),
+        // Chỉ khách lẻ mới có sinh nhật; khách công ty gửi null để BE khỏi lưu rác.
+        birthday: isCompany ? null : form.birthday,
         discountRate: 0,
         // Khách doanh nghiệp do seller tạo → luôn ngầm định là khách riêng (không có toggle).
         // Khách cá nhân → theo lựa chọn của seller (Khách chung / Khách riêng).
@@ -451,6 +530,9 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
           receiverName: r.receiverName.trim(),
           receiverPhone: r.receiverPhone.trim(),
           receiverAddress: r.receiverAddress.trim(),
+          // Tỉnh/phường chọn từ danh mục — "Nhận tại kho" không có nên gửi null.
+          provinceName: r.receiverAddress === PICKUP_AT_WAREHOUSE ? null : (r.provinceName || null),
+          wardName: r.receiverAddress === PICKUP_AT_WAREHOUSE ? null : (r.wardName || null),
           isDefault: r.isDefault || i === 0,
         })),
       };
@@ -556,6 +638,24 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
             <Field label="Số điện thoại" error={errors.phone}
               placeholder="0912345678 (tuỳ chọn)"
               value={form.phone} onChange={e => setField('phone', e.target.value)} />
+
+            {/* NGÀY SINH — bắt buộc với khách lẻ. Backend từ chối tạo khách RETAIL
+                thiếu trường này, nên không có ô nhập thì người dùng bế tắc. */}
+            <div>
+              <label className="text-[11px] text-muted mb-1 block font-medium">
+                Ngày sinh nhật <span className="text-red-400">*</span>
+              </label>
+              <DatePicker
+                value={form.birthday}
+                onChange={v => setField('birthday', v)}
+                placeholder="Chọn ngày sinh nhật"
+                maxDate={new Date()}
+              />
+              {errors.birthday && (
+                <p className="text-[10px] text-red-400 mt-0.5">{errors.birthday}</p>
+              )}
+            </div>
+
             <Field label="Email" error={errors.email}
               placeholder="email@example.com" type="email"
               value={form.email} onChange={e => setField('email', e.target.value)} />
@@ -655,7 +755,7 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
   const [selectedId, setSelectedId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+  const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '', provinceName: '', wardName: '' });
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [customerMeta, setCustomerMeta] = useState({ discountRate: 0, invoiceDays: -1 });
@@ -679,7 +779,7 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
   }, [customer.id]);
 
   const resetForm = () => {
-    setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+    setForm({ receiverName: '', receiverPhone: '', receiverAddress: '', provinceName: '', wardName: '' });
     setShowAdd(false);
     setEditingId(null);
     setPhoneError('');
@@ -702,6 +802,11 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
       toast('Vui lòng nhập địa chỉ nhận hàng', 'warning');
       return;
     }
+    // Bắt buộc tỉnh/thành + phường/xã cho địa chỉ giao thật (trừ "Nhận tại kho").
+    if (form.receiverAddress !== PICKUP_AT_WAREHOUSE) {
+      if (!form.provinceName) { toast('Vui lòng chọn Tỉnh/Thành phố', 'warning'); return; }
+      if (!form.wardName)     { toast('Vui lòng chọn Phường/Xã/Đặc khu', 'warning'); return; }
+    }
     if (form.receiverPhone.trim()) {
       const isDuplicate = await checkPhoneDuplicate(form.receiverPhone);
       if (isDuplicate) {
@@ -717,6 +822,8 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
         receiverName: form.receiverName.trim() || null,
         receiverPhone: form.receiverPhone.trim() || null,
         receiverAddress: form.receiverAddress.trim(),
+        provinceName: form.provinceName || null,
+        wardName: form.wardName || null,
       });
       const saved = res.data?.data;
       setReceiverInfos(prev => [...prev, saved]);
@@ -733,6 +840,11 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
       toast('Vui lòng nhập địa chỉ nhận hàng', 'warning');
       return;
     }
+    // Bắt buộc tỉnh/thành + phường/xã cho địa chỉ giao thật (trừ "Nhận tại kho").
+    if (form.receiverAddress !== PICKUP_AT_WAREHOUSE) {
+      if (!form.provinceName) { toast('Vui lòng chọn Tỉnh/Thành phố', 'warning'); return; }
+      if (!form.wardName)     { toast('Vui lòng chọn Phường/Xã/Đặc khu', 'warning'); return; }
+    }
     const currentInfo = receiverInfos.find(r => r.id === id);
     const phoneChanged = (currentInfo?.receiverPhone || '').trim() !== form.receiverPhone.trim();
     if (phoneChanged && form.receiverPhone.trim()) {
@@ -745,10 +857,13 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
     }
     setSaving(true);
     try {
+      const isPickup = form.receiverAddress === PICKUP_AT_WAREHOUSE;
       const res = await customerApi.updateReceiverInfo(customer.id, id, {
         receiverName: form.receiverName.trim() || null,
         receiverPhone: form.receiverPhone.trim() || null,
         receiverAddress: form.receiverAddress.trim(),
+        provinceName: isPickup ? null : (form.provinceName || null),
+        wardName: isPickup ? null : (form.wardName || null),
       });
       setReceiverInfos(prev => prev.map(r => r.id === id ? res.data?.data : r));
       toast('Đã cập nhật', 'success');
@@ -788,7 +903,9 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
     setForm({
       receiverName: r.receiverName,
       receiverPhone: r.receiverPhone || '',
-      receiverAddress: r.receiverAddress || ''
+      receiverAddress: r.receiverAddress || '',
+      provinceName: r.provinceName || '',
+      wardName: r.wardName || '',
     });
     setShowAdd(false);
     setPhoneError('');
@@ -910,6 +1027,11 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
                           </span>
                         )}
                       </div>
+                      {(r.wardName || r.provinceName) && (
+                        <p className="text-[11px] text-muted truncate mt-0.5">
+                          {[r.wardName, r.provinceName].filter(Boolean).join(', ')}
+                        </p>
+                      )}
                       {r.receiverName && (
                         <p className="text-[11px] text-muted flex items-center gap-1 mt-0.5">
                           <User size={9} className="shrink-0" />{r.receiverName}
@@ -961,7 +1083,15 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
       <div className="px-4 pb-4 pt-3 border-t border-line-soft space-y-2 shrink-0">
         {!showAdd && !editingId && (
           <button
-            onClick={() => { setShowAdd(true); setEditingId(null); resetForm(); }}
+            onClick={() => {
+              // resetForm() KHÔNG dùng ở đây được: chính nó set showAdd = false,
+              // nên gọi sau setShowAdd(true) sẽ đóng lại ngay form vừa mở —
+              // đúng triệu chứng "bấm nút không có gì xảy ra".
+              setForm({ receiverName: '', receiverPhone: '', receiverAddress: '', provinceName: '', wardName: '' });
+              setPhoneError('');
+              setEditingId(null);
+              setShowAdd(true);
+            }}
             className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-line text-xs text-muted hover:border-gold hover:text-gold transition-colors">
             <Plus size={13} /> Thêm người nhận mới
           </button>
@@ -999,12 +1129,29 @@ export default function CustomerSearchModal({ open, onClose, onSelect, selected 
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (open) {
-      setStep('search'); setQuery(''); setResults([]);
-      setSelectedCustomer(null); setSearching(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (!open) return;
+
+    setQuery(''); setResults([]); setSearching(false);
+
+    /*
+     * ĐÃ CHỌN KHÁCH THÌ MỞ THẲNG BƯỚC NGƯỜI NHẬN.
+     *
+     * Bấm vào tên khách trong giỏ hàng là để XEM LẠI / ĐỔI thông tin giao hàng của
+     * chính khách đó, không phải để chọn khách khác. Trước đây modal luôn về bước tìm
+     * kiếm, nên thao tác đó trông như hệ thống vừa quên mất khách đang chọn.
+     *
+     * Vẫn đổi khách được: nút mũi tên quay lại ở header đưa về bước tìm kiếm.
+     */
+    if (selected?.id) {
+      setSelectedCustomer(selected);
+      setStep('receiver');
+      return;
     }
-  }, [open]);
+
+    setSelectedCustomer(null);
+    setStep('search');
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, [open, selected]);
 
   useEffect(() => {
     clearTimeout(debounceRef.current);

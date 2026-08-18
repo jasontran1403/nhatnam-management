@@ -6,9 +6,9 @@ import {
   Warehouse, Package, LogOut, Receipt, TrendingUp,
   TrendingDown, Factory, ClipboardList,
   FileText, Layers, Globe, Tags, FlaskConical,
-  FileSpreadsheet, ClipboardCheck, FileClock, Truck, Gauge,
+  FileSpreadsheet, ClipboardCheck, Truck, Gauge,
   Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Wallet, Calculator, Building2,
-  Boxes, Video, ShieldAlert,
+  Boxes, Video, ShieldAlert, Gift,
 } from 'lucide-react';
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
@@ -21,7 +21,6 @@ export const adminNavRaw = [
   { to: '/admin/customers', labelKey: 'customers', icon: Users },
   { to: '/admin/users', labelKey: 'employees', icon: UserCog },
   { to: '/admin/warehouses', labelKey: 'warehouses', icon: Warehouse },
-  { to: '/admin/inventory', labelKey: 'materials', icon: Package },
   { to: '/admin/suppliers', labelKey: 'supplier_management', icon: Building2 },
   { to: '/admin/production', labelKey: 'production', icon: Factory },
   { to: '/admin/cameras', labelKey: 'cameras', icon: Video },
@@ -42,7 +41,6 @@ export const ownerNavRaw = [
   { to: '/owner/customers', labelKey: 'customers', icon: Users },
   { to: '/owner/users', labelKey: 'employees', icon: UserCog },
   { to: '/owner/warehouses', labelKey: 'warehouses', icon: Warehouse },
-  { to: '/owner/inventory', labelKey: 'materials', icon: Package },
   { to: '/owner/production/suppliers', labelKey: 'supplier_management', icon: Building2 },
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
   { to: '/owner/production', labelKey: 'production', icon: Factory },
@@ -58,25 +56,38 @@ export const hrNavRaw = [
 
 export const sellerNavRaw = [
   { to: '/seller/dashboard', labelKey: 'seller_dashboard', icon: LayoutDashboard },
+  // Bán hàng — mở kèm Phiếu đặt hàng và Báo giá bằng nút trong trang.
   { to: '/seller/pos', labelKey: 'pos', icon: ShoppingCart },
+  // Đơn hàng — có toggle sang Đơn nháp ngay trong trang.
   { to: '/seller/orders', labelKey: 'orders', icon: ClipboardCheck },
-  { to: '/seller/drafts', labelKey: 'drafts', icon: FileClock },
   { to: '/seller/customers', labelKey: 'customers', icon: Users },
-  { to: '/seller/quotation', labelKey: 'quotation', icon: Receipt },
-  { to: '/seller/material-requests', labelKey: 'material_requests', icon: ShoppingBag, roles: ['SUPER_SELLER'] },
-  // ── Phiếu đặt Văn phòng phẩm / Đồ dùng (tách hẳn khỏi phiếu nguyên liệu) ──
-  { to: '/seller/supply-orders', labelKey: 'supply_orders', icon: Boxes, roles: ['SUPER_SELLER'] },
+  // Dự báo đặt hàng — cả SELLER lẫn SUPER_SELLER đều thấy (không khai `roles`).
+  { to: '/seller/order-forecast', labelKey: 'order_forecast', icon: TrendingUp },
+  { to: '/seller/production', labelKey: 'production', icon: Factory },
+  // Kho VPP — mở Phiếu đặt văn phòng phẩm bằng nút trong trang.
   { to: '/seller/supply-warehouse', labelKey: 'supply_warehouse', icon: Archive, roles: ['SUPER_SELLER'] },
-  // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
+  // Quản lý lương — mở Phiếu của tôi bằng nút trong trang.
   { to: '/seller/my-payroll', labelKey: 'my_payroll', icon: Wallet },
-  { to: '/seller/my-requests', labelKey: 'my_requests', icon: FileText },
 ];
+
+/*
+ * ĐÃ GỠ KHỎI MENU (mở bằng nút từ trang cha, xem SubPageShell):
+ *   /seller/drafts          → toggle trong trang Đơn hàng
+ *   /seller/quotation       → nút trong trang Bán hàng
+ *   /seller/material-requests → nút trong trang Bán hàng
+ *   /seller/supply-orders   → nút trong trang Kho văn phòng phẩm
+ *   /seller/my-requests     → nút trong trang Quản lý lương
+ *   /seller/vouchers, /seller/gift-orders → nút trong trang Khách hàng
+ *
+ * Route vẫn còn nguyên trong routes/index.jsx — chỉ mục menu bị gỡ, không phải tính năng.
+ */
 
 export const warehouseNavRaw = [
   { to: '/warehouse/management', labelKey: 'warehouse_management', icon: Warehouse },
   { to: '/warehouse/operations', labelKey: 'import_export', icon: Package },
   { to: '/warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
+  { to: '/warehouse/gift-orders', labelKey: 'gift_orders', icon: Gift },
   { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/warehouse/my-payroll', labelKey: 'my_payroll', icon: Wallet },
@@ -92,6 +103,7 @@ export const superWarehouseNavRaw = [
   { to: '/super-warehouse/history', labelKey: 'history', icon: ClipboardList },
   { to: '/super-warehouse/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
+  { to: '/warehouse/gift-orders', labelKey: 'gift_orders', icon: Gift },
   { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/super-warehouse/my-payroll', labelKey: 'my_payroll', icon: Wallet },

@@ -1,6 +1,6 @@
 import { useLang } from '../../context/LangContext';
 import { useState, useRef } from 'react';
-import { Trash2, Pencil, Percent, Check, Gift, ChevronDown } from 'lucide-react';
+import { Trash2, Percent, Check, Gift, ChevronDown } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -104,6 +104,16 @@ export default function CartItem({
     ? Number(item.unitPrice) * item.quantity   // INCLUSIVE: dùng gross
     : calcNetPrice(item.unitPrice, vatRate, vatMode) * item.quantity; // EXCLUSIVE: dùng net
 
+  /**
+   * ĐƠN GIÁ HIỂN THỊ trên dòng "đơn giá × SL = tổng".
+   *
+   * <p>Phải là con số mà nhân đúng với số lượng ra được thành tiền, nếu không người bán
+   * nhìn vào phép tính ngay trước mắt lại thấy sai. Với VAT trong giá (INCLUSIVE) thì đó
+   * là giá gộp thuế; với VAT ngoài giá (EXCLUSIVE) là giá chưa thuế — đúng bằng hai
+   * nhánh mà {@code lineBaseTotal} đang dùng.
+   */
+  const displayUnitPrice = isInclusive ? Number(item.unitPrice) : netUnitPrice;
+
 
   // ── Qty ───────────────────────────────────────────────────────────
   const handleQtyClick = () => {
@@ -127,11 +137,53 @@ export default function CartItem({
     setEditingPrice(true);
     setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
   };
+  /**
+   * DÒ NGƯỢC GIÁ VỀ ĐÚNG NGUỒN.
+   *
+   * <p>Người bán sửa tay một con số, nhưng con số đó có thể trùng đúng giá lẻ hoặc một
+   * khung giá sỉ có sẵn. Khi đó dòng hàng phải mang lại nhãn gốc ("Giá lẻ" / "Sỉ 3")
+   * thay vì "Giá thủ công".
+   *
+   * <p>Không chỉ là chuyện nhãn hiển thị: {@code priceSource} và {@code tierId} đi thẳng
+   * vào đơn hàng và báo cáo giá bán. Đánh dấu MANUAL cho một đơn thực chất bán đúng khung
+   * sỉ sẽ làm thống kê "bao nhiêu đơn phá giá" phồng lên sai.
+   *
+   * <p>Ưu tiên khung SỈ trước giá lẻ khi cả hai cùng khớp: khung sỉ là thứ được thoả
+   * thuận với khách, còn giá lẻ chỉ là mặc định.
+   *
+   * @returns {{priceSource: string, tierId: ?number, tierName: ?string}}
+   */
+  const resolvePriceSource = (price) => {
+    const perBox = (item.saleType === 'BOX' && item.unitsPerBox > 0) ? item.unitsPerBox : 1;
+    // Dung sai nửa xu — giá đi qua phép nhân perBox nên hay lệch ở chữ số cuối.
+    const same = (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < 0.005;
+
+    const tiers = Array.isArray(item.priceTiers) ? item.priceTiers : [];
+    const hit = tiers.find(tr => same(price, Number(tr.price) * perBox));
+    if (hit) {
+      return { priceSource: 'TIER', tierId: hit.id, tierName: hit.tierName };
+    }
+
+    if (same(price, Number(item.basePrice) * perBox)) {
+      return { priceSource: 'BASE', tierId: null, tierName: null };
+    }
+
+    return { priceSource: 'MANUAL', tierId: null, tierName: null };
+  };
+
   const commitPrice = () => {
     const val = parseFloat(priceDisplay.replace(',', '.'));
     const maxPrice = (item.originalUnitPrice ?? item.unitPrice) * 5;
+
     if (!isNaN(val) && val >= 0) {
-      onPriceOverride(item.id, Math.min(val, maxPrice), true);
+      const next = Math.min(val, maxPrice);
+
+      // Bấm vào giá để xem rồi bấm ra ngoài là thao tác rất thường gặp. Không có chốt
+      // này thì mỗi lần như vậy dòng hàng lại bị ghi đè nguồn giá dù không sửa gì.
+      const current = Number(item.unitPrice);
+      const unchanged = Number.isFinite(current) && Math.abs(next - current) < 0.005;
+
+      if (!unchanged) onPriceOverride(item.id, next, true, resolvePriceSource(next));
     }
     setEditingPrice(false);
   };
@@ -267,82 +319,90 @@ export default function CartItem({
           </div>
         )}
 
-        {/* VAT inclusive info */}
-        {isInclusive && vatRate > 0 && (
-          <p className="text-[9px] text-amber-600 dark:text-amber-300 mt-0.5">
-            Đơn giá đã trừ ngược VAT {vatRate}%
-          </p>
-        )}
+        {/*
+          DÒNG GIÁ — gộp đơn giá, số lượng và thành tiền vào MỘT dòng.
+          Trước đây đơn giá và thành tiền nằm ở hai dòng rời nhau, người bán phải tự
+          nhẩm xem hai con số có khớp nhau không. Dạng "đơn giá × SL = tổng" đọc thẳng
+          được phép tính.
 
-        {/* Price row */}
-        <div className="flex items-center gap-1.5 mt-1">
-          <div className="flex flex-col">
-            {isPromo ? (
-              <span className="text-xs font-bold text-rose-500 flex items-center gap-1">
-                <Gift size={10} className="text-rose-400" /> 0 đ
+          Cả dòng là vùng bấm để sửa giá, thay cho icon bút bé xíu bên cạnh — vùng bấm
+          rộng hơn nhiều, quan trọng khi thao tác trên máy tính bảng ở quầy.
+        */}
+        <div className="mt-1">
+          {isPromo ? (
+            <span className="text-xs font-bold text-rose-500 flex items-center gap-1">
+              <Gift size={10} className="text-rose-400" /> 0 đ
+            </span>
+          ) : editingPrice ? (
+            <div className="flex items-center gap-1">
+              <input
+                ref={inputRef}
+                type="text"
+                inputMode="decimal"
+                value={priceDisplay}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9.]/g, '');
+                  const parts = raw.split('.');
+                  if (parts.length > 2) return;
+                  if (parts[1]?.length > 2) return;
+                  setPriceDisplay(raw);
+                }}
+                onBlur={commitPrice}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') commitPrice();
+                  if (e.key === 'Escape') setEditingPrice(false);
+                }}
+                className="w-24 text-xs border-2 border-gold rounded-lg px-2 py-1 focus:outline-none font-semibold text-ink"
+              />
+              <span className="text-[10px] text-muted">đ</span>
+            </div>
+          ) : (
+            <button onClick={handlePriceClick}
+              title="Bấm để sửa đơn giá"
+              className="w-full flex items-baseline gap-1 flex-wrap text-left rounded-md
+                         px-1 -mx-1 py-0.5 hover:bg-gold/10 transition-colors">
+              <span className={`text-xs font-bold transition-colors
+                ${isPriceOverridden ? 'text-purple-600 dark:text-purple-300' : 'text-gold'}`}>
+                {fmt(displayUnitPrice)}
               </span>
-            ) : editingPrice ? (
-              <div className="flex items-center gap-1">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  inputMode="decimal"
-                  value={priceDisplay}
-                  onChange={e => {
-                    const raw = e.target.value.replace(/[^0-9.]/g, '');
-                    const parts = raw.split('.');
-                    if (parts.length > 2) return;
-                    if (parts[1]?.length > 2) return;
-                    setPriceDisplay(raw);
-                  }}
-                  onBlur={commitPrice}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') commitPrice();
-                    if (e.key === 'Escape') setEditingPrice(false);
-                  }}
-                  className="w-24 text-xs border-2 border-gold rounded-lg px-2 py-1 focus:outline-none font-semibold text-ink"
-                />
-                <span className="text-[10px] text-muted">đ</span>
-              </div>
-            ) : (
-              <button onClick={handlePriceClick} className="flex items-center gap-1 group">
-                {/* Hiển thị đơn giá CHƯA thuế */}
-                <span className={`text-xs font-bold transition-colors
-                  ${isPriceOverridden ? 'text-purple-600 dark:text-purple-300' : 'text-gold group-hover:text-gold-deep'}`}>
-                  {fmt(netUnitPrice)}
-                </span>
-                <Pencil size={9} className="text-faint group-hover:text-gold transition-colors" />
-              </button>
-            )}
-          </div>
-
-          {/* Discount + Promo buttons */}
-          <div className="ml-auto flex items-center gap-1 flex-shrink-0">
-            {!isPromo && (hasDiscount ? (
-              <button onClick={openDiscount}
-                className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                  bg-orange-100 dark:bg-orange-500/18 text-orange-600 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28 font-semibold hover:bg-orange-200 dark:bg-orange-500/28 transition-colors">
-                <Percent size={8} />
-                -{itemDiscountPct}%
-              </button>
-            ) : (
-              <button onClick={openDiscount}
-                className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                  bg-surface-2 text-faint border border-line hover:bg-surface-2 hover:text-muted transition-colors">
-                <Percent size={8} />
-                CK
-              </button>
-            ))}
-            <button onClick={togglePromo}
-              className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
-                font-semibold border transition-colors
-                ${isPromo
-                  ? 'bg-rose-100 dark:bg-rose-500/18 text-rose-600 dark:text-rose-300 border-rose-300 dark:border-rose-500/35 hover:bg-rose-200 dark:bg-rose-500/28'
-                  : 'bg-surface-2 text-faint border-line hover:bg-rose-50 dark:bg-rose-500/10 hover:text-rose-400 hover:border-rose-200 dark:border-rose-500/28'}`}>
-              <Gift size={8} />
-              KM
+              <span className="text-[10px] text-muted">× {item.quantity}</span>
+              <span className="text-[10px] text-muted">=</span>
+              <span className="text-xs font-bold text-ink">
+                {fmt(hasDiscount ? lineBaseTotal * (1 - itemDiscountPct / 100) : lineBaseTotal)}
+              </span>
+              {hasDiscount && (
+                <span className="text-[9px] text-faint line-through">{fmt(lineBaseTotal)}</span>
+              )}
             </button>
-          </div>
+          )}
+        </div>
+
+        {/* CK + KM — xuống dòng riêng để dòng giá không bị bóp chữ khi tên hàng dài */}
+        <div className="flex items-center gap-1 flex-wrap mt-1">
+          {!isPromo && (hasDiscount ? (
+            <button onClick={openDiscount}
+              className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
+                bg-orange-100 dark:bg-orange-500/18 text-orange-600 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28 font-semibold hover:bg-orange-200 dark:bg-orange-500/28 transition-colors">
+              <Percent size={8} />
+              -{itemDiscountPct}%
+            </button>
+          ) : (
+            <button onClick={openDiscount}
+              className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
+                bg-surface-2 text-faint border border-line hover:bg-surface-2 hover:text-muted transition-colors">
+              <Percent size={8} />
+              CK
+            </button>
+          ))}
+          <button onClick={togglePromo}
+            className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full
+              font-semibold border transition-colors
+              ${isPromo
+                ? 'bg-rose-100 dark:bg-rose-500/18 text-rose-600 dark:text-rose-300 border-rose-300 dark:border-rose-500/35 hover:bg-rose-200 dark:bg-rose-500/28'
+                : 'bg-surface-2 text-faint border-line hover:bg-rose-50 dark:bg-rose-500/10 hover:text-rose-400 hover:border-rose-200 dark:border-rose-500/28'}`}>
+            <Gift size={8} />
+            KM
+          </button>
         </div>
 
         {/* Discount panel */}
@@ -407,17 +467,6 @@ export default function CartItem({
           </button>
         )}
 
-        {/* Thành tiền dòng */}
-        {!isPromo && (
-          <p className="text-[10px] text-muted mt-0.5">
-            = {fmt(lineBaseTotal)}
-            {hasDiscount && (
-              <span className="text-emerald-600 dark:text-emerald-300 ml-1">
-                → {fmt(lineBaseTotal * (1 - itemDiscountPct / 100))}
-              </span>
-            )}
-          </p>
-        )}
       </div>
 
       {/* Qty + delete */}

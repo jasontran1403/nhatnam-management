@@ -128,6 +128,31 @@ export function toISODate(input) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/* ── Địa chỉ giao hàng ──────────────────────────────────────────────────────── */
+
+/** Địa chỉ "Nhận tại kho" — không ghép phường/tỉnh vào chuỗi này. */
+const PICKUP_AT_WAREHOUSE = 'Nhận tại kho';
+
+/**
+ * Ghép địa chỉ giao đầy đủ của ĐƠN HÀNG: "{địa chỉ}, {phường/xã}, {tỉnh/thành}".
+ *
+ * Nhận vào object đơn (order/draft) có các field: deliveryAddress | shippingAddress |
+ * receiverAddress, wardName, provinceName. Bỏ qua phần trống để không sinh dấu phẩy
+ * thừa; trường hợp "Nhận tại kho" chỉ trả về đúng chuỗi đó.
+ *
+ * @returns {string} chuỗi địa chỉ, hoặc EMPTY ('—') nếu không có gì.
+ */
+export function formatDeliveryAddress(order) {
+  if (!order) return EMPTY;
+  const base = order.deliveryAddress || order.shippingAddress || order.receiverAddress || '';
+  if (!base) return EMPTY;
+  if (base === PICKUP_AT_WAREHOUSE) return base;
+  const parts = [base, order.wardName, order.provinceName]
+    .map(p => (p == null ? '' : String(p).trim()))
+    .filter(Boolean);
+  return parts.length ? parts.join(', ') : EMPTY;
+}
+
 /* ── Bí danh tương thích ngược ──────────────────────────────────────────────── */
 /* Code cũ gọi bằng nhiều tên khác nhau. Giữ bí danh để chuyển dần, không phải
    sửa hết trong một lần. Khi không còn chỗ nào dùng thì xoá cả khối này. */

@@ -26,6 +26,15 @@ function imgSrc(url) {
   return url.startsWith('http') ? url : `${BASE_URL}/api/auth${url}`;
 }
 
+const VN_BANKS = [
+  'Vietcombank', 'Vietinbank', 'BIDV', 'Agribank', 'ACB', 'Techcombank',
+  'MB Bank', 'VPBank', 'Sacombank', 'SHB', 'HDBank', 'TPBank', 'OCB',
+  'SeABank', 'LienVietPostBank', 'VIB', 'MSB', 'Eximbank', 'ABBank',
+  'BacABank', 'NamABank', 'PGBank', 'VietABank', 'KienLongBank',
+  'DongABank', 'BaoVietBank', 'SCB', 'Saigonbank', 'NCB', 'PublicBank',
+  'UOB', 'HSBC', 'StandardChartered', 'Shinhan', 'Woori', 'CIMB',
+];
+
 export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
   const { role } = useAuth();
   const toast = useToast();
@@ -48,6 +57,10 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [refundPaymentType, setRefundPaymentType] = useState('CASH');
+  const [refundBankName, setRefundBankName] = useState('');
+  const [refundBankAccount, setRefundBankAccount] = useState('');
+  const [refundBankHolder, setRefundBankHolder] = useState('');
   const [editingReason, setEditingReason] = useState(false);
   const [editedReason, setEditedReason] = useState(v.reason || '');
   const [savingReason, setSavingReason] = useState(false);
@@ -100,6 +113,30 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
       onClose();
     } catch (e) {
       toast(e?.response?.data?.message || 'Lỗi khi từ chối', 'error');
+    } finally { setBusy(false); }
+  };
+
+  /** Lập phiếu chi hoàn phần dư cho đơn cuối của phiếu thu. */
+  const doRefundOverpay = async () => {
+    if (!v.overpay?.orderCode) return;
+    setBusy(true);
+    try {
+      const payload = {
+        orderCode: v.overpay.orderCode,
+        paymentType: refundPaymentType,
+      };
+      if (refundPaymentType === 'BANK_TRANSFER') {
+        payload.customerBankName = refundBankName;
+        payload.customerBankAccount = refundBankAccount;
+        payload.customerBankHolder = refundBankHolder;
+      }
+      const res = await expenseApi.refundOverpay(payload);
+      const code = res?.data?.data?.voucherCode || res?.data?.voucherCode;
+      toast(code ? `Đã tạo phiếu chi hoàn ${code}` : 'Đã tạo phiếu chi hoàn phần dư', 'success');
+      onChanged && onChanged();
+      onClose();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu chi hoàn', 'error');
     } finally { setBusy(false); }
   };
 
@@ -190,6 +227,20 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
             </div>
           )}
 
+          {/* Thông tin STK khách hàng (phiếu hoàn phần dư qua chuyển khoản) */}
+          {v.customerBankName && (
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/18 rounded-xl p-3">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase mb-2">
+                Thông tin chuyển khoản cho khách
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                <InfoRow label="Ngân hàng" value={v.customerBankName} icon={<Landmark size={12} />} full />
+                <InfoRow label="Số tài khoản" value={v.customerBankAccount} full />
+                <InfoRow label="Chủ tài khoản" value={v.customerBankHolder} icon={<User size={12} />} full />
+              </div>
+            </div>
+          )}
+
           {v.rejectReason && (
             <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl p-3">
               <p className="text-xs font-semibold text-red-600 dark:text-red-300 mb-1">Lý do từ chối</p>
@@ -218,6 +269,78 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
                   </a>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Khối HOÀN PHẦN DƯ — chỉ với phiếu THU có khách trả dư */}
+          {v.overpay && v.overpay.amount > 0 && (
+            <div className="bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/28 rounded-xl p-4">
+              <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 uppercase mb-1">
+                Khách thanh toán dư
+              </p>
+              <p className="text-sm text-ink">
+                Đơn <span className="font-mono text-gold">{v.overpay.orderCode}</span> có phần dư{' '}
+                <span className="font-bold">{formatVND(v.overpay.amount)}</span>
+                {v.overpay.customerName ? <> của {v.overpay.customerName}</> : null}.
+              </p>
+              {v.overpay.refundVoucherCode ? (
+                <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-300 flex items-center gap-1">
+                  <CheckCircle size={14} /> Đã lập phiếu chi hoàn:{' '}
+                  <span className="font-mono">{v.overpay.refundVoucherCode}</span>
+                </p>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  {/* Phương thức thanh toán */}
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">Phương thức thanh toán</label>
+                    <div className="flex gap-2">
+                      {[{v:'CASH',l:'Tiền mặt'},{v:'BANK_TRANSFER',l:'Chuyển khoản'}].map(o=>(
+                        <button key={o.v} type="button"
+                          onClick={()=>setRefundPaymentType(o.v)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition ${
+                            refundPaymentType===o.v
+                              ? 'border-sky-500 bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-200'
+                              : 'border-line text-muted hover:bg-canvas'
+                          }`}>{o.l}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Thông tin STK khách — chỉ hiện khi chuyển khoản */}
+                  {refundPaymentType === 'BANK_TRANSFER' && (
+                    <div className="space-y-2 bg-white dark:bg-surface rounded-lg p-3 border border-sky-100 dark:border-sky-500/18">
+                      <div>
+                        <label className="block text-xs text-muted mb-1">Ngân hàng *</label>
+                        <select value={refundBankName} onChange={e=>setRefundBankName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-sky-400 bg-surface">
+                          <option value="">-- Chọn ngân hàng --</option>
+                          {VN_BANKS.map(b=>(<option key={b} value={b}>{b}</option>))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted mb-1">Số tài khoản *</label>
+                        <input value={refundBankAccount} onChange={e=>setRefundBankAccount(e.target.value)}
+                          placeholder="VD: 0123456789"
+                          className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-sky-400 bg-surface" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted mb-1">Tên chủ tài khoản *</label>
+                        <input value={refundBankHolder} onChange={e=>setRefundBankHolder(e.target.value)}
+                          placeholder="VD: NGUYEN VAN A"
+                          className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-sky-400 bg-surface" />
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={doRefundOverpay}
+                    disabled={busy || (refundPaymentType==='BANK_TRANSFER' && (!refundBankName||!refundBankAccount||!refundBankHolder))}
+                    className="w-full py-2.5 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition disabled:opacity-50"
+                  >
+                    {busy ? 'Đang xử lý...' : `Tạo phiếu chi hoàn phần dư (${formatVND(v.overpay.amount)})`}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

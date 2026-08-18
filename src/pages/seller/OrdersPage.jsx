@@ -1,6 +1,7 @@
 // src/pages/seller/OrdersPage.jsx
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, orderApi, categoryApi, downloadBlob, paymentApi, getImageUrl } from '../../api/services';
@@ -15,7 +16,11 @@ import {
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
   ChevronDown, DollarSign, X, AlertCircle, Calendar,
   Download, FileText, List, Ban, Edit2, FileBarChart,
+  ClipboardCheck,
+  FileClock, Ticket,
 } from 'lucide-react';
+import VoucherPaymentModal from '../../components/payment/VoucherPaymentModal';
+import { PageToggle } from '../../components/common/PageSwitchButtons';
 import EditOrderModal from '../../components/seller/EditOrderModal';
 
 const CANCELLABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERING']);
@@ -113,25 +118,55 @@ function PaymentMethodCell({ value, onSave, disabled }) {
     { value: 'DEBT', label: t('payment', 'debt_icon') },
   ];
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const btnRef = useRef(null);
   const handleSelect = (val) => { setOpen(false); if (val !== value) onSave(val); };
+
+  /*
+   * Dropdown render qua PORTAL ra <body> thay vì đặt absolute trong ô bảng.
+   *
+   * Bảng có vùng cuộn riêng; khi chỉ có 1–2 đơn thì vùng đó thấp hơn dropdown và nó bị
+   * cắt mất — đúng lỗi trong ảnh chụp. Đưa ra ngoài body thì không còn tổ tiên nào cắt
+   * được, và toạ độ lấy từ getBoundingClientRect nên vẫn dính đúng vị trí nút.
+   */
+  const toggle = () => {
+    if (open) { setOpen(false); return; }
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) {
+      // Không đủ chỗ bên dưới thì lật lên trên, tránh dropdown chạy khỏi màn hình.
+      const openUp = window.innerHeight - r.bottom < 140;
+      setPos({ left: r.left, top: openUp ? r.top - 4 : r.bottom + 4, openUp });
+    }
+    setOpen(true);
+  };
+
   if (disabled) return <PaymentMethodBadge method={value} />;
+
   return (
     <div className="relative">
-      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 group">
+      <button ref={btnRef} onClick={toggle} className="inline-flex items-center gap-1 group">
         <PaymentMethodBadge method={value} />
         <ChevronDown size={10} className="text-gold opacity-70 group-hover:opacity-100 transition-opacity" />
       </button>
-      {open && (<>
-        <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-        <div className="absolute left-0 top-full mt-1 z-20 bg-surface border border-line rounded-xl shadow-lg py-1 min-w-[160px]">
-          {PAYMENT_METHODS.map(m => (
-            <button key={m.value} onClick={() => handleSelect(m.value)}
-              className={`w-full text-left px-3 py-2 text-xs hover:bg-canvas transition-colors ${m.value === value ? 'font-bold text-gold' : 'text-ink'}`}>
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </>)}
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+          <div
+            style={{
+              left: pos.left,
+              top: pos.top,
+              transform: pos.openUp ? 'translateY(-100%)' : undefined,
+            }}
+            className="fixed z-[91] bg-surface border border-line rounded-xl shadow-lg py-1 min-w-[160px]">
+            {PAYMENT_METHODS.map(m => (
+              <button key={m.value} onClick={() => handleSelect(m.value)}
+                className={`w-full text-left px-3 py-2 text-xs hover:bg-canvas transition-colors ${m.value === value ? 'font-bold text-gold' : 'text-ink'}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body)}
     </div>
   );
 }
@@ -144,6 +179,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const [bankName, setBankName] = useState(''); const [transactionRef, setTransactionRef] = useState('');
   const [error, setError] = useState(''); const [txHistory, setTxHistory] = useState([]); const [txLoading, setTxLoading] = useMinLoading();
   const [waiveConfirm, setWaiveConfirm] = useState(false);
+  const [voucherOpen, setVoucherOpen] = useState(false);
 
   useEffect(() => { paymentApi.getTransactions(order.id).then(r => setTxHistory(r.data?.data || [])).catch(() => { }).finally(() => setTxLoading(false)); }, [order.id]);
 
@@ -208,6 +244,16 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
               ].map(m => <button key={m.value} onClick={() => setPaymentMethod(m.value)} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${paymentMethod === m.value ? 'bg-gold text-white border-gold' : 'border-line text-ink-2 hover:border-gold'}`}>{m.label}</button>)}
             </div>
           </div>
+          {/* Thanh toán bằng VOUCHER — luồng riêng, không phải một lựa chọn của biểu mẫu
+              bên trên: khách đưa mã, hệ thống kiểm tra rồi mới trừ, số tiền do voucher
+              quyết định chứ không gõ tay. */}
+          <button
+            onClick={() => setVoucherOpen(true)}
+            className="w-full py-2 rounded-xl border-2 border-dashed border-gold/50
+                       text-[11px] font-semibold text-gold hover:bg-gold/10 transition-colors
+                       flex items-center justify-center gap-1.5">
+            <Ticket size={13} /> Thanh toán bằng voucher
+          </button>
           {isBankTransfer && (
             <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-100 dark:border-blue-500/18">
               <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Thông tin chuyển khoản</p>
@@ -247,11 +293,19 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
           </button>
         </div>
       </div>
+
+      {voucherOpen && (
+        <VoucherPaymentModal
+          order={order}
+          onClose={() => setVoucherOpen(false)}
+          onSuccess={() => { setVoucherOpen(false); onClose(); }}
+        />
+      )}
     </div>
   );
 }
 
-function StatusActionButtons({ order, onCancel, onEdit, loading, disabled, isSuperSeller }) {
+function StatusActionButtons({ order, onCancel, onEdit, onVoucher, loading, disabled, isSuperSeller }) {
   const { status } = order;
   const isCancelled = status === 'CANCELLED';
 
@@ -262,12 +316,26 @@ function StatusActionButtons({ order, onCancel, onEdit, loading, disabled, isSup
     : status === 'PREPARING';
 
   const locked = (status === 'COMPLETED' || isCancelled || status === 'FAILED') && !canEdit;
-  if (locked) return <span className="text-[10px] text-faint">—</span>;
+  // Đơn khoá nhưng vẫn còn nợ tiền thì vẫn phải cho thu bằng voucher.
+  if (locked && !(Number(order.finalAmount || 0) - Number(order.paidAmount || 0) > 0
+        && status !== 'CANCELLED' && status !== 'FAILED'))
+    return <span className="text-[10px] text-faint">—</span>;
 
   // SUPER_SELLER: hủy được mọi trạng thái trừ CANCELLED
   // Seller thường: chỉ hủy được các trạng thái chưa xử lý xong (CANCELLABLE_STATUSES)
   const canCancel = isSuperSeller ? !isCancelled : CANCELLABLE_STATUSES.has(status);
-  if (!canEdit && !canCancel) return null;
+
+  /*
+   * Nút thanh toán bằng voucher hiện khi đơn CÒN THIẾU TIỀN và chưa huỷ.
+   *
+   * Điều kiện dựa trên SỐ TIỀN còn lại chứ không dựa trên trạng thái đơn: đơn phải trả
+   * trước vẫn đang PREPARING mà đã cần thu, còn đơn đã giao thì nằm ở PENDING_PAYMENT —
+   * lọc theo trạng thái sẽ bỏ sót một trong hai.
+   */
+  const remainingDue = Number(order.finalAmount || 0) - Number(order.paidAmount || 0);
+  const canPayVoucher = !isCancelled && status !== 'FAILED' && remainingDue > 0;
+
+  if (!canEdit && !canCancel && !canPayVoucher) return null;
   if (disabled) return <span className="text-[10px] text-faint italic">Chỉ xem</span>;
 
   return (
@@ -276,6 +344,13 @@ function StatusActionButtons({ order, onCancel, onEdit, loading, disabled, isSup
         <button onClick={e => { e.stopPropagation(); onEdit?.(); }} disabled={loading}
           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/28 hover:bg-indigo-100 dark:bg-indigo-500/18 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
           {loading ? <BtnSpinner size={10} colorClass="border-indigo-400 !border-t-indigo-600 dark:border-t-indigo-500/40" /> : <><Edit2 size={10} /> Sửa đơn</>}
+        </button>
+      )}
+      {canPayVoucher && (
+        <button onClick={e => { e.stopPropagation(); onVoucher?.(); }} disabled={loading}
+          title="Thanh toán bằng voucher"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
+          <Ticket size={10} /> Voucher
         </button>
       )}
       {canCancel && (
@@ -341,6 +416,9 @@ export default function OrdersPage() {
   const [partialOrder, setPartialOrder] = useState(null); const [partialLoading, setPartialLoading] = useMinLoading();
   const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkConfirm, setBulkConfirm] = useState(null);
   const [bulkLoading, setBulkLoading] = useMinLoading(); const [pageSize, setPageSize] = useState(100);
+  const [bulkCancelReason, setBulkCancelReason] = useState('');
+  /** Đơn đang mở hộp thoại thanh toán bằng voucher từ cột Thao tác. */
+  const [voucherOrder, setVoucherOrder] = useState(null);
 
   const [exportDateRange, setExportDateRange] = useState({ from: null, to: null });
   const [showExportPicker, setShowExportPicker] = useState(false);
@@ -569,6 +647,49 @@ export default function OrdersPage() {
     finally { setDetailLoading(null); }
   };
 
+  /**
+   * Đơn có được chọn để thao tác hàng loạt không.
+   *
+   * <p>Chỉ ĐANG CHUẨN BỊ và ĐANG GIAO. Đơn đã giao (chờ thanh toán / thanh toán một
+   * phần), đã hoàn thành, hoặc đã huỷ thì không huỷ được nữa — hàng đã ra khỏi kho và
+   * công nợ đã ghi nhận, huỷ ở đây sẽ để lại tồn kho và sổ sách lệch nhau.
+   */
+  const isBulkSelectable = (o) =>
+    o.status === 'PREPARING' || o.status === 'DELIVERING';
+
+  const selectableOrders = useMemo(
+    () => orders.filter(isBulkSelectable), [orders]);
+
+  // Bỏ đơn không hợp lệ khỏi vùng chọn khi danh sách đổi (lọc, sang trang), tránh
+  // trường hợp bấm huỷ trên một đơn đã kịp chuyển trạng thái ở tab khác.
+  useEffect(() => {
+    setSelectedIds(prev => {
+      const ok = new Set(selectableOrders.map(o => o.id));
+      const next = new Set([...prev].filter(id => ok.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [selectableOrders]);
+
+  const executeBulkCancel = async () => {
+    setBulkLoading(true);
+    try {
+      const ids = Array.from(selectedIds);
+      // Huỷ tuần tự và đếm kết quả: API huỷ nhận từng đơn, và một đơn hỏng không nên
+      // làm dừng cả lô.
+      let ok = 0, failed = 0;
+      for (const id of ids) {
+        try { await orderApi.cancelOrder(id, bulkCancelReason.trim()); ok++; } catch { failed++; }
+      }
+      toast(failed === 0
+        ? `Đã huỷ ${ok} đơn`
+        : `Đã huỷ ${ok} đơn, ${failed} đơn thất bại`, failed === 0 ? 'success' : 'error');
+      setSelectedIds(new Set());
+      setBulkCancelReason('');
+      fetchOrders(page);
+    } catch { toast('Lỗi huỷ đơn hàng loạt', 'error'); }
+    finally { setBulkLoading(false); }
+  };
+
   const executeBulkComplete = async (mode) => {
     setBulkLoading(true);
     try {
@@ -603,6 +724,15 @@ export default function OrdersPage() {
             <h1 className="text-lg sm:text-xl font-bold text-ink">Đơn hàng</h1>
             <p className="text-[10px] sm:text-xs text-muted">{total} đơn hàng</p>
           </div>
+          {/* Đơn nháp đã gỡ khỏi menu — qua lại bằng công tắc này. Trang đích bọc
+              SubPageShell nên có nút quay lại và hiệu ứng trượt. */}
+          <PageToggle
+            current="/seller/orders"
+            options={[
+              { to: '/seller/orders', label: 'Đơn hàng', icon: ClipboardCheck },
+              { to: '/seller/drafts', label: 'Đơn nháp', icon: FileClock },
+            ]}
+          />
           <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input type="text" placeholder="Tìm đơn, khách hàng..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="border border-line rounded-xl pl-9 pr-4 py-2 text-sm bg-surface focus:outline-none focus:border-gold w-48 lg:w-56" />
@@ -711,7 +841,9 @@ export default function OrdersPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-canvas border-b border-line-soft">
                       <tr>
-                        <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-gold" checked={selectedIds.size === orders.length && orders.length > 0} onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} /></th>
+                        <th className="px-3 py-3"><input type="checkbox" className="w-3.5 h-3.5 accent-gold"
+                          checked={selectableOrders.length > 0 && selectedIds.size === selectableOrders.length}
+                          onChange={e => setSelectedIds(e.target.checked ? new Set(selectableOrders.map(o => o.id)) : new Set())} /></th>
                         {[t('order', 'order_code'), 'Thời gian', t('customer', 'customer'), 'Kho', t('common', 'status'), 'PT Thanh toán', 'Tổng tiền / Đã thu', 'Người đặt hàng', 'Người tạo', 'Chứng từ', 'Hóa đơn', t('common', 'actions')]
                           .map(h => <th key={h} className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>)}
                       </tr>
@@ -723,7 +855,15 @@ export default function OrdersPage() {
                         const paidAmount = Number(o.paidAmount || 0);
                         return (
                           <tr key={o.id} className={`border-b border-line-soft last:border-0 transition-colors ${getRowBg(o)} ${isThisInvoice ? 'opacity-80' : ''} ${isActioning ? 'opacity-60' : ''}`}>
-                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" className="w-3.5 h-3.5 accent-gold" checked={selectedIds.has(o.id)} onChange={e => { const next = new Set(selectedIds); e.target.checked ? next.add(o.id) : next.delete(o.id); setSelectedIds(next); }} /></td>
+                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                              {/* Chỉ đơn chưa rời khỏi vòng giao hàng mới huỷ được. Đơn đã
+                                  giao / còn nợ / hoàn thành / đã huỷ mà cho chọn thì người
+                                  dùng sẽ bấm huỷ rồi nhận lỗi từ server cho từng đơn một. */}
+                              <input type="checkbox" className="w-3.5 h-3.5 accent-gold disabled:opacity-30"
+                                disabled={!isBulkSelectable(o)}
+                                title={isBulkSelectable(o) ? '' : 'Chỉ chọn được đơn đang chuẩn bị hoặc đang giao'}
+                                checked={selectedIds.has(o.id)}
+                                onChange={e => { const next = new Set(selectedIds); e.target.checked ? next.add(o.id) : next.delete(o.id); setSelectedIds(next); }} /></td>
                             <td className="px-4 py-3 whitespace-nowrap"><div className="flex items-center gap-1.5"><span className="font-mono text-xs font-bold text-gold">{o.orderCode}</span>{detailLoading === o.id && <div className="w-3 h-3 border border-gold border-t-transparent rounded-full animate-spin" />}</div></td>
                             <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{formatDate(o.createdAt)}</td>
                             <td className="px-4 py-3 max-w-[160px]"><p className="text-xs font-medium text-ink break-words leading-snug">{o.customerName}</p><p className="text-[10px] text-muted">{o.customerPhone}</p></td>
@@ -759,7 +899,7 @@ export default function OrdersPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                              <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
+                              <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} onVoucher={() => setVoucherOrder(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
                             </td>
                           </tr>
                         );
@@ -816,7 +956,7 @@ export default function OrdersPage() {
                           </button>
                           <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                           <PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
-                          <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
+                          <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} onVoucher={() => setVoucherOrder(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
                         </div>
                       </div>
                     </div>
@@ -836,13 +976,27 @@ export default function OrdersPage() {
 
       {partialOrder && <PartialPaymentModal order={partialOrder} onClose={() => setPartialOrder(null)} onConfirm={handlePartialPayment} loading={partialLoading} />}
 
+      {voucherOrder && (
+        <VoucherPaymentModal
+          order={voucherOrder}
+          onClose={() => setVoucherOrder(null)}
+          onSuccess={() => { setVoucherOrder(null); fetchOrders(page); }}
+        />
+      )}
+
       {selectedIds.size > 0 && (() => {
         const totalSelected = orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + Number(o.finalAmount || 0), 0);
         return (
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-surface border border-line rounded-2xl shadow-xl px-4 py-2.5">
             <div className="flex flex-col mr-2"><span className="text-xs font-semibold text-ink-2">{selectedIds.size} đơn đã chọn</span><span className="text-[11px] font-bold text-gold">{new Intl.NumberFormat('vi-VN').format(Math.round(totalSelected))} đ</span></div>
-            <button onClick={() => setBulkConfirm({ mode: 'DELIVERED_UNPAID' })} className="px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28 text-xs font-semibold hover:bg-orange-100 dark:bg-orange-500/18">🚚 Đã giao hàng</button>
-            <button onClick={() => setBulkConfirm({ mode: 'DELIVERED_PAID' })} className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28 text-xs font-semibold hover:bg-emerald-100 dark:bg-emerald-500/18">✅ Hoàn thành (đã TT)</button>
+            {/* Kinh doanh KHÔNG đánh dấu đã giao / hoàn thành hàng loạt nữa: hai trạng
+                thái đó thuộc về kho và kế toán, và đánh dấu hàng loạt từ đây sẽ đóng đơn
+                mà chưa ai thực sự giao hoặc thu tiền. Thao tác hàng loạt duy nhất còn
+                lại là HUỶ đơn. */}
+            <button onClick={() => setBulkConfirm({ mode: 'CANCEL' })}
+              className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/28 text-xs font-semibold hover:bg-red-100 dark:bg-red-500/18">
+              ✕ Huỷ {selectedIds.size} đơn
+            </button>
             <button onClick={() => setSelectedIds(new Set())} className="ml-1 p-1.5 rounded-lg text-muted hover:bg-surface-2"><X size={13} /></button>
           </div>
         );
@@ -852,11 +1006,16 @@ export default function OrdersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setBulkConfirm(null)} />
           <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="font-bold text-ink">Xác nhận {bulkConfirm.mode === 'DELIVERED_PAID' ? 'hoàn thành (đã TT)' : 'đã giao hàng'}</h2>
+            <h2 className="font-bold text-ink">Xác nhận huỷ đơn</h2>
             <p className="text-sm text-muted">{selectedIds.size} đơn đã chọn</p>
+            {/* Lý do huỷ là bắt buộc ở API huỷ đơn lẻ, nên hàng loạt cũng phải có —
+                nếu không mọi đơn trong lô sẽ bị server từ chối. */}
+            <textarea value={bulkCancelReason} onChange={e => setBulkCancelReason(e.target.value)}
+              rows={2} placeholder="Lý do huỷ (áp dụng cho tất cả đơn đã chọn)"
+              className="w-full rounded-xl border border-line px-3 py-2 text-sm bg-surface text-ink focus:outline-none focus:border-gold resize-none" />
             <div className="flex gap-2 pt-2">
               <button onClick={() => setBulkConfirm(null)} className="flex-1 py-2 rounded-xl border border-line text-sm text-muted hover:bg-surface-2">Huỷ</button>
-              <button disabled={bulkLoading} onClick={async () => { const c = bulkConfirm; setBulkConfirm(null); await executeBulkComplete(c.mode); }} className="flex-1 py-2 rounded-xl bg-gold text-white text-sm font-semibold disabled:opacity-50">{bulkLoading ? 'Đang xử lý...' : t('common', 'confirm')}</button>
+              <button disabled={bulkLoading || !bulkCancelReason.trim()} onClick={async () => { const c = bulkConfirm; setBulkConfirm(null); if (c.mode === 'CANCEL') await executeBulkCancel(); else await executeBulkComplete(c.mode); }} className="flex-1 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold disabled:opacity-50">{bulkLoading ? 'Đang xử lý...' : 'Huỷ các đơn đã chọn'}</button>
             </div>
           </div>
         </div>

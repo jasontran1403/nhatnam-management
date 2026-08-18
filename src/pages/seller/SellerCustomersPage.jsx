@@ -9,10 +9,18 @@ import {
   Users, Search, X, RefreshCw, Building2, User as UserIcon,
   Phone, Mail, Edit2, AlertCircle, Check, Upload, Download,
   FileSpreadsheet, Plus, Trash2, MapPin, Star, Hash,
-  ChevronDown, ChevronRight, Tag, FileText,
+  ChevronDown, ChevronRight, Tag, FileText, Cake, Store, Ticket, Gift,
 } from 'lucide-react';
 import DebtReportCustomerModal from '../../components/accountant/DebtReportCustomerModal';
 import { sellerReportApi } from '../../api/services';
+import CreateGiftModal from '../../components/customer/CreateGiftModal';
+import { useNavigate } from 'react-router-dom';
+import DatePicker from '../../components/ui/DatePicker';
+import AddressSelect from '../../components/common/AddressSelect';
+import PickupToggle, { PICKUP_AT_WAREHOUSE } from '../../components/common/PickupToggle';
+import {
+  formatDayMonth, countdownLabel, anniversaryRowClass, anniversaryBadgeClass,
+} from '../../utils/anniversary';
 
 const inputCls = 'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink focus:outline-none focus:border-gold transition-colors bg-surface placeholder:text-faint';
 
@@ -200,6 +208,8 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
       receiverName: '',
       receiverPhone: '',
       receiverAddress: '',
+      provinceName: '',
+      wardName: '',
       isDefault: receivers.length === 0,
       _isNew: true,
     }]);
@@ -278,16 +288,40 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
               </div>
 
               {/* Fields — luôn hiển thị, không có nút lưu riêng */}
-              <div>
+              <div className="space-y-1.5">
                 <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
                   Địa chỉ <span className="text-red-400">*</span>
                 </label>
-                <input
-                  value={r.receiverAddress || ''}
-                  onChange={e => handleFieldChange(r.id, 'receiverAddress', e.target.value)}
-                  className={inputCls}
-                  placeholder="123 Đường ABC, P. XYZ, Q.1, TP.HCM"
+
+                {/* Toggle trên cùng — xem PickupToggle. */}
+                <PickupToggle
+                  checked={r.receiverAddress === PICKUP_AT_WAREHOUSE}
+                  onChange={on => {
+                    handleFieldChange(r.id, 'receiverAddress', on ? PICKUP_AT_WAREHOUSE : '');
+                    handleFieldChange(r.id, 'provinceName', '');
+                    handleFieldChange(r.id, 'wardName', '');
+                  }}
                 />
+
+                <input
+                  value={r.receiverAddress === PICKUP_AT_WAREHOUSE ? '' : (r.receiverAddress || '')}
+                  onChange={e => handleFieldChange(r.id, 'receiverAddress', e.target.value)}
+                  disabled={r.receiverAddress === PICKUP_AT_WAREHOUSE}
+                  className={`${inputCls} disabled:bg-surface-2 disabled:text-faint disabled:cursor-not-allowed`}
+                  placeholder="Số nhà, tên đường"
+                />
+
+                {r.receiverAddress !== PICKUP_AT_WAREHOUSE && (
+                  <AddressSelect
+                    compact
+                    province={r.provinceName}
+                    ward={r.wardName}
+                    onChange={(prov, w) => {
+                      handleFieldChange(r.id, 'provinceName', prov);
+                      handleFieldChange(r.id, 'wardName', w);
+                    }}
+                  />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -350,6 +384,8 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
       pricingType: customer.pricingType || 'RETAIL_PRICE',
       discountRate: customer.discountRate ?? 0,
       invoiceDays: customer.invoiceDays ?? -1,
+      birthday: customer.birthday ?? null,
+      storeOpeningDate: customer.storeOpeningDate ?? null,
     });
     setCategory(customer.categoryId
       ? { id: customer.categoryId, name: customer.categoryName, color: customer.categoryColor }
@@ -386,8 +422,28 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
   const handleSave = async () => {
     if (codeError) { toast(codeError, 'error'); return; }
     if (!form.customerCode?.trim()) { toast('Mã khách hàng không được để trống', 'error'); return; }
+    // Khách lẻ BẮT BUỘC có sinh nhật — áp dụng cả khi chỉ ĐỔI LOẠI Công ty → Cá nhân.
+    // Khách công ty thì ngày khai trương là tuỳ chọn.
+    if (!isCompany && !form.birthday) {
+      toast('Vui lòng nhập ngày sinh nhật cho khách lẻ', 'error'); return;
+    }
 
     // Validate receiver: address bắt buộc nếu có dòng nào
+    // Nhận tại kho không cần tỉnh/phường; còn lại bắt buộc chọn ĐỦ tỉnh + phường.
+    const missingProvince = receiversRef.current.find(
+      r => r.receiverAddress?.trim() && r.receiverAddress !== PICKUP_AT_WAREHOUSE && !r.provinceName);
+    if (missingProvince) {
+      toast('Vui lòng chọn Tỉnh/Thành phố cho địa chỉ nhận hàng', 'error');
+      return;
+    }
+
+    const missingWard = receiversRef.current.find(
+      r => r.receiverAddress?.trim() && r.receiverAddress !== PICKUP_AT_WAREHOUSE && !r.wardName);
+    if (missingWard) {
+      toast('Vui lòng chọn Phường/Xã/Đặc khu cho địa chỉ nhận hàng', 'error');
+      return;
+    }
+
     const invalidReceiver = receiversRef.current.find(r => !r.receiverAddress?.trim());
     if (invalidReceiver) {
       toast('Vui lòng nhập địa chỉ nhận hàng (không được để trống)', 'error');
@@ -412,6 +468,9 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
         categoryId: category ? category.id : null,
         discountRate: form.discountRate ?? 0,
         invoiceDays: form.invoiceDays ?? -1,
+        // Gửi null khi đổi loại để backend xoá dữ liệu không còn phù hợp.
+        birthday: isCompany ? null : (form.birthday ?? null),
+        storeOpeningDate: isCompany ? (form.storeOpeningDate ?? null) : null,
       };
       const res = await api.put(`/api/seller/customers/b2b/${customer.id}`, payload);
       if (res.data?.code !== 900 && res.data?.code !== 200) {
@@ -444,6 +503,8 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
               op: 'add',
               data: {
                 receiverAddress: r.receiverAddress.trim(),
+                provinceName: r.provinceName || null,
+                wardName: r.wardName || null,
                 receiverName: r.receiverName?.trim() || null,
                 receiverPhone: r.receiverPhone?.trim() || null,
                 isDefault: !!r.isDefault,
@@ -454,11 +515,16 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
           const o = orig.find(x => x.id === r.id);
           if (!o) continue;
 
-          // Update nếu có thay đổi
+          // Update nếu có thay đổi (kể cả tỉnh/phường)
+          const isPickup = r.receiverAddress === PICKUP_AT_WAREHOUSE;
+          const nextProvince = isPickup ? null : (r.provinceName || null);
+          const nextWard = isPickup ? null : (r.wardName || null);
           const changed =
             (r.receiverAddress || '') !== (o.receiverAddress || '') ||
             (r.receiverName || '') !== (o.receiverName || '') ||
-            (r.receiverPhone || '') !== (o.receiverPhone || '');
+            (r.receiverPhone || '') !== (o.receiverPhone || '') ||
+            (nextProvince || '') !== (o.provinceName || '') ||
+            (nextWard || '') !== (o.wardName || '');
           if (changed) {
             ops.push({
               op: 'update',
@@ -467,6 +533,8 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
                 receiverAddress: r.receiverAddress,
                 receiverName: r.receiverName || null,
                 receiverPhone: r.receiverPhone || null,
+                provinceName: nextProvince,
+                wardName: nextWard,
               },
             });
           }
@@ -619,6 +687,36 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
             </>
           )}
 
+          {/* Ngày kỷ niệm — đổi theo loại khách */}
+          <div>
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
+              {isCompany ? 'Ngày khai trương cửa hàng mới' : 'Ngày sinh nhật *'}
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <DatePicker
+                  value={isCompany ? form.storeOpeningDate : form.birthday}
+                  onChange={v => set(isCompany ? 'storeOpeningDate' : 'birthday', v)}
+                  placeholder={isCompany ? 'Chọn ngày khai trương' : 'Chọn ngày sinh nhật'}
+                  maxDate={isCompany ? undefined : new Date()}
+                />
+              </div>
+              {/* Chỉ khách công ty được xoá: sinh nhật khách lẻ là bắt buộc. */}
+              {isCompany && form.storeOpeningDate && (
+                <button type="button" onClick={() => set('storeOpeningDate', null)}
+                  className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  title="Xoá ngày khai trương">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-faint mt-1">
+              {isCompany
+                ? 'Không bắt buộc. Dùng để nhắc tặng quà/voucher khai trương.'
+                : 'Bắt buộc với khách lẻ. Dùng để nhắc và tạo voucher sinh nhật.'}
+            </p>
+          </div>
+
           {/* Loại giá */}
           <div>
             <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">Loại giá</label>
@@ -743,12 +841,19 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
 }
 
 // ─── Customer Row ─────────────────────────────────────────────────────────────
-function CustomerRow({ c, onEdit, onContract }) {
+function CustomerRow({ c, onEdit, onContract, onVoucher }) {
   const isCompany = c.customerType === 'COMPANY';
   const isWholesale = c.pricingType === 'WHOLESALE_PRICE';
+  // Nền đổi màu khi sắp tới sinh nhật (khách lẻ) hoặc khai trương (khách công ty).
+  // Cờ anniversaryUpcoming do server tính theo giờ VN; đã qua ngày → chuỗi rỗng
+  // nên hàng tự về màu bình thường.
+  const anniversaryBg = anniversaryRowClass(
+    c.anniversaryUpcoming, c.daysUntilAnniversary, isCompany ? 'emerald' : 'rose');
 
   return (
-    <div className="bg-surface rounded-2xl border border-line-soft hover:border-gold/40 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3">
+    <div className={`rounded-2xl border border-line-soft hover:border-gold/40 hover:shadow-sm
+      transition-all px-4 py-3 flex items-center gap-3
+      ${anniversaryBg || 'bg-surface'}`}>
       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${isCompany ? 'bg-blue-500' : 'bg-gold'}`}>
         {isCompany ? <Building2 size={16} /> : <UserIcon size={16} />}
       </div>
@@ -787,6 +892,7 @@ function CustomerRow({ c, onEdit, onContract }) {
           {c.phone && <span className="flex items-center gap-1 text-[11px] text-muted"><Phone size={10} />{c.phone}</span>}
           {c.email && <span className="flex items-center gap-1 text-[11px] text-muted truncate max-w-[140px]"><Mail size={10} />{c.email}</span>}
           {isCompany && c.contactName && <span className="text-[11px] text-muted">Liên hệ: {c.contactName}</span>}
+          <SellerAnniversaryTag c={c} />
         </div>
       </div>
       <div className="text-right shrink-0 hidden sm:block">
@@ -805,6 +911,22 @@ function CustomerRow({ c, onEdit, onContract }) {
         title={c.hasContract ? 'Xem hợp đồng' : 'Tải hợp đồng lên'}>
         <FileText size={13} />
       </button>
+      {/* Tạo voucher quà tặng — CHỈ hiện khi khách đã khai báo dịp tương ứng.
+          Ẩn nút khi chưa có ngày thay vì hiện rồi báo lỗi: backend từ chối tạo
+          voucher sinh nhật/khai trương cho khách chưa khai ngày, nên nút đó bấm
+          vào chỉ để nhận thông báo lỗi. */}
+      {(isCompany ? c.storeOpeningDate : c.birthday) && (
+        <button onClick={(e) => { e.stopPropagation(); onVoucher?.(c); }}
+          className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-colors shrink-0
+            ${c.anniversaryUpcoming
+              ? (isCompany
+                ? 'border-emerald-300 dark:border-emerald-500/40 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+                : 'border-rose-300 dark:border-rose-500/40 text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10')
+              : 'border-line text-muted hover:border-gold hover:text-gold hover:bg-gold-tint'}`}
+          title={isCompany ? 'Tạo quà tặng khai trương' : 'Tạo quà tặng sinh nhật'}>
+          <Ticket size={13} />
+        </button>
+      )}
       <button onClick={() => onEdit(c)}
         className="w-8 h-8 rounded-xl border border-line flex items-center justify-center text-muted hover:border-gold hover:text-gold hover:bg-gold-tint transition-colors shrink-0">
         <Edit2 size={13} />
@@ -814,20 +936,29 @@ function CustomerRow({ c, onEdit, onContract }) {
 }
 
 // ─── Category Accordion Section ───────────────────────────────────────────────
-function CategorySection({ label, color, customers, defaultOpen, onEdit, onContract }) {
+function CategorySection({ label, color, customers, defaultOpen, virtual, onEdit, onContract, onVoucher }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="rounded-2xl border border-line-soft overflow-hidden">
+    <div className={`rounded-2xl border overflow-hidden
+      ${virtual ? 'border-rose-200 dark:border-rose-500/30' : 'border-line-soft'}`}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-surface hover:bg-gold-tint transition-colors"
+        className={`w-full flex items-center gap-3 px-4 py-3 transition-colors
+          ${virtual
+            ? 'bg-rose-50 dark:bg-rose-500/12 hover:bg-rose-100 dark:hover:bg-rose-500/18'
+            : 'bg-surface hover:bg-gold-tint'}`}
       >
-        {color
-          ? <span className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-          : <Tag size={13} className="text-faint shrink-0" />}
+        {virtual
+          ? <Cake size={14} className="text-rose-500 shrink-0" />
+          : color
+            ? <span className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
+            : <Tag size={13} className="text-faint shrink-0" />}
         <span className="font-semibold text-sm text-ink flex-1 text-left">{label}</span>
-        <span className="text-[11px] text-muted font-medium">{customers.length} khách</span>
+        <span className={`text-[11px] font-medium
+          ${virtual ? 'text-rose-600 dark:text-rose-300' : 'text-muted'}`}>
+          {customers.length} khách
+        </span>
         {open
           ? <ChevronDown size={15} className="text-muted shrink-0" />
           : <ChevronRight size={15} className="text-muted shrink-0" />}
@@ -835,7 +966,7 @@ function CategorySection({ label, color, customers, defaultOpen, onEdit, onContr
       {open && (
         <div className="border-t border-line-soft p-3 space-y-2 bg-surface">
           {customers.map(c => (
-            <CustomerRow key={c.id} c={c} onEdit={onEdit} onContract={onContract} />
+            <CustomerRow key={c.id} c={c} onEdit={onEdit} onContract={onContract} onVoucher={onVoucher} />
           ))}
         </div>
       )}
@@ -858,9 +989,20 @@ export default function SellerCustomersPage() {
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  /**
+   * Bật = đưa khách SẮP TỚI DỊP lên đầu (sinh nhật khách lẻ, khai trương khách công ty).
+   *
+   * <p>Sắp xếp Ở CLIENT chứ không gọi API: màn hình này vốn đã nạp cả trang 200 khách
+   * một lượt và gom nhóm tại chỗ, nên thêm một tham số sort ở server sẽ phá cấu trúc
+   * nhóm hiện có mà không đổi được gì về số dòng phải tải.
+   */
+  const [anniversarySort, setAnniversarySort] = useState(false);
   const debouncedSearch = useDebounce(search, 400);
 
   const [editTarget, setEditTarget] = useState(null);
+  /** Khách đang được tạo voucher quà tặng (sinh nhật / khai trương). */
+  const [voucherTarget, setVoucherTarget] = useState(null);
+  const navigate = useNavigate();
   const [importing, setImporting] = useState(false);
   const [exportingTemplate, setExportingTemplate] = useState(false);
   const [exportingDebt, setExportingDebt] = useState(false);
@@ -891,20 +1033,68 @@ export default function SellerCustomersPage() {
   const contract = useContractModals(() => load(page));
   const openContract = (c) => (c.hasContract ? contract.view(c) : contract.upload(c));
 
+  /**
+   * Xếp khách sắp tới dịp lên đầu: còn ít ngày nhất trước.
+   *
+   * <p>Chỉ tính những khách CHƯA QUA dịp trong tháng (`anniversaryUpcoming`) — khách đã
+   * qua sinh nhật năm nay còn tới ~11 tháng nữa, đẩy họ lên đầu chỉ vì "có ngày sinh"
+   * sẽ làm loãng đúng nhóm cần chăm sóc ngay.
+   */
+  const sortByAnniversary = useCallback((list) => {
+    if (!anniversarySort) return list;
+    const rank = (c) =>
+      c.anniversaryUpcoming && c.daysUntilAnniversary != null
+        ? c.daysUntilAnniversary
+        : Number.MAX_SAFE_INTEGER;
+    return [...list].sort((a, b) => rank(a) - rank(b));
+  }, [anniversarySort]);
+
+  /**
+   * Gom khách theo danh mục, kèm một NHÓM ẢO đứng đầu.
+   *
+   * <p>Nhóm ảo "Sắp tới sinh nhật / khai trương" gom khách có dịp rơi vào tháng này và
+   * CHƯA QUA (cờ `anniversaryUpcoming` do server tính theo giờ VN). Nhóm này không tồn
+   * tại trong database — nó chỉ là cách sắp xếp lại danh sách hiện có.
+   *
+   * <p>Khách đã vào nhóm ảo bị LOẠI khỏi danh mục gốc, cố ý không hiển thị hai lần: cùng
+   * một khách xuất hiện ở hai chỗ thì rất dễ thao tác nhầm trên bản sao mà người dùng
+   * tưởng là khách khác.
+   */
   const grouped = (() => {
     const map = new Map();
+    const upcoming = [];
+
     for (const c of customers) {
+      if (c.anniversaryUpcoming) { upcoming.push(c); continue; }
       const key = c.categoryId ?? '__none__';
       if (!map.has(key)) map.set(key, { label: c.categoryName || 'Chưa phân loại', color: c.categoryColor || null, items: [] });
       map.get(key).items.push(c);
     }
+
     const entries = [...map.entries()];
     entries.sort(([ka, a], [kb, b]) => {
       if (ka === '__none__') return 1;
       if (kb === '__none__') return -1;
       return a.label.localeCompare(b.label, 'vi');
     });
-    return entries;
+
+    // Sắp xếp trong TỪNG nhóm, giữ nguyên thứ tự các nhóm — người dùng vẫn cần
+    // tìm khách theo danh mục quen thuộc, chỉ đổi thứ tự bên trong.
+    const result = entries.map(([k, g]) => [k, { ...g, items: sortByAnniversary(g.items) }]);
+
+    if (upcoming.length > 0) {
+      // Luôn xếp theo ngày gần nhất trước, bất kể nút sort có bật hay không —
+      // đây chính là lý do tồn tại của nhóm này.
+      upcoming.sort((a, b) =>
+        (a.daysUntilAnniversary ?? 999) - (b.daysUntilAnniversary ?? 999));
+      result.unshift(['__upcoming__', {
+        label: 'Sắp tới sinh nhật / khai trương',
+        color: null,
+        items: upcoming,
+        virtual: true,
+      }]);
+    }
+    return result;
   })();
 
   const handleDownloadTemplate = async () => {
@@ -1000,6 +1190,17 @@ export default function SellerCustomersPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            {/* Hai trang con mở từ đây thay vì từ menu — xem SubPageShell. */}
+            <button onClick={() => navigate('/seller/vouchers')} title="Quản lý voucher"
+              className="h-9 px-3 rounded-xl border border-line flex items-center gap-1.5 text-xs text-ink-2 hover:border-gold hover:text-gold transition-colors">
+              <Ticket size={14} />
+              <span className="hidden sm:inline">Voucher</span>
+            </button>
+            <button onClick={() => navigate('/seller/gift-orders')} title="Phiếu tặng quà"
+              className="h-9 px-3 rounded-xl border border-line flex items-center gap-1.5 text-xs text-ink-2 hover:border-gold hover:text-gold transition-colors">
+              <Gift size={14} />
+              <span className="hidden sm:inline">Phiếu tặng quà</span>
+            </button>
             <button onClick={() => setDebtModalOpen(true)} disabled={exportingDebt} title="Báo cáo công nợ"
               className="h-9 px-3 rounded-xl border border-line flex items-center gap-1.5 text-xs text-ink-2 hover:border-gold transition-colors disabled:opacity-60">
               {exportingDebt
@@ -1038,6 +1239,17 @@ export default function SellerCustomersPage() {
             <option value="RETAIL">Cá nhân</option>
             <option value="COMPANY">Công ty</option>
           </select>
+          <button
+            type="button"
+            onClick={() => setAnniversarySort(v => !v)}
+            title="Đưa khách sắp tới sinh nhật / khai trương lên đầu"
+            className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors
+              ${anniversarySort
+                ? 'bg-rose-500 text-white border-rose-500'
+                : 'border-line text-ink-2 hover:bg-surface-2'}`}>
+            <Cake size={14} />
+            <span className="hidden sm:inline">Sắp tới dịp</span>
+          </button>
         </div>
       </div>
 
@@ -1073,20 +1285,22 @@ export default function SellerCustomersPage() {
           <>
             {search ? (
               <div className="space-y-2">
-                {customers.map(c => <CustomerRow key={c.id} c={c} onEdit={setEditTarget}
-                  onContract={openContract} />)}
+                {sortByAnniversary(customers).map(c => <CustomerRow key={c.id} c={c} onEdit={setEditTarget}
+                  onContract={openContract} onVoucher={setVoucherTarget} />)}
               </div>
             ) : (
               <div className="space-y-3">
-                {grouped.map(([key, { label, color, items }], idx) => (
+                {grouped.map(([key, { label, color, items, virtual }], idx) => (
                   <CategorySection
                     key={key}
                     label={label}
                     color={color}
+                    virtual={virtual}
                     customers={items}
                     defaultOpen={idx === 0}
                     onEdit={setEditTarget}
                     onContract={openContract}
+                    onVoucher={setVoucherTarget}
                   />
                 ))}
               </div>
@@ -1108,6 +1322,13 @@ export default function SellerCustomersPage() {
           </>
         )}
       </div>
+
+      {/* Tạo quà tặng — voucher hoặc phiếu sản phẩm, xem CreateGiftModal. */}
+      <CreateGiftModal
+        customer={voucherTarget}
+        onClose={() => setVoucherTarget(null)}
+        onDone={() => load(0)}
+      />
 
       <EditCustomerModal
         open={!!editTarget}
@@ -1131,5 +1352,41 @@ export default function SellerCustomersPage() {
 
       {contract.render()}
     </div>
+  );
+}
+
+// ── Ngày kỷ niệm ─────────────────────────────────────────────────────────────
+
+/**
+ * Nhãn ngày sinh nhật (khách lẻ) hoặc ngày khai trương cửa hàng mới (khách công ty).
+ *
+ * <p>Chỉ hiện phần đếm ngược khi dịp thuộc THÁNG NÀY và CHƯA QUA — cờ
+ * `anniversaryUpcoming` do server tính theo giờ VN. Đã qua ngày thì nhãn về màu xám
+ * bình thường, đúng yêu cầu "đã qua thì hiển thị bình thường".
+ */
+function SellerAnniversaryTag({ c }) {
+  const isCompany = c.customerType === 'COMPANY';
+  const value = isCompany ? c.storeOpeningDate : c.birthday;
+  if (!value) return null;
+
+  const upcoming = !!c.anniversaryUpcoming;
+  const Icon = isCompany ? Store : Cake;
+  const label = upcoming ? countdownLabel(c.daysUntilAnniversary) : null;
+  const activeColor = isCompany
+    ? 'text-emerald-600 dark:text-emerald-300'
+    : 'text-rose-600 dark:text-rose-300';
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`inline-flex items-center gap-1 text-[11px] ${upcoming ? activeColor : 'text-muted'}`}>
+        <Icon size={10} />
+        {isCompany ? 'KT ' : 'SN '}{formatDayMonth(value)}
+      </span>
+      {label && (
+        <span className={anniversaryBadgeClass(c.daysUntilAnniversary, isCompany ? 'emerald' : 'rose')}>
+          {label}
+        </span>
+      )}
+    </span>
   );
 }

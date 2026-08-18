@@ -41,6 +41,19 @@ const KM_LEVEL = [
 ];
 const kmLevel = (km) => KM_LEVEL.find(l => (km || 0) >= l.min) || KM_LEVEL[KM_LEVEL.length - 1];
 
+/**
+ * MÀU Ô LỊCH theo yêu cầu:
+ *   GREEN  = có chạy (km > 0)
+ *   YELLOW = có điểm danh nhưng ODO start = end (km = 0)
+ *   GRAY   = không chạy / không có dữ liệu
+ */
+const DAY_COLOR = {
+  GREEN:  { cls: 'bg-emerald-500 text-white border-emerald-500', dot: 'bg-emerald-500', label: 'Có chạy' },
+  YELLOW: { cls: 'bg-amber-400 text-amber-950 border-amber-400', dot: 'bg-amber-400',  label: 'ODO đầu = cuối' },
+  GRAY:   { cls: 'bg-canvas text-faint border-hairline',         dot: 'bg-hairline-2', label: 'Không chạy' },
+};
+const dayColorCfg = (d) => DAY_COLOR[d?.dayColor] || DAY_COLOR.GRAY;
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CHỌN THÁNG
@@ -183,8 +196,9 @@ function DriverDayDetail({ day, month, year, kmPerTrip, onClose }) {
   if (!day) return null;
 
   const dateStr = `${String(day.day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-  const cfg = kmLevel(day.totalKm);
+  const cfg = dayColorCfg(day);
   const estimated = day.kmSource !== 'ODOMETER';
+  const odo = day.odo || [];
 
   return (
     <div className="lg:h-full flex flex-col rounded-2xl border border-gold/30 overflow-hidden
@@ -227,6 +241,43 @@ function DriverDayDetail({ day, month, year, kmPerTrip, onClose }) {
               : 'Số liệu thật, lấy từ chốt odo vào ca / kết ca của ngày này.'}
           </p>
         </div>
+
+        {/* Chi tiết điểm danh ODO */}
+        {odo.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wide font-bold text-muted">
+              Chi tiết điểm danh
+            </p>
+            {odo.map((o, i) => (
+              <div key={i} className="bg-surface rounded-xl border border-hairline px-3.5 py-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-ink">
+                    {o.vehicleType === 'TRUCK' ? 'Xe tải' : o.vehicleType === 'MOTORBIKE' ? 'Xe máy' : o.vehicleType}
+                  </span>
+                  <span className="text-[11px] font-bold text-gold">
+                    {o.km != null ? `${fmtNum(o.km, 0)} km` : '—'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-canvas rounded-lg px-2.5 py-1.5">
+                    <p className="text-[10px] text-muted">ODO vào ca</p>
+                    <p className="text-xs font-bold text-ink">{o.odoStart != null ? fmtNum(o.odoStart, 0) : '—'}</p>
+                    {o.startRecordedBy && (
+                      <p className="text-[10px] text-muted mt-0.5 truncate">bởi {o.startRecordedBy}</p>
+                    )}
+                  </div>
+                  <div className="bg-canvas rounded-lg px-2.5 py-1.5">
+                    <p className="text-[10px] text-muted">ODO kết ca</p>
+                    <p className="text-xs font-bold text-ink">{o.odoEnd != null ? fmtNum(o.odoEnd, 0) : '—'}</p>
+                    {o.endRecordedBy && (
+                      <p className="text-[10px] text-muted mt-0.5 truncate">bởi {o.endRecordedBy}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Danh sách đơn */}
         {day.orders?.length ? (
@@ -290,8 +341,10 @@ function DriverCalendar({ driver, month, year }) {
   const leading = Math.max(0, days[0].weekday - 2);
   const cells = [...Array(leading).fill(null), ...days];
 
-  const usedLevels = KM_LEVEL.filter(l =>
-    days.some(d => kmLevel(d.totalKm).label === l.label));
+  // Chỉ hiện chú thích màu thực sự xuất hiện trong tháng.
+  const usedColors = ['GREEN', 'YELLOW', 'GRAY']
+    .filter(c => days.some(d => (d.dayColor || 'GRAY') === c))
+    .map(c => ({ key: c, ...DAY_COLOR[c] }));
 
   return (
     <SectionCard>
@@ -325,9 +378,10 @@ function DriverCalendar({ driver, month, year }) {
             <div className="grid grid-cols-[repeat(7,44px)] gap-1.5">
               {cells.map((d, i) => {
                 if (!d) return <div key={`empty-${i}`} />;
-                const cfg = kmLevel(d.totalKm);
+                const cfg = dayColorCfg(d);
                 const isSelected = selected?.day === d.day;
-                const clickable = (d.totalKm || 0) > 0 || (d.orderCount || 0) > 0;
+                const clickable = (d.totalKm || 0) > 0 || (d.orderCount || 0) > 0
+                  || (d.odo && d.odo.length > 0);
 
                 return (
                   <button key={d.day}
@@ -351,8 +405,8 @@ function DriverCalendar({ driver, month, year }) {
 
             <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-hairline
               max-w-[340px]">
-              {usedLevels.map(l => (
-                <div key={l.label} className="flex items-center gap-1.5">
+              {usedColors.map(l => (
+                <div key={l.key} className="flex items-center gap-1.5">
                   <span className={`w-3.5 h-3.5 rounded-md border ${l.cls}`} />
                   <span className="text-[11px] text-muted font-medium">{l.label}</span>
                 </div>
@@ -378,10 +432,7 @@ function DriverCalendar({ driver, month, year }) {
             { label: 'Tổng km trong tháng', value: fmtNum(driver.totalKm, 1), color: 'text-gold' },
             { label: 'Số ngày có chạy', value: driver.activeDays ?? 0, color: 'text-emerald-600 dark:text-emerald-300' },
             { label: 'Tổng số đơn', value: driver.totalOrders ?? 0, color: 'text-ink' },
-            {
-              label: 'Km trung bình / ngày chạy', color: 'text-blue-600 dark:text-blue-300',
-              value: driver.activeDays ? fmtNum(driver.totalKm / driver.activeDays, 1) : '—',
-            },
+            { label: 'Tổng số lượt giao', value: driver.totalTrips ?? 0, color: 'text-blue-600 dark:text-blue-300' },
           ].map(st => (
             <div key={st.label} className="bg-canvas rounded-xl px-3 py-2.5">
               <p className="text-[11px] text-muted font-medium">{st.label}</p>
@@ -389,6 +440,31 @@ function DriverCalendar({ driver, month, year }) {
             </div>
           ))}
         </div>
+
+        {/* Bảng tính lương — khi OWNER đã nhập giá xăng + đơn giá thưởng và Hoàn tất */}
+        {driver.totalSalary != null && (
+          <div className="mt-4 rounded-2xl border border-gold/30 bg-gradient-to-br from-gold/10 to-transparent p-4">
+            <p className="text-[11px] uppercase tracking-wide font-bold text-muted mb-3">Lương tháng này</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted">
+                  Tiền xăng: {fmtNum(driver.totalKm, 1)} km × {fmtVnd(driver.gasPrice)}/km
+                </span>
+                <span className="font-semibold text-ink">{fmtVnd(driver.fuelPay)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted">
+                  Thưởng: {driver.totalTrips ?? 0} lượt × {fmtVnd(driver.bonusUnitPrice)}/lượt
+                </span>
+                <span className="font-semibold text-ink">{fmtVnd(driver.bonusPay)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 mt-1 border-t border-gold/20">
+                <span className="font-bold text-ink">Tổng lương</span>
+                <span className="text-lg font-bold text-gold">{fmtVnd(driver.totalSalary)}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <p className="text-[11px] text-muted mt-3 leading-relaxed">
           Số km được ước tính từ các đơn hàng <strong>đã và đang giao</strong> mà bạn được phân công

@@ -9,10 +9,10 @@
 // dò tới/lùi cho đến khi gặp bản ghi. Vì vậy card luôn hiển thị NGÀY THỰC TẾ lấy được
 // bên cạnh số odo — nếu không, người xem sẽ tưởng đó là số của ngày mình chọn.
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Truck, Bike, Gauge, Package, Calendar, RefreshCw, X, MapPin,
-  ChevronRight, AlertCircle, Settings2, EyeOff, Eye, Plus, Pencil,
+  ChevronRight, ChevronDown, Search, AlertCircle, Settings2, EyeOff, Eye, Plus, Pencil, Link as LinkIcon,
 } from 'lucide-react';
 import { adminDriverOdometerApi } from '../../api/adminApi';
 import { BackButton } from '../../components/common/SubPageNav';
@@ -236,6 +236,158 @@ function DriverCard({ d, onDetail }) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
+// Combobox chọn tài khoản — có ô tìm kiếm (mở inline để không bị cắt trong modal)
+// ══════════════════════════════════════════════════════════════════════════════
+function AccountCombobox({ users, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef(null);
+
+  const selected = users.find(u => String(u.id) === String(value));
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return users;
+    return users.filter(u =>
+      (u.fullName || '').toLowerCase().includes(s) ||
+      (u.username || '').toLowerCase().includes(s));
+  }, [users, q]);
+
+  return (
+    <div ref={ref} className="relative w-[210px]">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full text-[11px] px-2 py-1 rounded-lg border border-hairline-2 bg-surface
+          text-left flex items-center justify-between gap-1">
+        <span className={`truncate ${selected ? 'text-ink' : 'text-faint'}`}>
+          {selected ? `${selected.fullName || selected.username} (@${selected.username})` : '— chọn tài khoản —'}
+        </span>
+        <ChevronDown size={12} className="shrink-0 text-muted" />
+      </button>
+
+      {open && (
+        <div className="mt-1 rounded-xl border border-hairline-2 bg-surface shadow-lg overflow-hidden">
+          <div className="p-1.5 border-b border-hairline">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-canvas">
+              <Search size={12} className="text-muted shrink-0" />
+              <input autoFocus value={q} onChange={e => setQ(e.target.value)}
+                placeholder="Tìm theo tên / username..."
+                className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint" />
+            </div>
+          </div>
+          <div className="max-h-52 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="text-[11px] text-faint px-3 py-2">Không tìm thấy tài khoản</p>
+            ) : filtered.map(u => (
+              <button key={u.id} type="button"
+                onClick={() => { onChange(String(u.id)); setOpen(false); setQ(''); }}
+                className={`w-full text-left px-3 py-1.5 text-[11px] hover:bg-canvas flex items-center
+                  justify-between gap-2 ${String(u.id) === String(value) ? 'bg-canvas' : ''}`}>
+                <span className="truncate">
+                  <span className="text-ink font-medium">{u.fullName || u.username}</span>
+                  <span className="text-muted"> @{u.username}</span>
+                </span>
+                {u.isDriver && (
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-gold/15 text-gold shrink-0">tài xế</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Modal THÊM TÀI XẾ — 3 field: tên, loại xe, "không xử lý"
+// ══════════════════════════════════════════════════════════════════════════════
+function AddDriverModal({ onClose, onCreated }) {
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [type, setType] = useState('BOTH');
+  const [system, setSystem] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!name.trim()) { toast('Nhập tên tài xế', 'error'); return; }
+    setSaving(true);
+    try {
+      const res = await driverAdminApi.create({
+        name: name.trim(), vehicleType: type, systemDriver: system,
+      });
+      const uname = res?.username;
+      toast(uname ? `Đã tạo tài xế + tài khoản @${uname}` : 'Đã tạo tài xế', 'success');
+      onCreated && onCreated();
+      onClose();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không tạo được tài xế', 'error');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-5 border-b border-hairline">
+          <p className="font-bold text-ink">Thêm tài xế</p>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-canvas text-muted transition">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-muted mb-1">Tên tài xế *</label>
+            <input autoFocus value={name} onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && submit()}
+              placeholder="VD: Nguyễn Văn A"
+              className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-surface
+                focus:outline-none focus:ring-2 focus:ring-gold/40" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted mb-1">Loại xe</label>
+            <select value={type} onChange={e => setType(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-surface
+                focus:outline-none focus:ring-2 focus:ring-gold/40">
+              <option value="MOTORBIKE">Xe máy</option>
+              <option value="TRUCK">Xe tải</option>
+              <option value="BOTH">Cả 2 (Xe máy + Xe tải)</option>
+            </select>
+          </div>
+          <label className="flex items-start gap-2 text-sm text-ink cursor-pointer select-none">
+            <input type="checkbox" checked={system} onChange={e => setSystem(e.target.checked)}
+              className="w-4 h-4 mt-0.5 rounded border-gold/60 text-gold focus:ring-gold/40" />
+            <span>
+              Không xử lý
+              <span className="block text-[11px] text-muted font-normal">
+                Dành cho lựa chọn giao ảo (Grab, Giao tại kho…): không tạo tài khoản,
+                không theo dõi ODO, nhưng vẫn gán được cho đơn.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div className="p-5 border-t border-hairline flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted hover:bg-canvas transition">
+            Huỷ
+          </button>
+          <button onClick={submit} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-forest-deep text-white text-sm font-bold hover:bg-forest-mid transition disabled:opacity-50">
+            {saving ? 'Đang thêm...' : 'Thêm tài xế'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Modal chọn tài xế nào được THEO DÕI ODO
 // ══════════════════════════════════════════════════════════════════════════════
 //
@@ -249,38 +401,62 @@ function ManageDriversModal({ onClose, onSaved }) {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
-  // Form thêm mới
-  const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState('BOTH');
-  const [newSystem, setNewSystem] = useState(false);
-  const [creating, setCreating] = useState(false);
+  // Tìm kiếm + modal thêm tài xế
+  const [search, setSearch] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
 
   // Dòng đang sửa
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: '', vehicleType: 'BOTH', systemDriver: false, active: true });
 
+  // Gắn tài khoản cho data cũ
+  const [availUsers, setAvailUsers] = useState([]);
+  const [linkPick, setLinkPick] = useState({});   // driverId -> userId đang chọn
+  const [linkingId, setLinkingId] = useState(null);
+
   const load = () => {
     setLoading(true);
-    driverAdminApi.list()
-      .then(res => setDrivers(Array.isArray(res) ? res : (res?.data || [])))
+    Promise.all([
+      driverAdminApi.list().catch(() => []),
+      driverAdminApi.availableUsers().catch(() => []),
+    ])
+      .then(([list, users]) => {
+        setDrivers(Array.isArray(list) ? list : (list?.data || []));
+        setAvailUsers(Array.isArray(users) ? users : (users?.data || []));
+      })
       .catch(() => toast('Không tải được danh sách tài xế', 'error'))
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
 
-  const doCreate = async () => {
-    if (!newName.trim()) { toast('Nhập tên tài xế', 'error'); return; }
-    setCreating(true);
-    try {
-      await driverAdminApi.create({
-        name: newName.trim(), vehicleType: newType, systemDriver: newSystem,
+  // Sắp xếp: còn hoạt động → ngưng → không xử lý; trong mỗi nhóm sort theo tên.
+  // Kèm lọc theo ô tìm kiếm (theo tên, không phân biệt hoa thường/dấu cách).
+  const visibleDrivers = useMemo(() => {
+    const rank = (d) => d.systemDriver ? 2 : (d.active === false ? 1 : 0);
+    const q = search.trim().toLowerCase();
+    return drivers
+      .filter(d => !q || (d.name || '').toLowerCase().includes(q))
+      .slice()
+      .sort((a, b) => {
+        const r = rank(a) - rank(b);
+        if (r !== 0) return r;
+        return (a.name || '').localeCompare(b.name || '', 'vi', { sensitivity: 'base' });
       });
-      toast('Đã tạo tài xế', 'success');
-      setNewName(''); setNewType('BOTH'); setNewSystem(false);
+  }, [drivers, search]);
+
+  /** Gắn tài xế (data cũ) với một tài khoản DRIVER đã tồn tại. */
+  const doLink = async (driverId) => {
+    const userId = linkPick[driverId];
+    if (!userId) { toast('Chọn tài khoản để gắn', 'error'); return; }
+    setLinkingId(driverId);
+    try {
+      await driverAdminApi.link(driverId, Number(userId));
+      toast('Đã gắn tài khoản với tài xế', 'success');
+      setLinkPick(p => { const n = { ...p }; delete n[driverId]; return n; });
       load(); onSaved && onSaved();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Không tạo được tài xế', 'error');
-    } finally { setCreating(false); }
+      toast(e?.response?.data?.message || 'Không gắn được tài khoản', 'error');
+    } finally { setLinkingId(null); }
   };
 
   const startEdit = (d) => {
@@ -343,22 +519,24 @@ function ManageDriversModal({ onClose, onSaved }) {
           </button>
         </div>
 
-        {/* Thêm mới */}
+        {/* Tìm kiếm + nút Thêm */}
         <div className="p-4 border-b border-hairline bg-canvas">
-          <div className="flex flex-wrap items-center gap-2">
-            <input value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && doCreate()}
-              placeholder="Tên tài xế mới..."
-              className="flex-1 min-w-[140px] px-3 py-1.5 rounded-lg border border-line text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-gold/40" />
-            <TypeSelect value={newType} onChange={setNewType} />
-            <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
-              <input type="checkbox" checked={newSystem} onChange={e => setNewSystem(e.target.checked)}
-                className="w-4 h-4 rounded border-gold/60 text-gold focus:ring-gold/40" />
-              Không xử lý
-            </label>
-            <button onClick={doCreate} disabled={creating}
-              className="px-3 py-1.5 rounded-lg bg-forest-deep text-white text-xs font-bold hover:bg-forest-mid transition disabled:opacity-50 flex items-center gap-1">
-              <Plus size={12} /> Thêm
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line bg-surface
+              focus-within:ring-2 focus-within:ring-gold/40">
+              <Search size={14} className="text-muted shrink-0" />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Tìm tên tài xế..."
+                className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-faint" />
+              {search && (
+                <button onClick={() => setSearch('')} className="text-muted hover:text-ink shrink-0">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <button onClick={() => setAddOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-forest-deep text-white text-sm font-bold hover:bg-forest-mid transition flex items-center gap-1 shrink-0">
+              <Plus size={14} /> Thêm
             </button>
           </div>
         </div>
@@ -368,7 +546,9 @@ function ManageDriversModal({ onClose, onSaved }) {
             <p className="text-sm text-muted text-center py-8">Đang tải...</p>
           ) : drivers.length === 0 ? (
             <p className="text-sm text-muted text-center py-8">Chưa có tài xế nào</p>
-          ) : drivers.map(d => editId === d.id ? (
+          ) : visibleDrivers.length === 0 ? (
+            <p className="text-sm text-muted text-center py-8">Không tìm thấy tài xế khớp "{search}"</p>
+          ) : visibleDrivers.map(d => editId === d.id ? (
             // ── Chế độ sửa ──────────────────────────────────────────────
             <div key={d.id} className="bg-surface border border-gold/50 rounded-xl p-3 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -406,32 +586,65 @@ function ManageDriversModal({ onClose, onSaved }) {
           ) : (
             // ── Chế độ xem ──────────────────────────────────────────────
             <div key={d.id}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
+              className={`flex flex-col gap-2 rounded-xl px-4 py-3 ${
                 d.systemDriver ? 'bg-surface-2' : 'bg-canvas'}`}>
-              <div className="min-w-0 flex-1">
-                <p className={`text-sm font-medium truncate ${
-                  d.systemDriver ? 'text-muted' : 'text-ink'}`}>
-                  {d.name}
-                </p>
-                <p className="text-[11px] text-muted">
-                  {d.vehicleType === 'BOTH' ? 'Xe máy + Xe tải'
-                    : (VEHICLE_CFG[d.vehicleType]?.label || d.vehicleType)}
-                  {d.systemDriver ? ' · Không xử lý' : ' · Theo dõi ODO'}
-                  {d.active === false && ' · Đã ngưng'}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-medium truncate ${
+                    d.systemDriver ? 'text-muted' : 'text-ink'}`}>
+                    {d.name}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    {d.vehicleType === 'BOTH' ? 'Xe máy + Xe tải'
+                      : (VEHICLE_CFG[d.vehicleType]?.label || d.vehicleType)}
+                    {d.systemDriver ? ' · Không xử lý' : ' · Theo dõi ODO'}
+                    {d.active === false && ' · Đã ngưng'}
+                  </p>
+                </div>
+                <button onClick={() => quickToggle(d)} disabled={busyId === d.id}
+                  title={d.systemDriver ? 'Bật theo dõi ODO' : 'Đánh dấu không xử lý'}
+                  className={`p-1.5 rounded-lg transition disabled:opacity-50 ${
+                    d.systemDriver
+                      ? 'text-muted hover:bg-surface'
+                      : 'text-amber-600 dark:text-amber-300 hover:bg-amber-50 dark:bg-amber-500/10'}`}>
+                  {d.systemDriver ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+                <button onClick={() => startEdit(d)}
+                  className="p-1.5 rounded-lg text-gold hover:bg-surface transition">
+                  <Pencil size={14} />
+                </button>
               </div>
-              <button onClick={() => quickToggle(d)} disabled={busyId === d.id}
-                title={d.systemDriver ? 'Bật theo dõi ODO' : 'Đánh dấu không xử lý'}
-                className={`p-1.5 rounded-lg transition disabled:opacity-50 ${
-                  d.systemDriver
-                    ? 'text-muted hover:bg-surface'
-                    : 'text-amber-600 dark:text-amber-300 hover:bg-amber-50 dark:bg-amber-500/10'}`}>
-                {d.systemDriver ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-              <button onClick={() => startEdit(d)}
-                className="p-1.5 rounded-lg text-gold hover:bg-surface transition">
-                <Pencil size={14} />
-              </button>
+
+              {/* Tài khoản đăng nhập */}
+              {!d.systemDriver && (
+                d.userId ? (
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-300">
+                    <LinkIcon size={12} />
+                    <span>Tài khoản: <span className="font-mono font-semibold">@{d.username}</span></span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] text-amber-600 dark:text-amber-300">Chưa gắn tài khoản</span>
+                    {availUsers.length > 0 ? (
+                      <div className="flex items-start gap-2">
+                        <AccountCombobox
+                          users={availUsers}
+                          value={linkPick[d.id]}
+                          onChange={(v) => setLinkPick(p => ({ ...p, [d.id]: v }))}
+                        />
+                        <button
+                          onClick={() => doLink(d.id)}
+                          disabled={linkingId === d.id || !linkPick[d.id]}
+                          className="px-2.5 py-1 rounded-lg bg-forest-deep text-white text-[11px] font-bold hover:bg-forest-mid transition disabled:opacity-50 shrink-0">
+                          {linkingId === d.id ? 'Đang gắn...' : 'Gắn'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-faint">(không có tài khoản trống để gắn)</span>
+                    )}
+                  </div>
+                )
+              )}
             </div>
           ))}
         </div>
@@ -443,6 +656,13 @@ function ManageDriversModal({ onClose, onSaved }) {
           </button>
         </div>
       </div>
+
+      {addOpen && (
+        <AddDriverModal
+          onClose={() => setAddOpen(false)}
+          onCreated={() => { load(); onSaved && onSaved(); }}
+        />
+      )}
     </div>
   );
 }

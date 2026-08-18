@@ -34,7 +34,9 @@ export default function AppLayout({ navItems = [], groups = null }) {
     allPaths.some(p => p !== to && p.startsWith(to.endsWith('/') ? to : to + '/'));
 
   return (
-    <div className="flex h-screen overflow-hidden bg-canvas">
+    // dvh thay vì vh: trên trình duyệt di động, 100vh tính cả phần bị thanh địa chỉ
+    // che, nên đáy màn hình (nút "Tạo đơn hàng" của giỏ) bị đẩy khuất.
+    <div className="flex h-[100dvh] overflow-hidden bg-canvas">
       {/* Overlay mobile */}
       {open && (
         <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden" onClick={close} />

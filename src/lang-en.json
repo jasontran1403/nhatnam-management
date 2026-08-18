@@ -199,7 +199,10 @@
     "attendance_sheets": "Timesheets",
     "payroll_passcode": "Payroll lock",
     "supply_orders": "Office Supply Orders",
-    "supply_warehouse": "Office Supply Stock"
+    "supply_warehouse": "Office Supply Stock",
+    "order_forecast": "Order Forecast",
+    "vouchers": "Vouchers",
+    "gift_orders": "Gift Orders"
   },
   "profile": {
     "my_profile": "My Profile",

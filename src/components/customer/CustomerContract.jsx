@@ -114,8 +114,8 @@ export function ContractViewModal({ customer, onClose, onUpload }) {
         <div className="flex justify-between gap-2">
           {onUpload
             ? <SecondaryButton onClick={() => { onClose?.(); onUpload(); }}>
-              <Upload size={14} /> Cập nhật hợp đồng
-            </SecondaryButton>
+                <Upload size={14} /> Cập nhật hợp đồng
+              </SecondaryButton>
             : <span />}
           <SecondaryButton onClick={onClose}>Đóng</SecondaryButton>
         </div>
@@ -137,12 +137,12 @@ export function ContractViewModal({ customer, onClose, onUpload }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {previewFiles.map((f, i) => (
-              <FileThumb
-                key={f.id}
-                url={f.url}
+              <FileThumb 
+                key={f.id} 
+                url={f.url} 
                 label={f.label}
                 kind={f.kind}
-                onOpen={() => setPreviewIdx(i)}
+                onOpen={() => setPreviewIdx(i)} 
               />
             ))}
           </div>
@@ -198,7 +198,6 @@ export function ContractUploadModal({ customer, onClose }) {
       toast(hadContract ? 'Đã cập nhật hợp đồng mới' : 'Đã tải hợp đồng lên', 'success');
       onClose?.(true);
     } catch (e) {
-      alert(`${e}`);
       toast(e?.response?.data?.message || 'Tải hợp đồng thất bại', 'error');
     } finally { setSaving(false); }
   };
@@ -220,11 +219,11 @@ export function ContractUploadModal({ customer, onClose }) {
           <SecondaryButton onClick={() => onClose?.(false)} disabled={saving}>Huỷ</SecondaryButton>
           {confirming
             ? <DangerButton onClick={doUpload} loading={saving}>
-              Xác nhận thay hợp đồng
-            </DangerButton>
+                Xác nhận thay hợp đồng
+              </DangerButton>
             : <PrimaryButton onClick={submit} loading={saving} disabled={files.length === 0}>
-              <Upload size={14} /> {hadContract ? 'Cập nhật' : 'Tải lên'}
-            </PrimaryButton>}
+                <Upload size={14} /> {hadContract ? 'Cập nhật' : 'Tải lên'}
+              </PrimaryButton>}
         </div>
       }
     >

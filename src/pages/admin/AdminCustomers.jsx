@@ -1,12 +1,14 @@
 // src/pages/admin/AdminCustomers.jsx
 import { useLang } from '../../context/LangContext';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, Fragment } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   Users, Search, Percent, Lock, Unlock,
   Building2, User as UserIcon, CalendarDays, UserPlus, X, ChevronDown, Download, Upload,
   Edit2, MapPin, Star, Plus, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, FileText, Pencil,
+  ChevronRight, Layers, Cake, Store, Ticket, Gift,
 } from 'lucide-react';
 import { ContractBadge, useContractModals } from '../../components/customer/CustomerContract';
 import { adminCustomerApi, reportApi } from '../../api/adminApi';
@@ -14,7 +16,10 @@ import { formatPrice } from '../../utils/formatPrice';
 import useDebounce from '../../utils/useDebounce.js';
 import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
-import Pagination from '../../components/ui/Pagination';
+import DatePicker from '../../components/ui/DatePicker';
+import AddressSelect from '../../components/common/AddressSelect';
+import PickupToggle, { PICKUP_AT_WAREHOUSE } from '../../components/common/PickupToggle';
+import { formatDayMonth, anniversaryBadgeClass, countdownLabel } from '../../utils/anniversary';
 import CustomerOrderHistory from '../../components/admin/CustomerOrderHistory';
 import DebtReportCustomerModal from '../../components/accountant/DebtReportCustomerModal';
 import {
@@ -41,7 +46,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+  const [form, setForm] = useState({ receiverName: '', receiverPhone: '', receiverAddress: '', provinceName: '', wardName: '' });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -56,10 +61,13 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const resetForm = () => setForm({ receiverName: '', receiverPhone: '', receiverAddress: '' });
+  const resetForm = () => setForm({ receiverName: '', receiverPhone: '', receiverAddress: '', provinceName: '', wardName: '' });
 
   const handleAdd = async () => {
     if (!form.receiverAddress.trim()) { toast(t('delivery', 'shipping_address_req'), 'error'); return; }
+    if (form.receiverAddress !== PICKUP_AT_WAREHOUSE && !form.wardName) {
+      toast('Vui lòng chọn Phường/Xã/Đặc khu', 'error'); return;
+    }
     setSaving(true);
     try {
       await api.post(`${apiPrefix}/customers/${customerId}/receiver-infos`, form);
@@ -71,6 +79,9 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
 
   const handleUpdate = async (id) => {
     if (!form.receiverAddress.trim()) { toast(t('delivery', 'shipping_address_req'), 'error'); return; }
+    if (form.receiverAddress !== PICKUP_AT_WAREHOUSE && !form.wardName) {
+      toast('Vui lòng chọn Phường/Xã/Đặc khu', 'error'); return;
+    }
     setSaving(true);
     try {
       await api.put(`${apiPrefix}/customers/${customerId}/receiver-infos/${id}`, form);
@@ -102,17 +113,41 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
       receiverName: r.receiverName || '',
       receiverPhone: r.receiverPhone || '',
       receiverAddress: r.receiverAddress || '',
+      provinceName: r.provinceName || '',
+      wardName: r.wardName || '',
     });
   };
 
+  const isPickup = form.receiverAddress === PICKUP_AT_WAREHOUSE;
+
   const ReceiverForm = ({ onSave, onCancel }) => (
     <div className="space-y-2">
-      <input
-        value={form.receiverAddress}
-        onChange={e => setForm(f => ({ ...f, receiverAddress: e.target.value }))}
-        className={inputCls}
-        placeholder="Địa chỉ nhận hàng *"
+      {/* Toggle đặt trên cùng: nó quyết định có phải nhập địa chỉ hay không. */}
+      <PickupToggle
+        checked={isPickup}
+        onChange={on => setForm(f => ({
+          ...f,
+          receiverAddress: on ? PICKUP_AT_WAREHOUSE : '',
+          provinceName: '', wardName: '',
+        }))}
       />
+
+      <input
+        value={isPickup ? '' : form.receiverAddress}
+        onChange={e => setForm(f => ({ ...f, receiverAddress: e.target.value }))}
+        disabled={isPickup}
+        className={`${inputCls} disabled:bg-surface-2 disabled:text-faint disabled:cursor-not-allowed`}
+        placeholder="Số nhà, tên đường *"
+      />
+
+      {!isPickup && (
+        <AddressSelect
+          compact
+          province={form.provinceName}
+          ward={form.wardName}
+          onChange={(prov, w) => setForm(f => ({ ...f, provinceName: prov, wardName: w }))}
+        />
+      )}
       <div className="grid grid-cols-2 gap-2">
         <input
           value={form.receiverName}
@@ -431,6 +466,7 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
     pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0, requirePrepayment: false,
     contractName: '',
     companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
+    birthday: null, storeOpeningDate: null,
   });
   const [saving, setSaving] = useState(false);
 
@@ -452,6 +488,8 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         companyPhone: customer.companyPhone || '',
         companyAddress: customer.companyAddress || '',
         contactName: customer.contactName || '',
+        birthday: customer.birthday ?? null,
+        storeOpeningDate: customer.storeOpeningDate ?? null,
       });
       // Đang sửa khách đã có tên hợp đồng riêng → không tự ghi đè
       setContractTouched(!!customer.contractName);
@@ -461,6 +499,7 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         pricingType: 'RETAIL_PRICE', discountRate: 0, debtDays: 0, requirePrepayment: false,
         contractName: '',
         companyName: '', taxCode: '', companyPhone: '', companyAddress: '', contactName: '',
+        birthday: null, storeOpeningDate: null,
       });
       setContractTouched(false);
     }
@@ -485,6 +524,11 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
     if (!form.name.trim() && !form.companyName.trim()) {
       alert('Vui lòng nhập tên khách hàng hoặc tên công ty'); return;
     }
+    // Khách lẻ BẮT BUỘC có sinh nhật — kể cả khi chỉ đổi loại từ Công ty sang Cá nhân.
+    // Khách công ty thì ngày khai trương là tuỳ chọn.
+    if (!isCompany && !form.birthday) {
+      alert('Vui lòng nhập ngày sinh nhật cho khách lẻ'); return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -504,6 +548,9 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
         contactName: isCompany ? (form.contactName || null) : null,
         // Tên trên hợp đồng: gửi '' (không phải null) để BE hiểu là XOÁ → quay về tên mặc định
         contractName: form.contractName ?? '',
+        // Gửi null khi đổi loại để BE xoá dữ liệu không còn phù hợp.
+        birthday: isCompany ? null : (form.birthday ?? null),
+        storeOpeningDate: isCompany ? (form.storeOpeningDate ?? null) : null,
       };
       // "Yêu cầu thanh toán trước" có endpoint riêng (chỉ OWNER/ADMIN) → gọi tách.
       if (isEdit) {
@@ -553,6 +600,39 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
             </select>
           </Field>
         </div>
+
+        {/* Ngày kỷ niệm — đổi theo loại khách */}
+        {isCompany ? (
+          <Field label="Ngày khai trương cửa hàng mới"
+            hint="Không bắt buộc — dùng để nhắc tặng quà/voucher khai trương">
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <DatePicker
+                  value={form.storeOpeningDate}
+                  onChange={v => set('storeOpeningDate', v)}
+                  placeholder="Chọn ngày khai trương"
+                />
+              </div>
+              {form.storeOpeningDate && (
+                <button type="button" onClick={() => set('storeOpeningDate', null)}
+                  className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  title="Xoá ngày khai trương">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+          </Field>
+        ) : (
+          <Field label="Ngày sinh nhật" required
+            hint="Bắt buộc với khách lẻ — dùng để nhắc và tặng voucher sinh nhật">
+            <DatePicker
+              value={form.birthday}
+              onChange={v => set('birthday', v)}
+              placeholder="Chọn ngày sinh nhật"
+              maxDate={new Date()}
+            />
+          </Field>
+        )}
 
         {isCompany ? (
           <>
@@ -757,14 +837,56 @@ function ImportCustomersModal({ open, onClose, onDone }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+/**
+ * Đường dẫn gốc của khu vực đang đứng (`/owner` hoặc `/admin`).
+ *
+ * <p>Component này được mount ở cả hai khu vực nên không thể hardcode. Suy từ URL hiện
+ * tại thay vì từ role: một tài khoản có nhiều role vẫn chỉ đang đứng ở đúng một khu vực,
+ * và link phải trỏ về khu vực đó để nút quay lại không nhảy sang menu khác.
+ */
+function useBasePath() {
+  const { pathname } = useLocation();
+  return pathname.startsWith('/owner') ? '/owner' : '/admin';
+}
+
+/** Nút mở hai trang con: Quản lý voucher và Phiếu tặng quà. */
+function SubPageLinks({ base }) {
+  const navigate = useNavigate();
+  const cls = 'flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line ' +
+    'text-xs text-ink-2 hover:border-gold hover:text-gold transition-colors';
+  return (
+    <>
+      <button onClick={() => navigate(`${base}/vouchers`)} className={cls}>
+        <Ticket size={13} /> Voucher
+      </button>
+      <button onClick={() => navigate(`${base}/gift-orders`)} className={cls}>
+        <Gift size={13} /> Phiếu tặng quà
+      </button>
+    </>
+  );
+}
+
 export default function AdminCustomers() {
+  const basePath = useBasePath();
   const { t } = useLang();
   const toast = useToast();
   const [filters, setFilters] = useState({ q: '', type: '', isActive: '', sellerId: '' });
   const debouncedQ = useDebounce(filters.q, 600);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
-  const [page, setPage] = useState(0);
-  const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
+  /**
+   * Dữ liệu gom theo danh mục, KHÔNG phân trang.
+   * [{ categoryId, categoryName, color, sortOrder, total, customers[] }]
+   */
+  const [groups, setGroups] = useState([]);
+  /**
+   * Tập categoryId đang MỞ. Chỉ danh mục ĐẦU TIÊN được mở khi vào trang — mở hết sẽ
+   * đổ ra hàng nghìn dòng cùng lúc và mất luôn ý nghĩa của việc gom nhóm.
+   * Dùng key dạng chuỗi vì nhóm "Chưa phân loại" có categoryId = null.
+   */
+  const [expanded, setExpanded] = useState(() => new Set());
+  /** Đã tự mở nhóm đầu tiên lần nào chưa — chỉ làm MỘT LẦN, để việc người dùng chủ động
+   *  gập nhóm đó lại rồi lọc/tìm kiếm không bị hệ thống bung ra lại. */
+  const [autoExpanded, setAutoExpanded] = useState(false);
   const [loading, setLoading] = useMinLoading();
   // Sort theo công nợ chưa thanh toán: null (mặc định) → 'desc' (cao→thấp) → 'asc' (thấp→cao)
   const [debtSort, setDebtSort] = useState(null);
@@ -889,17 +1011,68 @@ export default function AdminCustomers() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, size: 20, sort: 'id,desc' };
+      const params = {};
       if (debouncedQ) params.q = debouncedQ;
       if (filters.type) params.type = filters.type;
       if (filters.isActive !== '') params.isActive = filters.isActive;
       if (filters.sellerId !== '') params.sellerId = filters.sellerId;
-      if (debtSort) params.debtSort = debtSort;
-      const res = await adminCustomerApi.list(params);
-      setData(res);
+      const res = await adminCustomerApi.listGrouped(params);
+      setGroups(Array.isArray(res) ? res : []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [page, debouncedQ, filters.type, filters.isActive, filters.sellerId, debtSort]);
+  }, [debouncedQ, filters.type, filters.isActive, filters.sellerId, setLoading]);
+
+  /** Key ổn định cho một nhóm — nhóm "Chưa phân loại" có categoryId = null. */
+  const groupKey = (g) => (g.categoryId == null ? '__none__' : String(g.categoryId));
+
+  /**
+   * Danh sách phẳng — dùng cho chọn tất cả, đếm tổng, và sort theo công nợ.
+   * Chỉ tính trên các nhóm ĐANG MỞ khi thao tác chọn, xem `visibleCustomers` bên dưới.
+   */
+  const allCustomers = useMemo(
+    () => groups.flatMap(g => g.customers || []),
+    [groups],
+  );
+
+  /**
+   * Khách đang HIỂN THỊ trên màn hình (thuộc nhóm đang mở).
+   *
+   * <p>Nút "chọn tất cả" chỉ được phép chọn những dòng người dùng đang NHÌN THẤY —
+   * nếu chọn cả khách trong nhóm đang gập thì một cú bấm "Khoá bán" có thể khoá
+   * hàng trăm khách mà người bấm không hề biết.
+   */
+  const visibleCustomers = useMemo(
+    () => groups.filter(g => expanded.has(groupKey(g))).flatMap(g => g.customers || []),
+    [groups, expanded],
+  );
+
+  /** Sắp xếp khách trong MỘT nhóm theo công nợ (nếu đang bật sort). */
+  const sortCustomers = useCallback((list) => {
+    if (!debtSort) return list;
+    const dir = debtSort === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => ((a.unpaidDebt || 0) - (b.unpaidDebt || 0)) * dir);
+  }, [debtSort]);
+
+  const toggleGroup = (g) => {
+    const key = groupKey(g);
+    setExpanded(prev => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
+  };
+
+  const expandAll = () => setExpanded(new Set(groups.map(groupKey)));
+  const collapseAll = () => setExpanded(new Set());
+
+  // Mở sẵn nhóm ĐẦU TIÊN. Backend đặt nhóm ảo "Sắp tới sinh nhật / khai trương" lên đầu
+  // khi có khách, nên nhóm đó được mở mặc định; không có ai sắp tới dịp thì nhóm đầu là
+  // danh mục đầu tiên trong DB như cũ.
+  useEffect(() => {
+    if (autoExpanded || groups.length === 0) return;
+    setExpanded(new Set([groupKey(groups[0])]));
+    setAutoExpanded(true);
+  }, [groups, autoExpanded]);
 
   // Modal xem / tải hợp đồng — tải lại danh sách sau khi thay để badge "có hợp
   // đồng" cập nhật ngay, không phải F5.
@@ -907,12 +1080,11 @@ export default function AdminCustomers() {
 
   // Bấm header "Công nợ (chưa TT)": desc → asc → tắt sort
   const cycleDebtSort = useCallback(() => {
-    setPage(0);
     setDebtSort(prev => prev === 'desc' ? 'asc' : prev === 'asc' ? null : 'desc');
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setSelectedIds(new Set()); }, [page, filters]);
+  useEffect(() => { setSelectedIds(new Set()); }, [filters]);
 
   if (historyCustomerId) {
     return (
@@ -924,10 +1096,14 @@ export default function AdminCustomers() {
     );
   }
 
-  const allChecked = data.content.length > 0 && data.content.every(c => selectedIds.has(c.id));
+  const allChecked = visibleCustomers.length > 0 && visibleCustomers.every(c => selectedIds.has(c.id));
   const anyChecked = selectedIds.size > 0;
   const toggleOne = (id) => { const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
-  const toggleAll = () => { allChecked ? setSelectedIds(new Set()) : setSelectedIds(new Set(data.content.map(c => c.id))); };
+  const toggleAll = () => {
+    allChecked
+      ? setSelectedIds(new Set())
+      : setSelectedIds(new Set(visibleCustomers.map(c => c.id)));
+  };
 
   const openDiscountSingle = (c) => { setDiscountTarget(c); setDiscountValue(c.discountRate || 0); setDiscountOpen(true); };
   const openDiscountBulk = () => { if (!anyChecked) return; setDiscountTarget(null); setDiscountValue(0); setDiscountOpen(true); };
@@ -990,8 +1166,12 @@ export default function AdminCustomers() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <div className="flex items-center justify-between">
-        <PageHeader icon={Users} title="Khách hàng" subtitle={`Tổng ${formatNumber(data.totalElements)} khách`} />
-        <div className="flex items-center gap-2">
+        <PageHeader icon={Users} title="Khách hàng"
+          subtitle={`${formatNumber(allCustomers.length)} khách · ${groups.length} danh mục`} />
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Hai trang con mở từ đây thay vì từ menu — chúng chỉ có ý nghĩa trong ngữ
+              cảnh chăm sóc khách hàng, để ở menu chính sẽ làm menu dài ra vô ích. */}
+          <SubPageLinks base={basePath} />
           <PrimaryButton onClick={() => { setEditCustomer(null); setCreateOpen(true); }}
             className="flex items-center gap-1.5 text-xs px-3 py-2">
             <UserPlus size={13} /> Tạo khách hàng
@@ -1024,22 +1204,22 @@ export default function AdminCustomers() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
             <input type="text" placeholder="Tìm tên, SĐT, email, công ty, tên hợp đồng, mã KH..."
               value={filters.q}
-              onChange={e => { setFilters({ ...filters, q: e.target.value }); setPage(0); }}
+              onChange={e => { setFilters({ ...filters, q: e.target.value }); }}
               className={`${inputCls} pl-9 pr-9`} />
             {filters.q && (
-              <button onClick={() => { setFilters({ ...filters, q: '' }); setPage(0); }}
+              <button onClick={() => { setFilters({ ...filters, q: '' }); }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">✕</button>
             )}
           </div>
           <select value={filters.type}
-            onChange={e => { setFilters({ ...filters, type: e.target.value }); setPage(0); }}
+            onChange={e => { setFilters({ ...filters, type: e.target.value }); }}
             className={`${inputCls} sm:w-40`}>
             <option value="">Tất cả loại</option>
             <option value="COMPANY">Công ty</option>
             <option value="RETAIL">Cá nhân</option>
           </select>
           <select value={filters.isActive}
-            onChange={e => { setFilters({ ...filters, isActive: e.target.value }); setPage(0); }}
+            onChange={e => { setFilters({ ...filters, isActive: e.target.value }); }}
             className={`${inputCls} sm:w-40`}>
             <option value="">Tất cả trạng thái</option>
             <option value="true">Đang hoạt động</option>
@@ -1050,7 +1230,7 @@ export default function AdminCustomers() {
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs text-muted font-medium shrink-0">Lọc theo NV Kinh Doanh:</span>
           <button
-            onClick={() => { setFilters(f => ({ ...f, sellerId: '' })); setPage(0); }}
+            onClick={() => { setFilters(f => ({ ...f, sellerId: '' })); }}
             className={`px-3 h-[38px] rounded-xl text-xs font-medium transition-colors border
             ${filters.sellerId === ''
                 ? 'bg-gold text-white border-gold'
@@ -1059,7 +1239,7 @@ export default function AdminCustomers() {
           </button>
           <SellerFilterDropdown
             value={filters.sellerId}
-            onChange={(v) => { setFilters(f => ({ ...f, sellerId: v })); setPage(0); }}
+            onChange={(v) => { setFilters(f => ({ ...f, sellerId: v })); }}
           />
         </div>
       </div>
@@ -1076,11 +1256,28 @@ export default function AdminCustomers() {
         </div>
       )}
 
+      {/* Điều khiển gập/mở nhóm */}
+      {!loading && groups.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted">
+            {expanded.size}/{groups.length} danh mục đang mở
+          </span>
+          <button onClick={expandAll}
+            className="px-2.5 py-1 rounded-lg border border-line text-[11px] text-ink-2 hover:border-gold transition-colors">
+            Mở tất cả
+          </button>
+          <button onClick={collapseAll}
+            className="px-2.5 py-1 rounded-lg border border-line text-[11px] text-ink-2 hover:border-gold transition-colors">
+            Gập tất cả
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-surface rounded-2xl border border-hairline shadow-sm overflow-hidden">
         {loading ? (
           <TableSkeleton cols={5} rows={8} />
-        ) : data.content.length === 0 ? <EmptyState icon={Users} title="Không có khách hàng" /> : (
+        ) : allCustomers.length === 0 ? <EmptyState icon={Users} title="Không có khách hàng" /> : (
           <>
             {/* Desktop */}
             <div className="hidden lg:block overflow-x-auto">
@@ -1108,7 +1305,13 @@ export default function AdminCustomers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.content.map(c => {
+                  {groups.map(g => {
+                    const key = groupKey(g);
+                    const open = expanded.has(key);
+                    return (
+                  <Fragment key={key}>
+                  <CategoryHeaderRow group={g} open={open} onToggle={() => toggleGroup(g)} colSpan={9} />
+                  {open && sortCustomers(g.customers || []).map(c => {
                     const urgency = getDebtUrgency(c);
                     const isCompany = c.customerType === 'COMPANY';
                     return (
@@ -1135,6 +1338,7 @@ export default function AdminCustomers() {
                                 {isCompany ? (c.companyName || c.name) : (c.name || '—')}
                               </p>
                               {c.customerCode && <p className="text-xs text-muted">#{c.customerCode}</p>}
+                              <AnniversaryTag customer={c} />
                             </div>
                           </div>
                         </td>
@@ -1239,13 +1443,22 @@ export default function AdminCustomers() {
                       </tr>
                     );
                   })}
+                  </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile */}
             <div className="lg:hidden divide-y divide-hairline">
-              {data.content.map(c => {
+              {groups.map(g => {
+                const key = groupKey(g);
+                const open = expanded.has(key);
+                return (
+              <Fragment key={key}>
+              <CategoryHeaderCard group={g} open={open} onToggle={() => toggleGroup(g)} />
+              {open && sortCustomers(g.customers || []).map(c => {
                 const urgency = getDebtUrgency(c);
                 const isCompany = c.customerType === 'COMPANY';
                 return (
@@ -1265,6 +1478,7 @@ export default function AdminCustomers() {
                           {isCompany ? (c.companyName || c.name) : (c.name || '—')}
                         </p>
                         <p className="text-xs text-muted">{c.phone} · CK {c.discountRate || 0}%</p>
+                        <AnniversaryTag customer={c} />
                         {/* Tên trên hợp đồng — bấm để sửa nhanh */}
                         <button onClick={e => openContractName(c, e)}
                           className="mt-0.5 flex items-center gap-1 text-[10px] text-left">
@@ -1309,10 +1523,12 @@ export default function AdminCustomers() {
                   </div>
                 );
               })}
+              </Fragment>
+                );
+              })}
             </div>
           </>
         )}
-        {!loading && data.content.length > 0 && <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />}
       </div>
 
       {/* Modals */}
@@ -1464,5 +1680,114 @@ export default function AdminCustomers() {
 
       {contract.render()}
     </div>
+  );
+}
+// ── Header nhóm danh mục ─────────────────────────────────────────────────────
+
+/**
+ * Hàng tiêu đề của một danh mục trong bảng desktop.
+ *
+ * <p>Dùng `colSpan` thay vì render các ô rỗng để tiêu đề chạy hết chiều ngang bảng —
+ * cách này giữ nguyên độ rộng cột đã tính cho các hàng dữ liệu, nếu tách ô thì trình
+ * duyệt sẽ tính lại layout và các cột nhảy mỗi lần gập/mở nhóm.
+ */
+function CategoryHeaderRow({ group: g, open, onToggle, colSpan }) {
+  return (
+    <tr
+      onClick={onToggle}
+      className={`border-t border-hairline cursor-pointer select-none sticky top-0 z-[1]
+        ${g.virtual
+          ? 'bg-rose-50 dark:bg-rose-500/12 hover:bg-rose-100 dark:hover:bg-rose-500/18'
+          : 'bg-canvas/80 hover:bg-canvas'}`}>
+      <td colSpan={colSpan} className="px-4 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <ChevronRight
+            size={16}
+            className={`text-muted transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+          />
+          {g.virtual
+            ? <Cake size={14} className="text-rose-500 shrink-0" />
+            : <span
+                className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-inset ring-black/5 dark:ring-white/10"
+                style={{ background: g.color || 'var(--c-gold)' }}
+              />}
+          <span className="font-bold text-ink text-sm">{g.categoryName}</span>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold
+            ${g.virtual
+              ? 'bg-rose-500 text-white'
+              : 'bg-gold/10 text-gold'}`}>
+            {g.total}
+          </span>
+          {g.virtual && (
+            <span className="text-[10px] text-rose-600/80 dark:text-rose-300/70 italic">
+              trong tháng này — đã tách khỏi danh mục gốc
+            </span>
+          )}
+          {!g.virtual && g.total === 0 && (
+            <span className="text-[10px] text-faint italic">chưa có khách nào</span>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+/** Bản mobile của header nhóm. */
+function CategoryHeaderCard({ group: g, open, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      className={`w-full flex items-center gap-2.5 px-4 py-3 transition-colors text-left
+        ${g.virtual
+          ? 'bg-rose-50 dark:bg-rose-500/12'
+          : 'bg-canvas/80 hover:bg-canvas'}`}>
+      <ChevronRight
+        size={16}
+        className={`text-muted transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+      />
+      {g.virtual
+        ? <Cake size={14} className="text-rose-500 shrink-0" />
+        : <span
+            className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-inset ring-black/5 dark:ring-white/10"
+            style={{ background: g.color || 'var(--c-gold)' }}
+          />}
+      <span className="font-bold text-ink text-sm flex-1 truncate">{g.categoryName}</span>
+      <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold
+        ${g.virtual ? 'bg-rose-500 text-white' : 'bg-gold/10 text-gold'}`}>
+        {g.total}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Badge ngày kỷ niệm dùng chung cho bảng khách hàng: sinh nhật (khách lẻ) hoặc
+ * ngày khai trương cửa hàng mới (khách công ty).
+ *
+ * <p>Chỉ hiện khi dịp đó thuộc tháng hiện tại và CHƯA QUA — cờ `anniversaryUpcoming`
+ * do server tính. Đã qua ngày thì không hiện gì, đúng yêu cầu "đã qua thì hiển thị
+ * bình thường".
+ */
+export function AnniversaryTag({ customer: c }) {
+  const isCompany = c.customerType === 'COMPANY';
+  const value = isCompany ? c.storeOpeningDate : c.birthday;
+  if (!value) return null;
+
+  const tone = isCompany ? 'emerald' : 'rose';
+  const Icon = isCompany ? Store : Cake;
+  const label = c.anniversaryUpcoming ? countdownLabel(c.daysUntilAnniversary) : null;
+
+  return (
+    <span className="inline-flex items-center gap-1 flex-wrap">
+      <span className={`inline-flex items-center gap-1 text-[10px]
+        ${c.anniversaryUpcoming
+          ? (isCompany ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300')
+          : 'text-faint'}`}>
+        <Icon size={9} /> {formatDayMonth(value)}
+      </span>
+      {label && (
+        <span className={anniversaryBadgeClass(c.daysUntilAnniversary, tone)}>{label}</span>
+      )}
+    </span>
   );
 }

@@ -917,10 +917,9 @@ export default function SuperAccountantCustomers() {
                   <tr className="bg-canvas text-muted">
                     <th className="px-4 py-3 w-10"><input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded accent-gold" /></th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Khách hàng</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Loại</th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">NV Kinh doanh</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Chiết khấu</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Công nợ</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">% Chiết khấu</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Số ngày Công nợ</th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
                       <button onClick={cycleDebtSort}
                         className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-gold transition-colors"
@@ -965,18 +964,6 @@ export default function SuperAccountantCustomers() {
                               {c.customerCode && <p className="text-xs text-muted">#{c.customerCode}</p>}
                             </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge className={isCompany ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-500/28' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28'}>
-                            {isCompany ? 'Công ty' : t('customer', 'individual')}
-                          </Badge>
-                          {c.pricingType === 'WHOLESALE_PRICE'
-                            ? <Badge className="bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-purple-200 dark:ring-purple-500/28 mt-0.5">Sỉ</Badge>
-                            : <Badge className="bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 ring-green-200 dark:ring-green-500/28 mt-0.5">Lẻ</Badge>
-                          }
-                          {c.createdByAdmin && (
-                            <Badge className="bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-500/28 mt-0.5">Admin</Badge>
-                          )}
                         </td>
                         <td className="px-4 py-3">
                           {isCompany ? (

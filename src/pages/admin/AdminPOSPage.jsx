@@ -10,6 +10,7 @@ import {
 import { productApi, categoryApi, orderApi, warehouseApi, draftApi } from '../../api/services';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
+import { receiverMissingRegion, MISSING_REGION_MESSAGE } from '../../utils/receiverRegion';
 import { useAuth } from '../../context/AuthContext';
 import ProductCard from '../../components/seller/ProductCard';
 import CartItem from '../../components/seller/CartItem';
@@ -188,6 +189,7 @@ function CartPanel({
   };
 
   return (
+    /* Xem chú thích bố cục ở POSPage của seller — cùng một cấu trúc ba tầng. */
     <div className="flex flex-col h-full bg-surface">
       <div className="px-4 py-3 border-b border-line-soft flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -255,7 +257,7 @@ function CartPanel({
       </div>
 
       {/* Cart Items */}
-      <div className="flex-1 overflow-y-auto px-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4">
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-faint gap-2 py-8">
             <ShoppingBag size={32} strokeWidth={1} />
@@ -290,7 +292,7 @@ function CartPanel({
 
       {/* Controls */}
       {cartItems.length > 0 && (
-        <div className="border-t border-line-soft px-4 py-3 space-y-2">
+        <div className="shrink-0 border-t border-line-soft px-4 py-3 space-y-2">
           <textarea
             placeholder="Ghi chú đơn hàng..."
             value={notes}
@@ -553,7 +555,12 @@ function useCartHold(warehouseId, cartItems, products, _userId, onCartExpired) {
 
 // ── DeliveryTimeModal ─────────────────────────────────────────────────────
 // isOwner: chỉ OWNER mới thấy toggle "Tính KPI"
-function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
+/**
+ * @param defaultReceiverName tên người nhận đã chọn ở giỏ hàng — dùng làm PLACEHOLDER.
+ *        Để trống thì lấy chính giá trị này, gõ đè thì lấy giá trị mới. Không điền cứng
+ *        vào ô vì người muốn để trống sẽ phải xoá tay.
+ */
+function DeliveryTimeModal({ onConfirm, onClose, isOwner, defaultReceiverName }) {
   const [deliveryDate, setDeliveryDate] = useState(null);
   const [orderedBy, setOrderedBy] = useState('');
   const [recipientName, setRecipientName] = useState('');
@@ -583,13 +590,13 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
           <div>
             <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">👤 Tên người đặt hàng</label>
             <input type="text" value={orderedBy} onChange={e => setOrderedBy(e.target.value)}
-              placeholder="Nhập tên người đặt (nếu có)..."
+              placeholder={defaultReceiverName || 'Nhập tên người đặt (nếu có)...'}
               className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm focus:outline-none focus:border-gold bg-surface" />
           </div>
           <div>
             <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">📦 Tên người nhận</label>
             <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)}
-              placeholder="Nhập tên người nhận..."
+              placeholder={defaultReceiverName || 'Nhập tên người nhận...'}
               className="w-full rounded-xl border-2 border-line px-4 py-2.5 text-sm focus:outline-none focus:border-gold bg-surface" />
           </div>
           <div>
@@ -638,9 +645,10 @@ function DeliveryTimeModal({ onConfirm, onClose, isOwner }) {
           <button
             onClick={() => onConfirm(
               deliveryDate?.getTime() ?? null,
-              orderedBy.trim() || null,
+              // Bỏ trống → dùng tên người nhận đã chọn ở giỏ (đúng thứ đang hiện làm gợi ý).
+              orderedBy.trim() || defaultReceiverName || null,
               showPrices,
-              recipientName.trim() || null,
+              recipientName.trim() || defaultReceiverName || null,
               isOwner ? includeKpi : true,
             )}
             className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-bold hover:bg-gold-strong disabled:opacity-40 flex items-center justify-center gap-2"
@@ -974,17 +982,30 @@ export default function AdminPOSPage() {
     }));
   }, [calcEffectiveStock]);
 
-  const overridePrice = useCallback((cartId, newPrice, isManual = false) => {
+  /**
+   * Ghi giá mới vào dòng giỏ hàng.
+   *
+   * @param resolved nguồn giá đã được CartItem dò ngược ({priceSource, tierId, tierName}).
+   *   Người bán gõ tay một con số trùng đúng giá lẻ hoặc một khung sỉ thì dòng hàng phải
+   *   mang lại nhãn gốc, không phải "Giá thủ công" — priceSource đi thẳng vào đơn và báo
+   *   cáo giá bán, đánh dấu sai sẽ làm thống kê phá giá phồng lên.
+   *   Bỏ trống (các lời gọi cũ) thì giữ nguyên hành vi trước: isManual = MANUAL.
+   */
+  const overridePrice = useCallback((cartId, newPrice, isManual = false, resolved = null) => {
     setCartItems((prev) => prev.map((i) => {
       if (i.id !== cartId) return i;
+
+      const src = resolved?.priceSource ?? (isManual ? 'MANUAL' : i.priceSource);
+      const manual = src === 'MANUAL';
+
       return {
         ...i,
         unitPrice: newPrice,
         originalUnitPrice: i.originalUnitPrice ?? i.unitPrice,
-        priceSource: isManual ? 'MANUAL' : i.priceSource,
-        isManualPrice: isManual ? true : i.isManualPrice,
-        tierId: isManual ? null : i.tierId,
-        tierName: isManual ? null : i.tierName,
+        priceSource: src,
+        isManualPrice: manual,
+        tierId: resolved ? resolved.tierId : (manual ? null : i.tierId),
+        tierName: resolved ? resolved.tierName : (manual ? null : i.tierName),
       };
     }));
   }, []);
@@ -1156,6 +1177,9 @@ export default function AdminPOSPage() {
         customerPhone: customer?.selectedReceiver?.receiverPhone || customer?.phone || null,
         customerEmail: customer?.email || null,
         shippingAddress: customer?.selectedReceiver?.receiverAddress || null,
+        // Xem chú thích cùng chỗ ở POSPage của seller.
+        provinceName: customer?.selectedReceiver?.provinceName || null,
+        wardName: customer?.selectedReceiver?.wardName || null,
         notes, paymentMethod,
         discountRate: discountFixedAmt ? 0 : discount,
         discountAmount: discountFixedAmt ? Math.min(discountFixedAmt, maxDiscountFixed) : null,
@@ -1206,6 +1230,11 @@ export default function AdminPOSPage() {
   ) => {
     setDeliveryModalOpen(false);
     if (!customer || cartItems.length === 0) return;
+    // Chặn tạo đơn khi người nhận đang chọn (khách cũ) thiếu tỉnh/phường.
+    if (receiverMissingRegion(customer.selectedReceiver)) {
+      toast(MISSING_REGION_MESSAGE, 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -1213,6 +1242,9 @@ export default function AdminPOSPage() {
         customerName: customer.contactName || customer.name,
         customerPhone: customer.selectedReceiver?.receiverPhone || customer.phone,
         shippingAddress: customer.selectedReceiver?.receiverAddress || '',
+        // Tỉnh/phường lấy từ người nhận đã chọn → quyết định vùng COD + hiển thị địa chỉ đầy đủ.
+        provinceName: customer.selectedReceiver?.provinceName || null,
+        wardName: customer.selectedReceiver?.wardName || null,
         receiverName: recipientName !== null ? recipientName : (customer.selectedReceiver?.receiverName || null),
         receiverPhone: customer.selectedReceiver?.receiverPhone || customer.phone,
         receiverAddress: customer.selectedReceiver?.receiverAddress || '',
@@ -1342,7 +1374,9 @@ export default function AdminPOSPage() {
         </button>
         {mobileCartOpen && (
           <div className="fixed inset-x-0 bottom-0 top-[57px] z-50 bg-surface flex flex-col shadow-lg overflow-hidden">
-            <div className="flex-1 overflow-y-auto"><CartPanel {...cartPanelProps} /></div>
+            {/* CartPanel tự cuộn bên trong (h-full + min-h-0). Bọc thêm một lớp
+                overflow-y-auto ở đây sẽ tạo cuộn lồng cuộn và khối nút lại trôi. */}
+            <div className="flex-1 min-h-0"><CartPanel {...cartPanelProps} /></div>
             <button onClick={() => setMobileCartOpen(false)} className="sticky bottom-0 w-full py-3.5 bg-gold text-white text-sm font-semibold border-t border-gold-strong">
               ✕ Đóng giỏ hàng
             </button>
@@ -1432,7 +1466,7 @@ export default function AdminPOSPage() {
       </div>
 
       {/* Desktop Cart */}
-      <div className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-line h-full">
+      <div className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-line h-full overflow-hidden">
         <CartPanel {...cartPanelProps} />
       </div>
 
@@ -1475,6 +1509,7 @@ export default function AdminPOSPage() {
       {deliveryModalOpen && (
         <DeliveryTimeModal
           isOwner={isOwner}
+          defaultReceiverName={customer?.selectedReceiver?.receiverName || ''}
           onConfirm={(ts, orderedByName, showPrices, recipientName, includeKpi) =>
             handleSubmit(ts, orderedByName, showPrices, recipientName, includeKpi)
           }

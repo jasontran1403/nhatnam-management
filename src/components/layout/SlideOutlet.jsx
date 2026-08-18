@@ -41,9 +41,21 @@ export default function SlideOutlet() {
 
   return (
     // key đổi theo pathname + hướng trượt để animation chạy lại mỗi lần chuyển.
+    /*
+     * h-full là MẮT XÍCH bắt buộc để các trang dạng "toàn màn hình" (POS) hoạt động.
+     *
+     * <main> của AppLayout có chiều cao xác định (flex-1 trong khung h-[100dvh]), nhưng
+     * lớp bọc này trước đây để chiều cao tự động. Chiều cao theo phần trăm chỉ tính được
+     * khi CHA có chiều cao xác định, nên `h-full` của trang POS rơi vào lớp bọc cao 0 và
+     * bị bỏ qua — cả trang phình theo nội dung và <main> cuộn tất cả: thanh chọn kho,
+     * danh mục và giỏ hàng đều trôi lên theo.
+     *
+     * Trang có nội dung dài hơn màn hình vẫn cuộn bình thường qua <main>, vì nội dung
+     * chỉ tràn ra chứ không bị cắt.
+     */
     <div
       key={key}
-      className={cls}
+      className={`h-full ${cls}`}
       onAnimationEnd={() => setAnimating(false)}
     >
       <Outlet />

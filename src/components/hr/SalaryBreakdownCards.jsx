@@ -167,7 +167,16 @@ function NewSalaryBreakdownCards({ row }) {
 
   const kpi = row.kpiPercent != null ? row.kpiPercent : 100;
   const kpiStr = Number.isInteger(kpi) ? `${kpi}%` : `${kpi.toFixed(2)}%`;
-  const effBonus = row.effectiveBonus != null ? row.effectiveBonus : (row.bonus || 0);
+  // TÁCH RÕ: thưởng KPI thuần (bonusInput × KPI) vs các khoản thưởng import
+  // theo tháng (Chuyên cần, Tháng 13…). Field cũ effectiveBonus GỘP cả 2 nên
+  // hiển thị thành "Thưởng KPI — đạt 100% + 200k" khi import Chuyên cần.
+  const bonusItems = row.bonusItems || [];
+  const bonusItemsTotal = row.bonusItemsTotal
+    || bonusItems.reduce((s, b) => s + (b.amount || 0), 0);
+  const effBonusKpi = row.effectiveBonusKpiOnly != null
+    ? row.effectiveBonusKpiOnly
+    : ((row.effectiveBonus || 0) - bonusItemsTotal);
+  const effBonusTotal = row.effectiveBonus != null ? row.effectiveBonus : (row.bonus || 0);
   const allowances = row.allowances || [];
   const hourly = !!row.hourlyBased;
   const hoursStr = (h) => (`${h}`.replace('.', ',')) + ' giờ';
@@ -226,9 +235,41 @@ function NewSalaryBreakdownCards({ row }) {
         )}
 
         <Divider />
-        <Row label={`Thưởng KPI — đạt ${kpiStr}`} val={`+ ${fmt(effBonus)}`} />
+        {/* Thưởng đơn hàng của tài xế — nếu có DETAIL thì hiện 3 dòng (xe máy /
+            xe tải / tổng). Nếu chỉ có driverOrderBonus (số tổng cũ), hiện 1 dòng. */}
+        {row.driverOrderBonusDetail ? (
+          <>
+            {(row.driverOrderBonusDetail.motorbikeAmount || 0) > 0 && (
+              <Row label={`Thưởng đơn hàng (xe máy × ${row.driverOrderBonusDetail.motorbikeTrips || 0} lượt)`}
+                val={`+ ${fmt(row.driverOrderBonusDetail.motorbikeAmount)}`} />
+            )}
+            {(row.driverOrderBonusDetail.truckAmount || 0) > 0 && (
+              <Row label={`Thưởng đơn hàng (xe tải × ${row.driverOrderBonusDetail.truckTrips || 0} lượt)`}
+                val={`+ ${fmt(row.driverOrderBonusDetail.truckAmount)}`} />
+            )}
+            {(row.driverOrderBonusDetail.motorbikeAmount || 0) > 0
+              && (row.driverOrderBonusDetail.truckAmount || 0) > 0 && (
+              <Row sub label="Tổng thưởng đơn hàng"
+                val={`+ ${fmt(row.driverOrderBonusDetail.totalAmount)}`} />
+            )}
+          </>
+        ) : row.driverOrderBonus > 0 && (
+          <Row label="Thưởng đơn hàng" val={`+ ${fmt(row.driverOrderBonus)}`} />
+        )}
+        {/* Các khoản thưởng import theo tháng (Chuyên cần, Tháng 13…) — MỖI KHOẢN
+            1 dòng riêng, không gộp vào Thưởng KPI. */}
+        {bonusItems.map((b, i) => (
+          <Row key={i} label={b.label || 'Thưởng khác'} val={`+ ${fmt(b.amount)}`} />
+        ))}
+        {/* Dòng Thưởng KPI — chỉ tính phần KPI thuần (không cộng imported) */}
+        <Row label={`Thưởng KPI — đạt ${kpiStr}`} val={`+ ${fmt(effBonusKpi)}`} />
         {kpi !== 100 && (
-          <Row sub label={`Thưởng gốc ${fmt(row.bonus)} × ${kpiStr}`} val={fmt(effBonus)} />
+          <Row sub label={`Thưởng gốc ${fmt(row.bonus)} × ${kpiStr}`} val={fmt(effBonusKpi)} />
+        )}
+        {/* Tổng thưởng: chỉ hiển thị khi có nhiều hơn 1 nguồn thưởng */}
+        {((bonusItems.length + (row.driverOrderBonus > 0 ? 1 : 0) + (effBonusKpi > 0 ? 1 : 0)) > 1) && (
+          <Row sub label="Tổng thưởng"
+            val={`+ ${fmt(effBonusTotal + (row.driverOrderBonus || 0))}`} />
         )}
 
         <Divider />

@@ -13,8 +13,9 @@ import {
   Search, RefreshCw, ChevronLeft, ChevronRight, Filter,
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
   ChevronDown, DollarSign, X, AlertCircle, Calendar,
-  Download, FileText, Paperclip, List, Ban,
+  Download, FileText, Paperclip, List, Ban, Ticket,
 } from 'lucide-react';
+import VoucherPaymentModal from '../../components/payment/VoucherPaymentModal';
 
 const CANCELLABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERING']);
 
@@ -88,25 +89,50 @@ function PaymentMethodCell({ value, onSave, disabled }) {
     { value: 'DEBT', label: t('payment', 'debt_icon') },
   ];
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const btnRef = useRef(null);
   const handleSelect = (val) => { setOpen(false); if (val !== value) onSave(val); };
+
+  /*
+   * Dropdown render qua PORTAL ra <body>.
+   *
+   * Bảng có vùng cuộn riêng; khi chỉ có vài đơn thì vùng đó thấp hơn dropdown và nó bị
+   * cắt mất. Đưa ra body thì không tổ tiên nào cắt được, toạ độ lấy từ
+   * getBoundingClientRect nên vẫn dính đúng nút.
+   */
+  const toggle = () => {
+    if (open) { setOpen(false); return; }
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) {
+      const openUp = window.innerHeight - r.bottom < 140;   // thiếu chỗ dưới thì lật lên
+      setPos({ left: r.left, top: openUp ? r.top - 4 : r.bottom + 4, openUp });
+    }
+    setOpen(true);
+  };
+
   if (disabled) return <PaymentMethodBadge method={value} />;
+
   return (
     <div className="relative">
-      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 group" title={t('payment', 'change_method_hint')}>
+      <button ref={btnRef} onClick={toggle} className="inline-flex items-center gap-1 group" title={t('payment', 'change_method_hint')}>
         <PaymentMethodBadge method={value} />
         <ChevronDown size={10} className="text-gold opacity-70 group-hover:opacity-100 transition-opacity" />
       </button>
-      {open && (<>
-        <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-        <div className="absolute left-0 top-full mt-1 z-20 bg-surface border border-line rounded-xl shadow-lg py-1 min-w-[160px]">
-          {PAYMENT_METHODS.map(m => (
-            <button key={m.value} onClick={() => handleSelect(m.value)}
-              className={`w-full text-left px-3 py-2 text-xs hover:bg-canvas transition-colors ${m.value === value ? 'font-bold text-gold' : 'text-ink'}`}>
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </>)}
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+          <div
+            style={{ left: pos.left, top: pos.top, transform: pos.openUp ? 'translateY(-100%)' : undefined }}
+            className="fixed z-[91] bg-surface border border-line rounded-xl shadow-lg py-1 min-w-[160px]">
+            {PAYMENT_METHODS.map(m => (
+              <button key={m.value} onClick={() => handleSelect(m.value)}
+                className={`w-full text-left px-3 py-2 text-xs hover:bg-canvas transition-colors ${m.value === value ? 'font-bold text-gold' : 'text-ink'}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body)}
     </div>
   );
 }
@@ -131,6 +157,7 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const [txHistory, setTxHistory] = useState([]);
   const [txLoading, setTxLoading] = useState(false);
   const [waiveConfirm, setWaiveConfirm] = useState(false);
+  const [voucherOpen, setVoucherOpen] = useState(false);
 
   useEffect(() => {
     import('../../api/services').then(({ paymentApi }) => {
@@ -149,6 +176,18 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const canWaive = paidNum > 0 && shortfall > 0 && shortfall < 50000;
   const isBankTransfer = paymentMethod === 'BANK_TRANSFER';
 
+  /*
+   * ĐƠN CHƯA GIAO = THU TIỀN TRƯỚC → bắt buộc trả hết trong một lần.
+   *
+   * Thu nhiều đợt sẽ tạo ra đơn nằm lửng ở PARTIAL: kho vẫn bị chặn giao, kế toán tưởng
+   * đã xử lý xong, không ai thấy đơn kẹt vì lý do gì. Vẫn cho phép "bỏ phần dư" trong
+   * 50.000đ để xử lý tiền lẻ (đơn 202.000 khách đưa 200.000).
+   *
+   * Server kiểm lại điều kiện này; ở đây chặn sớm để kế toán không gõ xong rồi mới bị từ chối.
+   */
+  const isPreDeliveryOrder = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'].includes(order?.status);
+  const mustPayInFull = isPreDeliveryOrder;
+
   const handleAmountChange = (e) => {
     const raw = e.target.value.replace(/[^0-9]/g, '');
     setAmountInput(raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : '');
@@ -158,6 +197,12 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
   const handleConfirm = () => {
     if (!paidNum || paidNum <= 0) { setError(t('payment', 'enter_paid_amount_required')); return; }
     if (paidNum > remaining) { setError(`${t('payment', 'enter_amount_collected')}: ${formatPrice(remaining)}`); return; }
+    if (mustPayInFull && !isFullPayment && !waiveConfirm) {
+      setError(canWaive
+        ? `Đơn thu tiền trước phải thanh toán đủ. Còn thiếu ${formatPrice(shortfall)} — tick "thu đủ, bỏ phần dư" nếu khách trả thiếu do làm tròn.`
+        : `Đơn thu tiền trước phải thanh toán đủ ${formatPrice(remaining)}.`);
+      return;
+    }
     if (hasDeadline && (!deadlineDays || Number(deadlineDays) <= 0)) { setError(t('payment', 'invalid_days')); return; }
     if (paymentMethod === 'BANK_TRANSFER' && !bankName.trim()) { setError(t('payment', 'bank_name_required')); return; }
     onConfirm({
@@ -195,6 +240,12 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
                 {t('common', 'all')}
               </button>
             </div>
+            {mustPayInFull && (
+              <div className="px-3 py-2 rounded-lg text-[11px] bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                Đơn chưa giao — thu tiền trước. Phải thanh toán <strong>đủ</strong>, và
+                trạng thái đơn vẫn giữ nguyên để kho tiếp tục soạn hàng.
+              </div>
+            )}
             {paidNum > 0 && paidNum <= remaining && (
               <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-lg text-xs ${isFullPayment ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'}`}>
                 <div className="flex items-center gap-1.5">
@@ -231,6 +282,16 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
               ))}
             </div>
           </div>
+          {/* Thanh toán bằng VOUCHER — luồng riêng, không phải một lựa chọn của biểu mẫu
+              bên trên: khách đưa mã, hệ thống kiểm tra rồi mới trừ, số tiền do voucher
+              quyết định chứ không gõ tay. */}
+          <button
+            onClick={() => setVoucherOpen(true)}
+            className="w-full py-2 rounded-xl border-2 border-dashed border-gold/50
+                       text-[11px] font-semibold text-gold hover:bg-gold/10 transition-colors
+                       flex items-center justify-center gap-1.5">
+            <Ticket size={13} /> Thanh toán bằng voucher
+          </button>
           {isBankTransfer && (
             <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-100 dark:border-blue-500/18">
               <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">{t('payment', 'bank_transfer')}</p>
@@ -294,24 +355,48 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
           </button>
         </div>
       </div>
+
+      {voucherOpen && (
+        <VoucherPaymentModal
+          order={order}
+          onClose={() => setVoucherOpen(false)}
+          onSuccess={() => { setVoucherOpen(false); onClose(); }}
+        />
+      )}
     </div>
   );
 }
 
 // ── StatusActionButtons ───────────────────────────────────────────────────────
-function StatusActionButtons({ order, onComplete, onPartialPayment, loading }) {
+function StatusActionButtons({ order, onComplete, onPartialPayment, onVoucher, loading }) {
   const { t } = useLang();
   const { status } = order;
+
+  /*
+   * Thanh toán bằng voucher xét theo SỐ TIỀN CÒN THIẾU, không theo trạng thái đơn:
+   * đơn phải thu trước vẫn đang PREPARING mà đã cần thu, đơn đã giao thì ở
+   * PENDING_PAYMENT — lọc theo trạng thái sẽ bỏ sót một trong hai.
+   */
+  const remainingDue = Number(order.finalAmount || 0) - Number(order.paidAmount || 0);
+  const canPayVoucher = status !== 'CANCELLED' && status !== 'FAILED' && remainingDue > 0;
+
   const locked = status === 'COMPLETED' || status === 'CANCELLED' || status === 'FAILED';
-  if (locked) return <span className="text-[10px] text-faint">—</span>;
+  if (locked && !canPayVoucher) return <span className="text-[10px] text-faint">—</span>;
 
   const canComplete = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
   const canPartial = status === 'DELIVERING' || status === 'PENDING_PAYMENT';
 
-  if (!canComplete && !canPartial) return null;
+  if (!canComplete && !canPartial && !canPayVoucher) return null;
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
+      {canPayVoucher && (
+        <button onClick={e => { e.stopPropagation(); onVoucher?.(); }} disabled={loading}
+          title="Thanh toán bằng voucher"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
+          <Ticket size={10} /> Voucher
+        </button>
+      )}
       {canPartial && (
         <button onClick={e => { e.stopPropagation(); onPartialPayment(); }} disabled={loading}
           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/28 hover:bg-blue-100 dark:bg-blue-500/18 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
@@ -491,6 +576,8 @@ export default function AccountantOrdersPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
+  /** Đơn đang mở hộp thoại thanh toán bằng voucher từ cột Thao tác. */
+  const [voucherOrder, setVoucherOrder] = useState(null);
   const [pageSize, setPageSize] = useState(100);
   const [uploadingReceiptId, setUploadingReceiptId] = useState(null);
   const receiptInputRef = useRef(null);
@@ -596,11 +683,36 @@ export default function AccountantOrdersPage() {
     finally { setActionLoading(null); }
   };
 
+  /** Đơn còn ở trước-giao thì đi luồng THU TIỀN TRƯỚC, không phải thu công nợ. */
+  const PRE_DELIVERY = new Set(['PENDING', 'CONFIRMED', 'PREPARING', 'READY']);
+
   const handlePartialPayment = async (payload) => {
     if (!partialOrder) return;
     const { paidAmount, debtDays = 0, paymentMethod, bankName, transactionRef, waiveRemainder, actualPaid } = payload;
     setPartialLoading(true);
     try {
+      // ── ĐƠN CHƯA GIAO: thu tiền trước ────────────────────────────────────
+      // Endpoint riêng vì nó KHÔNG đổi trạng thái đơn — đơn phải ở nguyên "Đang chuẩn
+      // bị" cho kho soạn hàng, chỉ paymentStatus lên PAID. Đi nhầm sang partial-payment
+      // sẽ đẩy đơn sang PENDING_PAYMENT/COMPLETED và kho mất đơn khỏi hàng chờ.
+      if (PRE_DELIVERY.has(partialOrder.status)) {
+        const amount = waiveRemainder ? Number(actualPaid) : paidAmount;
+        await accountantApi.recordPrepayment(partialOrder.id, {
+          paidAmount: amount,
+          waiveRemainder: !!waiveRemainder,
+          paymentMethod,
+          bankName: paymentMethod === 'BANK_TRANSFER' ? bankName?.trim() : undefined,
+          transactionRef: paymentMethod === 'BANK_TRANSFER' ? transactionRef?.trim() : undefined,
+        });
+        // Trạng thái đơn GIỮ NGUYÊN, chỉ cập nhật phần thanh toán.
+        setOrders(prev => prev.map(o => o.id === partialOrder.id
+          ? { ...o, paidAmount: Number(o.paidAmount || 0) + amount, paymentStatus: 'PAID' }
+          : o));
+        toast('Đã ghi nhận thu tiền trước — kho có thể giao hàng', 'success');
+        setPartialOrder(null);
+        return;
+      }
+
       if (waiveRemainder) {
         await accountantApi.waiveRemainder(partialOrder.id, { actualPaid: Number(actualPaid), paymentMethod, bankName: paymentMethod === 'BANK_TRANSFER' ? bankName?.trim() : undefined, transactionRef: paymentMethod === 'BANK_TRANSFER' ? transactionRef?.trim() : undefined });
         setOrders(prev => prev.map(o => o.id === partialOrder.id ? { ...o, paidAmount: Number(actualPaid), paymentStatus: 'PAID', status: 'COMPLETED' } : o));
@@ -922,6 +1034,7 @@ export default function AccountantOrdersPage() {
                   onUploadReceipt={handleUploadReceipt}
                   onDetail={handleMobileDetail}
                   onFilterReceipt={setReceiptNumberFilter}
+                  onVoucherPayment={setVoucherOrder}
                 />
               ))}
             </div>
@@ -936,6 +1049,14 @@ export default function AccountantOrdersPage() {
           </div>
         )}
       </div>
+
+      {voucherOrder && (
+        <VoucherPaymentModal
+          order={voucherOrder}
+          onClose={() => setVoucherOrder(null)}
+          onSuccess={() => { setVoucherOrder(null); fetchOrders(page); }}
+        />
+      )}
 
       {partialOrder && <PartialPaymentModal order={partialOrder} onClose={() => setPartialOrder(null)} onConfirm={handlePartialPayment} loading={partialLoading} />}
 

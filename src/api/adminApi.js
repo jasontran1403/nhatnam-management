@@ -51,6 +51,13 @@ export const adminOrderApi = {
 // ─── Customers ───────────────────────────────────────────────────────────────
 export const adminCustomerApi = {
   list: (params) => api.get('/api/admin/customers', { params }).then(unwrap),
+
+  /**
+   * Khách hàng GOM THEO DANH MỤC — không phân trang.
+   * Trả về mảng nhóm [{ categoryId, categoryName, color, sortOrder, total, customers[] }]
+   * theo đúng thứ tự sortOrder trong DB, nhóm "Chưa phân loại" luôn ở cuối.
+   */
+  listGrouped: (params) => api.get('/api/admin/customers/grouped', { params }).then(unwrap),
   getById: (id) => api.get(`/api/admin/customers/${id}`).then(unwrap),
   create: (data) => api.post('/api/admin/customers', data).then(unwrap),
   update: (id, data) => api.put(`/api/admin/customers/${id}`, data).then(unwrap),
@@ -80,6 +87,7 @@ export const adminCustomerApi = {
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 export const adminUserApi = {
+  /** @param params { q, role, locked, includeDeleted, birthdaySort, page, size } */
   list: (params) => api.get('/api/admin/users', { params }).then(unwrap),
   getById: (id) => api.get(`/api/admin/users/${id}`).then(unwrap),
   create: (data) => api.post('/api/admin/users', data).then(unwrap),

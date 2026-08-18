@@ -242,6 +242,16 @@ export const accountantApi = {
   getSummary: (from, to) => api.get('/api/accountant/dashboard/summary', { params: { from, to } }),
   getChart: (from, to, groupBy) => api.get('/api/accountant/dashboard/chart', { params: { from, to, groupBy } }),
   getTopProducts: (from, to, limit = 10) => api.get('/api/accountant/dashboard/top-products', { params: { from, to, limit } }),
+  /**
+   * Thu tiền TRƯỚC KHI GIAO — chỉ dùng cho đơn còn ở PENDING/CONFIRMED/PREPARING/READY.
+   *
+   * <p>Không đổi trạng thái đơn, chỉ đưa paymentStatus lên PAID để kho được giao.
+   * Bắt buộc thu đủ; thiếu do làm tròn thì gửi `waiveRemainder: true` (trần 50.000đ,
+   * server kiểm).
+   */
+  recordPrepayment: (id, data) =>
+    api.patch(`/api/accountant/orders/${id}/prepayment`, data),
+
   recordPartialPayment: (id, paidAmountOrData, debtDays) => {
     const body = typeof paidAmountOrData === 'object' && paidAmountOrData !== null
       ? paidAmountOrData
@@ -297,6 +307,8 @@ export const expenseApi = {
   vendorCategories: () => api.get('/api/expense-vouchers/expense-categories'),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
   reject: (id, reason) => api.post(`/api/expense-vouchers/${id}/reject`, { reason }),
+  /** Tạo phiếu chi hoàn phần dư — hỗ trợ chọn PTTT + STK khách hàng. */
+  refundOverpay: (data) => api.post('/api/expense-vouchers/refund-overpay', data),
   /**
    * Duyệt hàng loạt. `ids` gom từ NHIỀU TRANG khác nhau — backend chỉ nhận id nên
    * không phụ thuộc phân trang. SUPER_ACCOUNTANT gọi được, nhưng backend vẫn kiểm

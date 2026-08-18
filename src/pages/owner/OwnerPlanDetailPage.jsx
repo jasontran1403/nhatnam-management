@@ -1,6 +1,6 @@
 // src/pages/owner/OwnerPlanDetailPage.jsx
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Factory, CheckCircle2, Clock, AlertTriangle,
   ClipboardList, TrendingUp, Package, X, Loader2, Plus,
@@ -74,8 +74,23 @@ export default function OwnerPlanDetailPage() {
   const { t } = useLang();
   const { fmtDate, fmtNum } = useFmt();
   const isSuperFactoryWorker = role === 'SUPER_FACTORY_WORKER';
-  const basePath = isSuperFactoryWorker ? '/super-factory/production' : '/owner/production';
-  const woBasePath = isSuperFactoryWorker ? '/super-factory/production/work-orders' : '/owner/production/work-orders';
+  /**
+   * Khu vực hiện tại suy từ URL, KHÔNG suy từ role.
+   *
+   * <p>Trang này được mount ở /owner, /admin, /seller và /super-factory. Suy từ role thì
+   * seller đang đứng ở /seller/production/plans/1 bấm quay lại sẽ bị đẩy sang
+   * /owner/production — route không tồn tại với họ nên router đá về dashboard.
+   *
+   * <p>Suy từ URL cũng đúng hơn cho tài khoản mang nhiều role cùng lúc: họ chỉ đang
+   * đứng ở đúng một khu vực, và nút quay lại phải trả về chính khu vực đó.
+   */
+  const { pathname } = useLocation();
+  const basePath =
+      pathname.startsWith('/super-factory') ? '/super-factory/production'
+    : pathname.startsWith('/seller')        ? '/seller/production'
+    : pathname.startsWith('/admin')         ? '/admin/production'
+    : '/owner/production';
+  const woBasePath = `${basePath}/work-orders`;
   const [plan, setPlan]       = useState(null);
   const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useMinLoading(true);

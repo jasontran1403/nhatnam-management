@@ -33,6 +33,7 @@ import SaleKpiPage from '../pages/admin/SaleKpiPage';
 import OwnerAnalyticsPage from '../pages/owner/OwnerAnalyticsPage';
 import OwnerProductionPage from '../pages/owner/OwnerProductionPage';
 import OwnerEmployeesPage from '../pages/owner/OwnerEmployeesPage';
+import OrgChartPage from '../pages/owner/OrgChartPage';
 import DebtOrdersPage from '../pages/shared/DebtOrdersPage';
 import CameraManagementPage from '../pages/shared/CameraManagementPage';
 
@@ -68,6 +69,14 @@ import POSPage from '../pages/seller/POSPage';
 import OrdersPage from '../pages/seller/OrdersPage';
 import DraftOrdersPage from '../pages/seller/DraftOrdersPage';
 import SellerCustomersPage from '../pages/seller/SellerCustomersPage';
+import OrderForecastPage from '../pages/seller/OrderForecastPage';
+import VoucherManagementPage from '../pages/shared/VoucherManagementPage';
+import VoucherDetailPage from '../pages/shared/VoucherDetailPage';
+import GiftOrdersPage from '../pages/shared/GiftOrdersPage';
+import GiftOrderDetailPage from '../pages/shared/GiftOrderDetailPage';
+import WarehouseGiftQueuePage from '../pages/warehouse/WarehouseGiftQueuePage';
+import SubPageShell from '../components/common/SubPageShell';
+import SellerProductionPage from '../pages/seller/SellerProductionPage';
 import AccountantOrdersPage from '../pages/accountant/AccountantOrdersPage';
 
 // Warehouse
@@ -181,17 +190,58 @@ export default function AppRoutes() {
         <Route path="dashboard" element={<SellerDashboardPage />} />
         <Route path="pos" element={<POSPage />} />
         <Route path="orders" element={<OrdersPage />} />
-        <Route path="drafts" element={<DraftOrdersPage />} />
+        {/* Đơn nháp — vào bằng toggle trong trang Đơn hàng, nên có nút quay lại. */}
+        <Route path="drafts" element={
+          <SubPageShell backTo="/seller/orders" backLabel="Đơn hàng">
+            <DraftOrdersPage />
+          </SubPageShell>} />
         <Route path="customers" element={<SellerCustomersPage />} />
+        {/* Dự báo đặt hàng — SELLER thấy khách được gán, SUPER_SELLER thấy tất cả
+            (việc lọc do backend quyết định theo token, không truyền sellerId từ FE). */}
+        <Route path="order-forecast" element={<OrderForecastPage />} />
+        {/* Sản xuất — dùng lại màn hình của OWNER ở chế độ rút gọn.
+            Trang chi tiết kế hoạch / lệnh sản xuất dùng chung component với OWNER. */}
+        <Route path="production" element={<SellerProductionPage />} />
+        <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
+        <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
+        {/* Voucher: seller được tạo/xem cho khách của mình, không được sửa/thu hồi. */}
+        {/* Voucher và Phiếu tặng quà KHÔNG còn ở menu — mở từ trang Khách hàng,
+            nên bọc SubPageShell để có nút quay lại và hiệu ứng trượt. */}
+        <Route path="vouchers" element={
+          <SubPageShell backTo="/seller/customers">
+            <VoucherManagementPage canManage={false} />
+          </SubPageShell>} />
+        <Route path="vouchers/:id" element={<VoucherDetailPage />} />
+        <Route path="gift-orders" element={
+          <SubPageShell backTo="/seller/customers">
+            <GiftOrdersPage canApprove={false} />
+          </SubPageShell>} />
+        <Route path="gift-orders/:id" element={<GiftOrderDetailPage />} />
         <Route path="orders-manage" element={<AccountantOrdersPage />} />
-        <Route path="quotation" element={<QuotationPage />} />
-        <Route path="material-requests" element={<SellerMaterialRequestPage />} />
+        {/* Báo giá — mở từ trang Bán hàng. */}
+        <Route path="quotation" element={
+          <SubPageShell backTo="/seller/pos" backLabel="Bán hàng">
+            <QuotationPage />
+          </SubPageShell>} />
+        {/* Phiếu đặt hàng (nguyên liệu) — mở từ trang Bán hàng. */}
+        <Route path="material-requests" element={
+          <SubPageShell backTo="/seller/pos" backLabel="Bán hàng">
+            <SellerMaterialRequestPage />
+          </SubPageShell>} />
         {/* Phiếu đặt văn phòng phẩm — tách hẳn khỏi phiếu nguyên liệu */}
-        <Route path="supply-orders" element={<SupplyOrderPage />} />
+        {/* Phiếu đặt văn phòng phẩm — mở từ trang Kho văn phòng phẩm. */}
+        <Route path="supply-orders" element={
+          <SubPageShell backTo="/seller/supply-warehouse" backLabel="Kho văn phòng phẩm">
+            <SupplyOrderPage />
+          </SubPageShell>} />
         <Route path="supply-warehouse" element={<SupplyWarehousePage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
-        <Route path="my-requests" element={<MyRequestsPage />} />
+        {/* Phiếu của tôi — mở từ trang Quản lý lương. */}
+        <Route path="my-requests" element={
+          <SubPageShell backTo="/seller/my-payroll" backLabel="Quản lý lương">
+            <MyRequestsPage />
+          </SubPageShell>} />
       </Route>
 
       {/* ── OWNER */}
@@ -203,8 +253,19 @@ export default function AppRoutes() {
         <Route path="drafts" element={<DraftOrdersPage />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="customers" element={<AdminCustomers />} />
+        <Route path="vouchers" element={
+          <SubPageShell backTo="/owner/customers">
+            <VoucherManagementPage />
+          </SubPageShell>} />
+        <Route path="vouchers/:id" element={<VoucherDetailPage />} />
+        <Route path="gift-orders" element={
+          <SubPageShell backTo="/owner/customers">
+            <GiftOrdersPage />
+          </SubPageShell>} />
+        <Route path="gift-orders/:id" element={<GiftOrderDetailPage />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="employees" element={<OwnerEmployeesPage />} />
+        <Route path="org-chart" element={<OrgChartPage />} />
         <Route path="warehouses" element={<AdminWarehouses />} />
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
         <Route path="ingredients" element={<AdminIngredients />} />
@@ -264,6 +325,16 @@ export default function AppRoutes() {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="customers" element={<AdminCustomers />} />
+        <Route path="vouchers" element={
+          <SubPageShell backTo="/admin/customers">
+            <VoucherManagementPage />
+          </SubPageShell>} />
+        <Route path="vouchers/:id" element={<VoucherDetailPage />} />
+        <Route path="gift-orders" element={
+          <SubPageShell backTo="/admin/customers">
+            <GiftOrdersPage />
+          </SubPageShell>} />
+        <Route path="gift-orders/:id" element={<GiftOrderDetailPage />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="warehouses" element={<AdminWarehouses />} />
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
@@ -294,6 +365,7 @@ export default function AppRoutes() {
         <Route path="operations" element={<OperationsPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
+        <Route path="gift-orders" element={<WarehouseGiftQueuePage />} />
         <Route path="driver-attendance" element={<DriverAttendancePage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
@@ -312,6 +384,7 @@ export default function AppRoutes() {
         <Route path="history" element={<HistoryPage />} />
         <Route path="expenses" element={<ExpenseListPage />} />
         <Route path="delivery" element={<WarehouseDeliveryPage />} />
+        <Route path="gift-orders" element={<WarehouseGiftQueuePage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
         <Route path="my-requests" element={<MyRequestsPage />} />

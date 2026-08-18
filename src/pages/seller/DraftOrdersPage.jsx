@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/common/Toast';
+import { receiverMissingRegion, MISSING_REGION_MESSAGE } from '../../utils/receiverRegion';
 import { useLang } from '../../context/LangContext';
 import { useAuth } from '../../context/AuthContext';
 import { draftApi, orderApi, productApi, categoryApi, warehouseApi } from '../../api/services';
@@ -1081,6 +1082,8 @@ function EditDraftModal({ open, draft, onClose, onSaved }) {
         customerPhone: customer?.phone || draft?.customerPhone || null,
         customerEmail: draft?.customerEmail || null,
         shippingAddress: draft?.shippingAddress || null,
+        provinceName: draft?.provinceName || null,
+        wardName: draft?.wardName || null,
         receiverName: receiverName.trim() || null,
         receiverPhone: draft?.receiverPhone || null,
         receiverAddress: draft?.receiverAddress || null,
@@ -1479,11 +1482,25 @@ export default function DraftOrdersPage() {
       const stockBody = stockRes.data?.data || stockRes.data;
       if (!stockBody?.sufficient) { setWarning({ open: true, type: 'stock', items: stockBody?.outOfStockItems || [] }); setOrderInfoModal({ open: false, draft: null }); return; }
       const effectiveCustomer = selectedCustomer || (draft.customerId ? { id: draft.customerId, name: draft.customerName, phone: draft.customerPhone } : null);
+      // Chặn tạo đơn khi địa chỉ giao (người nhận vừa chọn hoặc dữ liệu nháp) thiếu tỉnh/phường.
+      const effReceiver = effectiveCustomer?.selectedReceiver || {
+        receiverAddress: draft.receiverAddress || draft.shippingAddress,
+        provinceName: draft.provinceName,
+        wardName: draft.wardName,
+      };
+      if (receiverMissingRegion(effReceiver)) {
+        toast(MISSING_REGION_MESSAGE, 'error');
+        setOrderInfoModal({ open: false, draft: null });
+        return;
+      }
       const payload = {
         customerId: effectiveCustomer?.id || null,
         customerName: effectiveCustomer?.contactName || effectiveCustomer?.name || draft.customerName || null,
         customerPhone: effectiveCustomer?.selectedReceiver?.receiverPhone || effectiveCustomer?.phone || draft.customerPhone || null,
         shippingAddress: effectiveCustomer?.selectedReceiver?.receiverAddress || draft.shippingAddress || draft.receiverAddress || '',
+        // Ưu tiên tỉnh/phường của người nhận vừa chọn; nếu không có thì giữ theo nháp.
+        provinceName: effectiveCustomer?.selectedReceiver?.provinceName || draft.provinceName || null,
+        wardName: effectiveCustomer?.selectedReceiver?.wardName || draft.wardName || null,
         receiverName: receiverName || effectiveCustomer?.selectedReceiver?.receiverName || draft.receiverName || draft.customerName || null,
         receiverPhone: effectiveCustomer?.selectedReceiver?.receiverPhone || effectiveCustomer?.phone || draft.receiverPhone || draft.customerPhone || null,
         receiverAddress: effectiveCustomer?.selectedReceiver?.receiverAddress || draft.receiverAddress || draft.shippingAddress || '',

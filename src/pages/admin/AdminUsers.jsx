@@ -5,7 +5,7 @@ import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check, AlertCircle, Trash2,
-  DollarSign, CalendarClock, ShieldAlert, Gauge, ClipboardSignature,
+  DollarSign, CalendarClock, ShieldAlert, Gauge, ClipboardSignature, Network, Cake, ArrowDownWideNarrow,
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { payrollPasscodeApi } from '../../api/payrollPasscodeApi';
@@ -19,9 +19,14 @@ import useDebounce from '../../utils/useDebounce.js';
 import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
+import DatePicker from '../../components/ui/DatePicker';
+import {
+  formatDayMonth, ageFrom, countdownLabel,
+  anniversaryRowClass, anniversaryBadgeClass,
+} from '../../utils/anniversary';
 import {
   PageHeader, LoadingSpinner, EmptyState, PrimaryButton, SecondaryButton,
-  DangerButton, Field, inputCls, formatNumber, formatDateTime,
+  DangerButton, Field, inputCls, formatNumber,
 } from '../../components/ui';
 
 // ── TOP-LEVEL constants ───────────────────────────────────────────────────────
@@ -177,6 +182,8 @@ export default function AdminUsers() {
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [loading, setLoading] = useMinLoading();
+  /** Bật = xếp theo sinh nhật gần đến nhất (hôm nay lên đầu, chưa khai báo xuống cuối). */
+  const [birthdaySort, setBirthdaySort] = useState(false);
 
   const [formOpen, setFormOpen]     = useState(false);
   const [editing, setEditing]       = useState(null);
@@ -195,11 +202,14 @@ export default function AdminUsers() {
       if (debouncedQ)       params.q      = debouncedQ;
       if (filters.role)     params.role   = filters.role;
       if (filters.locked !== '') params.locked = filters.locked;
+      // Sắp xếp theo sinh nhật phải làm Ở SERVER: thứ tự phụ thuộc ngày hiện tại và
+      // trải trên toàn bộ tập lọc, sort trong trang hiện tại sẽ chỉ đúng cho 20 người.
+      if (birthdaySort)     params.birthdaySort = true;
       const res = await adminUserApi.list(params);
       setData(res);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [page, debouncedQ, filters.role, filters.locked]);
+  }, [page, debouncedQ, filters.role, filters.locked, birthdaySort]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -297,6 +307,7 @@ export default function AdminUsers() {
       {/* Các trang trước đây nằm ở sidebar, nay mở từ đây và có nút Quay lại. */}
       <SubPageButtons
         items={[
+          { to: '/owner/org-chart', label: 'Sơ đồ tổ chức', icon: Network, hidden: !isOwner },
           { to: '/owner/employees', label: 'Duyệt lương', icon: DollarSign, hidden: !isOwner },
           { to: `${rolePrefix}/drivers`, label: 'Tài xế', icon: Gauge },
           { to: '/owner/attendance', label: 'Bảng chấm công', icon: ClipboardSignature, hidden: !isOwner },
@@ -335,6 +346,19 @@ export default function AdminUsers() {
           <option value="false">Đang hoạt động</option>
           <option value="true">Đã khóa</option>
         </select>
+        <button
+          type="button"
+          onClick={() => { setBirthdaySort(v => !v); setPage(0); }}
+          title="Xếp nhân viên có sinh nhật gần đến nhất lên đầu"
+          className={`inline-flex items-center justify-center gap-1.5 px-3 h-[42px] rounded-xl
+            text-xs font-semibold border transition-colors whitespace-nowrap
+            ${birthdaySort
+              ? 'bg-rose-500 text-white border-rose-500'
+              : 'border-hairline-2 text-ink-2 hover:bg-canvas'}`}>
+          <Cake size={14} />
+          Sinh nhật gần nhất
+          {birthdaySort && <ArrowDownWideNarrow size={13} />}
+        </button>
       </div>
 
       {/* Table */}
@@ -353,14 +377,17 @@ export default function AdminUsers() {
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">User</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Liên hệ</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Quyền</th>
-                    <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">Trạng thái</th>
-                    <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">Tạo lúc</th>
+                    <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
+                      Ngày sinh
+                    </th>
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.content.map(u => (
-                    <tr key={u.id} className="border-t border-hairline hover:bg-canvas/50 transition-colors">
+                    <tr key={u.id}
+                      className={`border-t border-hairline transition-colors
+                        ${birthdayRowClass(u) || 'hover:bg-canvas/50'}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-deep flex items-center justify-center text-white text-xs font-bold shrink-0">
@@ -392,19 +419,9 @@ export default function AdminUsers() {
                             )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          {u.isLockAccount
-                            ? <Badge className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-500/28">Đã khóa</Badge>
-                            : <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Hoạt động</Badge>}
-                          {payrollLockedIds.has(u.id) && (
-                            <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/28 text-[10px]">
-                              Khoá xem lương
-                            </Badge>
-                          )}
-                        </div>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <BirthdayCell user={u} />
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{formatDateTime(u.timeCreate)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           {canManageUser(currentUser?.role, u) ? (
@@ -462,7 +479,7 @@ export default function AdminUsers() {
             {/* Mobile */}
             <div className="md:hidden divide-y divide-hairline">
               {data.content.map(u => (
-                <div key={u.id} className="p-4">
+                <div key={u.id} className={`p-4 ${birthdayRowClass(u)}`}>
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-deep flex items-center justify-center text-white text-sm font-bold shrink-0">
                       {(u.fullName || u.username)[0]?.toUpperCase()}
@@ -475,6 +492,9 @@ export default function AdminUsers() {
                         {u.isLockAccount
                           ? <Badge className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-500/28">Đã khóa</Badge>
                           : <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/28">Hoạt động</Badge>}
+                      </div>
+                      <div className="mt-1.5">
+                        <BirthdayCell user={u} />
                       </div>
                     </div>
                   </div>
@@ -643,6 +663,7 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
     fullName:    editing?.fullName    || '',
     email:       editing?.email       || '',
     phoneNumber: editing?.phoneNumber || '',
+    dateOfBirth: editing?.dateOfBirth ?? null,
     warehouseId: editing?.warehouseId ? String(editing.warehouseId) : '',
   });
 
@@ -758,6 +779,28 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
           </Field>
         </div>
 
+        <Field label="Ngày tháng năm sinh"
+          hint="Dùng để tổ chức sinh nhật — bỏ trống nếu chưa có thông tin">
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <DatePicker
+                value={form.dateOfBirth}
+                onChange={v => setForm({ ...form, dateOfBirth: v })}
+                placeholder="Chọn ngày sinh"
+                maxDate={new Date()}
+              />
+            </div>
+            {form.dateOfBirth && (
+              <button type="button"
+                onClick={() => setForm({ ...form, dateOfBirth: null })}
+                className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                title="Xoá ngày sinh">
+                <X size={15} />
+              </button>
+            )}
+          </div>
+        </Field>
+
         <Field label="Quyền" required hint="Một số quyền không thể kết hợp với nhau">
           <RolePicker
             selected={selectedRoles}
@@ -801,4 +844,37 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
       </form>
     </Modal>
   );
+}
+
+// ── Sinh nhật ────────────────────────────────────────────────────────────────
+
+/**
+ * Ô hiển thị ngày sinh + đếm ngược.
+ *
+ * <p>Dùng cờ `birthdayThisMonth` và `daysUntilBirthday` do SERVER tính theo giờ VN.
+ * Không tự tính lại ở client: trình duyệt của người dùng có thể ở múi giờ khác và
+ * sẽ lệch một ngày so với danh sách server đã sắp xếp.
+ */
+function BirthdayCell({ user: u }) {
+  if (!u.dateOfBirth) {
+    return <span className="text-xs text-faint italic">Chưa khai báo</span>;
+  }
+  const age = ageFrom(u.dateOfBirth);
+  const label = u.birthdayThisMonth ? countdownLabel(u.daysUntilBirthday) : null;
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <Cake size={12} className={u.birthdayThisMonth ? 'text-rose-500' : 'text-muted'} />
+      <span className="text-xs font-medium text-ink">{formatDayMonth(u.dateOfBirth)}</span>
+      {age != null && <span className="text-[10px] text-faint">({age}t)</span>}
+      {label && (
+        <span className={anniversaryBadgeClass(u.daysUntilBirthday, 'rose')}>{label}</span>
+      )}
+    </div>
+  );
+}
+
+/** Nền hàng cho nhân viên có sinh nhật TRONG THÁNG và CHƯA QUA. Đã qua → chuỗi rỗng. */
+function birthdayRowClass(u) {
+  return anniversaryRowClass(u.birthdayThisMonth, u.daysUntilBirthday, 'rose');
 }

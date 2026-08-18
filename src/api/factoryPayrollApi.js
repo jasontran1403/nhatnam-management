@@ -116,45 +116,74 @@ export const factoryPayrollApi = {
       params: { userId, month, year },
     }).then(r),
 
+  /** Chi tiết breakdown lương của 1 user cho tháng — OWNER xem sơ đồ tổ chức. */
+  employeeSalaryBreakdown: (userId, month, year) =>
+    api.get('/api/factory-payroll/employee-salary-breakdown', {
+      params: { userId, month, year },
+    }).then(r),
+
+  /** Cấu hình + bảng lương tài xế của tháng (giá xăng, đơn giá thưởng, lương thử). */
+  driverConfig: (month, year) =>
+    api.get('/api/factory-payroll/driver-config', {
+      params: { month, year },
+    }).then(r),
+
+  /** Lưu giá xăng + đơn giá thưởng (xe máy & xe tải) cho tháng. */
+  saveDriverConfig: (month, year, gasPrice, bonusUnitPrice, truckBonusUnitPrice) =>
+    api.post('/api/factory-payroll/driver-config',
+      { month, year, gasPrice, bonusUnitPrice, truckBonusUnitPrice }).then(r),
+
+  /** Chi tiết lương 1 tài xế trong tháng (cho modal Tab 2). */
+  driverSalaryDetail: (userId, month, year) =>
+    api.get('/api/factory-payroll/driver-salary-detail',
+      { params: { userId, month, year } }).then(r),
+
   // ── Thưởng & phụ cấp theo tháng (import Excel) ────────────────────────────
 
-  /** { bonus: n, allowance: n } — số dòng đã import của kỳ */
-  adjustmentStatus: (month, year) =>
-    api.get('/api/factory-payroll/adjustments/status', { params: { month, year } }).then(r),
+  /** { bonus: n, allowance: n } — số dòng đã import của kỳ THEO BỘ PHẬN */
+  adjustmentStatus: (month, year, department) =>
+    api.get('/api/factory-payroll/adjustments/status', { params: { month, year, department } }).then(r),
 
-  uploadBonus: (file, month, year) => {
+  uploadBonus: (file, month, year, department) => {
     const fd = new FormData();
     fd.append('file', file);
     return api.post('/api/factory-payroll/bonus/upload', fd, {
-      params: { month, year },
+      params: { month, year, department },
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r);
   },
 
-  uploadAllowance: (file, month, year) => {
+  uploadAllowance: (file, month, year, department) => {
     const fd = new FormData();
     fd.append('file', file);
     return api.post('/api/factory-payroll/allowance/upload', fd, {
-      params: { month, year },
+      params: { month, year, department },
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r);
   },
 
   /** type: 'BONUS' | 'ALLOWANCE' */
-  clearAdjustments: (type, month, year) =>
-    api.delete(`/api/factory-payroll/adjustments/${type}`, { params: { month, year } }).then(r),
+  clearAdjustments: (type, month, year, department) =>
+    api.delete(`/api/factory-payroll/adjustments/${type}`,
+      { params: { month, year, department } }).then(r),
 
-  /** Danh sách các KHOẢN thưởng đã có trong kỳ — mỗi khoản một nhãn riêng. */
   /** Danh sách nhân sự của bộ phận — modal "Chi tiết bộ phận". */
   departmentMembers: (department) =>
     api.get(`/api/factory-payroll/departments/${department}/members`).then(r),
 
-  bonusBatches: (month, year) =>
-    api.get('/api/factory-payroll/adjustments/bonus/batches', { params: { month, year } }).then(r),
+  bonusBatches: (month, year, department) =>
+    api.get('/api/factory-payroll/adjustments/bonus/batches',
+      { params: { month, year, department } }).then(r),
 
-  /** Xoá ĐÚNG MỘT khoản thưởng, các khoản khác của cùng tháng không bị đụng. */
-  clearBonusLabel: (month, year, label) =>
-    api.delete('/api/factory-payroll/adjustments/bonus', { params: { month, year, label } }).then(r),
+  /** Xoá ĐÚNG MỘT khoản thưởng (trong bộ phận nếu chỉ định). */
+  clearBonusLabel: (month, year, label, department) =>
+    api.delete('/api/factory-payroll/adjustments/bonus',
+      { params: { month, year, label, department } }).then(r),
+
+  /** PREVIEW dữ liệu đã import — trả về bảng để OWNER xem lại (không sửa). */
+  adjustmentPreview: (month, year, type, { label, department } = {}) =>
+    api.get('/api/factory-payroll/adjustments/preview',
+      { params: { month, year, type, label, department } }).then(r),
 
   // ── File mẫu ───────────────────────────────────────────────────────────────
 

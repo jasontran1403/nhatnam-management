@@ -391,13 +391,49 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
 
   const upd = (patch) => setForm(f => ({ ...f, ...patch }));
 
-  const addIngredient = () => upd({ ingredients: [...form.ingredients, emptyIngredient()] });
+  const addIngredient = () =>
+    setForm(f => ({ ...f, ingredients: computeAutoRetail(f.unit, [...f.ingredients, emptyIngredient()]) }));
   const removeIngredient = (iid) => {
     if (form.ingredients.length <= 1) return;
-    upd({ ingredients: form.ingredients.filter(i => i._id !== iid) });
+    setForm(f => ({ ...f, ingredients: computeAutoRetail(f.unit, f.ingredients.filter(i => i._id !== iid)) }));
   };
   const setIng = (iid, patch) =>
     upd({ ingredients: form.ingredients.map(i => i._id === iid ? { ...i, ...patch } : i) });
+
+  // ── TỰ ĐỘNG TICK "bán lẻ" (canOverride) THEO ĐƠN VỊ TÍNH ────────────────────
+  //   Quy tắc: CHỈ xử lý khi đơn vị SẢN PHẨM = Kg. Khi đó, nếu TẤT CẢ nguyên liệu
+  //   đang chọn đều có đvt = Kg thì mặc định tick tất cả; có nguyên liệu khác Kg
+  //   thì bỏ tick. Đơn vị ≠ Kg → bỏ qua, không đụng vào checkbox.
+  //   - Giữ quyền chỉnh tay: khi người dùng tự bấm checkbox → DỪNG auto (trong phiên).
+  //   - Chỉ áp dụng khi người dùng đổi đơn vị / chọn / thêm / xoá nguyên liệu,
+  //     KHÔNG chạy lúc mở form → không ghi đè giá trị đã lưu khi sửa.
+  const retailManualRef = useRef(false);
+  useEffect(() => { if (open) retailManualRef.current = false; }, [open, editProduct]);
+
+  /** Trả về mảng ingredients đã set canOverride theo quy tắc (giữ nguyên nếu đvt ≠ Kg). */
+  const computeAutoRetail = (unit, ings) => {
+    if (retailManualRef.current) return ings;                        // người dùng đã tự chỉnh
+    if ((unit || '').trim().toLowerCase() !== 'kg') return ings;     // chỉ xử lý khi SP = Kg
+    const chosen = ings.filter(i => i.ingredientId);
+    if (chosen.length === 0) return ings;                            // chưa chọn nguyên liệu
+    const unitOf = (id) => {
+      const m = ingredients.find(x => String(x.id) === String(id));
+      return (m?.unit || '').trim().toLowerCase();
+    };
+    const allKg = chosen.every(i => unitOf(i.ingredientId) === 'kg');
+    return ings.map(i => ({ ...i, canOverride: allKg }));
+  };
+
+  /** Đổi đơn vị sản phẩm → tính lại auto-tick. */
+  const setProductUnit = (unit) =>
+    setForm(f => ({ ...f, unit, unitsPerBox: '', ingredients: computeAutoRetail(unit, f.ingredients) }));
+
+  /** Chọn nguyên liệu cho 1 dòng → tính lại auto-tick. */
+  const setIngredientId = (iid, ingredientId) =>
+    setForm(f => {
+      const ings = f.ingredients.map(i => i._id === iid ? { ...i, ingredientId } : i);
+      return { ...f, ingredients: computeAutoRetail(f.unit, ings) };
+    });
 
   const setTierPrice = (tierId, val) =>
     upd({ tiers: form.tiers.map(t => t._id === tierId ? { ...t, price: val } : t) });
@@ -581,7 +617,7 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
                   <label className="block text-xs font-semibold text-ink-2 mb-1">
                     Đơn vị tính <span className="text-red-400">*</span>
                   </label>
-                  <select value={form.unit} onChange={e => upd({ unit: e.target.value, unitsPerBox: '' })}
+                  <select value={form.unit} onChange={e => setProductUnit(e.target.value)}
                     className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold">
                     <option value="">— Chọn —</option>
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -725,13 +761,13 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
                   className="grid gap-2 items-center bg-canvas rounded-xl px-3 py-2 border border-line-soft"
                   style={{ gridTemplateColumns: '1fr 80px auto 28px' }}>
                   <IngredientSelect ingredients={ingredients} value={ing.ingredientId}
-                    onChange={val => setIng(ing._id, { ingredientId: val })} />
+                    onChange={val => setIngredientId(ing._id, val)} />
                   <input type="number" step="0.001" value={ing.quantity}
                     onChange={e => setIng(ing._id, { quantity: e.target.value })}
                     className="text-xs text-center rounded-lg border border-line py-1.5 focus:outline-none focus:border-gold" />
                   <label className="flex justify-center">
                     <input type="checkbox" checked={ing.canOverride}
-                      onChange={e => setIng(ing._id, { canOverride: e.target.checked })}
+                      onChange={e => { retailManualRef.current = true; setIng(ing._id, { canOverride: e.target.checked }); }}
                       className="accent-gold" />
                   </label>
                   <button onClick={() => removeIngredient(ing._id)} className="text-red-400 hover:text-red-600 dark:text-red-300">

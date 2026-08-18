@@ -1300,7 +1300,21 @@ export function AddMachineModal({ factories, onClose, onSaved }) {
 }
 
 // ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
-export default function OwnerProductionDashboard() {
+/**
+ * BẢNG ĐIỀU KHIỂN SẢN XUẤT — dùng chung cho OWNER/ADMIN và SELLER/SUPER_SELLER.
+ *
+ * @param basePath   gốc đường dẫn ('/owner' | '/admin' | '/seller'). Mọi điều hướng con
+ *                   bám theo giá trị này thay vì hardcode '/owner', nếu không seller bấm
+ *                   vào một kế hoạch sẽ bị đá sang khu vực không có quyền.
+ * @param restricted true = chế độ SELLER: chỉ còn nút "Tạo kế hoạch mới" và Gantt sản xuất.
+ *                   Ẩn reset dữ liệu, hao hụt đóng gói, tồn kho NVL, quản lý xưởng, tạo
+ *                   sản phẩm, và toàn bộ tab máy móc.
+ *
+ * <p>Dùng một component cho cả hai vai trò thay vì nhân bản file: hai màn hình chỉ khác
+ * nhau ở thanh nút và một tab, còn Gantt cùng logic tải dữ liệu thì giống hệt. Nhân bản
+ * ra file thứ hai đồng nghĩa mọi sửa lỗi Gantt sau này phải làm hai lần.
+ */
+export default function OwnerProductionDashboard({ basePath = '/owner', restricted = false }) {
   const { t } = useLang();
   const { loc, fmtDate, fmtNum, fmtCurrency, fmtDateTime, monthShort } = useFmt();
   const navigate = useNavigate();
@@ -1331,13 +1345,15 @@ export default function OwnerProductionDashboard() {
       const now = Date.now();
       const fromMs = now - 30 * 86400000;
       const toMs = now + 60 * 86400000;
+      // Chế độ SELLER không có tab máy móc nên bỏ hẳn hai lời gọi bảo trì/chiếm máy —
+      // seller cũng không được cấp quyền hai endpoint đó, gọi vào sẽ nhận 401.
       const [dash, planList, prods, maint, factList, occ] = await Promise.all([
         ownerProdApi.getDashboard(),
         ownerProdApi.listPlans(0, 50, 'ACTIVE'),
         factoryProductApi.list(true),
-        ownerProdApi.listMaintenance(new Date().getFullYear()),
+        restricted ? Promise.resolve([]) : ownerProdApi.listMaintenance(new Date().getFullYear()),
         ownerProdApi.listFactories().catch(() => []),
-        ownerProdApi.listMachineOccupancy(fromMs, toMs).catch(() => []),
+        restricted ? Promise.resolve([]) : ownerProdApi.listMachineOccupancy(fromMs, toMs).catch(() => []),
       ]);
       setDashboard(dash);
       setPlans(planList?.content || []);
@@ -1398,26 +1414,31 @@ export default function OwnerProductionDashboard() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <PageHeader icon={Factory} title={t('production','dash_title')} subtitle={t('production','dash_subtitle')} />
-        <div className="flex gap-2">
-          {/* ⚠️ CHỈ DÙNG MÔI TRƯỜNG TEST — xoá nút này (và productionResetApi) trước khi
-              deploy lên môi trường có dữ liệu thật. Xem ProductionResetController backend. */}
-          <button onClick={handleResetTestData} disabled={resetting}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl
-              bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/28 hover:bg-red-100 dark:bg-red-500/18 disabled:opacity-50">
-            <RotateCcw size={13} /> {resetting ? 'Resetting...' : 'Reset data (test)'}
-          </button>
-          <SecondaryButton onClick={() => navigate('/owner/production/loss-reports')}>
-            <FileWarning size={15} /> {t('production','dash_loss_reports')}
-          </SecondaryButton>
-          <SecondaryButton onClick={() => navigate('/owner/production/material-stock')}>
-            <Package size={15} /> {t('production','mstock_title')}
-          </SecondaryButton>
-          <SecondaryButton onClick={() => setShowFactories(true)}>
-            <Building2 size={15} /> {t('production','factory_title')}
-          </SecondaryButton>
-          <SecondaryButton onClick={() => setShowCreateProduct(true)}>
-            <Package size={15} /> {t('production','dash_create_product')}
-          </SecondaryButton>
+        <div className="flex gap-2 flex-wrap justify-end">
+          {/* Nhóm nút quản trị — ẩn hoàn toàn với SELLER. */}
+          {!restricted && (
+            <>
+              {/* ⚠️ CHỈ DÙNG MÔI TRƯỜNG TEST — xoá nút này (và productionResetApi) trước khi
+                  deploy lên môi trường có dữ liệu thật. Xem ProductionResetController backend. */}
+              <button onClick={handleResetTestData} disabled={resetting}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl
+                  bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/28 hover:bg-red-100 dark:bg-red-500/18 disabled:opacity-50">
+                <RotateCcw size={13} /> {resetting ? 'Resetting...' : 'Reset data (test)'}
+              </button>
+              <SecondaryButton onClick={() => navigate(`${basePath}/production/loss-reports`)}>
+                <FileWarning size={15} /> {t('production','dash_loss_reports')}
+              </SecondaryButton>
+              <SecondaryButton onClick={() => navigate(`${basePath}/production/material-stock`)}>
+                <Package size={15} /> {t('production','mstock_title')}
+              </SecondaryButton>
+              <SecondaryButton onClick={() => setShowFactories(true)}>
+                <Building2 size={15} /> {t('production','factory_title')}
+              </SecondaryButton>
+              <SecondaryButton onClick={() => setShowCreateProduct(true)}>
+                <Package size={15} /> {t('production','dash_create_product')}
+              </SecondaryButton>
+            </>
+          )}
           <PrimaryButton onClick={() => setShowCreatePlan(true)}><Plus size={15} />{t('production','dash_new_plan')}</PrimaryButton>
         </div>
       </div>
@@ -1450,8 +1471,11 @@ export default function OwnerProductionDashboard() {
         </div>
       )}
 
-      <div className="flex gap-1 bg-surface border border-hairline rounded-xl p-1 w-fit shadow-sm">
-        {[{ id: 'orders', label: t('production','dash_tab_orders'), icon: ClipboardList }, { id: 'machines', label: t('production','dash_tab_machines'), icon: Settings2 }].map(s => (
+      {/* SELLER chỉ có Gantt sản xuất — không có timeline máy móc, nên khi chỉ còn
+          một tab thì bỏ luôn thanh tab cho đỡ rối. */}
+      <div className={`flex gap-1 bg-surface border border-hairline rounded-xl p-1 w-fit shadow-sm ${restricted ? 'hidden' : ''}`}>
+        {[{ id: 'orders', label: t('production','dash_tab_orders'), icon: ClipboardList },
+          ...(restricted ? [] : [{ id: 'machines', label: t('production','dash_tab_machines'), icon: Settings2 }])].map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeSection === s.id ? 'bg-chrome text-white' : 'text-muted hover:text-ink'}`}>
             <s.icon size={14} />{s.label}
@@ -1459,36 +1483,36 @@ export default function OwnerProductionDashboard() {
         ))}
       </div>
 
-      {activeSection === 'orders' && (
+      {(restricted || activeSection === 'orders') && (
         <SectionCard>
           <SectionHeader title={t('production','dash_gantt_title')} />
           <div className="p-4">
             <ProductionGantt
               plans={d.recentPlans || []} orders={d.calendarItems || []}
-              onPlanClick={id => navigate(`/owner/production/plans/${id}`)}
-              onOrderClick={id => navigate(`/owner/production/work-orders/${id}`)} />
+              onPlanClick={id => navigate(`${basePath}/production/plans/${id}`)}
+              onOrderClick={id => navigate(`${basePath}/production/work-orders/${id}`)} />
           </div>
         </SectionCard>
       )}
 
-      {activeSection === 'machines' && (
+      {!restricted && activeSection === 'machines' && (
         <SectionCard>
           <SectionHeader title={t('production','dash_machines_gantt_title')}
             action={<button onClick={() => setShowAddMachine(true)} className="flex items-center gap-1 text-xs text-gold font-semibold hover:underline"><Plus size={12} />{t('production','dash_add_machine')}</button>} />
           <div className="p-4">
             <MaintenanceGantt machines={d.machines || []} maintenanceList={maintenance} occupancyList={occupancy}
               onItemClick={setSelectedMaint}
-              onMachineClick={id => navigate(`/owner/production/machines/${id}/metrics`)} />
+              onMachineClick={id => navigate(`${basePath}/production/machines/${id}/metrics`)} />
           </div>
         </SectionCard>
       )}
 
       {showCreatePlan && <CreatePlanModal products={products} factories={factories} onClose={() => setShowCreatePlan(false)} onSaved={onSaved} />}
       {showCreateWorkOrder && <CreateWorkOrderModal plans={plans} products={products} factories={factories} onClose={() => setShowCreateWorkOrder(false)} onSaved={onSaved} />}
-      {showCreateProduct && <CreateProductModal onClose={() => setShowCreateProduct(false)} onSaved={() => { setShowCreateProduct(false); load(); }} />}
+      {!restricted && showCreateProduct && <CreateProductModal onClose={() => setShowCreateProduct(false)} onSaved={() => { setShowCreateProduct(false); load(); }} />}
       {selectedMaint && <MaintenanceDetailModal item={selectedMaint} onClose={() => setSelectedMaint(null)} />}
-      {showAddMachine && <AddMachineModal factories={factories} onClose={() => setShowAddMachine(false)} onSaved={onSaved} />}
-      <FactoryManagementModal open={showFactories} onClose={() => setShowFactories(false)} onChanged={load} />
+      {!restricted && showAddMachine && <AddMachineModal factories={factories} onClose={() => setShowAddMachine(false)} onSaved={onSaved} />}
+      <FactoryManagementModal open={!restricted && showFactories} onClose={() => setShowFactories(false)} onChanged={load} />
     </div>
   );
 }

@@ -3,10 +3,11 @@ import { useLang } from '../../context/LangContext';
 import { useState, useEffect } from 'react';
 import {
   X, DollarSign, CreditCard, Banknote, ClipboardList,
-  Loader2, CheckCircle, Clock, ChevronDown,
+  Loader2, CheckCircle, Clock, ChevronDown, Ticket,
 } from 'lucide-react';
 import { accountantApi, paymentApi } from '../../api/services';
 import { useToast } from '../common/Toast';
+import VoucherPaymentModal from '../payment/VoucherPaymentModal';
 
 function formatPrice(n) {
   return new Intl.NumberFormat('vi-VN').format(Math.round(n || 0)) + ' đ';
@@ -40,6 +41,9 @@ function getTxMethodLabel(t) {
     CASH: t('payment', 'cash_icon'),
     BANK_TRANSFER: t('payment', 'bank_transfer_icon'),
     DEBT: t('payment', 'debt_icon'),
+    // Khoản thu do voucher sinh ra dùng chung bảng PaymentTransaction với tiền mặt và
+    // chuyển khoản, nên lịch sử thu phải biết dịch mã này, nếu không sẽ hiện chuỗi thô.
+    VOUCHER: 'Voucher',
   };
 }
 
@@ -58,6 +62,8 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
   const [txHistory, setTxHistory] = useState([]);
   const [txLoading, setTxLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
+  /** Mở hộp thoại thanh toán bằng voucher (nhập mã hoặc quét QR). */
+  const [voucherOpen, setVoucherOpen] = useState(false);
 
   const remaining = (order?.finalAmount || 0) - (order?.paidAmount || 0);
   const needsBank = PAYMENT_METHODS.find(m => m.value === method)?.needsBank;
@@ -123,6 +129,7 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="bg-surface rounded-2xl w-full max-w-md shadow-2xl">
         {/* Header */}
@@ -201,6 +208,17 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
                 </button>
               ))}
             </div>
+
+            {/* Voucher tách riêng khỏi ba phương thức trên: nó không phải một lựa chọn
+                của cùng biểu mẫu (không nhập tay số tiền rồi bấm lưu) mà là một luồng
+                riêng — nhập mã, hệ thống kiểm tra, rồi mới trừ. */}
+            <button
+              onClick={() => setVoucherOpen(true)}
+              className="mt-2 w-full py-2 rounded-xl border-2 border-dashed border-gold/50
+                         text-[11px] font-semibold text-gold hover:bg-gold/10 transition-colors
+                         flex items-center justify-center gap-1.5">
+              <Ticket size={13} /> Thanh toán bằng voucher
+            </button>
           </div>
 
           {/* Bank info — only for BANK_TRANSFER */}
@@ -306,5 +324,14 @@ export default function PaymentModal({ order, onClose, onSuccess }) {
         </div>
       </div>
     </div>
+
+      {voucherOpen && (
+        <VoucherPaymentModal
+          order={order}
+          onClose={() => setVoucherOpen(false)}
+          onSuccess={() => { onSuccess?.(); onClose?.(); }}
+        />
+      )}
+    </>
   );
 }

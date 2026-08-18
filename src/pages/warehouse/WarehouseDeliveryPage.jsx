@@ -7,6 +7,7 @@ import { useToast } from '../../components/common/Toast';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import { formatPrice } from '../../utils/formatPrice';
+import { formatDeliveryAddress } from '../../utils/format';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import api from '../../api/axios';
 import {
@@ -15,7 +16,7 @@ import {
     Search, RefreshCw, ChevronLeft, ChevronRight,
     Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
     Camera, FileText, X, CheckSquare, Paperclip, Check,
-    Plus, Download, Calendar, Lock,
+    Plus, Download, Calendar, Lock, PackageCheck,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,8 +28,21 @@ const fmtVndShort = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(Numb
 
 function canDeliverOrder(o) {
     if (o?.canDeliver !== undefined) return !!o.canDeliver;      // BE mới
-    if (!o?.requirePrepayment) return true;                       // fallback API cũ
+
+    // requirePrepaymentEffective do server tính, gộp cả cấu hình khách LẪN quy tắc
+    // "giao ngoài địa bàn TP.HCM". Phải đọc trước requirePrepayment (cờ cấu hình thuần
+    // của khách) — nếu không, đơn đi Bình Dương của một khách không bật cờ sẽ hiện nút
+    // bấm được rồi mới nhận lỗi từ server.
+    const mustPrepay = o?.requirePrepaymentEffective ?? o?.requirePrepayment;
+    if (!mustPrepay) return true;
     return o.paymentStatus === 'PAID';
+}
+
+/** Lý do bị khoá — server gửi kèm để tooltip nói đúng nguyên nhân. */
+function blockReason(o) {
+    const base = o?.prepaymentReason || 'Đơn yêu cầu thanh toán trước';
+    const remaining = Number(o?.remainingAmount ?? 0);
+    return remaining > 0 ? `${base} — còn thiếu ${fmtVndShort(remaining)}đ` : base;
 }
 
 /** Nút "Bắt đầu giao hàng" — tự khoá khi khách yêu cầu thanh toán trước mà chưa thu đủ. */
@@ -38,8 +52,7 @@ function DeliverButton({ order, onClick, className, children }) {
         <button
             onClick={onClick}
             disabled={!allowed}
-            title={allowed ? '' :
-                `Khách yêu cầu thanh toán trước — còn thiếu ${fmtVndShort(order.remainingAmount)}đ`}
+            title={allowed ? '' : blockReason(order)}
             className={`${className} disabled:opacity-50 disabled:cursor-not-allowed`}>
             {allowed ? children : <><Lock size={11} /> Chờ thanh toán</>}
         </button>
@@ -91,6 +104,7 @@ function StatusBadge({ status }) {
 
 // ── DriverPicker ──────────────────────────────────────────────────────────────
 function DriverPicker({ deliveryInfo = [], onChange }) {
+    const toast = useToast();
     const [query, setQuery]               = useState('');
     const [results, setResults]           = useState([]);
     const [open, setOpen]                 = useState(false);
@@ -149,12 +163,23 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
     const createAndAdd = async () => {
         const name = query.trim();
         if (!name) return;
+        if (results.some(r => r.name?.trim().toLowerCase() === name.toLowerCase())) {
+            toast(`Đã có tài xế tên "${name}"`, 'warning');
+            return;
+        }
         setCreating(true);
         try {
-            await api.post('/api/warehouse/drivers', { name, vehicleType: selectedType });
+            const r = await api.post('/api/warehouse/drivers', { name, vehicleType: selectedType });
+            if (r.data?.success === false) {
+                toast(r.data.message || `Đã có tài xế tên "${name}"`, 'warning');
+                return;
+            }
             addDriver(name);
-        } catch (_) { }
-        setCreating(false);
+        } catch (e) {
+            toast(e?.response?.data?.message || 'Không tạo được tài xế', 'error');
+        } finally {
+            setCreating(false);
+        }
     };
 
     const showCreate = query.trim()
@@ -263,6 +288,7 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
 //   - 1 tài xế chỉ gắn 1 loại xe trong đơn: nếu tài xế đã có ở loại A, không cho
 //     thêm chính tài xế đó ở loại B trong cùng đơn — phải dùng đúng loại đã gắn.
 function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) {
+    const toast = useToast();
     const [query, setQuery]               = useState('');
     const [results, setResults]           = useState([]);
     const [open, setOpen]                 = useState(false);
@@ -333,12 +359,23 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
     const createAndAdd = async () => {
         const name = query.trim();
         if (!name) return;
+        if (results.some(r => r.name?.trim().toLowerCase() === name.toLowerCase())) {
+            toast(`Đã có tài xế tên "${name}"`, 'warning');
+            return;
+        }
         setCreating(true);
         try {
-            await api.post('/api/warehouse/drivers', { name, vehicleType: selectedType });
+            const r = await api.post('/api/warehouse/drivers', { name, vehicleType: selectedType });
+            if (r.data?.success === false) {
+                toast(r.data.message || `Đã có tài xế tên "${name}"`, 'warning');
+                return;
+            }
             addOrBumpDriver(name);
-        } catch (_) { }
-        setCreating(false);
+        } catch (e) {
+            toast(e?.response?.data?.message || 'Không tạo được tài xế', 'error');
+        } finally {
+            setCreating(false);
+        }
     };
 
     const showCreate = query.trim()
@@ -458,7 +495,7 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
 }
 
 
-function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm, loading }) {
+function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm, onPickupAtWarehouse, loading }) {
     const [deliveryInfo, setDeliveryInfo] = useState(() => {
         try { return JSON.parse(order?.deliveryInfoJson || '[]'); }
         catch { return []; }
@@ -476,6 +513,10 @@ function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm,
     }, [deliveryInfo]); // eslint-disable-line
 
     const items = detail?.items || [];
+
+    /** Đã chọn ít nhất một tài xế chưa — điều kiện bật nút "Bắt đầu giao hàng". */
+    const hasDriver = Array.isArray(deliveryInfo)
+        && deliveryInfo.some(d => d?.name && String(d.name).trim());
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -496,10 +537,29 @@ function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm,
                 </div>
 
                 {/* Customer info */}
-                <div className="px-5 py-3 bg-canvas border-b border-line-soft flex-shrink-0">
-                    <p className="text-xs font-semibold text-ink">{order?.customerName || 'Khách lẻ'}</p>
-                    {order?.customerPhone && <p className="text-[10px] text-muted">{order.customerPhone}</p>}
-                    {order?.notes && <p className="text-[11px] text-muted mt-1 italic">📝 {order.notes}</p>}
+                <div className="px-5 py-3 bg-canvas border-b border-line-soft flex-shrink-0 space-y-2">
+                    <div>
+                        {/* Kho quan tâm NGƯỜI NHẬN, không phải người mua. "Khách vãng lai"
+                            ở đây không giúp gì cho việc giao hàng. */}
+                        <p className="text-[10px] text-muted uppercase tracking-wider">Người nhận hàng</p>
+                        <p className="text-sm font-semibold text-ink">
+                            {order?.receiverName || order?.customerName || 'Khách lẻ'}
+                        </p>
+                        {order?.customerPhone && <p className="text-[11px] text-muted">{order.customerPhone}</p>}
+                    </div>
+
+                    {/*
+                      THÔNG TIN GIAO HÀNG — người đặt, thời gian đặt, địa chỉ nhận.
+                      Nhân viên kho cần đủ ba thứ này ngay trên màn hình xác nhận: gọi ai
+                      khi thiếu hàng, đơn đặt lâu chưa, và giao tới đâu. Trước đây phải mở
+                      chi tiết đơn ở tab khác mới thấy địa chỉ.
+                    */}
+                    <div className="grid grid-cols-1 gap-1.5 pt-2 border-t border-line-soft">
+                        <InfoLine label="Địa chỉ nhận"
+                            value={formatDeliveryAddress(order)} />
+                    </div>
+
+                    {order?.notes && <p className="text-[11px] text-muted italic">📝 {order.notes}</p>}
                 </div>
 
                 {/* Body */}
@@ -572,9 +632,26 @@ function PrepareDeliverModal({ order, detail, detailLoading, onClose, onConfirm,
                         className="flex-1 py-3 rounded-2xl border border-line text-sm text-muted hover:bg-surface-2 transition-colors font-medium">
                         Huỷ
                     </button>
-                    <button onClick={() => onConfirm(order.id, deliveryInfo)}
+                    {/*
+                      NHẬN TẠI KHO — khách tự tới lấy nên không có chặng giao.
+                      Đóng đơn thẳng thay vì bắt bấm "bắt đầu giao" rồi "xác nhận đã giao":
+                      hai bước đó mô tả một chuyến xe không tồn tại, và nhân viên kho hay
+                      quên bước hai khiến đơn treo ở "Đang giao".
+                      Vẫn tôn trọng điều kiện thu tiền trước — hàng ra khỏi kho là ra thật.
+                    */}
+                    <button onClick={() => onPickupAtWarehouse?.(order)}
                         disabled={loading || !canDeliverOrder(order)}
-                        title={canDeliverOrder(order) ? '' : 'Khách yêu cầu thanh toán trước — đơn chưa thu đủ tiền'}
+                        title={canDeliverOrder(order) ? 'Khách tự nhận hàng tại kho' : blockReason(order)}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-semibold text-sm hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                        <PackageCheck size={15} /> Đã nhận tại kho
+                    </button>
+                    {/* BẮT BUỘC CHỌN TÀI XẾ trước khi giao — không có tài xế thì không ai
+                        chịu trách nhiệm chuyến hàng, và báo cáo km/lương tài xế mất dòng.
+                        Nút "Đã nhận tại kho" KHÔNG cần: khách tự tới lấy, không có chuyến. */}
+                    <button onClick={() => onConfirm(order.id, deliveryInfo)}
+                        disabled={loading || !canDeliverOrder(order) || !hasDriver}
+                        title={!canDeliverOrder(order) ? blockReason(order)
+                            : !hasDriver ? 'Vui lòng chọn tài xế giao hàng' : ''}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gold text-white font-semibold text-sm hover:bg-gold-strong active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                         {loading
                             ? <BtnSpinner size={14} colorClass="border-white/40 !border-t-white" />
@@ -751,6 +828,9 @@ export default function WarehouseDeliveryPage() {
     const [prepareDetailLoading, setPrepareDetailLoading] = useState(false);
 
     const [deliverTarget, setDeliverTarget] = useState(null);
+    /** Đơn đang chờ xác nhận "khách đã nhận tại kho". */
+    const [pickupTarget, setPickupTarget] = useState(null);
+    const [pickupLoading, setPickupLoading] = useState(false);
     const [deliverLoading, setDeliverLoading] = useState(false);
 
     const receiptInputRef = useRef(null);
@@ -792,6 +872,40 @@ export default function WarehouseDeliveryPage() {
         }
     };
 
+    /**
+     * KHÁCH NHẬN HÀNG TẠI KHO — đóng đơn trong một bước.
+     *
+     * <p>Gọi lần lượt hai API sẵn có (chuyển Đang giao → xác nhận đã giao) thay vì thêm
+     * endpoint mới: cả hai đã mang đủ kiểm tra nghiệp vụ (chặn thu tiền trước, ghi log,
+     * bắn thông báo). Thêm đường tắt riêng ở backend đồng nghĩa phải nhân bản các kiểm
+     * tra đó và chúng sẽ trôi lệch nhau theo thời gian.
+     *
+     * <p>Nếu bước hai lỗi, đơn dừng ở "Đang giao" — trạng thái hợp lệ, xử lý tiếp bằng
+     * nút xác nhận giao bình thường, không để lại dữ liệu hỏng.
+     */
+    const handlePickupAtWarehouse = async () => {
+        if (!pickupTarget) return;
+        setPickupLoading(true);
+        try {
+            await warehouseApi.markDelivering(pickupTarget.id);
+            const res = await warehouseApi.confirmDelivered(pickupTarget.id);
+            const nextStatus = res?.data?.data?.status || 'PENDING_PAYMENT';
+
+            setOrders(prev => prev.map(o =>
+                o.id === pickupTarget.id ? { ...o, status: nextStatus } : o));
+            toast(nextStatus === 'COMPLETED'
+                ? 'Khách đã nhận tại kho — đơn hoàn thành'
+                : 'Khách đã nhận tại kho — đơn chuyển sang chờ thanh toán', 'success');
+
+            setPickupTarget(null);
+            setPrepareTarget(null);
+            setPrepareDetail(null);
+            fetchOrders();
+        } catch (e) {
+            toast(e?.response?.data?.message || e?.message || 'Không xử lý được', 'error');
+        } finally { setPickupLoading(false); }
+    };
+
     const handleDeliverConfirm = async (file, addedDriverInfo = []) => {
         if (!deliverTarget) return;
         setDeliverLoading(true);
@@ -816,7 +930,12 @@ export default function WarehouseDeliveryPage() {
                 } catch (_) { }
             }
 
-            await warehouseApi.confirmDelivered(deliverTarget.id);
+            // Đọc TRẠNG THÁI THẬT từ server. Đơn đã thu đủ tiền trước sẽ được backend
+            // chuyển thẳng sang COMPLETED — gán cứng PENDING_PAYMENT như trước khiến
+            // hàng hiển thị "Chờ thanh toán" cho tới khi người dùng F5.
+            const confirmRes = await warehouseApi.confirmDelivered(deliverTarget.id);
+            const confirmed = confirmRes?.data?.data || {};
+            const nextStatus = confirmed.status || 'PENDING_PAYMENT';
             let receiptUrl = null;
             if (file) {
                 const fd = new FormData();
@@ -832,7 +951,8 @@ export default function WarehouseDeliveryPage() {
                 o.id === deliverTarget.id
                     ? {
                         ...o,
-                        status: 'PENDING_PAYMENT',
+                        status: nextStatus,
+                        ...(confirmed.paymentStatus ? { paymentStatus: confirmed.paymentStatus } : {}),
                         ...(receiptUrl ? { receiptFileUrl: receiptUrl } : {}),
                         ...(mergedDriverInfo ? { deliveryInfoJson: JSON.stringify(mergedDriverInfo) } : {}),
                     }
@@ -1274,8 +1394,35 @@ export default function WarehouseDeliveryPage() {
                     detailLoading={prepareDetailLoading}
                     onClose={() => { setPrepareTarget(null); setPrepareDetail(null); }}
                     onConfirm={handleStartDeliver}
+                    onPickupAtWarehouse={(o) => setPickupTarget(o)}
                     loading={preparingLoading}
                 />
+            )}
+
+            {pickupTarget && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setPickupTarget(null)} />
+                    <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+                        <div>
+                            <h3 className="font-bold text-ink text-base">Khách đã nhận hàng tại kho?</h3>
+                            <p className="text-xs text-muted mt-1">
+                                Đơn <span className="font-mono font-bold text-ink">{pickupTarget.orderCode}</span> sẽ
+                                được đánh dấu giao xong ngay, không qua bước xác nhận giao hàng.
+                            </p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => setPickupTarget(null)} disabled={pickupLoading}
+                                className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-ink-2 hover:bg-surface-2 transition-colors disabled:opacity-50">
+                                Huỷ
+                            </button>
+                            <button onClick={handlePickupAtWarehouse} disabled={pickupLoading}
+                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50">
+                                {pickupLoading ? 'Đang xử lý...' : 'Xác nhận'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {deliverTarget && (
@@ -1294,6 +1441,16 @@ export default function WarehouseDeliveryPage() {
                     onRefresh={fetchOrders}
                 />
             )}
+        </div>
+    );
+}
+
+/** Một dòng "nhãn — giá trị" trong khối thông tin giao hàng. */
+function InfoLine({ label, value }) {
+    return (
+        <div className="flex items-start justify-between gap-3 text-[11px]">
+            <span className="text-muted shrink-0">{label}</span>
+            <span className="text-ink font-medium text-right break-words">{value}</span>
         </div>
     );
 }

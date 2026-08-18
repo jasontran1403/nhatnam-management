@@ -166,6 +166,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
   const [collectedError, setCollectedError] = useState('');
   const [showPartialConfirm, setShowPartialConfirm] = useState(false);
   const [partialInfo, setPartialInfo] = useState(null);
+  const [overpayInfo, setOverpayInfo] = useState(null); // { amount } khi khách trả dư
   const [pendingHandling, setPendingHandling] = useState(null); // 'PARTIAL' | 'FULL'
 
   // Form
@@ -198,6 +199,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
       setCollectedAmount('');
       setCollectedError('');
       setPartialInfo(null);
+      setOverpayInfo(null);
       setPendingHandling(null);
       setStaleWarning(null);
       toast('Đã cập nhật thông tin đơn hàng', 'success');
@@ -296,6 +298,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
     setCollectedAmount('');
     setCollectedError('');
     setPartialInfo(null);
+    setOverpayInfo(null);
     setPendingHandling(null);
   }, [selectedOrders.length]);
 
@@ -334,8 +337,41 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
     if (orderResults.length === 0) searchOrders(orderSearch);
   };
 
+  /** Đơn còn ở trước-giao (thu tiền trước) — không được trộn với đơn đã giao. */
+  const isPreDeliveryOrder = (o) =>
+    ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'].includes(o?.status);
+
   const selectOrder = (order) => {
     if (selectedOrders.find(o => o.id === order.id)) return;
+
+    /*
+     * HAI RÀNG BUỘC KHI GỘP NHIỀU ĐƠN VÀO MỘT PHIẾU THU
+     *
+     * 1. Cùng một khách — trộn khách khác nhau thì công nợ của ai cũng không tra ngược được.
+     * 2. Không trộn đơn CHƯA GIAO với đơn ĐÃ GIAO — hai nhóm đi hai luồng khác nhau:
+     *    đơn chưa giao KHÔNG được đổi trạng thái, đơn đã giao thì phải đóng. Gộp chung sẽ
+     *    phải chọn một luồng và làm sai nhóm còn lại.
+     *
+     * Backend kiểm lại cả hai (BulkPaymentService.preview); chặn ở đây để kế toán biết
+     * ngay lúc bấm thay vì sau khi đã điền hết phiếu.
+     */
+    if (selectedOrders.length > 0) {
+      const first = selectedOrders[0];
+
+      const sameCustomer = (first.customerName || '') === (order.customerName || '');
+      if (!sameCustomer) {
+        toast('Các đơn trong một phiếu thu phải thuộc cùng một khách hàng', 'error');
+        return;
+      }
+
+      if (isPreDeliveryOrder(first) !== isPreDeliveryOrder(order)) {
+        toast(isPreDeliveryOrder(first)
+          ? 'Đang chọn đơn CHƯA GIAO — không thể thêm đơn đã giao vào cùng phiếu'
+          : 'Đang chọn đơn ĐÃ GIAO — không thể thêm đơn chưa giao vào cùng phiếu', 'error');
+        return;
+      }
+    }
+
     const newSelected = [...selectedOrders, order];
     setSelectedOrders(newSelected);
     updateAutoFields(newSelected);
@@ -366,8 +402,10 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
   const validateCollected = (collected) => {
     if (!hasOrders) return { valid: true };
     if (!collected || collected <= 0) return { valid: false, error: 'Vui lòng nhập số tiền thực thu' };
+    // Khách trả DƯ — cho phép. Phần vượt quá tổng cần thu sẽ được ghi vào đơn
+    // cuối; sau khi tạo phiếu, kế toán bấm "Tạo phiếu chi hoàn phần dư".
     if (collected > orderTotal) {
-      return { valid: false, error: `Số tiền thu (${formatVND(collected)}) vượt quá tổng cần thu (${formatVND(orderTotal)})` };
+      return { valid: true, partial: false, overpay: collected - orderTotal };
     }
     if (collected === orderTotal) return { valid: true, partial: false };
 
@@ -403,6 +441,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
     setCollectedError('');
     setPendingHandling(null);
     setPartialInfo(null);
+    setOverpayInfo(null);
     if (!val) return;
     const num = parseVND(val);
     const result = validateCollected(num);
@@ -410,6 +449,8 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
       setCollectedError(result.error);
     } else if (result.partial) {
       setPartialInfo({ ...result, collected: num, orderTotal });
+    } else if (result.overpay > 0) {
+      setOverpayInfo({ amount: result.overpay });
     }
   };
 
@@ -570,6 +611,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
     if (collectedError) return 'error';
     if (collectedNum === orderTotal) return 'exact';
     if (partialInfo) return 'partial';
+    if (collectedNum > orderTotal) return 'overpay';
     return null;
   })();
 
@@ -800,6 +842,20 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
                     </p>
                     <p className="text-xs text-amber-600 dark:text-amber-300 mt-0.5">
                       Sẽ thu {formatVND(partialInfo.lastOrderRemaining)} / {formatVND(Math.round(partialInfo.lastOrder.finalAmount || 0))} — bạn sẽ chọn cách xử lý khi tạo phiếu.
+                    </p>
+                  </div>
+                )}
+                {collectedStatus === 'overpay' && overpayInfo && (
+                  <div className="mt-1.5 p-2.5 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/28">
+                    <p className="text-xs text-sky-700 dark:text-sky-300 font-semibold flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      Khách trả dư <span className="font-mono">{formatVND(overpayInfo.amount)}</span>
+                    </p>
+                    <p className="text-xs text-sky-600 dark:text-sky-300 mt-0.5">
+                      Phiếu thu vẫn ghi đủ {formatVND(collectedNum)}. Phần dư được lưu vào đơn cuối
+                      {selectedOrders.length > 0 && (
+                        <> (<span className="font-mono text-gold">{selectedOrders[selectedOrders.length - 1].orderCode}</span>)</>
+                      )}. Sau khi tạo phiếu, bạn có thể lập phiếu chi hoàn lại {formatVND(overpayInfo.amount)} cho khách.
                     </p>
                   </div>
                 )}
