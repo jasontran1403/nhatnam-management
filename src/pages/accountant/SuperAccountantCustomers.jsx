@@ -176,7 +176,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
           Chưa có địa chỉ nhận hàng
         </div>
       ) : (
-        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+        <div className="space-y-2">
           {receiverInfos.map(r => (
             <div
               key={r.id}
