@@ -185,20 +185,29 @@ function ReceiverInfosSection({ customerId, onReceiverChange }) {
       const copy = data.map(r => ({ ...r }));
 
       setReceivers(copy);
-      onReceiverChange(copy, origRef.current);
+      // onReceiverChange sẽ được gọi qua useEffect khi receivers thay đổi
     } catch { }
     finally { setLoading(false); }
   }, [customerId]);
 
   useEffect(() => { load(); }, [load]);
 
+  // Đồng bộ lên modal cha qua useEffect thay vì gọi trực tiếp trong mỗi
+  // setState — tránh re-render thừa làm mất focus input trên mobile.
+  useEffect(() => {
+    onReceiverChange(receivers, origRef.current);
+  }, [receivers]);
+
   const update = (newList) => {
     setReceivers(newList);
-    onReceiverChange(newList, origRef.current);
   };
 
+  // Dùng functional updater để tránh stale closure khi AddressSelect gọi
+  // onChange(prov, ward) → hai lần handleFieldChange liên tiếp.
   const handleFieldChange = (id, field, value) => {
-    update(receivers.map(r => r.id === id ? { ...r, [field]: value } : r));
+    setReceivers(prev =>
+      prev.map(r => r.id === id ? { ...r, [field]: value } : r)
+    );
   };
 
   const handleAdd = () => {

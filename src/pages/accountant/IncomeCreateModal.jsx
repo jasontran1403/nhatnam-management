@@ -337,40 +337,8 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
     if (orderResults.length === 0) searchOrders(orderSearch);
   };
 
-  /** Đơn còn ở trước-giao (thu tiền trước) — không được trộn với đơn đã giao. */
-  const isPreDeliveryOrder = (o) =>
-    ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'].includes(o?.status);
-
   const selectOrder = (order) => {
     if (selectedOrders.find(o => o.id === order.id)) return;
-
-    /*
-     * HAI RÀNG BUỘC KHI GỘP NHIỀU ĐƠN VÀO MỘT PHIẾU THU
-     *
-     * 1. Cùng một khách — trộn khách khác nhau thì công nợ của ai cũng không tra ngược được.
-     * 2. Không trộn đơn CHƯA GIAO với đơn ĐÃ GIAO — hai nhóm đi hai luồng khác nhau:
-     *    đơn chưa giao KHÔNG được đổi trạng thái, đơn đã giao thì phải đóng. Gộp chung sẽ
-     *    phải chọn một luồng và làm sai nhóm còn lại.
-     *
-     * Backend kiểm lại cả hai (BulkPaymentService.preview); chặn ở đây để kế toán biết
-     * ngay lúc bấm thay vì sau khi đã điền hết phiếu.
-     */
-    if (selectedOrders.length > 0) {
-      const first = selectedOrders[0];
-
-      const sameCustomer = (first.customerName || '') === (order.customerName || '');
-      if (!sameCustomer) {
-        toast('Các đơn trong một phiếu thu phải thuộc cùng một khách hàng', 'error');
-        return;
-      }
-
-      if (isPreDeliveryOrder(first) !== isPreDeliveryOrder(order)) {
-        toast(isPreDeliveryOrder(first)
-          ? 'Đang chọn đơn CHƯA GIAO — không thể thêm đơn đã giao vào cùng phiếu'
-          : 'Đang chọn đơn ĐÃ GIAO — không thể thêm đơn chưa giao vào cùng phiếu', 'error');
-        return;
-      }
-    }
 
     const newSelected = [...selectedOrders, order];
     setSelectedOrders(newSelected);
