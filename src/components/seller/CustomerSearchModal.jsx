@@ -437,10 +437,6 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
       // RETAIL: tên và SĐT đều tuỳ chọn — để trống sẽ lưu là "Khách vãng lai"
       // Email optional — chỉ validate format nếu có nhập
       if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { errs.email = 'Email không hợp lệ'; ok = false; }
-
-      // Ngày sinh BẮT BUỘC với khách lẻ. Chặn ở đây thay vì để backend từ chối:
-      // form không có ô nhập nên người dùng nhận lỗi mà không biết sửa ở đâu.
-      if (!form.birthday) { errs.birthday = 'Vui lòng nhập ngày sinh nhật'; ok = false; }
     }
 
     setErrors(errs);
@@ -643,7 +639,7 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
                 thiếu trường này, nên không có ô nhập thì người dùng bế tắc. */}
             <div>
               <label className="text-[11px] text-muted mb-1 block font-medium">
-                Ngày sinh nhật <span className="text-red-400">*</span>
+                Ngày sinh nhật
               </label>
               <DatePicker
                 value={form.birthday}
@@ -651,9 +647,6 @@ function CreateCustomerStep({ onBack, onCreated, toast }) {
                 placeholder="Chọn ngày sinh nhật"
                 maxDate={new Date()}
               />
-              {errors.birthday && (
-                <p className="text-[10px] text-red-400 mt-0.5">{errors.birthday}</p>
-              )}
             </div>
 
             <Field label="Email" error={errors.email}

@@ -39,6 +39,66 @@ function getDebtUrgency(customer) {
   return null;
 }
 
+// ─── Receiver Form (tách ra ngoài để React giữ identity ổn định, không mất focus) ──
+function ReceiverForm({ form, setForm, isPickup, saving, onSave, onCancel }) {
+  return (
+    <div className="space-y-2">
+      <PickupToggle
+        checked={isPickup}
+        onChange={on => setForm(f => ({
+          ...f,
+          receiverAddress: on ? PICKUP_AT_WAREHOUSE : '',
+          provinceName: '', wardName: '',
+        }))}
+      />
+
+      <input
+        value={isPickup ? '' : form.receiverAddress}
+        onChange={e => setForm(f => ({ ...f, receiverAddress: e.target.value }))}
+        disabled={isPickup}
+        className={`${inputCls} disabled:bg-surface-2 disabled:text-faint disabled:cursor-not-allowed`}
+        placeholder="Số nhà, tên đường *"
+      />
+
+      {!isPickup && (
+        <AddressSelect
+          compact
+          province={form.provinceName}
+          ward={form.wardName}
+          onChange={(prov, w) => setForm(f => ({ ...f, provinceName: prov, wardName: w }))}
+        />
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          value={form.receiverName}
+          onChange={e => setForm(f => ({ ...f, receiverName: e.target.value }))}
+          className={inputCls}
+          placeholder="Tên người nhận"
+        />
+        <input
+          value={form.receiverPhone}
+          onChange={e => setForm(f => ({ ...f, receiverPhone: e.target.value }))}
+          className={inputCls}
+          placeholder="SĐT người nhận"
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-1.5 rounded-lg border border-line text-xs text-muted hover:bg-canvas transition-colors">
+          Hủy
+        </button>
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex-1 py-1.5 rounded-lg bg-gold text-white text-xs font-semibold hover:bg-[var(--c-gold-strong)] disabled:opacity-50 transition-colors">
+          {saving ? 'Đang lưu...' : 'Lưu'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Receiver Infos Section (dùng chung cho cả admin và seller) ──────────────
 function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
   const toast = useToast();
@@ -120,64 +180,6 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
 
   const isPickup = form.receiverAddress === PICKUP_AT_WAREHOUSE;
 
-  const ReceiverForm = ({ onSave, onCancel }) => (
-    <div className="space-y-2">
-      {/* Toggle đặt trên cùng: nó quyết định có phải nhập địa chỉ hay không. */}
-      <PickupToggle
-        checked={isPickup}
-        onChange={on => setForm(f => ({
-          ...f,
-          receiverAddress: on ? PICKUP_AT_WAREHOUSE : '',
-          provinceName: '', wardName: '',
-        }))}
-      />
-
-      <input
-        value={isPickup ? '' : form.receiverAddress}
-        onChange={e => setForm(f => ({ ...f, receiverAddress: e.target.value }))}
-        disabled={isPickup}
-        className={`${inputCls} disabled:bg-surface-2 disabled:text-faint disabled:cursor-not-allowed`}
-        placeholder="Số nhà, tên đường *"
-      />
-
-      {!isPickup && (
-        <AddressSelect
-          compact
-          province={form.provinceName}
-          ward={form.wardName}
-          onChange={(prov, w) => setForm(f => ({ ...f, provinceName: prov, wardName: w }))}
-        />
-      )}
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          value={form.receiverName}
-          onChange={e => setForm(f => ({ ...f, receiverName: e.target.value }))}
-          className={inputCls}
-          placeholder="Tên người nhận"
-        />
-        <input
-          value={form.receiverPhone}
-          onChange={e => setForm(f => ({ ...f, receiverPhone: e.target.value }))}
-          className={inputCls}
-          placeholder="SĐT người nhận"
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={onCancel}
-          className="flex-1 py-1.5 rounded-lg border border-line text-xs text-muted hover:bg-canvas transition-colors">
-          Hủy
-        </button>
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="flex-1 py-1.5 rounded-lg bg-gold text-white text-xs font-semibold hover:bg-[var(--c-gold-strong)] disabled:opacity-50 transition-colors">
-          {saving ? 'Đang lưu...' : 'Lưu'}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -197,6 +199,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
         <div className="border border-gold/30 rounded-xl p-3 bg-gold-tint space-y-2">
           <p className="text-[11px] font-semibold text-gold">Thêm địa chỉ mới</p>
           <ReceiverForm
+            form={form} setForm={setForm} isPickup={isPickup} saving={saving}
             onSave={handleAdd}
             onCancel={() => { setAdding(false); resetForm(); }}
           />
@@ -220,6 +223,7 @@ function ReceiverInfosSection({ customerId, apiPrefix = '/api/seller' }) {
               {editingId === r.id ? (
                 <div className="space-y-2">
                   <ReceiverForm
+                    form={form} setForm={setForm} isPickup={isPickup} saving={saving}
                     onSave={() => handleUpdate(r.id)}
                     onCancel={() => { setEditingId(null); resetForm(); }}
                   />
@@ -524,11 +528,6 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
     if (!form.name.trim() && !form.companyName.trim()) {
       alert('Vui lòng nhập tên khách hàng hoặc tên công ty'); return;
     }
-    // Khách lẻ BẮT BUỘC có sinh nhật — kể cả khi chỉ đổi loại từ Công ty sang Cá nhân.
-    // Khách công ty thì ngày khai trương là tuỳ chọn.
-    if (!isCompany && !form.birthday) {
-      alert('Vui lòng nhập ngày sinh nhật cho khách lẻ'); return;
-    }
     setSaving(true);
     try {
       const payload = {
@@ -623,8 +622,8 @@ function CreateEditCustomerModal({ open, customer, onClose, onSaved }) {
             </div>
           </Field>
         ) : (
-          <Field label="Ngày sinh nhật" required
-            hint="Bắt buộc với khách lẻ — dùng để nhắc và tặng voucher sinh nhật">
+          <Field label="Ngày sinh nhật"
+            hint="Không bắt buộc — dùng để nhắc và tặng voucher sinh nhật">
             <DatePicker
               value={form.birthday}
               onChange={v => set('birthday', v)}

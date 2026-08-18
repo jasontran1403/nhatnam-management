@@ -431,11 +431,6 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
   const handleSave = async () => {
     if (codeError) { toast(codeError, 'error'); return; }
     if (!form.customerCode?.trim()) { toast('Mã khách hàng không được để trống', 'error'); return; }
-    // Khách lẻ BẮT BUỘC có sinh nhật — áp dụng cả khi chỉ ĐỔI LOẠI Công ty → Cá nhân.
-    // Khách công ty thì ngày khai trương là tuỳ chọn.
-    if (!isCompany && !form.birthday) {
-      toast('Vui lòng nhập ngày sinh nhật cho khách lẻ', 'error'); return;
-    }
 
     // Validate receiver: address bắt buộc nếu có dòng nào
     // Nhận tại kho không cần tỉnh/phường; còn lại bắt buộc chọn ĐỦ tỉnh + phường.
@@ -699,7 +694,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
           {/* Ngày kỷ niệm — đổi theo loại khách */}
           <div>
             <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
-              {isCompany ? 'Ngày khai trương cửa hàng mới' : 'Ngày sinh nhật *'}
+              {isCompany ? 'Ngày khai trương cửa hàng mới' : 'Ngày sinh nhật'}
             </label>
             <div className="flex items-center gap-2">
               <div className="flex-1">
@@ -710,11 +705,11 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
                   maxDate={isCompany ? undefined : new Date()}
                 />
               </div>
-              {/* Chỉ khách công ty được xoá: sinh nhật khách lẻ là bắt buộc. */}
-              {isCompany && form.storeOpeningDate && (
-                <button type="button" onClick={() => set('storeOpeningDate', null)}
+              {/* Cho phép xoá cả sinh nhật lẫn ngày khai trương */}
+              {((isCompany && form.storeOpeningDate) || (!isCompany && form.birthday)) && (
+                <button type="button" onClick={() => set(isCompany ? 'storeOpeningDate' : 'birthday', null)}
                   className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                  title="Xoá ngày khai trương">
+                  title={isCompany ? 'Xoá ngày khai trương' : 'Xoá ngày sinh nhật'}>
                   <X size={15} />
                 </button>
               )}
@@ -722,7 +717,7 @@ function EditCustomerModal({ open, customer, onClose, onSaved }) {
             <p className="text-[10px] text-faint mt-1">
               {isCompany
                 ? 'Không bắt buộc. Dùng để nhắc tặng quà/voucher khai trương.'
-                : 'Bắt buộc với khách lẻ. Dùng để nhắc và tạo voucher sinh nhật.'}
+                : 'Không bắt buộc. Dùng để nhắc và tạo voucher sinh nhật.'}
             </p>
           </div>
 
