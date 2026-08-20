@@ -1,5 +1,6 @@
 // src/pages/accountant/ExpenseListPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { expenseApi, downloadBlob } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import DateRangePicker from '../../components/ui/DateRangePicker';
@@ -22,12 +23,30 @@ function formatDate(ms) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 function dayRange(date) {
-  const d = new Date(date + 'T00:00:00');
-  return { from: d.getTime(), to: d.getTime() + 86399999 };
+  // date = 'YYYY-MM-DD' → tách ra để tránh lệch timezone khi parse string
+  const [y, m, d] = date.split('-').map(Number);
+  const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+  const end = new Date(y, m - 1, d, 23, 59, 59, 999);
+  return { from: start.getTime(), to: end.getTime() };
 }
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function SupplierNavButton() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const base = pathname.startsWith('/super-accountant') ? '/super-accountant'
+    : pathname.startsWith('/accountant') ? '/accountant'
+    : pathname.startsWith('/admin') ? '/admin'
+    : pathname.startsWith('/owner') ? '/owner' : '/accountant';
+  return (
+    <button onClick={() => navigate(`${base}/suppliers`, { state: { from: pathname } })}
+      className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs font-semibold text-ink-2 hover:border-gold hover:text-gold transition">
+      <Building2 size={14} /> Quản lý NCC & danh mục
+    </button>
+  );
 }
 
 const STATUS_CFG = {
@@ -221,10 +240,11 @@ export default function ExpenseListPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Receipt size={22} className="text-gold" />
         <h1 className="text-xl font-bold text-ink">Phiếu chi</h1>
         <span className="text-xs text-muted ml-1">{totalElements} phiếu</span>
+        <SupplierNavButton />
       </div>
 
       <div className="bg-gradient-to-r from-gold/10 to-gold/5 rounded-2xl p-4 flex items-center justify-between">

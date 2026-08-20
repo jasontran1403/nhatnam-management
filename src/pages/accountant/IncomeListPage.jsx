@@ -19,8 +19,10 @@ function formatDate(ms) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 function dayRange(date) {
-  const d = new Date(date + 'T00:00:00');
-  return { from: d.getTime(), to: d.getTime() + 86399999 };
+  const [y, m, d] = date.split('-').map(Number);
+  const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+  const end = new Date(y, m - 1, d, 23, 59, 59, 999);
+  return { from: start.getTime(), to: end.getTime() };
 }
 function todayStr() {
   const d = new Date();
@@ -355,15 +357,21 @@ export default function IncomeListPage({ adminMode = false }) {
 
 function IncomeCard({ v, onClick }) {
   const isBankTransfer = v.paymentType === 'BANK_TRANSFER';
+  const hasOverpay = v.overpay && v.overpay.amount > 0 && !v.overpay.refundVoucherCode;
   return (
-    <div onClick={onClick} className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 hover:border-gold/40 hover:shadow-md transition cursor-pointer">
+    <div onClick={onClick} className={`bg-surface rounded-2xl border shadow-sm p-4 hover:shadow-md transition cursor-pointer ${hasOverpay ? 'border-orange-300 dark:border-orange-500/40 hover:border-orange-400' : 'border-hairline hover:border-gold/40'}`}>
       {/* Row 1: mã + badge + tiền */}
       <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-mono text-xs font-bold text-gold">Số phiếu thu {v.receiptNumber || v.voucherCode}</span>
           <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isBankTransfer ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300' : 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-300'}`}>
             {isBankTransfer ? 'CK' : 'TM'}
           </span>
+          {hasOverpay && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28">
+              Thu dư {new Intl.NumberFormat('vi-VN').format(v.overpay.amount)} đ
+            </span>
+          )}
         </div>
         <p className="font-bold text-ink text-sm">{new Intl.NumberFormat('vi-VN').format(v.totalAmount || 0)} đ</p>
       </div>

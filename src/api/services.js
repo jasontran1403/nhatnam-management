@@ -284,6 +284,7 @@ export const expenseApi = {
   search: (q, from, to, params) =>
     api.get('/api/expense-vouchers/search', { params: { q, from, to, ...params } }),
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
+  exportPdf: (id) => api.get(`/api/expense-vouchers/${id}/pdf`, { responseType: 'blob' }),
   nextPaymentNumber: () => api.get('/api/expense-vouchers/next-payment-number'),
   /** Tải file Excel mẫu để nhập phiếu chi hàng loạt (trả blob). */
   downloadImportTemplate: () =>
@@ -303,6 +304,10 @@ export const expenseApi = {
   expenseCategories: () => api.get('/api/expense-vouchers/expense-categories'),
   /** Tạo nhanh nhãn khoản chi ngay khi lập phiếu chi (ACCOUNTANT/SUPER_ACCOUNTANT). */
   createExpenseCategory: (name) => api.post('/api/expense-vouchers/expense-categories', { name }),
+  /** Cập nhật tên nhãn khoản chi — phiếu chi cũ snapshot itemName nên không bị ảnh hưởng. */
+  updateExpenseCategory: (id, name) => api.put(`/api/expense-vouchers/expense-categories/${id}`, { name }),
+  /** Ẩn nhãn khoản chi (soft-delete) — phiếu chi cũ giữ nguyên. */
+  deleteExpenseCategory: (id) => api.delete(`/api/expense-vouchers/expense-categories/${id}`),
   /** @deprecated danh mục là pool chung — vendorId bị bỏ qua */
   vendorCategories: () => api.get('/api/expense-vouchers/expense-categories'),
   approve: (id, note) => api.post(`/api/expense-vouchers/${id}/approve`, { note }),
@@ -327,6 +332,7 @@ export const expenseApi = {
    */
   updateItems: (id, items) => api.patch(`/api/expense-vouchers/${id}/items`, { items }),
   getApprovalConfig: () => api.get('/api/expense-vouchers/approval-config'),
+  update: (id, data) => api.put(`/api/expense-vouchers/${id}`, data),
   updateApprovalConfig: (data) => api.put('/api/expense-vouchers/approval-config', data),
   uploadImage: (file) => {
     const fd = new FormData(); fd.append('image', file);
@@ -346,6 +352,7 @@ export const incomeApi = {
   /** Tổng tiền + tổng số phiếu theo ĐÚNG bộ lọc (không phụ thuộc phân trang) */
   summary: (q, from, to) => api.get('/api/income-vouchers/summary', { params: { q, from, to } }),
   getById: (id) => api.get(`/api/income-vouchers/${id}`),
+  exportPdf: (id) => api.get(`/api/income-vouchers/${id}/pdf`, { responseType: 'blob' }),
   nextReceiptNumber: () => api.get('/api/income-vouchers/next-receipt-number'),
   exportReport: (from, to, paymentType) =>
     api.get('/api/income-vouchers/export', { params: { from, to, paymentType }, responseType: 'blob' }),

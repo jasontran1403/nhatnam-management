@@ -229,15 +229,7 @@ export default function ExpenseItemsEditor({ voucher: v, onChanged, compact = fa
           Các khoản chi
         </p>
 
-        {!editing && canEdit && items.length > 0 && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); startEdit(); }}
-            className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline"
-          >
-            <Pencil size={12} /> Sửa
-          </button>
-        )}
+        
 
         {editing && (
           <div className="flex items-center gap-2">

@@ -522,8 +522,10 @@ export default function OrdersPage() {
     if (!exportDateRange.from || !exportDateRange.to) { setShowExportPicker(true); return; }
     setExporting(true);
     try {
-      const from = new Date(exportDateRange.from).setHours(0, 0, 0, 0);
-      const to = new Date(exportDateRange.to).setHours(23, 59, 59, 999);
+      // exportDateRange.from/to đã là timestamp từ startOfDay/endOfDay (DateRangePicker).
+      // Truyền thẳng — KHÔNG dùng setHours() để tránh lệch timezone.
+      const from = exportDateRange.from;
+      const to = exportDateRange.to;
 
       if (exportType === 'PRODUCT') {
         // Báo cáo SẢN PHẨM → PDF. Chọn hết = không chọn gì = tất cả danh mục.

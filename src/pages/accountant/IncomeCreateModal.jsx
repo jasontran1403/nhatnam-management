@@ -142,6 +142,65 @@ function PartialConfirmModal({ info, onConfirm, onCancel }) {
   );
 }
 
+// ── Modal xác nhận thu DƯ ─────────────────────────────────────────────────
+function OverpayConfirmModal({ info, onConfirm, onCancel }) {
+  // info = { overpayAmount, collected, orderTotal }
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="p-5 border-b border-hairline">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertCircle size={18} className="text-orange-500" />
+            <h3 className="font-bold text-ink">Xác nhận thu dư</h3>
+          </div>
+          <p className="text-sm text-muted">
+            Số tiền thu <span className="font-bold text-ink">{formatVND(info.collected)}</span> nhiều hơn{' '}
+            tổng cần thu <span className="font-bold text-ink">{formatVND(info.orderTotal)}</span>.
+          </p>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <div className="bg-orange-50 dark:bg-orange-500/10 rounded-xl p-3 text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted">Tổng cần thu</span>
+              <span className="font-bold text-ink">{formatVND(info.orderTotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted">Số tiền thực thu</span>
+              <span className="font-bold text-ink">{formatVND(info.collected)}</span>
+            </div>
+            <div className="flex justify-between border-t border-orange-200 dark:border-orange-500/28 pt-1 mt-1">
+              <span className="font-semibold text-orange-700 dark:text-orange-300">Số tiền thu dư</span>
+              <span className="font-bold text-orange-600 dark:text-orange-300">{formatVND(info.overpayAmount)}</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted">
+            Phiếu thu sẽ ghi nhận đầy đủ <b>{formatVND(info.collected)}</b> và đánh dấu <b>thu dư</b>.
+            Sau khi tạo phiếu, bạn có thể lập phiếu chi hoàn lại phần dư cho khách.
+          </p>
+
+          <button
+            onClick={onConfirm}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition"
+          >
+            <CheckCircle2 size={16} /> Xác nhận thu dư
+          </button>
+        </div>
+
+        <div className="px-5 pb-5">
+          <button
+            onClick={onCancel}
+            className="w-full py-2.5 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition"
+          >
+            Huỷ, kiểm tra lại
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main modal ────────────────────────────────────────────────────────────────
 export default function IncomeCreateModal({ onClose, onCreated, editVoucher = null }) {
   // Chế độ SỬA: prefill từ phiếu cũ và gọi update thay vì create.
@@ -167,6 +226,7 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
   const [showPartialConfirm, setShowPartialConfirm] = useState(false);
   const [partialInfo, setPartialInfo] = useState(null);
   const [overpayInfo, setOverpayInfo] = useState(null); // { amount } khi khách trả dư
+  const [showOverpayConfirm, setShowOverpayConfirm] = useState(false);
   const [pendingHandling, setPendingHandling] = useState(null); // 'PARTIAL' | 'FULL'
 
   // Form
@@ -557,6 +617,11 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
         // Cần xác nhận cách xử lý đơn cuối
         setPartialInfo({ ...validation, collected: collectedNum, orderTotal });
         setShowPartialConfirm(true);
+        return;
+      }
+      if (validation.overpay > 0) {
+        // Thu dư — cần xác nhận trước khi lưu
+        setShowOverpayConfirm(true);
         return;
       }
       // Thu đủ hết
@@ -1065,6 +1130,15 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
           info={partialInfo}
           onConfirm={handlePartialConfirm}
           onCancel={() => setShowPartialConfirm(false)}
+        />
+      )}
+
+      {/* Modal xác nhận thu dư */}
+      {showOverpayConfirm && overpayInfo && (
+        <OverpayConfirmModal
+          info={{ overpayAmount: overpayInfo.amount, collected: collectedNum, orderTotal }}
+          onConfirm={async () => { setShowOverpayConfirm(false); await doSubmit(null); }}
+          onCancel={() => setShowOverpayConfirm(false)}
         />
       )}
     </>

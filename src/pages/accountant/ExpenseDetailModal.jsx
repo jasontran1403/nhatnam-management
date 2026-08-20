@@ -1,23 +1,30 @@
 // src/pages/accountant/ExpenseDetailModal.jsx
 import { useState, useEffect } from 'react';
-import { X, Receipt, Building2, User, Clock, CheckCircle, XCircle, Wallet, Landmark, ShieldCheck, Pencil } from 'lucide-react';
+import { X, Receipt, Building2, User, Clock, CheckCircle, XCircle, Wallet, Landmark, ShieldCheck, Pencil, FileDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/Toast';
 import { expenseApi } from '../../api/services';
 import { VENDOR_TYPE_LABELS } from './ExpenseCreateModal';
 import ExpenseItemsEditor from '../../components/expense/ExpenseItemsEditor';
 import { formatVND } from '../../utils/format.js';
+import ExpenseEditModal from './ExpenseEditModal';
 
 function formatDate(ms) {
   if (!ms) return '';
   const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+function formatDateOnly(ms) {
+  if (!ms) return '';
+  const d = new Date(ms);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
 const STATUS_CFG = {
-  PENDING:  { label: 'Chờ duyệt',  cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300',  icon: Clock },
-  APPROVED: { label: 'Đã duyệt',   cls: 'bg-green-100 dark:bg-green-500/18 text-green-700 dark:text-green-300',  icon: CheckCircle },
-  REJECTED: { label: 'Từ chối',    cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300',      icon: XCircle },
+  PENDING: { label: 'Chờ duyệt', cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300', icon: Clock },
+  APPROVED: { label: 'Đã duyệt', cls: 'bg-green-100 dark:bg-green-500/18 text-green-700 dark:text-green-300', icon: CheckCircle },
+  REJECTED: { label: 'Từ chối', cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300', icon: XCircle },
 };
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -38,11 +45,26 @@ const VN_BANKS = [
 export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
   const { role } = useAuth();
   const toast = useToast();
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Bản sao cục bộ của phiếu — sau khi sửa (lý do / khoản chi) ta tải lại phiếu
   // từ server để modal hiển thị dữ liệu mới ngay, không phải đóng/mở lại.
   const [v, setV] = useState(voucher);
   useEffect(() => { setV(voucher); }, [voucher]);
+
+  const canEdit = v.status !== 'REJECTED' && (
+    role === 'OWNER' || role === 'ADMIN' ||
+    (role === 'SUPER_ACCOUNTANT' || role === 'ACCOUNTANT')
+  );
+
+  const handleEditSuccess = async () => {
+    // Refresh dữ liệu phiếu chi trong modal detail
+    await refresh();
+    // Đóng modal detail
+    onClose();
+    // Gọi onChanged để refresh danh sách bên ngoài
+    if (onChanged) onChanged();
+  };
 
   /** Tải lại phiếu từ server rồi báo cho danh sách bên ngoài reload. */
   const refresh = async () => {
@@ -55,18 +77,25 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
   };
 
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const res = await expenseApi.exportPdf(v.id);
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a'); a.href = url;
+      a.download = `phieu-chi-${v.paymentNumber || v.voucherCode}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch { toast('Lỗi xuất PDF', 'error'); }
+    finally { setDownloading(false); }
+  };
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [refundPaymentType, setRefundPaymentType] = useState('CASH');
   const [refundBankName, setRefundBankName] = useState('');
   const [refundBankAccount, setRefundBankAccount] = useState('');
   const [refundBankHolder, setRefundBankHolder] = useState('');
-  const [editingReason, setEditingReason] = useState(false);
-  const [editedReason, setEditedReason] = useState(v.reason || '');
-  const [savingReason, setSavingReason] = useState(false);
-
-  // Cho phép sửa lý do: PENDING hoặc APPROVED (REJECTED thì không)
-  const canEditReason = v.status !== 'REJECTED';
 
   const s = STATUS_CFG[v.status] || STATUS_CFG.PENDING;
   const StatusIcon = s.icon;
@@ -78,19 +107,6 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
     role === 'OWNER' || role === 'ADMIN' ||
     (role === 'SUPER_ACCOUNTANT' && v.approverScope === 'SUPER_ACCOUNTANT')
   );
-
-  const doSaveReason = async () => {
-    if (!editedReason.trim()) { toast('Lý do chi không được để trống', 'error'); return; }
-    setSavingReason(true);
-    try {
-      await expenseApi.updateReason(v.id, editedReason.trim());
-      toast('Đã cập nhật lý do phiếu chi', 'success');
-      setEditingReason(false);
-      await refresh();
-    } catch (e) {
-      toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
-    } finally { setSavingReason(false); }
-  };
 
   const doApprove = async () => {
     setBusy(true);
@@ -126,9 +142,9 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
         paymentType: refundPaymentType,
       };
       if (refundPaymentType === 'BANK_TRANSFER') {
-        payload.customerBankName = refundBankName;
-        payload.customerBankAccount = refundBankAccount;
-        payload.customerBankHolder = refundBankHolder;
+        if (refundBankName.trim()) payload.customerBankName = refundBankName.trim();
+        if (refundBankAccount.trim()) payload.customerBankAccount = refundBankAccount.trim();
+        if (refundBankHolder.trim()) payload.customerBankHolder = refundBankHolder.trim();
       }
       const res = await expenseApi.refundOverpay(payload);
       const code = res?.data?.data?.voucherCode || res?.data?.voucherCode;
@@ -139,6 +155,19 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
       toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu chi hoàn', 'error');
     } finally { setBusy(false); }
   };
+
+  // Format ngày chi / kỳ chi để hiển thị
+  const getExpenseDateDisplay = () => {
+    if (v.expenseDate) {
+      return `Ngày ${formatDateOnly(v.expenseDate)}`;
+    } else if (v.expensePeriod) {
+      const [year, month] = v.expensePeriod.split('-');
+      return `Kỳ Tháng ${parseInt(month)}/${year}`;
+    }
+    return null;
+  };
+
+  const expenseDisplay = getExpenseDateDisplay();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -174,47 +203,18 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Lý do chi — có thể sửa nếu chưa bị từ chối */}
+            {/* Lý do chi — chỉ hiển thị, không cho sửa riêng lẻ nữa */}
             <div className="col-span-2 bg-canvas rounded-xl px-3 py-2">
               <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-0.5">Lý do chi</p>
-              {editingReason ? (
-                <div className="flex items-start gap-2 mt-1">
-                  <textarea
-                    className="flex-1 px-2.5 py-1.5 text-sm rounded-lg border border-line focus:outline-none focus:border-gold bg-surface"
-                    rows={2}
-                    value={editedReason}
-                    onChange={e => setEditedReason(e.target.value)}
-                    autoFocus
-                  />
-                  <div className="flex flex-col gap-1">
-                    <button onClick={doSaveReason} disabled={savingReason}
-                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-forest-deep text-white hover:bg-forest-mid disabled:opacity-50">
-                      {savingReason ? '...' : 'Lưu'}
-                    </button>
-                    <button onClick={() => { setEditingReason(false); setEditedReason(v.reason || ''); }}
-                      className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-line text-muted hover:bg-surface-2">
-                      Huỷ
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-ink flex-1">{v.reason || '—'}</p>
-                  {canEditReason && (
-                    <button onClick={() => { setEditedReason(v.reason || ''); setEditingReason(true); }}
-                      className="p-1 rounded-lg hover:bg-surface-3 text-muted hover:text-gold transition-colors"
-                      title="Sửa lý do">
-                      <Pencil size={13} />
-                    </button>
-                  )}
-                </div>
-              )}
+              <p className="text-sm text-ink">{v.reason || '—'}</p>
             </div>
             {v.vendorName && <InfoRow label="Nhà cung cấp" value={v.vendorName} icon={<Building2 size={12} />} full />}
             {v.vendorType && <InfoRow label="Danh mục" value={VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType} />}
             <InfoRow label="Người lập" value={v.createdByName} icon={<User size={12} />} />
             {v.requestedByName && <InfoRow label="Người yêu cầu" value={v.requestedByName} icon={<User size={12} />} />}
             <InfoRow label="Ngày tạo" value={formatDate(v.createdAt)} />
+            {/* Hiển thị Ngày chi / Kỳ chi */}
+            {expenseDisplay && <InfoRow label="Ngày chi / Kỳ chi" value={expenseDisplay} icon={<Clock size={12} />} />}
             {v.approvedByName && <InfoRow label="Người duyệt" value={v.approvedByName} icon={<ShieldCheck size={12} />} />}
             {v.approvedAt && <InfoRow label="Ngày duyệt" value={formatDate(v.approvedAt)} />}
           </div>
@@ -248,9 +248,24 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
             </div>
           )}
 
-          {/* Items — có thể sửa trực tiếp (xem quy tắc quyền trong ExpenseItemsEditor) */}
+          {/* Items — chỉ hiển thị, không cho sửa riêng lẻ nữa */}
           {v.items?.length > 0 ? (
-            <ExpenseItemsEditor voucher={v} onChanged={refresh} />
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider">Danh sách khoản chi</p>
+              {v.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center bg-canvas rounded-xl px-4 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-ink">{item.itemName}</p>
+                    {item.note && <p className="text-xs text-muted">{item.note}</p>}
+                  </div>
+                  <span className="text-sm font-bold text-gold">{formatVND(item.amount)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center bg-gold/10 rounded-xl px-4 py-3">
+                <span className="text-sm font-semibold text-ink">Tổng cộng</span>
+                <span className="text-base font-bold text-gold">{formatVND(v.totalAmount)}</span>
+              </div>
+            </div>
           ) : (
             <div className="flex justify-between items-center bg-canvas rounded-xl px-4 py-3">
               <span className="text-sm font-semibold text-muted">Tổng cộng</span>
@@ -294,14 +309,13 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
                   <div>
                     <label className="block text-xs font-semibold text-ink mb-1">Phương thức thanh toán</label>
                     <div className="flex gap-2">
-                      {[{v:'CASH',l:'Tiền mặt'},{v:'BANK_TRANSFER',l:'Chuyển khoản'}].map(o=>(
+                      {[{ v: 'CASH', l: 'Tiền mặt' }, { v: 'BANK_TRANSFER', l: 'Chuyển khoản' }].map(o => (
                         <button key={o.v} type="button"
-                          onClick={()=>setRefundPaymentType(o.v)}
-                          className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition ${
-                            refundPaymentType===o.v
-                              ? 'border-sky-500 bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-200'
-                              : 'border-line text-muted hover:bg-canvas'
-                          }`}>{o.l}</button>
+                          onClick={() => setRefundPaymentType(o.v)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition ${refundPaymentType === o.v
+                            ? 'border-sky-500 bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-200'
+                            : 'border-line text-muted hover:bg-canvas'
+                            }`}>{o.l}</button>
                       ))}
                     </div>
                   </div>
@@ -309,23 +323,24 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
                   {/* Thông tin STK khách — chỉ hiện khi chuyển khoản */}
                   {refundPaymentType === 'BANK_TRANSFER' && (
                     <div className="space-y-2 bg-white dark:bg-surface rounded-lg p-3 border border-sky-100 dark:border-sky-500/18">
+                      <p className="text-[10px] text-muted italic">Thông tin STK khách hàng (tuỳ chọn)</p>
                       <div>
-                        <label className="block text-xs text-muted mb-1">Ngân hàng *</label>
-                        <select value={refundBankName} onChange={e=>setRefundBankName(e.target.value)}
+                        <label className="block text-xs text-muted mb-1">Ngân hàng</label>
+                        <select value={refundBankName} onChange={e => setRefundBankName(e.target.value)}
                           className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-sky-400 bg-surface">
                           <option value="">-- Chọn ngân hàng --</option>
-                          {VN_BANKS.map(b=>(<option key={b} value={b}>{b}</option>))}
+                          {VN_BANKS.map(b => (<option key={b} value={b}>{b}</option>))}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-muted mb-1">Số tài khoản *</label>
-                        <input value={refundBankAccount} onChange={e=>setRefundBankAccount(e.target.value)}
+                        <label className="block text-xs text-muted mb-1">Số tài khoản</label>
+                        <input value={refundBankAccount} onChange={e => setRefundBankAccount(e.target.value)}
                           placeholder="VD: 0123456789"
                           className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-sky-400 bg-surface" />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted mb-1">Tên chủ tài khoản *</label>
-                        <input value={refundBankHolder} onChange={e=>setRefundBankHolder(e.target.value)}
+                        <label className="block text-xs text-muted mb-1">Tên chủ tài khoản</label>
+                        <input value={refundBankHolder} onChange={e => setRefundBankHolder(e.target.value)}
                           placeholder="VD: NGUYEN VAN A"
                           className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-sky-400 bg-surface" />
                       </div>
@@ -334,7 +349,7 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
 
                   <button
                     onClick={doRefundOverpay}
-                    disabled={busy || (refundPaymentType==='BANK_TRANSFER' && (!refundBankName||!refundBankAccount||!refundBankHolder))}
+                    disabled={busy}
                     className="w-full py-2.5 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition disabled:opacity-50"
                   >
                     {busy ? 'Đang xử lý...' : `Tạo phiếu chi hoàn phần dư (${formatVND(v.overpay.amount)})`}
@@ -357,6 +372,19 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
 
         {/* Footer */}
         <div className="p-5 border-t border-hairline flex gap-3">
+          {/* Nút sửa phiếu */}
+          {canEdit && (
+            <button onClick={() => setShowEditModal(true)}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gold text-sm font-semibold text-gold hover:bg-gold/10 transition"
+              title="Sửa phiếu chi">
+              <Pencil size={14} /> Sửa phiếu
+            </button>
+          )}
+          <button onClick={downloadPdf} disabled={downloading}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-ink-2 hover:border-gold hover:text-gold transition disabled:opacity-50"
+            title="Xuất PDF">
+            <FileDown size={14} /> {downloading ? '...' : 'PDF'}
+          </button>
           {canApprove && !rejecting && (
             <>
               <button onClick={() => setRejecting(true)} disabled={busy}
@@ -381,13 +409,27 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
               </button>
             </>
           )}
-          {!canApprove && (
+          {!canApprove && !canEdit && (
             <button onClick={onClose} className="w-full py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
+              Đóng
+            </button>
+          )}
+          {!canApprove && canEdit && (
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-muted hover:bg-canvas transition">
               Đóng
             </button>
           )}
         </div>
       </div>
+
+      {showEditModal && (
+        <ExpenseEditModal
+          voucher={v}
+          onClose={() => setShowEditModal(false)}
+          onChanged={refresh}
+          onSaved={handleEditSuccess}
+        />
+      )}
     </div>
   );
 }

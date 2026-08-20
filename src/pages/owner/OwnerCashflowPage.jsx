@@ -1,6 +1,6 @@
 // src/pages/owner/OwnerCashflowPage.jsx
 // Quản lý dòng tiền — dùng chung cho ADMIN & OWNER.
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { cashflowApi, bankApi } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { presetToRange } from '../../components/ui/DateRangePicker';
@@ -419,6 +419,7 @@ function ConfirmModal({ onClose, onDone }) {
   const [saving, setSaving] = useState(false);
   const [addingBank, setAddingBank] = useState(false);
   const [newBank, setNewBank] = useState('');
+  const mismatchRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -429,11 +430,10 @@ function ConfirmModal({ onClose, onDone }) {
     })();
   }, []); // eslint-disable-line
 
-  const setBal = (name, v) => { setBalances(p => ({ ...p, [name]: String(parseVND(v)) })); setResult(null); };
+  const setBal = (name, v) => { setBalances(p => ({ ...p, [name]: String(parseVND(v)) })); };
   const setCount = (denom, v) => {
     const q = Math.max(0, parseVND(v));
     setCounts(p => ({ ...p, [denom]: q }));
-    setResult(null);
   };
 
   // ── TỔNG TỰ ĐỘNG ─────────────────────────────────────────────────────────
@@ -491,6 +491,13 @@ function ConfirmModal({ onClose, onDone }) {
 
   const mismatch = result && !result.matched;
 
+  // Auto-scroll đến khối lý do lệch khi nó xuất hiện
+  useEffect(() => {
+    if (mismatch && mismatchRef.current) {
+      mismatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [mismatch]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       {/* max-w-2xl để lưới mệnh giá 3 cột không bị bóp */}
@@ -505,6 +512,9 @@ function ConfirmModal({ onClose, onDone }) {
 
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           <p className="text-xs text-muted">{t('production', 'cash_confirm_desc')}</p>
+
+          {/* ── LÝ DO (luôn hiện — bắt buộc khi lệch) ────────────────────── */}
+          
 
           {/* ── TIỀN MẶT: đếm theo mệnh giá — lưới 3 cột × 4 dòng ────────── */}
           <div>
@@ -576,28 +586,6 @@ function ConfirmModal({ onClose, onDone }) {
             <span className="text-sm font-semibold">TỔNG CỘNG</span>
             <span className="text-lg font-bold tabular-nums">{fmtVND(grandTotal)}</span>
           </div>
-
-          {mismatch && (
-            <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/18 rounded-xl p-3 space-y-2">
-              <p className="text-sm font-semibold text-red-600 dark:text-red-300 flex items-center gap-1.5">
-                <AlertTriangle size={14} /> {t('production', 'cash_mismatch_title')}
-              </p>
-              <div className="text-xs text-red-700 dark:text-red-300 space-y-0.5">
-                <div className="flex justify-between">
-                  <span>{t('production', 'cash_system_cash')}</span><b>{fmtVND(result.expected?.cash)}</b>
-                </div>
-                <div className="flex justify-between">
-                  <span>{t('production', 'cash_system_bank')}</span><b>{fmtVND(result.expected?.bankTotal)}</b>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-red-600 dark:text-red-300 mb-1">{t('production', 'cash_mismatch_reason')} *</label>
-                <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2}
-                  placeholder={t('production', 'cash_mismatch_reason_ph')}
-                  className="w-full px-3 py-2 rounded-lg border border-red-200 dark:border-red-500/28 text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-red-200 dark:ring-red-500/28" />
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="p-5 border-t border-hairline flex gap-3">
@@ -609,6 +597,38 @@ function ConfirmModal({ onClose, onDone }) {
             {saving ? t('common', 'processing') : mismatch ? t('production', 'cash_confirm_reset') : t('production', 'cash_btn_confirm')}
           </button>
         </div>
+
+        <div className={`rounded-xl p-4 space-y-2 transition-colors ${mismatch
+            ? 'bg-red-50 dark:bg-red-500/10 border-2 border-red-300 dark:border-red-500/35'
+            : 'bg-canvas border border-line'
+          }`}>
+            {mismatch && (
+              <>
+                <p className="text-sm font-bold text-red-600 dark:text-red-300 flex items-center gap-1.5">
+                  <AlertTriangle size={16} /> {t('production', 'cash_mismatch_title')}
+                </p>
+                <div className="text-sm text-red-700 dark:text-red-300 space-y-1">
+                  <div className="flex justify-between">
+                    <span>{t('production', 'cash_system_cash')}</span><b>{fmtVND(result.expected?.cash)}</b>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{t('production', 'cash_system_bank')}</span><b>{fmtVND(result.expected?.bankTotal)}</b>
+                  </div>
+                </div>
+              </>
+            )}
+            <div>
+              <label className={`block text-xs font-semibold mb-1 ${mismatch ? 'text-red-600 dark:text-red-300' : 'text-muted'}`}>
+                {mismatch ? `${t('production', 'cash_mismatch_reason')} *` : 'Ghi chú / Lý do (bắt buộc nếu có sai lệch)'}
+              </label>
+              <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2}
+                placeholder={mismatch ? t('production', 'cash_mismatch_reason_ph') : 'Nhập ghi chú nếu cần...'}
+                className={`w-full px-3 py-2 rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 ${mismatch
+                  ? 'border-2 border-red-300 dark:border-red-500/40 focus:ring-red-300 dark:ring-red-500/40'
+                  : 'border border-line focus:ring-gold/40'
+                }`} />
+            </div>
+          </div>
       </div>
     </div>
   );
