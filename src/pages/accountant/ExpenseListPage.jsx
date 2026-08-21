@@ -22,6 +22,7 @@ function formatDate(ms) {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
+
 function dayRange(date) {
   // date = 'YYYY-MM-DD' → tách ra để tránh lệch timezone khi parse string
   const [y, m, d] = date.split('-').map(Number);
@@ -29,9 +30,42 @@ function dayRange(date) {
   const end = new Date(y, m - 1, d, 23, 59, 59, 999);
   return { from: start.getTime(), to: end.getTime() };
 }
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Lấy ngày đầu tháng của tháng hiện tại
+ */
+function getStartOfMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+/**
+ * Lấy ngày cuối tháng của tháng hiện tại
+ */
+function getEndOfMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+}
+
+/**
+ * Tạo range cho tháng hiện tại: từ ngày 1 đến ngày cuối tháng
+ */
+function getCurrentMonthRange() {
+  const start = getStartOfMonth();
+  const end = getEndOfMonth();
+  // Set time cho start là 00:00:00.000
+  start.setHours(0, 0, 0, 0);
+  // Set time cho end là 23:59:59.999
+  end.setHours(23, 59, 59, 999);
+  return {
+    from: start.getTime(),
+    to: end.getTime()
+  };
 }
 
 function SupplierNavButton() {
@@ -63,8 +97,12 @@ export default function ExpenseListPage() {
   const searchTextRef = useRef('');
   const fileInputRef = useRef(null);
 
+  // Khởi tạo với range của tháng hiện tại
+  const initialMonthRange = getCurrentMonthRange();
+  
   const [selectedDate, setSelectedDate] = useState(todayStr());
-  const [dateRange, setDateRange] = useState(null);
+  // dateRange ban đầu là range của tháng hiện tại
+  const [dateRange, setDateRange] = useState(initialMonthRange);
   const [searchText, setSearchText] = useState('');
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -81,13 +119,9 @@ export default function ExpenseListPage() {
   const [importResult, setImportResult] = useState(null);
   const [showExport, setShowExport] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportPaymentType, setExportPaymentType] = useState('ALL'); // ALL | CASH | BANK_TRANSFER
+  const [exportPaymentType, setExportPaymentType] = useState('ALL');
 
   // ── LỰA CHỌN NHIỀU PHIẾU ĐỂ DUYỆT/TỪ CHỐI 1 LẦN ───────────────────────────
-  // Giống trang OWNER/ADMIN: lưu Map(id → voucher) chứ không chỉ id, nhờ vậy phiếu
-  // tick ở TRANG KHÁC vẫn còn nguyên khi chuyển trang và vẫn hiện đủ trong modal.
-  // Chỉ tick được phiếu mà vai trò hiện tại thực sự duyệt được (xem canApproveVoucher):
-  // SUPER_ACCOUNTANT chỉ chọn được phiếu approverScope = SUPER_ACCOUNTANT.
   const [selectedMap, setSelectedMap] = useState(new Map());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
@@ -103,7 +137,6 @@ export default function ExpenseListPage() {
     const next = new Map(prev); next.delete(id); return next;
   });
   const clearSelected = () => setSelectedMap(new Map());
-  /** Bỏ chọn các phiếu đã xử lý THÀNH CÔNG, giữ lại phiếu lỗi để xem lý do. */
   const removeManySelected = (ids) => setSelectedMap(prev => {
     const next = new Map(prev); ids.forEach(id => next.delete(id)); return next;
   });
@@ -118,11 +151,10 @@ export default function ExpenseListPage() {
       const userPickedRange = dateRange !== null;
       const ignoreDateForSearch = !!q && !userPickedRange;
 
-      const range = dateRange || dayRange(selectedDate);
+      const range = dateRange || getCurrentMonthRange();
       const from = ignoreDateForSearch ? undefined : range.from;
       const to = ignoreDateForSearch ? undefined : range.to;
 
-      // Sử dụng API mới theo ngày chi
       const res = q
         ? await expenseApi.searchByExpenseDate(q, from, to, { page: p, size: PAGE_SIZE })
         : await expenseApi.listByExpenseDate(range.from, range.to, { page: p, size: PAGE_SIZE });
@@ -136,9 +168,9 @@ export default function ExpenseListPage() {
       setPage(p);
     } catch { toast('Lỗi tải danh sách', 'error'); }
     finally { setLoading(false); }
-  }, [selectedDate, dateRange]);
+  }, [dateRange]);
 
-  useEffect(() => { load(0); }, [selectedDate, dateRange]);
+  useEffect(() => { load(0); }, []);
 
   const handleSearchChange = (val) => {
     setSearchText(val);
@@ -174,7 +206,7 @@ export default function ExpenseListPage() {
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    e.target.value = ''; // cho phép chọn lại cùng 1 file
+    e.target.value = '';
     if (!file) return;
     setImporting(true);
     try {
@@ -195,7 +227,7 @@ export default function ExpenseListPage() {
   };
 
   const handleExportReport = async () => {
-    const range = dateRange || dayRange(selectedDate);
+    const range = dateRange || getCurrentMonthRange();
     setExporting(true);
     try {
       const res = await expenseApi.exportReport(range.from, range.to, exportPaymentType);
@@ -212,18 +244,16 @@ export default function ExpenseListPage() {
     }
   };
 
-  const currentRange = dateRange || dayRange(selectedDate);
+  const currentRange = dateRange || getCurrentMonthRange();
 
   function formatExpenseDate(v) {
     if (!v) return '';
 
-    // Ưu tiên hiển thị expense_period nếu có (phiếu tạo theo kỳ)
     if (v.expensePeriod) {
       const [year, month] = v.expensePeriod.split('-');
       return `Kỳ Tháng ${parseInt(month)}/${year}`;
     }
 
-    // Nếu không có expense_period, hiển thị expense_date (phiếu tạo theo ngày)
     if (v.expenseDate) {
       const d = new Date(v.expenseDate);
       return `Ngày ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
@@ -232,7 +262,6 @@ export default function ExpenseListPage() {
     return '';
   }
 
-  // Lọc client-side theo người tạo / người duyệt trên danh sách đang hiển thị
   const creatorOptions = [...new Set(vouchers.map(v => v.createdByName).filter(Boolean))];
   const approverOptions = [...new Set(vouchers.map(v => v.approvedByName).filter(Boolean))];
   const displayed = vouchers.filter(v =>
@@ -240,8 +269,6 @@ export default function ExpenseListPage() {
     (!approverFilter || v.approvedByName === approverFilter)
   );
 
-  // "Chọn tất cả" chỉ tác động lên phiếu duyệt được của TRANG HIỆN TẠI (sau bộ lọc);
-  // các phiếu đã tick ở trang khác giữ nguyên.
   const selectableOnPage = displayed.filter(v => canApproveVoucher(v, role));
   const canBulk = selectableOnPage.length > 0 || selectedList.length > 0;
   const allPageSelected = selectableOnPage.length > 0
@@ -322,7 +349,13 @@ export default function ExpenseListPage() {
           )}
         </div>
         <div className="flex-shrink-0">
-          <DateRangePicker from={currentRange.from} to={currentRange.to} onChange={handleDateRangeChange} placeholder="Chọn ngày" align="right" />
+          <DateRangePicker 
+            from={currentRange.from} 
+            to={currentRange.to} 
+            onChange={handleDateRangeChange} 
+            placeholder="Chọn ngày" 
+            align="right" 
+          />
         </div>
         {dateRange && (
           <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0" title="Về hôm nay">
@@ -362,7 +395,6 @@ export default function ExpenseListPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {/* Chọn tất cả phiếu duyệt được của trang này */}
           {canBulk && (
             <label className="flex items-center gap-2 px-1 pb-1 text-xs text-muted cursor-pointer select-none w-fit">
               <input
@@ -388,7 +420,6 @@ export default function ExpenseListPage() {
               <div key={v.id} onClick={() => setDetailVoucher(v)}
                 className={`bg-surface rounded-2xl border shadow-sm p-4 hover:border-gold/40 hover:shadow-md transition cursor-pointer ${checked ? 'border-gold ring-1 ring-gold/30' : 'border-hairline'
                   }`}>
-                {/* Row 1: mã + badge + tiền */}
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     {selectable && (
@@ -413,7 +444,6 @@ export default function ExpenseListPage() {
                         <Wallet size={9} /> Trả công nợ NCC
                       </span>
                     )}
-                    {/* Badge Ngày chi / Kỳ chi */}
                     {expenseLabel && (
                       <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/28">
                         <Clock size={9} /> {expenseLabel}
@@ -422,9 +452,7 @@ export default function ExpenseListPage() {
                   </div>
                   <p className="font-bold text-ink text-sm">{formatVND(v.totalAmount)}</p>
                 </div>
-                {/* Row 2: lý do */}
                 <p className="text-sm font-semibold text-ink truncate mb-1.5">Nội dung: {v.reason}</p>
-                {/* Row 3: meta - Nhà cung cấp và thời gian tạo */}
                 <div className="flex items-center justify-between text-xs text-muted">
                   <div className="flex items-center gap-1.5 min-w-0">
                     Nhà cung cấp: {v.vendorName && <span className="flex items-center gap-1">{v.vendorName}</span>}
@@ -459,7 +487,6 @@ export default function ExpenseListPage() {
         </div>
       )}
 
-      {/* ── Thanh hành động hàng loạt ─────────────────────────────────────── */}
       {selectedList.length > 0 && (
         <div className="sticky bottom-4 z-40 mx-auto max-w-2xl">
           <div className="bg-forest-deep text-white rounded-2xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-3">
