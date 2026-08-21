@@ -108,6 +108,25 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
     (role === 'SUPER_ACCOUNTANT' && v.approverScope === 'SUPER_ACCOUNTANT')
   );
 
+  function formatExpenseDateDisplay(v) {
+    if (!v) return null;
+
+    // Ưu tiên hiển thị expenseDate nếu có
+    if (v.expenseDate) {
+      const d = new Date(v.expenseDate);
+      return `Ngày ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+
+    // Nếu không có expenseDate nhưng có expensePeriod -> hiển thị kỳ
+    if (v.expensePeriod) {
+      const [year, month] = v.expensePeriod.split('-');
+      return `Kỳ Tháng ${parseInt(month)}/${year}`;
+    }
+
+    return null;
+  }
+
+
   const doApprove = async () => {
     setBusy(true);
     try {
@@ -158,12 +177,19 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
 
   // Format ngày chi / kỳ chi để hiển thị
   const getExpenseDateDisplay = () => {
-    if (v.expenseDate) {
-      return `Ngày ${formatDateOnly(v.expenseDate)}`;
-    } else if (v.expensePeriod) {
+    if (!v) return null;
+
+    // Ưu tiên hiển thị expense_period nếu có (phiếu tạo theo kỳ)
+    if (v.expensePeriod) {
       const [year, month] = v.expensePeriod.split('-');
       return `Kỳ Tháng ${parseInt(month)}/${year}`;
     }
+
+    // Nếu không có expense_period, hiển thị expense_date (phiếu tạo theo ngày)
+    if (v.expenseDate) {
+      return `Ngày ${formatDateOnly(v.expenseDate)}`;
+    }
+
     return null;
   };
 

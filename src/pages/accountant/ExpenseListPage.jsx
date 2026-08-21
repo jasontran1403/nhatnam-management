@@ -39,8 +39,8 @@ function SupplierNavButton() {
   const { pathname } = useLocation();
   const base = pathname.startsWith('/super-accountant') ? '/super-accountant'
     : pathname.startsWith('/accountant') ? '/accountant'
-    : pathname.startsWith('/admin') ? '/admin'
-    : pathname.startsWith('/owner') ? '/owner' : '/accountant';
+      : pathname.startsWith('/admin') ? '/admin'
+        : pathname.startsWith('/owner') ? '/owner' : '/accountant';
   return (
     <button onClick={() => navigate(`${base}/suppliers`, { state: { from: pathname } })}
       className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs font-semibold text-ink-2 hover:border-gold hover:text-gold transition">
@@ -115,11 +115,6 @@ export default function ExpenseListPage() {
     try {
       const q = searchTextRef.current.trim();
 
-      // Quy tắc lọc ngày khi tìm kiếm (giống phiếu thu):
-      //  - dateRange === null → mặc định "hôm nay" (user chưa chỉnh):
-      //      không search → lọc hôm nay; có search → BỎ filter ngày (tìm toàn bộ).
-      //  - dateRange !== null → user đã chọn khoảng ngày → luôn áp filter đó.
-      //  Nút X gọi setDateRange(null) → về hôm nay → search lại thành không-filter.
       const userPickedRange = dateRange !== null;
       const ignoreDateForSearch = !!q && !userPickedRange;
 
@@ -127,9 +122,11 @@ export default function ExpenseListPage() {
       const from = ignoreDateForSearch ? undefined : range.from;
       const to = ignoreDateForSearch ? undefined : range.to;
 
+      // Sử dụng API mới theo ngày chi
       const res = q
-        ? await expenseApi.search(q, from, to, { page: p, size: PAGE_SIZE })
-        : await expenseApi.listByDate(range.from, range.to, { page: p, size: PAGE_SIZE });
+        ? await expenseApi.searchByExpenseDate(q, from, to, { page: p, size: PAGE_SIZE })
+        : await expenseApi.listByExpenseDate(range.from, range.to, { page: p, size: PAGE_SIZE });
+
       const data = res.data?.data || res.data || {};
       const content = data.content || [];
       setVouchers(content);
@@ -216,6 +213,24 @@ export default function ExpenseListPage() {
   };
 
   const currentRange = dateRange || dayRange(selectedDate);
+
+  function formatExpenseDate(v) {
+    if (!v) return '';
+
+    // Ưu tiên hiển thị expense_period nếu có (phiếu tạo theo kỳ)
+    if (v.expensePeriod) {
+      const [year, month] = v.expensePeriod.split('-');
+      return `Kỳ Tháng ${parseInt(month)}/${year}`;
+    }
+
+    // Nếu không có expense_period, hiển thị expense_date (phiếu tạo theo ngày)
+    if (v.expenseDate) {
+      const d = new Date(v.expenseDate);
+      return `Ngày ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+
+    return '';
+  }
 
   // Lọc client-side theo người tạo / người duyệt trên danh sách đang hiển thị
   const creatorOptions = [...new Set(vouchers.map(v => v.createdByName).filter(Boolean))];
@@ -367,11 +382,12 @@ export default function ExpenseListPage() {
             const isBank = v.paymentType === 'BANK_TRANSFER';
             const selectable = canApproveVoucher(v, role);
             const checked = selectedMap.has(v.id);
+            const expenseLabel = formatExpenseDate(v);
+
             return (
               <div key={v.id} onClick={() => setDetailVoucher(v)}
-                className={`bg-surface rounded-2xl border shadow-sm p-4 hover:border-gold/40 hover:shadow-md transition cursor-pointer ${
-                  checked ? 'border-gold ring-1 ring-gold/30' : 'border-hairline'
-                }`}>
+                className={`bg-surface rounded-2xl border shadow-sm p-4 hover:border-gold/40 hover:shadow-md transition cursor-pointer ${checked ? 'border-gold ring-1 ring-gold/30' : 'border-hairline'
+                  }`}>
                 {/* Row 1: mã + badge + tiền */}
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -397,17 +413,23 @@ export default function ExpenseListPage() {
                         <Wallet size={9} /> Trả công nợ NCC
                       </span>
                     )}
+                    {/* Badge Ngày chi / Kỳ chi */}
+                    {expenseLabel && (
+                      <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/28">
+                        <Clock size={9} /> {expenseLabel}
+                      </span>
+                    )}
                   </div>
                   <p className="font-bold text-ink text-sm">{formatVND(v.totalAmount)}</p>
                 </div>
                 {/* Row 2: lý do */}
                 <p className="text-sm font-semibold text-ink truncate mb-1.5">Nội dung: {v.reason}</p>
-                {/* Row 3: meta */}
+                {/* Row 3: meta - Nhà cung cấp và thời gian tạo */}
                 <div className="flex items-center justify-between text-xs text-muted">
                   <div className="flex items-center gap-1.5 min-w-0">
                     Nhà cung cấp: {v.vendorName && <span className="flex items-center gap-1">{v.vendorName}</span>}
                   </div>
-                  <span className="flex-shrink-0">{formatDate(v.createdAt)}</span>
+                  <span className="flex-shrink-0">Tạo: {formatDate(v.createdAt)}</span>
                 </div>
                 <div className="flex items-center justify-between mt-0.5">
                   <p className="text-xs text-muted">Tạo bởi {v.createdByName}</p>
@@ -527,11 +549,10 @@ export default function ExpenseListPage() {
                     <button
                       key={opt.key}
                       onClick={() => setExportPaymentType(opt.key)}
-                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                        exportPaymentType === opt.key
-                          ? 'bg-gold text-white border-gold'
-                          : 'bg-surface text-ink-2 border-line hover:bg-surface-2'
-                      }`}>
+                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${exportPaymentType === opt.key
+                        ? 'bg-gold text-white border-gold'
+                        : 'bg-surface text-ink-2 border-line hover:bg-surface-2'
+                        }`}>
                       {opt.label}
                     </button>
                   ))}

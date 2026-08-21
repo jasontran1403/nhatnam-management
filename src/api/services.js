@@ -280,9 +280,12 @@ export const expenseApi = {
   create: (data) => api.post('/api/expense-vouchers', data),
   listMy: (params) => api.get('/api/expense-vouchers/my', { params }),
   listAll: (params) => api.get('/api/expense-vouchers', { params }),
-  listByDate: (from, to, params) => api.get('/api/expense-vouchers/by-date', { params: { from, to, ...params } }),
-  search: (q, from, to, params) =>
-    api.get('/api/expense-vouchers/search', { params: { q, from, to, ...params } }),
+  listByExpenseDate: (from, to, params) =>
+    api.get('/api/expense-vouchers/by-expense-date', { params: { from, to, ...params } }),
+
+  searchByExpenseDate: (q, from, to, params) =>
+    api.get('/api/expense-vouchers/search-by-expense-date', { params: { q, from, to, ...params } }),
+
   getById: (id) => api.get(`/api/expense-vouchers/${id}`),
   exportPdf: (id) => api.get(`/api/expense-vouchers/${id}/pdf`, { responseType: 'blob' }),
   nextPaymentNumber: () => api.get('/api/expense-vouchers/next-payment-number'),
