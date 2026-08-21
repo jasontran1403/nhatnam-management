@@ -14,10 +14,13 @@ function parseVND(s) {
 
 // Chuyển đổi từ dữ liệu voucher sang format của ExpenseDatePeriodPicker
 function voucherToWhen(v) {
+    // Ưu tiên hiển thị expensePeriod nếu có (phiếu tạo theo kỳ)
+    if (v.expensePeriod) {
+        return { mode: 'PERIOD', expensePeriod: v.expensePeriod };
+    }
+    // Nếu không có expensePeriod, hiển thị expenseDate (phiếu tạo theo ngày)
     if (v.expenseDate) {
         return { mode: 'DATE', expenseDate: v.expenseDate };
-    } else if (v.expensePeriod) {
-        return { mode: 'PERIOD', expensePeriod: v.expensePeriod };
     }
     return defaultExpenseWhen();
 }
