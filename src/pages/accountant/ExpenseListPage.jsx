@@ -24,7 +24,6 @@ function formatDate(ms) {
 }
 
 function dayRange(date) {
-  // date = 'YYYY-MM-DD' → tách ra để tránh lệch timezone khi parse string
   const [y, m, d] = date.split('-').map(Number);
   const start = new Date(y, m - 1, d, 0, 0, 0, 0);
   const end = new Date(y, m - 1, d, 23, 59, 59, 999);
@@ -36,31 +35,20 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/**
- * Lấy ngày đầu tháng của tháng hiện tại
- */
 function getStartOfMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-/**
- * Lấy ngày cuối tháng của tháng hiện tại
- */
 function getEndOfMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth() + 1, 0);
 }
 
-/**
- * Tạo range cho tháng hiện tại: từ ngày 1 đến ngày cuối tháng
- */
 function getCurrentMonthRange() {
   const start = getStartOfMonth();
   const end = getEndOfMonth();
-  // Set time cho start là 00:00:00.000
   start.setHours(0, 0, 0, 0);
-  // Set time cho end là 23:59:59.999
   end.setHours(23, 59, 59, 999);
   return {
     from: start.getTime(),
@@ -97,11 +85,9 @@ export default function ExpenseListPage() {
   const searchTextRef = useRef('');
   const fileInputRef = useRef(null);
 
-  // Khởi tạo với range của tháng hiện tại
   const initialMonthRange = getCurrentMonthRange();
   
   const [selectedDate, setSelectedDate] = useState(todayStr());
-  // dateRange ban đầu là range của tháng hiện tại
   const [dateRange, setDateRange] = useState(initialMonthRange);
   const [searchText, setSearchText] = useState('');
   const [vouchers, setVouchers] = useState([]);
@@ -121,7 +107,6 @@ export default function ExpenseListPage() {
   const [exporting, setExporting] = useState(false);
   const [exportPaymentType, setExportPaymentType] = useState('ALL');
 
-  // ── LỰA CHỌN NHIỀU PHIẾU ĐỂ DUYỆT/TỪ CHỐI 1 LẦN ───────────────────────────
   const [selectedMap, setSelectedMap] = useState(new Map());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
@@ -155,9 +140,18 @@ export default function ExpenseListPage() {
       const from = ignoreDateForSearch ? undefined : range.from;
       const to = ignoreDateForSearch ? undefined : range.to;
 
+      // Sử dụng API mới theo ngày chi, sort theo expenseDate
       const res = q
-        ? await expenseApi.searchByExpenseDate(q, from, to, { page: p, size: PAGE_SIZE })
-        : await expenseApi.listByExpenseDate(range.from, range.to, { page: p, size: PAGE_SIZE });
+        ? await expenseApi.searchByExpenseDate(q, from, to, { 
+            page: p, 
+            size: PAGE_SIZE,
+            sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
+          })
+        : await expenseApi.listByExpenseDate(range.from, range.to, { 
+            page: p, 
+            size: PAGE_SIZE,
+            sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
+          });
 
       const data = res.data?.data || res.data || {};
       const content = data.content || [];
@@ -166,7 +160,10 @@ export default function ExpenseListPage() {
       setTotalElements(data.totalElements || 0);
       setTotalAmount(calcTotal(content));
       setPage(p);
-    } catch { toast('Lỗi tải danh sách', 'error'); }
+    } catch (e) {
+      console.error('Load error:', e);
+      toast('Lỗi tải danh sách', 'error');
+    }
     finally { setLoading(false); }
   }, [dateRange]);
 
@@ -248,17 +245,14 @@ export default function ExpenseListPage() {
 
   function formatExpenseDate(v) {
     if (!v) return '';
-
     if (v.expensePeriod) {
       const [year, month] = v.expensePeriod.split('-');
       return `Kỳ Tháng ${parseInt(month)}/${year}`;
     }
-
     if (v.expenseDate) {
       const d = new Date(v.expenseDate);
       return `Ngày ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     }
-
     return '';
   }
 
@@ -279,6 +273,115 @@ export default function ExpenseListPage() {
     else selectableOnPage.forEach(v => next.set(v.id, v));
     return next;
   });
+
+  // Hàm render pagination
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisible = 7;
+    let startPage = 0;
+    let endPage = totalPages - 1;
+
+    if (totalPages > maxVisible) {
+      const half = Math.floor(maxVisible / 2);
+      if (page <= half) {
+        startPage = 0;
+        endPage = maxVisible - 1;
+      } else if (page >= totalPages - half - 1) {
+        startPage = totalPages - maxVisible;
+        endPage = totalPages - 1;
+      } else {
+        startPage = page - half;
+        endPage = page + half;
+      }
+    }
+
+    // Nút Previous
+    pages.push(
+      <button
+        key="prev"
+        disabled={page === 0}
+        onClick={() => load(page - 1)}
+        className="p-2 rounded-lg border border-hairline-2 hover:bg-canvas disabled:opacity-30 transition"
+      >
+        <ChevronLeft size={16} />
+      </button>
+    );
+
+    // Nếu startPage > 0, hiển thị trang đầu và dấu ...
+    if (startPage > 0) {
+      pages.push(
+        <button
+          key={0}
+          onClick={() => load(0)}
+          className="w-9 h-9 rounded-lg text-sm font-semibold border border-hairline-2 hover:bg-canvas text-ink transition"
+        >
+          1
+        </button>
+      );
+      if (startPage > 1) {
+        pages.push(
+          <span key="ellipsis-start" className="w-9 h-9 flex items-center justify-center text-muted">
+            ...
+          </span>
+        );
+      }
+    }
+
+    // Các trang trong khoảng visible
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => load(i)}
+          className={`w-9 h-9 rounded-lg text-sm font-semibold transition ${
+            i === page ? 'bg-gold text-white' : 'border border-hairline-2 hover:bg-canvas text-ink'
+          }`}
+        >
+          {i + 1}
+        </button>
+      );
+    }
+
+    // Nếu endPage < totalPages - 1, hiển thị dấu ... và trang cuối
+    if (endPage < totalPages - 1) {
+      if (endPage < totalPages - 2) {
+        pages.push(
+          <span key="ellipsis-end" className="w-9 h-9 flex items-center justify-center text-muted">
+            ...
+          </span>
+        );
+      }
+      pages.push(
+        <button
+          key={totalPages - 1}
+          onClick={() => load(totalPages - 1)}
+          className="w-9 h-9 rounded-lg text-sm font-semibold border border-hairline-2 hover:bg-canvas text-ink transition"
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    // Nút Next
+    pages.push(
+      <button
+        key="next"
+        disabled={page >= totalPages - 1}
+        onClick={() => load(page + 1)}
+        className="p-2 rounded-lg border border-hairline-2 hover:bg-canvas disabled:opacity-30 transition"
+      >
+        <ChevronRight size={16} />
+      </button>
+    );
+
+    return (
+      <div className="flex items-center justify-center gap-2 pt-2">
+        {pages}
+      </div>
+    );
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
@@ -477,15 +580,7 @@ export default function ExpenseListPage() {
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <button disabled={page === 0} onClick={() => load(page - 1)} className="p-2 rounded-lg border border-hairline-2 hover:bg-canvas disabled:opacity-30 transition"><ChevronLeft size={16} /></button>
-          {[...Array(Math.min(totalPages, 7))].map((_, i) => (
-            <button key={i} onClick={() => load(i)} className={`w-9 h-9 rounded-lg text-sm font-semibold transition ${i === page ? 'bg-gold text-white' : 'border border-hairline-2 hover:bg-canvas text-ink'}`}>{i + 1}</button>
-          ))}
-          <button disabled={page >= totalPages - 1} onClick={() => load(page + 1)} className="p-2 rounded-lg border border-hairline-2 hover:bg-canvas disabled:opacity-30 transition"><ChevronRight size={16} /></button>
-        </div>
-      )}
+      {renderPagination()}
 
       {selectedList.length > 0 && (
         <div className="sticky bottom-4 z-40 mx-auto max-w-2xl">
