@@ -254,7 +254,7 @@ export default function ExpenseCreatePage() {
               className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40" />
           </div>
 
-          {/* Số phiếu chi */}
+          {/* Số phiếu chi - CHỈ NHẬP SỐ */}
           <div>
             <label className="text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5">
               <Hash size={14} className="text-gold" /> Số phiếu chi
@@ -262,7 +262,11 @@ export default function ExpenseCreatePage() {
             <div className="relative">
               <input
                 value={paymentNumber}
-                onChange={e => setPaymentNumber(e.target.value)}
+                onChange={e => {
+                  // Chỉ cho phép nhập số (0-9), xóa các ký tự không phải số
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setPaymentNumber(value);
+                }}
                 placeholder={suggestedPaymentNumber ? `Gợi ý: ${suggestedPaymentNumber}` : 'Nhập số phiếu chi...'}
                 className="w-full px-4 py-2.5 pr-24 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono" />
               {suggestedPaymentNumber && !paymentNumber && (
@@ -277,6 +281,7 @@ export default function ExpenseCreatePage() {
                 Số kế tiếp gợi ý: <span className="font-mono font-semibold text-gold">{suggestedPaymentNumber}</span> — để trống sẽ tự dùng số này. Số chạy tới 15000 sẽ quay vòng về 1.
               </p>
             )}
+            <p className="text-xs text-muted mt-0.5">Chỉ được nhập số, không nhập chữ.</p>
           </div>
 
           {/* Thời điểm chi — chọn NGÀY (mặc định hôm nay) hoặc KỲ (tháng) */}

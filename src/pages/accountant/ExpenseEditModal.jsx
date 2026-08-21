@@ -370,7 +370,11 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                         <div className="relative">
                             <input
                                 value={paymentNumber}
-                                onChange={e => setPaymentNumber(e.target.value)}
+                                onChange={e => {
+                                    // Chỉ cho phép nhập số (0-9), xóa các ký tự không phải số
+                                    const value = e.target.value.replace(/[^0-9]/g, '');
+                                    setPaymentNumber(value);
+                                }}
                                 placeholder={suggestedPaymentNumber ? `Gợi ý: ${suggestedPaymentNumber}` : 'Nhập số phiếu chi...'}
                                 className="w-full px-4 py-2.5 pr-24 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
                             />
@@ -389,7 +393,9 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                                 Số kế tiếp gợi ý: <span className="font-mono font-semibold text-gold">{suggestedPaymentNumber}</span> — để trống sẽ tự dùng số này. Số chạy tới 15000 sẽ quay vòng về 1.
                             </p>
                         )}
+                        <p className="text-xs text-muted mt-0.5">Chỉ được nhập số, không nhập chữ.</p>
                     </div>
+
 
                     {/* Thời điểm chi */}
                     <div>
