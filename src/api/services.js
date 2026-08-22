@@ -229,6 +229,16 @@ export const inventoryApi = {
 
 // ─── Accountant ──────────────────────────────────────────────────────────────
 export const accountantApi = {
+  createMisaOrder: (id, data) =>
+    api.post(`/api/accountant/orders/${id}/misa-order`, data),
+  getMisaOrder: (id) =>
+    api.get(`/api/accountant/orders/${id}/misa-order`),
+  createMisaReceipt: (id, data) =>
+    api.post(`/api/accountant/orders/${id}/misa-receipt`, data),
+  getMisaReceipts: (id) =>
+    api.get(`/api/accountant/orders/${id}/misa-receipts`),
+
+
   getOrders: (params) => api.get('/api/accountant/orders', { params }),
   markPendingPayment: (id) => api.patch(`/api/accountant/orders/${id}/pending-payment`),
   markCompleted: (id) => api.patch(`/api/accountant/orders/${id}/complete`),
@@ -464,3 +474,4 @@ export const quotationApi = {
   exportPdf: (payload) =>
     api.post('/api/seller/quotations/export-pdf', payload, { responseType: 'blob' }),
 };
+

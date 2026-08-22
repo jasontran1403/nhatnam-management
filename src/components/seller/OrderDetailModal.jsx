@@ -1,9 +1,12 @@
 import { useLang } from '../../context/LangContext';
 import { customerContractApi } from '../../api/customerContractApi';
-import { X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote , Ticket,
+import {
+  X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote, Ticket,
 } from 'lucide-react';
 import VoucherPaymentModal from '../payment/VoucherPaymentModal';
-import { orderApi } from '../../api/services';
+import MisaOrderModal from '../misa/MisaOrderModal';
+import MisaReceiptModal from '../misa/MisaReceiptModal';
+import { orderApi, accountantApi } from '../../api/services';
 import { useToast } from '../common/Toast';
 import { useState, useEffect } from 'react';
 import { formatPrice } from '../../utils/formatPrice';
@@ -315,6 +318,37 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showPartialModal, setShowPartialModal] = useState(false);
+  const [showMisaOrder, setShowMisaOrder] = useState(false);
+  const [showMisaReceipt, setShowMisaReceipt] = useState(false);
+
+  const [misaOrderCreated, setMisaOrderCreated] = useState(false);
+  const [misaChecked, setMisaChecked] = useState(false);
+
+  useEffect(() => {
+    if (o?.id) {
+      accountantApi.getMisaOrder(o.id)
+        .then(r => {
+          if (r.data?.data?.misaOrderId) {
+            setMisaOrderCreated(true);
+          }
+        })
+        .catch(() => { })
+        .finally(() => setMisaChecked(true));
+    }
+  }, [o?.id]);
+
+  const showMisaButtons = ['PENDING_PAYMENT', 'COMPLETED'].includes(o.status);
+
+  useEffect(() => {
+    if (o?.id && showMisaButtons) {
+      accountantApi.getMisaOrder(o.id)
+        .then(r => { if (r.data?.data?.misaOrderId) setMisaOrderCreated(true); })
+        .catch(() => { })
+        .finally(() => setMisaChecked(true));
+    } else {
+      setMisaChecked(true);
+    }
+  }, [o?.id, showMisaButtons]);
 
   const STATUS_LABEL = {
     PENDING: t('status', 'pending'), CONFIRMED: t('status', 'confirmed'),
@@ -430,8 +464,36 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                   <CreditCard size={13} /> Đổi TT
                 </button>
               )}
+
+              {/* ── CHỈ HIỂN THỊ KHI ĐƠN Ở TRẠNG THÁI PENDING_PAYMENT HOẶC COMPLETED ── */}
+              {showMisaButtons && (
+                <>
+                  {/* Nút Tạo/Xem đơn Misa */}
+                  <button onClick={() => setShowMisaOrder(true)}
+                    disabled={!misaChecked}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+            ${!misaChecked ? 'opacity-50 cursor-wait' : ''}
+            ${misaOrderCreated
+                        ? 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-500/35'
+                        : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 hover:bg-blue-100'}`}>
+                    {misaOrderCreated ? '📋 Xem đơn Misa' : '📋 Tạo đơn Misa'}
+                  </button>
+
+                  {/* Nút Tạo/Xem phiếu thu — enable khi đã có đơn Misa */}
+                  <button onClick={() => setShowMisaReceipt(true)}
+                    disabled={!misaOrderCreated}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+            ${!misaOrderCreated
+                        ? 'bg-surface-2 text-faint border border-line-soft cursor-not-allowed opacity-50'
+                        : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-500/28'}`}>
+                    💰 {misaOrderCreated ? 'Xem phiếu thu Misa' : 'Tạo phiếu thu Misa'}
+                  </button>
+                </>
+              )}
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-surface-2"><X size={17} /></button>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-surface-2" style={{ marginRight: 30 }}>
+              <X size={17} />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -704,6 +766,26 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
       )}
       {showPartialModal && (
         <PartialPaymentModal order={o} onClose={() => setShowPartialModal(false)} onSuccess={handleActionSuccess} />
+      )}
+
+      {showMisaOrder && (
+        <MisaOrderModal
+          order={o}
+          isViewMode={misaOrderCreated}
+          onClose={() => setShowMisaOrder(false)}
+          onSuccess={() => {
+            setMisaOrderCreated(true);  // set trước
+            if (onRefresh) onRefresh();  // refetch list sau
+          }}
+        />
+      )}
+
+      {showMisaReceipt && (
+        <MisaReceiptModal
+          order={o}
+          onClose={() => setShowMisaReceipt(false)}
+          onSuccess={() => onRefresh?.()}
+        />
       )}
     </>
   );

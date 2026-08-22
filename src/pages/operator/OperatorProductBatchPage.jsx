@@ -211,6 +211,9 @@ const emptyForm = () => ({
   vatMode: 'INCLUSIVE',
   imageUrl: '',
   unitsPerBox: '',
+  // ── NEW: conversion fields ──
+  conversionUnit: '',
+  conversionFactor: '',
   hasWholesale: false,
   tiers: DEFAULT_TIERS.map(t => ({ ...t, _id: `${t._id}-${Date.now()}` })),
   ingredients: [emptyIngredient()],
@@ -364,6 +367,9 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
         vatMode: editProduct.vatMode || 'INCLUSIVE',
         imageUrl: editProduct.imageUrl || '',
         unitsPerBox: editProduct.unitsPerBox ? String(editProduct.unitsPerBox) : '',
+        // ── NEW: conversion fields ──
+        conversionUnit: editProduct.conversionUnit || '',
+        conversionFactor: editProduct.conversionFactor != null ? String(editProduct.conversionFactor) : '',
         hasWholesale: hasTiers,
         tiers: hasTiers
           ? editProduct.tiers.map((t, idx) => ({
@@ -484,6 +490,28 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
     if (!price || price <= 0) return toast('Giá bán lẻ không hợp lệ', 'error');
     if (form.unitsPerBox && parseInt(form.unitsPerBox) < 1)
       return toast('Số đơn vị/thùng không hợp lệ', 'error');
+
+    // ── Validate conversion fields ──
+    // Chỉ validate khi đơn vị KHÔNG phải Kg và có nhập ít nhất 1 trong 2 field
+    const unitIsKg = form.unit.toLowerCase() === 'kg';
+    const hasConversionUnit = form.conversionUnit && form.conversionUnit.trim() !== '';
+    const hasConversionFactor = form.conversionFactor && form.conversionFactor.trim() !== '';
+
+    if (!unitIsKg) {
+      if (hasConversionUnit && !hasConversionFactor) {
+        return toast('Vui lòng nhập hệ số quy đổi khi đã chọn đơn vị quy đổi', 'error');
+      }
+      if (!hasConversionUnit && hasConversionFactor) {
+        return toast('Vui lòng chọn đơn vị quy đổi khi đã nhập hệ số', 'error');
+      }
+      if (hasConversionUnit && hasConversionFactor) {
+        const factor = parseFloat(form.conversionFactor);
+        if (isNaN(factor) || factor <= 0) {
+          return toast('Hệ số quy đổi phải là số dương', 'error');
+        }
+      }
+    }
+
     if (form.hasWholesale) {
       const p1 = Number(String(form.tiers[0].price).replace(/[^0-9]/g, ''));
       const p2 = Number(String(form.tiers[1].price).replace(/[^0-9]/g, ''));
@@ -510,6 +538,13 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           vatMode: form.vatMode || 'INCLUSIVE',
           imageUrl: form.imageUrl,
           unitsPerBox: form.unitsPerBox ? parseInt(form.unitsPerBox, 10) : null,
+          // ── NEW: conversion fields ──
+          conversionUnit: (!unitIsKg && form.conversionUnit && form.conversionUnit.trim() !== '')
+            ? form.conversionUnit.trim()
+            : null,
+          conversionFactor: (!unitIsKg && form.conversionFactor && form.conversionFactor.trim() !== '')
+            ? parseFloat(form.conversionFactor)
+            : null,
           tiers: form.hasWholesale
             ? form.tiers.map((tier, idx) => ({
               tierName: tier.tierName,
@@ -626,6 +661,62 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
               </div>
             </div>
           </div>
+
+          {/* ── Quy đổi đơn vị ────────────────────────────────────────────────────── */}
+          {form.unit && form.unit.toLowerCase() !== 'kg' && (
+            <div className="rounded-xl border border-line overflow-hidden bg-canvas/40">
+              <div className="px-4 py-2.5 bg-canvas border-b border-line-soft flex items-center gap-2">
+                <span className="text-xs font-semibold text-ink-2">Quy đổi đơn vị</span>
+                <span className="text-[10px] text-muted">
+                  (1 {form.unit} = ? kg)
+                </span>
+              </div>
+              <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-2 font-medium">1 {form.unit} =</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.conversionFactor}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9.]/g, '');
+                      // Chỉ cho phép 1 dấu chấm
+                      const parts = val.split('.');
+                      const sanitized = parts[0] + (parts.length > 1 ? '.' + parts.slice(1).join('') : '');
+                      upd({ conversionFactor: sanitized });
+                    }}
+                    placeholder="VD: 0.454"
+                    className="w-28 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-gold/60 focus:border-gold focus:outline-none bg-surface"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-2 font-medium">Đơn vị quy đổi</span>
+                  <select
+                    value={form.conversionUnit}
+                    onChange={e => upd({ conversionUnit: e.target.value })}
+                    className="px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold"
+                  >
+                    <option value="">— Chọn —</option>
+                    <option value="Kg">Kg</option>
+                    <option value="Gram">Gram</option>
+                    <option value="Lít">Lít</option>
+                    <option value="ml">ml</option>
+                  </select>
+                </div>
+                {form.conversionFactor && form.conversionUnit && (
+                  <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl px-3 py-2 border border-emerald-200 dark:border-emerald-500/28">
+                    <span className="text-xs text-muted">1 {form.unit} =</span>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-300">
+                      {parseFloat(form.conversionFactor).toFixed(3)} {form.conversionUnit}
+                    </span>
+                  </div>
+                )}
+                <span className="text-[10px] text-muted ml-auto">
+                  ⚡ Dùng để quy đổi khi xuất hoá đơn Misa
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Giá + VAT */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -838,7 +929,7 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
             </div>
           </div>
 
-          {/* Price row */}
+          {/* Tags */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className="text-sm font-bold text-gold">
               {Number(product.basePrice || 0).toLocaleString('vi-VN')}đ
@@ -846,6 +937,14 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
             {hasBox && (
               <span className="text-[10px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28 rounded-full px-2 py-0.5 flex items-center gap-1">
                 <Box size={9} /> {product.unitsPerBox} {product.unit}/thùng
+              </span>
+            )}
+            {product.conversionUnit && product.conversionFactor && product.unit?.toLowerCase() !== 'kg' && (
+              <span className="text-[10px] bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-500/28 rounded-full px-2 py-0.5 flex items-center gap-1">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 4L20 20M20 4L4 20" />
+                </svg>
+                1 {product.unit} = {Number(product.conversionFactor).toFixed(3)} {product.conversionUnit}
               </span>
             )}
             {hasTiers && (
@@ -859,6 +958,8 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
               </span>
             )}
           </div>
+
+          
 
           {/* Tiers */}
           {hasTiers && (

@@ -12,7 +12,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Truck, Bike, Gauge, Package, Calendar, RefreshCw, X, MapPin,
-  ChevronRight, ChevronDown, Search, AlertCircle, Settings2, EyeOff, Eye, Plus, Pencil, Link as LinkIcon,
+  ChevronRight, ChevronDown, Search, AlertCircle, Settings2, EyeOff, Eye, Plus, Pencil, Link as LinkIcon, AlertTriangle
 } from 'lucide-react';
 import { adminDriverOdometerApi } from '../../api/adminApi';
 import { BackButton } from '../../components/common/SubPageNav';
@@ -42,8 +42,8 @@ const msToDateStr = (ms) => (ms ? new Date(ms).toLocaleDateString('en-CA') : nul
 const dateStrToMs = (s) => (s ? new Date(`${s}T00:00:00`).getTime() : null);
 
 const VEHICLE_CFG = {
-  TRUCK:     { label: 'Xe tải',  icon: Truck },
-  MOTORBIKE: { label: 'Xe máy',  icon: Bike },
+  TRUCK: { label: 'Xe tải', icon: Truck },
+  MOTORBIKE: { label: 'Xe máy', icon: Bike },
 };
 
 const STATUS_LABEL = {
@@ -179,8 +179,7 @@ function DriverCard({ d, onDetail }) {
           </div>
         </div>
 
-        {/* ODO từng loại xe — tài xế BOTH có 2 đồng hồ độc lập nên hiển thị cạnh nhau,
-            không gộp số vì trừ odo xe máy cho xe tải sẽ ra kết quả vô nghĩa */}
+        {/* ODO từng loại xe */}
         <div className="flex-1 min-w-0">
           {!hasData ? (
             <div className="bg-canvas rounded-xl px-3 py-3 flex items-center gap-2">
@@ -191,6 +190,7 @@ function DriverCard({ d, onDetail }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {vehicles.map(v => {
                 const Icon = VEHICLE_CFG[v.vehicleType]?.icon || Gauge;
+                const hasNotes = v.odoNotes && v.odoNotes.length > 0;
                 return (
                   <div key={v.vehicleType} className="bg-canvas rounded-xl px-3 py-2.5">
                     <div className="flex items-center justify-between mb-1.5">
@@ -210,6 +210,25 @@ function DriverCard({ d, onDetail }) {
                         {v.endDate && <span className="ml-1">({shortDate(v.endDate)})</span>}
                       </span>
                     </div>
+
+                    {/* ── GHI CHÚ BẤT THƯỜNG (ODO giảm so với ngày trước) ── */}
+                    {hasNotes && (
+                      <div className="mt-2 space-y-1">
+                        {v.odoNotes.map((n, idx) => (
+                          <div key={idx}
+                            className="flex items-start gap-1.5 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-2 py-1.5">
+                            <AlertTriangle size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-tight">
+                              <span className="font-semibold">
+                                {shortDate(n.date)} {n.session === 'START' ? 'đầu ca' : 'cuối ca'}
+                                {' '}({fmtKm(n.odometer)} km):
+                              </span>
+                              {' '}{n.note}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -236,7 +255,7 @@ function DriverCard({ d, onDetail }) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Combobox chọn tài khoản — có ô tìm kiếm (mở inline để không bị cắt trong modal)
+// Combobox chọn tài khoản
 // ══════════════════════════════════════════════════════════════════════════════
 function AccountCombobox({ users, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -305,7 +324,7 @@ function AccountCombobox({ users, value, onChange }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Modal THÊM TÀI XẾ — 3 field: tên, loại xe, "không xử lý"
+// Modal THÊM TÀI XẾ
 // ══════════════════════════════════════════════════════════════════════════════
 function AddDriverModal({ onClose, onCreated }) {
   const toast = useToast();
@@ -388,30 +407,22 @@ function AddDriverModal({ onClose, onCreated }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Modal chọn tài xế nào được THEO DÕI ODO
+// Modal quản lý tài xế
 // ══════════════════════════════════════════════════════════════════════════════
-//
-// Dùng lại cờ `systemDriver` sẵn có trong bảng driver — nghĩa của nó vốn đã là
-// "bản ghi giao hàng ảo, không phải người thật". Bật cờ này thì tài xế biến mất
-// khỏi màn điểm danh ODO của kho và khỏi báo cáo này, nhưng VẪN gán được cho đơn
-// hàng như bình thường (Grab, Giao tại kho vẫn là lựa chọn giao hợp lệ).
 function ManageDriversModal({ onClose, onSaved }) {
   const toast = useToast();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
-  // Tìm kiếm + modal thêm tài xế
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
 
-  // Dòng đang sửa
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: '', vehicleType: 'BOTH', systemDriver: false, active: true });
 
-  // Gắn tài khoản cho data cũ
   const [availUsers, setAvailUsers] = useState([]);
-  const [linkPick, setLinkPick] = useState({});   // driverId -> userId đang chọn
+  const [linkPick, setLinkPick] = useState({});
   const [linkingId, setLinkingId] = useState(null);
 
   const load = () => {
@@ -429,8 +440,6 @@ function ManageDriversModal({ onClose, onSaved }) {
   };
   useEffect(load, []);
 
-  // Sắp xếp: còn hoạt động → ngưng → không xử lý; trong mỗi nhóm sort theo tên.
-  // Kèm lọc theo ô tìm kiếm (theo tên, không phân biệt hoa thường/dấu cách).
   const visibleDrivers = useMemo(() => {
     const rank = (d) => d.systemDriver ? 2 : (d.active === false ? 1 : 0);
     const q = search.trim().toLowerCase();
@@ -444,7 +453,6 @@ function ManageDriversModal({ onClose, onSaved }) {
       });
   }, [drivers, search]);
 
-  /** Gắn tài xế (data cũ) với một tài khoản DRIVER đã tồn tại. */
   const doLink = async (driverId) => {
     const userId = linkPick[driverId];
     if (!userId) { toast('Chọn tài khoản để gắn', 'error'); return; }
@@ -482,7 +490,6 @@ function ManageDriversModal({ onClose, onSaved }) {
     } finally { setBusyId(null); }
   };
 
-  /** Bật/tắt nhanh cờ "không xử lý" mà không cần vào chế độ sửa. */
   const quickToggle = async (d) => {
     setBusyId(d.id);
     try {
@@ -519,7 +526,6 @@ function ManageDriversModal({ onClose, onSaved }) {
           </button>
         </div>
 
-        {/* Tìm kiếm + nút Thêm */}
         <div className="p-4 border-b border-hairline bg-canvas">
           <div className="flex items-center gap-2">
             <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line bg-surface
@@ -549,7 +555,6 @@ function ManageDriversModal({ onClose, onSaved }) {
           ) : visibleDrivers.length === 0 ? (
             <p className="text-sm text-muted text-center py-8">Không tìm thấy tài xế khớp "{search}"</p>
           ) : visibleDrivers.map(d => editId === d.id ? (
-            // ── Chế độ sửa ──────────────────────────────────────────────
             <div key={d.id} className="bg-surface border border-gold/50 rounded-xl p-3 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <input value={editDraft.name}
@@ -584,14 +589,11 @@ function ManageDriversModal({ onClose, onSaved }) {
               </div>
             </div>
           ) : (
-            // ── Chế độ xem ──────────────────────────────────────────────
             <div key={d.id}
-              className={`flex flex-col gap-2 rounded-xl px-4 py-3 ${
-                d.systemDriver ? 'bg-surface-2' : 'bg-canvas'}`}>
+              className={`flex flex-col gap-2 rounded-xl px-4 py-3 ${d.systemDriver ? 'bg-surface-2' : 'bg-canvas'}`}>
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium truncate ${
-                    d.systemDriver ? 'text-muted' : 'text-ink'}`}>
+                  <p className={`text-sm font-medium truncate ${d.systemDriver ? 'text-muted' : 'text-ink'}`}>
                     {d.name}
                   </p>
                   <p className="text-[11px] text-muted">
@@ -603,8 +605,7 @@ function ManageDriversModal({ onClose, onSaved }) {
                 </div>
                 <button onClick={() => quickToggle(d)} disabled={busyId === d.id}
                   title={d.systemDriver ? 'Bật theo dõi ODO' : 'Đánh dấu không xử lý'}
-                  className={`p-1.5 rounded-lg transition disabled:opacity-50 ${
-                    d.systemDriver
+                  className={`p-1.5 rounded-lg transition disabled:opacity-50 ${d.systemDriver
                       ? 'text-muted hover:bg-surface'
                       : 'text-amber-600 dark:text-amber-300 hover:bg-amber-50 dark:bg-amber-500/10'}`}>
                   {d.systemDriver ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -615,7 +616,6 @@ function ManageDriversModal({ onClose, onSaved }) {
                 </button>
               </div>
 
-              {/* Tài khoản đăng nhập */}
               {!d.systemDriver && (
                 d.userId ? (
                   <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-300">
@@ -689,9 +689,6 @@ export default function DriverOdometerPage() {
     } finally { setLoading(false); }
   };
 
-  // DateRangePicker chỉ phát sự kiện khi bấm Áp dụng (không phát theo từng ngày được
-  // click), nên gắn from/to vào deps là an toàn — đổi khoảng ngày là tự tải lại luôn.
-  // Nút "Xem báo cáo" giữ lại để tải lại thủ công.
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, includeInactive]);
 
   return (
@@ -708,15 +705,12 @@ export default function DriverOdometerPage() {
         </button>
       </div>
 
-      {/* Bộ lọc khoảng ngày */}
       <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
         <div className="flex flex-wrap items-center gap-3">
           <DateRangePicker
             from={dateStrToMs(from)}
             to={dateStrToMs(to)}
             onChange={(r) => {
-              // Xoá khoảng ngày → quay về mặc định (đầu tháng → hôm nay) thay vì
-              // để trống, vì API bắt buộc phải có cả from lẫn to.
               setFrom(msToDateStr(r.from) || firstOfMonth());
               setTo(msToDateStr(r.to) || todayStr());
             }}
@@ -747,7 +741,6 @@ export default function DriverOdometerPage() {
         </p>
       </div>
 
-      {/* Danh sách tài xế */}
       {loading ? (
         <p className="text-sm text-muted text-center py-12">Đang tải báo cáo...</p>
       ) : data.length === 0 ? (

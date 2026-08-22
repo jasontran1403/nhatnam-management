@@ -8,6 +8,9 @@ import { useToast } from '../../components/common/Toast';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
+import MisaReceiptModal from '../../components/misa/MisaReceiptModal';
+import MisaOrderModal from '../../components/misa/MisaOrderModal';
+
 import { formatPrice } from '../../utils/formatPrice';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight, Filter,
@@ -460,7 +463,7 @@ function OrderCard({ o, actionLoading, invoiceLoadingId, detailLoading, onComple
               ))}
             </div>
           )}
-          <p className="text-sm font-semibold text-ink mt-0.5">{o.customerName}</p>
+          <p className="text-sm font-semibold text-ink mt-0.5">{o.customerName || 'Khách lẻ'}</p>
           {o.customerPhone && <p className="text-[10px] text-muted">{o.customerPhone}</p>}
         </div>
         <div className="text-right shrink-0">
@@ -563,7 +566,12 @@ export default function AccountantOrdersPage() {
   const [search, setSearch] = useState('');
   const [receiptNumberFilter, setReceiptNumberFilter] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [dateRange, setDateRange] = useState(() => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { from, to };
+  });
   const [productFilter, setProductFilter] = useState('');
   const [customerFilter, setCustomerFilter] = useState('');
   const [products, setProducts] = useState([]);
@@ -584,7 +592,8 @@ export default function AccountantOrdersPage() {
   const [sortNoReceipt, setSortNoReceipt] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
-
+  const [misaReceiptOrder, setMisaReceiptOrder] = useState(null);
+  const [misaOrderViewOrder, setMisaOrderViewOrder] = useState(null);
   const totalPages = Math.ceil(total / pageSize);
 
   // Label ngày hôm nay — mặc định hiển thị trên nút mobile
@@ -927,7 +936,7 @@ export default function AccountantOrdersPage() {
                           checked={selectedIds.size === orders.length && orders.length > 0}
                           onChange={e => setSelectedIds(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} />
                       </th>
-                      {[t('order', 'order_code'), t('common', 'date'), t('customer', 'customer'), t('warehouse', 'warehouse'), t('common', 'status'), t('payment', 'payment_method'), t('order', 'total_paid'), t('order', 'ordererCreatedBy'), t('document', 'document'), t('document', 'invoice')].map(h => (
+                      {[t('order', 'order_code'), t('common', 'time'), t('customer', 'customer'), t('warehouse', 'warehouse'), t('common', 'status'), t('payment', 'payment_method'), t('order', 'total_paid'), t('order', 'ordererCreatedBy'), t('document', 'document'), t('document', 'invoice')].map(h => (
                         <th key={h} className="text-left text-[10px] font-bold text-muted uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -950,6 +959,22 @@ export default function AccountantOrdersPage() {
                               {detailLoading === o.id && <div className="w-3 h-3 border border-gold border-t-transparent rounded-full animate-spin" />}
                               {isThisInvoice && <span className="flex gap-0.5 items-center">{[0, 1, 2].map(i => <span key={i} className="w-1 h-1 rounded-full bg-gold animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>}
                             </div>
+                            {o.misaOrderId && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                <button
+                                  onClick={e => { e.stopPropagation(); setMisaOrderViewOrder(o); }}
+                                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/28 hover:bg-blue-100 dark:hover:bg-blue-500/18 transition">
+                                  📋 Đơn Misa
+                                </button>
+                                {(o.misaReceiptCount > 0) && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setMisaReceiptOrder(o); }}
+                                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28 hover:bg-emerald-100 dark:bg-emerald-500/18 transition">
+                                    💰 {o.misaReceiptCount} phiếu thu
+                                  </button>
+                                )}
+                              </div>
+                            )}
                             {o.receiptNumbers?.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-0.5">
                                 {o.receiptNumbers.map((rn, i) => (
@@ -964,7 +989,7 @@ export default function AccountantOrdersPage() {
                           </td>
                           <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{formatDate(o.createdAt)}</td>
                           <td className="px-4 py-3">
-                            <p className="text-xs font-medium text-ink whitespace-nowrap">{o.customerName}</p>
+                            <p className="text-xs font-medium text-ink whitespace-nowrap">{o.customerName || 'Khách lẻ'}</p>
                             <p className="text-[10px] text-muted">{o.customerPhone}</p>
                           </td>
                           <td className="px-4 py-3"><WarehouseBadge name={o.warehouseName} /></td>
@@ -1109,6 +1134,23 @@ export default function AccountantOrdersPage() {
           onClose={() => setCancelTarget(null)}
           onConfirm={handleCancelConfirm}
           loading={cancelLoading}
+        />
+      )}
+
+      {misaReceiptOrder && (
+        <MisaReceiptModal
+          order={misaReceiptOrder}
+          onClose={() => setMisaReceiptOrder(null)}
+          onSuccess={() => fetchOrders(page)}
+        />
+      )}
+
+      {misaOrderViewOrder && (
+        <MisaOrderModal
+          order={misaOrderViewOrder}
+          isViewMode={true}
+          onClose={() => setMisaOrderViewOrder(null)}
+          onSuccess={() => fetchOrders(page)}
         />
       )}
     </div>

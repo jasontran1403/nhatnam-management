@@ -114,8 +114,8 @@ export function ContractViewModal({ customer, onClose, onUpload }) {
         <div className="flex justify-between gap-2">
           {onUpload
             ? <SecondaryButton onClick={() => { onClose?.(); onUpload(); }}>
-                <Upload size={14} /> Cập nhật hợp đồng
-              </SecondaryButton>
+              <Upload size={14} /> Cập nhật hợp đồng
+            </SecondaryButton>
             : <span />}
           <SecondaryButton onClick={onClose}>Đóng</SecondaryButton>
         </div>
@@ -137,12 +137,12 @@ export function ContractViewModal({ customer, onClose, onUpload }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {previewFiles.map((f, i) => (
-              <FileThumb 
-                key={f.id} 
-                url={f.url} 
+              <FileThumb
+                key={f.id}
+                url={f.url}
                 label={f.label}
                 kind={f.kind}
-                onOpen={() => setPreviewIdx(i)} 
+                onOpen={() => setPreviewIdx(i)}
               />
             ))}
           </div>
@@ -192,13 +192,47 @@ export function ContractUploadModal({ customer, onClose }) {
 
   const doUpload = async () => {
     if (files.length === 0) { toast('Chưa chọn file hợp đồng nào', 'error'); return; }
+
+    // ── Kiểm tra file có đọc được không (Android SAF đôi khi khoá) ───
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      try {
+        const slice = f.slice(0, 1);
+        await slice.text();
+      } catch (readErr) {
+        toast(`File "${f.name}" không đọc được trên thiết bị này (${readErr?.message || 'unknown'}) — thử chụp lại hoặc chọn file khác`, 'error');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       await customerContractApi.upload(customer.id, files);
       toast(hadContract ? 'Đã cập nhật hợp đồng mới' : 'Đã tải hợp đồng lên', 'success');
       onClose?.(true);
     } catch (e) {
-      toast(e?.response?.data?.message || 'Tải hợp đồng thất bại', 'error');
+      const status = e?.response?.status;
+      const serverMsg = e?.response?.data?.message;
+      const errMsg = e?.message || '';
+      const code = e?.code || '';
+
+      const fileSummary = files.map(f =>
+        `${f.name} (${(f.size / 1024).toFixed(0)}KB, type="${f.type || 'rỗng'}")`
+      ).join(' · ');
+
+      let detail;
+      if (serverMsg) {
+        detail = `Server: ${serverMsg} (HTTP ${status || '?'})`;
+      } else if (!e?.response) {
+        detail = `Không có response từ server`
+          + ` [code=${code || 'none'}]`
+          + ` [msg=${errMsg || 'none'}]`
+          + ` [files=${fileSummary}]`;
+      } else {
+        detail = `HTTP ${status}: ${errMsg} [files=${fileSummary}]`;
+      }
+
+      toast(detail, 'error');
     } finally { setSaving(false); }
   };
 
@@ -219,11 +253,11 @@ export function ContractUploadModal({ customer, onClose }) {
           <SecondaryButton onClick={() => onClose?.(false)} disabled={saving}>Huỷ</SecondaryButton>
           {confirming
             ? <DangerButton onClick={doUpload} loading={saving}>
-                Xác nhận thay hợp đồng
-              </DangerButton>
+              Xác nhận thay hợp đồng
+            </DangerButton>
             : <PrimaryButton onClick={submit} loading={saving} disabled={files.length === 0}>
-                <Upload size={14} /> {hadContract ? 'Cập nhật' : 'Tải lên'}
-              </PrimaryButton>}
+              <Upload size={14} /> {hadContract ? 'Cập nhật' : 'Tải lên'}
+            </PrimaryButton>}
         </div>
       }
     >

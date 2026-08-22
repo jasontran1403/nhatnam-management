@@ -1,8 +1,10 @@
 /**
  * DriverAttendancePage.jsx — Điểm danh ODO tài xế
+ *
+ * THAY ĐỔI: Cho phép nhập ODO nhỏ hơn ngày trước, nhưng bắt buộc ghi chú lý do.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Gauge, CheckCircle2, Clock, Bike, Truck, Save, Loader2, Pencil, Search, X } from 'lucide-react';
+import { Gauge, CheckCircle2, Clock, Bike, Truck, Save, Loader2, Pencil, Search, X, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
 
@@ -21,59 +23,72 @@ const fmtOdo = (n) => n != null ? Number(n).toLocaleString('vi-VN') : '—';
 /**
  * Ô nhập ODO của một ca.
  *
- * @param minOdo    mốc sàn — không cho lưu số nhỏ hơn (công-tơ-mét không quay ngược)
- * @param minLabel  giải thích mốc sàn đó ở đâu ra, để người nhập biết vì sao bị chặn
- * @param maxOdo    mốc trần — chỉ dùng cho ca đầu (không được lớn hơn ODO cuối ca)
- * @param maxLabel  giải thích mốc trần
+ * @param minOdo      mốc sàn — nếu nhập nhỏ hơn thì cảnh báo + bắt nhập ghi chú
+ * @param minLabel    giải thích mốc sàn
+ * @param maxOdo      mốc trần — chỉ dùng cho ca đầu (không được lớn hơn ODO cuối ca)
+ * @param maxLabel    giải thích mốc trần
+ * @param currentNote ghi chú hiện tại (nếu trước đó đã nhập ODO bất thường)
  */
 function OdoEditor({
   driverId, vehicleType, session, currentOdo, recordedBy, date, onSaved,
   minOdo = null, minLabel = '', maxOdo = null, maxLabel = '',
-  blockedReason = '',
+  blockedReason = '', currentNote = '',
 }) {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState('');
+  const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef();
 
   const startEdit = () => {
-    // Bị chặn (VD: kết ca khi chưa có đầu ca) thì nhắc rồi thôi — mở ô nhập ra
-    // cho người ta gõ xong mới báo lỗi là làm mất công vô ích.
     if (blockedReason) { toast(blockedReason, 'error'); return; }
     setVal(currentOdo != null ? String(currentOdo) : '');
+    setNote('');
     setEditing(true);
     setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
   };
 
-  // Cảnh báo hiện ngay khi đang gõ, trước cả khi bấm Lưu.
   const num = Number(val);
-  const invalid = val !== '' && !isNaN(num) && (
-    (minOdo != null && num < minOdo) || (maxOdo != null && num > maxOdo)
-  );
-  const invalidMsg =
-    minOdo != null && num < minOdo ? `Không được nhỏ hơn ${fmtOdo(minOdo)} km${minLabel ? ` (${minLabel})` : ''}`
-      : maxOdo != null && num > maxOdo ? `Không được lớn hơn ${fmtOdo(maxOdo)} km${maxLabel ? ` (${maxLabel})` : ''}`
+
+  // maxOdo vẫn chặn cứng (đầu ca không được > cuối ca)
+  const hardInvalid = val !== '' && !isNaN(num) && maxOdo != null && num > maxOdo;
+
+  // ODO < mốc sàn → cảnh báo mềm: cho nhập nhưng phải có ghi chú
+  const belowMin = val !== '' && !isNaN(num) && minOdo != null && num < minOdo;
+
+  // Cần note khi ODO nhỏ hơn mốc sàn
+  const needsNote = belowMin;
+  const noteEmpty = note.trim() === '';
+
+  const warningMsg =
+    hardInvalid
+      ? `Không được lớn hơn ${fmtOdo(maxOdo)} km${maxLabel ? ` (${maxLabel})` : ''}`
+      : belowMin
+        ? `Nhỏ hơn ${fmtOdo(minOdo)} km${minLabel ? ` (${minLabel})` : ''} — vui lòng ghi lý do`
         : '';
 
   const save = async () => {
-    const num = Number(val);
     if (!val || isNaN(num) || num < 0) { toast('Nhập số km hợp lệ', 'error'); return; }
-    // Chặn tại chỗ thay vì để server trả lỗi: người nhập thấy ngay con số sàn
-    // và sửa được mà không mất lượt gọi API.
-    if (minOdo != null && num < minOdo) {
-      toast(`ODO không được nhỏ hơn ${fmtOdo(minOdo)} km${minLabel ? ` — ${minLabel}` : ''}`, 'error');
+    if (hardInvalid) {
+      toast(`ODO không được lớn hơn ${fmtOdo(maxOdo)} km${maxLabel ? ` — ${maxLabel}` : ''}`, 'error');
       return;
     }
-    if (maxOdo != null && num > maxOdo) {
-      toast(`ODO không được lớn hơn ${fmtOdo(maxOdo)} km${maxLabel ? ` — ${maxLabel}` : ''}`, 'error');
+    // Nếu nhỏ hơn mốc sàn → bắt buộc ghi chú
+    if (needsNote && noteEmpty) {
+      toast('Vui lòng nhập lý do khi ODO nhỏ hơn số đã ghi trước đó', 'error');
       return;
     }
     setSaving(true);
     try {
-      const res = await api.post('/api/warehouse/driver-attendance', {
+      const payload = {
         driverId, vehicleType, sessionType: session, odometer: num, date,
-      });
+      };
+      // Chỉ gửi note khi ODO bất thường
+      if (needsNote) {
+        payload.note = note.trim();
+      }
+      const res = await api.post('/api/warehouse/driver-attendance', payload);
       onSaved(res.data?.data);
       setEditing(false);
       toast('Đã lưu', 'success');
@@ -92,15 +107,13 @@ function OdoEditor({
         <div className="flex items-center gap-1">
           <div className="relative flex-1">
             <input ref={inputRef} type="number" inputMode="numeric"
-              min={minOdo != null ? minOdo : 0}
-              max={maxOdo != null ? maxOdo : undefined}
               value={val} onChange={e => setVal(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+              onKeyDown={e => { if (e.key === 'Enter' && (!needsNote || !noteEmpty)) save(); if (e.key === 'Escape') setEditing(false); }}
               className={`w-full h-8 px-2 pr-6 rounded-lg text-sm font-mono text-right border-2 focus:outline-none bg-surface
-                ${invalid ? 'border-red-500' : 'border-gold'}`} />
+                ${hardInvalid ? 'border-red-500' : belowMin ? 'border-amber-500' : 'border-gold'}`} />
             <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted">km</span>
           </div>
-          <button onClick={save} disabled={saving || invalid}
+          <button onClick={save} disabled={saving || hardInvalid || (needsNote && noteEmpty)}
             className="h-8 w-8 rounded-lg bg-gold text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
           </button>
@@ -110,13 +123,40 @@ function OdoEditor({
           </button>
         </div>
 
-        {invalid ? (
-          <p className="text-[9px] text-red-500 font-medium leading-tight">{invalidMsg}</p>
-        ) : minOdo != null ? (
+        {/* Cảnh báo cứng (maxOdo) */}
+        {hardInvalid && (
+          <p className="text-[9px] text-red-500 font-medium leading-tight">{warningMsg}</p>
+        )}
+
+        {/* Cảnh báo mềm + ô nhập ghi chú khi ODO < mốc sàn */}
+        {belowMin && !hardInvalid && (
+          <div className="space-y-1.5 mt-1">
+            <div className="flex items-start gap-1.5 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-2 py-1.5">
+              <AlertTriangle size={12} className="text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-tight">{warningMsg}</p>
+            </div>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="VD: Đổi xe mới, sửa đồng hồ, xe khác…"
+              rows={2}
+              className={`w-full px-2 py-1.5 rounded-lg text-xs border-2 focus:outline-none bg-surface resize-none
+                ${noteEmpty ? 'border-amber-400' : 'border-emerald-400'}`}
+            />
+            {noteEmpty && (
+              <p className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">
+                * Bắt buộc nhập lý do
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Thông tin mốc sàn (khi không vi phạm) */}
+        {!belowMin && !hardInvalid && minOdo != null && (
           <p className="text-[9px] text-muted leading-tight">
             Tối thiểu {fmtOdo(minOdo)} km{minLabel ? ` — ${minLabel}` : ''}
           </p>
-        ) : null}
+        )}
       </div>
     );
   }
@@ -125,12 +165,21 @@ function OdoEditor({
     <div className="space-y-0.5">
       <p className={`text-[10px] font-bold ${color}`}>{isStart ? 'Đầu ca' : 'Cuối ca'}</p>
       {currentOdo != null ? (
-        <div className="flex items-center gap-1">
-          <span className="text-sm font-mono font-bold text-ink">{fmtOdo(currentOdo)}</span>
-          <span className="text-[10px] text-muted">km</span>
-          <button onClick={startEdit} className="p-0.5 text-faint hover:text-gold">
-            <Pencil size={10} />
-          </button>
+        <div>
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-mono font-bold text-ink">{fmtOdo(currentOdo)}</span>
+            <span className="text-[10px] text-muted">km</span>
+            <button onClick={startEdit} className="p-0.5 text-faint hover:text-gold">
+              <Pencil size={10} />
+            </button>
+          </div>
+          {/* Hiển thị ghi chú bất thường (ODO giảm) */}
+          {currentNote && (
+            <div className="flex items-start gap-1 mt-1 bg-amber-50 dark:bg-amber-500/10 rounded px-1.5 py-1">
+              <AlertTriangle size={9} className="text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-[9px] text-amber-700 dark:text-amber-300 leading-tight">{currentNote}</p>
+            </div>
+          )}
         </div>
       ) : (
         <button onClick={startEdit}
@@ -152,15 +201,11 @@ function VehicleSection({ row, date, onUpdate }) {
   const isTruck = row.vehicleType === 'TRUCK';
   const bothDone = row.startOdometer != null && row.endOdometer != null;
 
-  // MỐC SÀN: số ODO ghi gần nhất ở ngày trước (BE trả về prevOdometer).
-  // Đầu ca không được nhỏ hơn mốc đó; cuối ca không được nhỏ hơn đầu ca —
-  // và nếu chưa nhập đầu ca thì vẫn phải ≥ mốc của ngày trước.
   const prev = row.prevOdometer ?? null;
   const prevLabel = row.prevOdometerDate ? `số ngày ${fmtDateVN(row.prevOdometerDate)}` : 'lần ghi trước';
 
   const startMin = prev;
   const startMinLabel = prev != null ? prevLabel : '';
-  // Đầu ca không được vượt cuối ca (nếu cuối ca đã có).
   const startMax = row.endOdometer ?? null;
 
   const endMin = row.startOdometer != null ? row.startOdometer : prev;
@@ -186,10 +231,12 @@ function VehicleSection({ row, date, onUpdate }) {
           session="START" currentOdo={row.startOdometer} recordedBy={row.startRecordedBy}
           minOdo={startMin} minLabel={startMinLabel}
           maxOdo={startMax} maxLabel="ODO cuối ca"
+          currentNote={row.startNote}
           date={date} onSaved={d => onUpdate(row.driverId, row.vehicleType, 'start', d)} />
         <OdoEditor driverId={row.driverId} vehicleType={row.vehicleType}
           session="END" currentOdo={row.endOdometer} recordedBy={row.endRecordedBy}
           minOdo={endMin} minLabel={endMinLabel}
+          currentNote={row.endNote}
           blockedReason={row.startOdometer == null
             ? 'Chưa điểm danh đầu ca — vui lòng nhập ODO đầu ca trước.'
             : ''}
@@ -287,8 +334,8 @@ export default function DriverAttendancePage() {
         vehicles: driver.vehicles.map(v => {
           if (v.vehicleType !== vehicleType) return v;
           return which === 'start'
-            ? { ...v, startOdometer: data.odometer, startRecordedBy: data.recordedBy }
-            : { ...v, endOdometer: data.odometer, endRecordedBy: data.recordedBy };
+            ? { ...v, startOdometer: data.odometer, startRecordedBy: data.recordedBy, startNote: data.note || null }
+            : { ...v, endOdometer: data.odometer, endRecordedBy: data.recordedBy, endNote: data.note || null };
         }),
       };
     }));
