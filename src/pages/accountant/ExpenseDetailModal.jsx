@@ -398,6 +398,12 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
 
         {/* Footer */}
         <div className="p-5 border-t border-hairline flex gap-3">
+          <button onClick={downloadPdf} disabled={downloading}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-ink-2 hover:border-gold hover:text-gold transition disabled:opacity-50"
+            title="Xuất PDF">
+            <FileDown size={14} /> {downloading ? '...' : 'PDF'}
+          </button>
+
           {/* Nút sửa phiếu */}
           {canEdit && (
             <button onClick={() => setShowEditModal(true)}
@@ -406,11 +412,7 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
               <Pencil size={14} /> Sửa phiếu
             </button>
           )}
-          <button onClick={downloadPdf} disabled={downloading}
-            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-hairline-2 text-sm font-semibold text-ink-2 hover:border-gold hover:text-gold transition disabled:opacity-50"
-            title="Xuất PDF">
-            <FileDown size={14} /> {downloading ? '...' : 'PDF'}
-          </button>
+
           {canApprove && !rejecting && (
             <>
               <button onClick={() => setRejecting(true)} disabled={busy}
