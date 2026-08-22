@@ -18,12 +18,37 @@ function formatDate(ms) {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
+
 function dayRange(date) {
   const [y, m, d] = date.split('-').map(Number);
   const start = new Date(y, m - 1, d, 0, 0, 0, 0);
   const end = new Date(y, m - 1, d, 23, 59, 59, 999);
   return { from: start.getTime(), to: end.getTime() };
 }
+
+// Lấy ngày đầu tiên và ngày cuối cùng của tháng hiện tại
+function getCurrentMonthRange() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  
+  // Ngày đầu tháng
+  const firstDay = new Date(year, month, 1);
+  // Ngày cuối tháng
+  const lastDay = new Date(year, month + 1, 0);
+  
+  const from = firstDay.getTime();
+  const to = lastDay.getTime();
+  
+  return { from, to };
+}
+
+// Format date thành YYYY-MM-DD
+function formatDateInput(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -40,9 +65,11 @@ export default function IncomeListPage({ adminMode = false }) {
   const searchTextRef = useRef('');
 
   // OWNER/ADMIN (adminMode): mặc định KHÔNG chọn ngày → fetch TẤT CẢ phiếu.
-  // ACCOUNTANT/SUPER_ACCOUNTANT: mặc định lọc theo hôm nay (giữ nguyên).
+  // ACCOUNTANT/SUPER_ACCOUNTANT: mặc định lọc theo tháng hiện tại (từ ngày 1 đến cuối tháng)
+  const initialRange = adminMode ? null : getCurrentMonthRange();
+  
   const [selectedDate, setSelectedDate] = useState(adminMode ? null : todayStr());
-  const [dateRange, setDateRange] = useState(null);
+  const [dateRange, setDateRange] = useState(initialRange);
   const [searchText, setSearchText] = useState('');
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -109,12 +136,12 @@ export default function IncomeListPage({ adminMode = false }) {
       }
 
       // Quy tắc lọc ngày khi tìm kiếm:
-      //  - dateRange === null  → đang ở mặc định "hôm nay" (user CHƯA chỉnh filter).
-      //      · Không search  → lọc theo hôm nay.
+      //  - dateRange === null  → đang ở mặc định "tháng hiện tại" (user CHƯA chỉnh filter).
+      //      · Không search  → lọc theo tháng hiện tại.
       //      · Có search     → BỎ filter ngày, tìm trên toàn bộ.
       //  - dateRange !== null  → user ĐÃ chủ động chọn khoảng ngày.
       //      · Search hay không, đều áp filter ngày đó.
-      //  (Nút X gọi setDateRange(null) → về "hôm nay" → search lại thành không-filter.)
+      //  (Nút X gọi setDateRange(null) → về "tháng hiện tại" → search lại thành không-filter.)
       const userPickedRange = dateRange !== null;
       const ignoreDateForSearch = !!q && !userPickedRange;
 
@@ -200,10 +227,16 @@ export default function IncomeListPage({ adminMode = false }) {
           )}
         </div>
         <div className="flex-shrink-0">
-          <DateRangePicker from={currentRange.from} to={currentRange.to} onChange={handleDateRangeChange} placeholder="Chọn ngày" align="right" />
+          <DateRangePicker 
+            from={currentRange.from} 
+            to={currentRange.to} 
+            onChange={handleDateRangeChange} 
+            placeholder={adminMode ? "Chọn ngày" : "Tháng hiện tại"} 
+            align="right" 
+          />
         </div>
         {dateRange && (
-          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0" title={adminMode ? 'Xem tất cả' : 'Về hôm nay'}>
+          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0" title={adminMode ? 'Xem tất cả' : 'Về tháng hiện tại'}>
             <X size={14} />
           </button>
         )}
