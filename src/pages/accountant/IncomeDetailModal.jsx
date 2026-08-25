@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import {
   X, TrendingUp, User, Clock, CheckCircle, XCircle,
   Wallet, Landmark, Pencil, ShieldCheck, AlertCircle, FileDown,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/Toast';
@@ -46,7 +47,7 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
   const [v, setV] = useState(voucher);
   useEffect(() => { setV(voucher); }, [voucher]);
 
-  // Fetch đầy đủ phiếu khi mở (danh sách có thể thiếu overpay / orderAllocations)
+  // Fetch đầy đủ phiếu khi mở
   useEffect(() => {
     (async () => {
       try {
@@ -67,7 +68,7 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
   };
 
   const [downloading, setDownloading] = useState(false);
-  const [busy, setBusy] = useState(false); // Thêm state busy
+  const [busy, setBusy] = useState(false);
   const [refundPaymentType, setRefundPaymentType] = useState('CASH');
   const [refundBankName, setRefundBankName] = useState('');
   const [refundBankAccount, setRefundBankAccount] = useState('');
@@ -135,7 +136,7 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
                 <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${isBank ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}>
                   {isBank ? <Landmark size={10} /> : <Wallet size={10} />} {isBank ? 'Chuyển khoản' : 'Tiền mặt'}
                 </span>
-                {/* Badge thu dư — chỉ hiện khi chưa tạo phiếu chi hoàn */}
+                {/* Badge thu dư */}
                 {hasOverpay && !overpayRefunded && (
                   <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-500/28">
                     <AlertCircle size={10} /> Thu dư {formatVND(v.overpay.amount)}
@@ -158,9 +159,20 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
               <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-0.5">Lý do thu</p>
               <p className="text-sm text-ink">{v.reason || '—'}</p>
             </div>
-            {v.payerName && <InfoRow label="Người nộp tiền" value={v.payerName} icon={<User size={12} />} full />}
+
+            {/* Tên khách hàng */}
+            {v.customerName && (
+              <InfoRow label="Khách hàng" value={v.customerName} icon={<Building2 size={12} />} full />
+            )}
+
+            {/* Người nộp tiền */}
+            {v.payerName && (
+              <InfoRow label="Người nộp tiền" value={v.payerName} icon={<User size={12} />} full />
+            )}
+
             <InfoRow label="Người lập" value={v.createdByName} icon={<User size={12} />} />
             <InfoRow label="Ngày tạo" value={formatDate(v.createdAt)} />
+
             {v.linkedOrderCodes?.length > 0 && (
               <div className="col-span-2">
                 <p className="text-xs text-muted mb-1">Đơn hàng liên kết</p>
@@ -228,7 +240,7 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
             </div>
           )}
 
-          {/* ── Khối THU DƯ — tạo phiếu chi hoàn ── 
+          {/* ── Khối THU DƯ — tạo phiếu chi hoàn ──
           {hasOverpay && (
             <div className={`border rounded-xl p-4 ${overpayRefunded
               ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/28'

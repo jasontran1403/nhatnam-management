@@ -355,6 +355,8 @@ export const expenseApi = {
 
 // ─── Income Vouchers ─────────────────────────────────────────────────────────
 export const incomeApi = {
+  suggestEmployees: (q) =>
+    api.get('/api/income-vouchers/employee-suggestions', { params: { q } }),
   create: (data) => api.post('/api/income-vouchers', data),
   update: (id, data) => api.put(`/api/income-vouchers/${id}`, data),
   getLogs: (id) => api.get(`/api/income-vouchers/${id}/logs`),

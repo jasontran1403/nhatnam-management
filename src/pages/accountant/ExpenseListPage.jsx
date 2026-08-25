@@ -86,7 +86,7 @@ export default function ExpenseListPage() {
   const fileInputRef = useRef(null);
 
   const initialMonthRange = getCurrentMonthRange();
-  
+
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [dateRange, setDateRange] = useState(initialMonthRange);
   const [searchText, setSearchText] = useState('');
@@ -118,6 +118,7 @@ export default function ExpenseListPage() {
     if (next.has(v.id)) next.delete(v.id); else next.set(v.id, v);
     return next;
   });
+
   const removeSelected = (id) => setSelectedMap(prev => {
     const next = new Map(prev); next.delete(id); return next;
   });
@@ -142,16 +143,16 @@ export default function ExpenseListPage() {
 
       // Sử dụng API mới theo ngày chi, sort theo expenseDate
       const res = q
-        ? await expenseApi.searchByExpenseDate(q, from, to, { 
-            page: p, 
-            size: PAGE_SIZE,
-            sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
-          })
-        : await expenseApi.listByExpenseDate(range.from, range.to, { 
-            page: p, 
-            size: PAGE_SIZE,
-            sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
-          });
+        ? await expenseApi.searchByExpenseDate(q, from, to, {
+          page: p,
+          size: PAGE_SIZE,
+          sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
+        })
+        : await expenseApi.listByExpenseDate(range.from, range.to, {
+          page: p,
+          size: PAGE_SIZE,
+          sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
+        });
 
       const data = res.data?.data || res.data || {};
       const content = data.content || [];
@@ -167,7 +168,7 @@ export default function ExpenseListPage() {
     finally { setLoading(false); }
   }, [dateRange]);
 
-  useEffect(() => { load(0); }, []);
+  useEffect(() => { load(0); }, [dateRange]);
 
   const handleSearchChange = (val) => {
     setSearchText(val);
@@ -335,9 +336,8 @@ export default function ExpenseListPage() {
         <button
           key={i}
           onClick={() => load(i)}
-          className={`w-9 h-9 rounded-lg text-sm font-semibold transition ${
-            i === page ? 'bg-gold text-white' : 'border border-hairline-2 hover:bg-canvas text-ink'
-          }`}
+          className={`w-9 h-9 rounded-lg text-sm font-semibold transition ${i === page ? 'bg-gold text-white' : 'border border-hairline-2 hover:bg-canvas text-ink'
+            }`}
         >
           {i + 1}
         </button>
@@ -452,12 +452,12 @@ export default function ExpenseListPage() {
           )}
         </div>
         <div className="flex-shrink-0">
-          <DateRangePicker 
-            from={currentRange.from} 
-            to={currentRange.to} 
-            onChange={handleDateRangeChange} 
-            placeholder="Chọn ngày" 
-            align="right" 
+          <DateRangePicker
+            from={currentRange.from}
+            to={currentRange.to}
+            onChange={handleDateRangeChange}
+            placeholder="Chọn ngày"
+            align="right"
           />
         </div>
         {dateRange && (
@@ -558,7 +558,7 @@ export default function ExpenseListPage() {
                 <p className="text-sm font-semibold text-ink truncate mb-1.5">Nội dung: {v.reason}</p>
                 <div className="flex items-center justify-between text-xs text-muted">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    Nhà cung cấp: {v.vendorName && <span className="flex items-center gap-1">{v.vendorName}</span>}
+                    Người nhận / NCC: {v.vendorName && <span className="flex items-center gap-1">{v.vendorName}</span>}
                   </div>
                   <span className="flex-shrink-0">Tạo: {formatDate(v.createdAt)}</span>
                 </div>

@@ -234,10 +234,10 @@ export default function ExpenseDetailModal({ voucher, onClose, onChanged }) {
               <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-0.5">Lý do chi</p>
               <p className="text-sm text-ink">{v.reason || '—'}</p>
             </div>
-            {v.vendorName && <InfoRow label="Nhà cung cấp" value={v.vendorName} icon={<Building2 size={12} />} full />}
+            {v.vendorName && <InfoRow label="Người nhận / Nhà cung cấp / Đơn vị" value={v.vendorName} icon={<Building2 size={12} />} full />}
             {v.vendorType && <InfoRow label="Danh mục" value={VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType} />}
             <InfoRow label="Người lập" value={v.createdByName} icon={<User size={12} />} />
-            {v.requestedByName && <InfoRow label="Người yêu cầu" value={v.requestedByName} icon={<User size={12} />} />}
+            {v.requestedByName && <InfoRow label="Người tạo" value={v.requestedByName} icon={<User size={12} />} />}
             <InfoRow label="Ngày tạo" value={formatDate(v.createdAt)} />
             {/* Hiển thị Ngày chi / Kỳ chi */}
             {expenseDisplay && <InfoRow label="Ngày chi / Kỳ chi" value={expenseDisplay} icon={<Clock size={12} />} />}

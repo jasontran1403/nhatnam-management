@@ -769,7 +769,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm font-semibold text-ink flex items-center gap-1.5">
                       <Building2 size={14} className="text-gold" />
-                      Nhà cung cấp / Đơn vị <span className="text-red-500">*</span>
+                      Tên người nhận / Nhà cung cấp / Đơn vị <span className="text-red-500">*</span>
                     </label>
                   </div>
 
