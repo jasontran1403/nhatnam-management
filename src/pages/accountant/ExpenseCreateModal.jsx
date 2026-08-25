@@ -12,6 +12,7 @@ import {
 import { accountantVendorExpenseApi, superAccountantVendorExpenseApi, fmtVND } from '../../api/materialRequestApi.js';
 import ExpenseDatePeriodPicker, { defaultExpenseWhen } from '../../components/ui/ExpenseDatePeriodPicker';
 import { formatVND } from '../../utils/format.js';
+import VendorEmployeeDropdown from '../../components/expense/VendorEmployeeDropdown';
 
 function parseVND(s) { return Number(String(s).replace(/[^0-9]/g, '')) || 0; }
 
@@ -219,6 +220,24 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
       .finally(() => setLoadingOutstanding(false));
   }, [selectedVendor]);
 
+  const handleVendorSelect = (sel) => {
+    if (!sel) { setSelectedVendor(null); return; }
+
+    const wasEmployee = selectedVendor?.name?.startsWith('[NN]');
+    const nowEmployee = !!sel.isEmployee;
+
+    if (sel.isEmployee) {
+      setSelectedVendor({ name: sel.name, id: null, vendorType: null });
+    } else {
+      setSelectedVendor(sel);
+    }
+
+    // Reset items khi chuyển đổi giữa nhân viên ↔ NCC
+    if (wasEmployee !== nowEmployee) {
+      setItems([{ id: Date.now(), categoryId: '', itemName: '', amount: '', note: '' }]);
+    }
+  };
+
   const filteredVendors = vendors.filter(v => v.name.toLowerCase().includes(vendorSearch.toLowerCase()));
 
   const handleProofImageChange = async (e) => {
@@ -244,28 +263,52 @@ function VendorDebtPaymentForm({ onClose, onCreated, initialVendorId = null, ini
   const uploadedProofUrls = proofImages.filter(img => img.uploadedUrl).map(img => img.uploadedUrl);
 
   const handleSubmit = async () => {
-    if (!selectedVendor) { toast('Vui lòng chọn nhà cung cấp', 'error'); return; }
-    if (outstanding == null || outstanding <= 0) { toast('Nhà cung cấp này không có công nợ', 'error'); return; }
-    const amountValue = fullSettlement ? outstanding : parseVND(amount);
-    if (!fullSettlement && amountValue <= 0) { toast('Vui lòng nhập số tiền cần chi', 'error'); return; }
-    if (!fullSettlement && amountValue > outstanding) { toast('Số tiền chi vượt quá công nợ hiện tại', 'error'); return; }
-    if (proofImages.some(img => img.uploading)) { toast('Đang tải ảnh, vui lòng chờ...', 'warning'); return; }
-    if (uploadedProofUrls.length === 0) { toast('Bắt buộc ít nhất 1 ảnh chứng từ thanh toán', 'error'); return; }
+    if (!selectedVendor) { toast('Vui lòng chọn người nhận / nhà cung cấp', 'error'); return; }
+    if (!reason.trim()) { toast('Lý do chi là bắt buộc', 'error'); return; }
+
+    // LUÔN YÊU CẦU categoryId cho tất cả các trường hợp
+    const validItems = items.filter(i => i.categoryId && parseVND(i.amount) > 0);
+
+    if (validItems.length === 0) {
+      toast('Mỗi khoản chi cần chọn nhãn và nhập số tiền > 0', 'error');
+      return;
+    }
+
+    if (paymentType === 'BANK_TRANSFER') {
+      if (!bankName.trim()) { toast('Tên ngân hàng là bắt buộc khi chuyển khoản', 'error'); return; }
+      if (!bankRef.trim()) { toast('Mã tham chiếu giao dịch là bắt buộc khi chuyển khoản', 'error'); return; }
+    }
+    if (images.some(img => img.uploading)) { toast('Đang tải ảnh, vui lòng chờ...', 'warning'); return; }
 
     setSubmitting(true);
     try {
-      await vendorExpenseApi.create({
+      await expenseApi.create({
+        vendorName: selectedVendor.name,
         vendorId: selectedVendor.id,
-        fullSettlement,
-        amount: fullSettlement ? null : amountValue,
-        note: note.trim() || null,
-        proofImages: uploadedProofUrls,
+        vendorType: selectedVendor.vendorType || null,
+        reason: reason.trim(),
+        paymentNumber: (paymentNumber.trim() || suggestedPaymentNumber) || null,
+        paymentType,
+        bankName: paymentType === 'BANK_TRANSFER' ? bankName.trim() : null,
+        bankRef: paymentType === 'BANK_TRANSFER' ? bankRef.trim() : null,
+        expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
+        expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
+        requestedByName: requestedByName.trim() || null,
+        // LUÔN GỬI categoryId cho tất cả các trường hợp
+        items: validItems.map(i => ({
+          categoryId: Number(i.categoryId),
+          amount: parseVND(i.amount),
+          note: i.note?.trim() || null
+        })),
+        imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
       });
-      toast('Đã tạo phiếu chi và trừ công nợ', 'success');
+      toast('Đã tạo phiếu chi', 'success');
       onCreated();
     } catch (e) {
-      toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu chi', 'error');
-    } finally { setSubmitting(false); }
+      toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -586,12 +629,21 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   const [bankName, setBankName] = useState('');
   const [banks, setBanks] = useState([]);   // danh mục NH có sẵn
   const [bankRef, setBankRef] = useState('');
-  const [items, setItems] = useState([{ id: 1, categoryId: '', amount: '', note: '' }]);
+  const [items, setItems] = useState([{ id: 1, categoryId: '', itemName: '', amount: '', note: '' }]);
   const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   // Danh mục khoản chi của NCC đang chọn (Owner tạo) — kế toán chỉ được chọn từ đây
   const [categories, setCategories] = useState([]);
   const [catLoading, setCatLoading] = useState(false);
+
+  const handleVendorSelect = (sel) => {
+    if (!sel) { setSelectedVendor(null); return; }
+    if (sel.isEmployee) {
+      setSelectedVendor({ name: sel.name, id: null, vendorType: null });
+    } else {
+      setSelectedVendor(sel);
+    }
+  };
 
   // Load vendors từ MaterialVendor API
   useEffect(() => {
@@ -662,7 +714,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   };
 
   // Items
-  const addItem = () => setItems(p => [...p, { id: Date.now(), categoryId: '', amount: '', note: '' }]);
+  const addItem = () => setItems(p => [...p, { id: Date.now(), categoryId: '', itemName: '', amount: '', note: '' }]);
   const removeItem = (id) => setItems(p => p.filter(i => i.id !== id));
   const updateItem = (id, k, v) => setItems(p => p.map(i => i.id === id ? { ...i, [k]: v } : i));
   const totalAmount = items.reduce((s, i) => s + parseVND(i.amount), 0);
@@ -687,10 +739,15 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   };
 
   const handleSubmit = async () => {
-    if (!selectedVendor) { toast('Vui lòng chọn nhà cung cấp', 'error'); return; }
+    if (!selectedVendor) { toast('Vui lòng chọn người nhận / nhà cung cấp', 'error'); return; }
     if (!reason.trim()) { toast('Lý do chi là bắt buộc', 'error'); return; }
     const validItems = items.filter(i => i.categoryId && parseVND(i.amount) > 0);
-    if (validItems.length === 0) { toast('Mỗi khoản chi cần chọn nhãn và nhập số tiền > 0', 'error'); return; }
+
+    if (validItems.length === 0) {
+      toast('Mỗi khoản chi cần chọn nhãn và nhập số tiền > 0', 'error');
+      return;
+    }
+
     if (paymentType === 'BANK_TRANSFER') {
       if (!bankName.trim()) { toast('Tên ngân hàng là bắt buộc khi chuyển khoản', 'error'); return; }
       if (!bankRef.trim()) { toast('Mã tham chiếu giao dịch là bắt buộc khi chuyển khoản', 'error'); return; }
@@ -711,7 +768,11 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
         expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
         expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
         requestedByName: requestedByName.trim() || null,
-        items: validItems.map(i => ({ categoryId: Number(i.categoryId), amount: parseVND(i.amount), note: i.note.trim() || null })),
+        items: validItems.map(i => ({
+          categoryId: Number(i.categoryId),
+          amount: parseVND(i.amount),
+          note: i.note?.trim() || null,
+        })),
         imageUrls: images.filter(img => img.uploadedUrl).map(img => img.uploadedUrl),
       });
       toast('Đã tạo phiếu chi', 'success');
@@ -764,97 +825,26 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
               {/* Body */}
               <div className="overflow-y-auto flex-1 p-5 space-y-4">
 
-                {/* ── Nhà cung cấp (bắt buộc) ── */}
+                {/* ── Người nhận / NCC / Đơn vị ── */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm font-semibold text-ink flex items-center gap-1.5">
-                      <Building2 size={14} className="text-gold" />
-                      Tên người nhận / Nhà cung cấp / Đơn vị <span className="text-red-500">*</span>
-                    </label>
-                  </div>
-
-                  <div className="relative" ref={dropRef}>
-                    {/* Trigger */}
-                    <div
-                      onClick={() => { setDropOpen(o => !o); }}
-                      className={`flex items-center justify-between px-4 py-2.5 rounded-xl border cursor-pointer transition ${!selectedVendor ? 'border-hairline-2 hover:border-gold' : 'border-gold bg-canvas'
-                        }`}
-                    >
-                      {selectedVendor ? (
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-ink">{selectedVendor.name}</p>
-                          <p className="text-xs text-muted">
-                            {VENDOR_TYPE_LABELS[selectedVendor.vendorType] || selectedVendor.vendorType}
-                            {selectedVendor.contactPerson && ` · ${selectedVendor.contactPerson}`}
-                            {selectedVendor.contactPhone && ` · ${selectedVendor.contactPhone}`}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted">
-                          {vendorLoading ? 'Đang tải...' : 'Chọn nhà cung cấp...'}
-                        </span>
-                      )}
-                      <ChevronDown size={16} className={`text-muted transition-transform flex-shrink-0 ml-2 ${dropOpen ? 'rotate-180' : ''}`} />
-                    </div>
-
-                    {dropOpen && (
-                      <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-surface border border-hairline-2 rounded-xl shadow-xl overflow-hidden">
-                        {/* Search trong dropdown */}
-                        <div className="p-2 border-b border-hairline relative">
-                          <Search size={13} className="absolute left-5 top-1/2 -translate-y-1/2 text-muted" />
-                          <input
-                            autoFocus
-                            value={vendorSearch}
-                            onChange={e => setVendorSearch(e.target.value)}
-                            placeholder="Tìm nhà cung cấp..."
-                            className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-hairline-2 focus:outline-none focus:ring-2 focus:ring-gold/40"
-                          />
-                        </div>
-
-                        <div className="max-h-48 overflow-y-auto">
-                          {/* Bỏ chọn */}
-                          {selectedVendor && (
-                            <button
-                              onClick={() => { setSelectedVendor(null); setDropOpen(false); }}
-                              className="w-full text-left px-4 py-2.5 text-sm text-muted hover:bg-canvas transition"
-                            >
-                              — Bỏ chọn —
-                            </button>
-                          )}
-
-                          {filteredVendors.length === 0 && !vendorSearch && !vendorLoading && (
-                            <p className="text-center py-4 text-xs text-muted">Chưa có nhà cung cấp nào</p>
-                          )}
-
-                          {filteredVendors.map(v => (
-                            <button
-                              key={v.id}
-                              onClick={() => { setSelectedVendor(v); setDropOpen(false); setVendorSearch(''); }}
-                              className="w-full text-left px-4 py-2.5 hover:bg-canvas transition border-b border-hairline last:border-0"
-                            >
-                              <p className="text-sm font-medium text-ink">{v.name}</p>
-                              <p className="text-xs text-muted">
-                                {VENDOR_TYPE_LABELS[v.vendorType] || v.vendorType}
-                                {v.contactPerson && ` · ${v.contactPerson}`}
-                                {v.contactPhone && ` · ${v.contactPhone}`}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Nút tạo nhanh */}
-                        <div className="p-2 border-t border-hairline">
-                          <button
-                            onClick={() => { setShowQuickCreate(true); setDropOpen(false); }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gold font-semibold hover:bg-canvas rounded-lg transition"
-                          >
-                            <Plus size={14} />
-                            {noResults ? `Tạo "${vendorSearch}"` : 'Tạo nhà cung cấp mới'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <label className="text-sm font-semibold text-ink flex items-center gap-1.5 mb-1.5">
+                    <Building2 size={14} className="text-gold" />
+                    Người nhận / NCC / Đơn vị <span className="text-red-500">*</span>
+                  </label>
+                  <VendorEmployeeDropdown
+                    selected={selectedVendor ? {
+                      name: selectedVendor.name,
+                      id: selectedVendor.id,
+                      vendorType: selectedVendor.vendorType,
+                      contactPerson: selectedVendor.contactPerson,
+                      contactPhone: selectedVendor.contactPhone,
+                      isEmployee: selectedVendor.name?.startsWith('[NN]'),
+                    } : null}
+                    onSelect={handleVendorSelect}
+                    vendors={vendors}
+                    vendorLoading={vendorLoading}
+                    onQuickCreate={() => { setShowQuickCreate(true); }}
+                  />
                 </div>
 
                 {/* ── Lý do ── */}
@@ -973,7 +963,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
                   </div>
 
                   {!selectedVendor ? (
-                    <p className="text-xs text-muted bg-canvas rounded-xl p-3">Chọn nhà cung cấp trước khi thêm khoản chi.</p>
+                    <p className="text-xs text-muted bg-canvas rounded-xl p-3">Chọn người nhận / nhà cung cấp trước khi thêm khoản chi.</p>
                   ) : catLoading ? (
                     <p className="text-xs text-muted bg-canvas rounded-xl p-3">Đang tải danh mục khoản chi...</p>
                   ) : (

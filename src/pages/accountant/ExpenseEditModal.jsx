@@ -1,12 +1,12 @@
 // src/pages/accountant/ExpenseEditModal.jsx
 import { useState, useEffect, useRef } from 'react';
-import { X, Receipt, Wallet, Landmark, Clock, Save, XCircle, AlertCircle, ChevronDown, Building2, Hash, Trash2, Plus, Search } from 'lucide-react';
+import { X, Receipt, Save, XCircle, AlertCircle, ChevronDown, Building2, Hash, Trash2, Plus, Search } from 'lucide-react';
 import { useToast } from '../../components/common/Toast';
 import { expenseApi } from '../../api/services';
 import api from '../../api/axios';
-import { accountantSupplierApi } from '../../api/accountantApi';
 import ExpenseDatePeriodPicker, { defaultExpenseWhen } from '../../components/ui/ExpenseDatePeriodPicker';
 import { formatVND } from '../../utils/format.js';
+import VendorEmployeeDropdown from '../../components/expense/VendorEmployeeDropdown';
 
 function parseVND(s) {
     return Number(String(s).replace(/[^0-9]/g, '')) || 0;
@@ -14,11 +14,9 @@ function parseVND(s) {
 
 // Chuyển đổi từ dữ liệu voucher sang format của ExpenseDatePeriodPicker
 function voucherToWhen(v) {
-    // Ưu tiên hiển thị expensePeriod nếu có (phiếu tạo theo kỳ)
     if (v.expensePeriod) {
         return { mode: 'PERIOD', expensePeriod: v.expensePeriod };
     }
-    // Nếu không có expensePeriod, hiển thị expenseDate (phiếu tạo theo ngày)
     if (v.expenseDate) {
         return { mode: 'DATE', expenseDate: v.expenseDate };
     }
@@ -34,17 +32,12 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
     const [vendorId, setVendorId] = useState(voucher.vendorId || null);
     const [suppliers, setSuppliers] = useState([]);
     const [supplierLoading, setSupplierLoading] = useState(false);
-    const [supplierDropOpen, setSupplierDropOpen] = useState(false);
-    const [supplierSearch, setSupplierSearch] = useState('');
-    const supplierDropdownRef = useRef(null);
-    const supplierButtonRef = useRef(null);
 
     // State cho danh mục khoản chi
     const [categories, setCategories] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
     const [categoryDropOpen, setCategoryDropOpen] = useState(null);
     const [categorySearch, setCategorySearch] = useState('');
-    const categoryDropdownRefs = useRef({});
     const categoryButtonRefs = useRef({});
 
     // Form state
@@ -114,15 +107,22 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
             .catch(() => { });
     }, []);
 
-    // Đóng dropdown khi click ra ngoài
+    // Callback từ VendorEmployeeDropdown — không reset items khi đổi loại
+    const handleVendorSelect = (sel) => {
+        if (!sel) {
+            setVendorName('');
+            setVendorId(null);
+            return;
+        }
+        setVendorName(sel.name);
+        setVendorId(sel.isEmployee ? null : (sel.id || null));
+    };
+
+    // Đóng dropdown danh mục khi click ngoài
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(e.target)) {
-                setSupplierDropOpen(false);
-            }
-
             if (categoryDropOpen !== null) {
-                const ref = categoryDropdownRefs.current[categoryDropOpen];
+                const ref = categoryButtonRefs.current[categoryDropOpen];
                 if (ref && !ref.contains(e.target)) {
                     setCategoryDropOpen(null);
                     setCategorySearch('');
@@ -132,11 +132,6 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [categoryDropOpen]);
-
-    const filteredSuppliers = suppliers.filter(s =>
-        s.name?.toLowerCase().includes(supplierSearch.toLowerCase()) ||
-        (s.phone && s.phone.includes(supplierSearch))
-    );
 
     const filteredCategories = (searchTerm) => {
         if (!searchTerm || !searchTerm.trim()) return categories;
@@ -173,7 +168,6 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
     const totalAmount = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
     const handleSubmit = async () => {
-        // Validate
         if (!reason.trim()) {
             toast('Lý do chi không được để trống', 'error');
             return;
@@ -194,11 +188,10 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
             return;
         }
 
-        // Build payload - thêm vendorId và vendorName
         const payload = {
             reason: reason.trim(),
             vendorName: vendorName.trim() || null,
-            vendorId: vendorId || null,  // Thêm vendorId
+            vendorId: vendorId || null,
             paymentNumber: (paymentNumber.trim() || suggestedPaymentNumber) || null,
             expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
             expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
@@ -207,7 +200,7 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                 id: i.id || null,
                 categoryId: i.categoryId,
                 amount: Number(i.amount),
-                note: i.note.trim() || null,
+                note: i.note?.trim() || null,
             })),
         };
 
@@ -215,16 +208,11 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
         try {
             await expenseApi.update(voucher.id, payload);
             toast('Đã cập nhật phiếu chi', 'success');
-
             if (onChanged) onChanged();
             onClose();
-
             if (onSaved) {
-                setTimeout(() => {
-                    onSaved();
-                }, 300);
+                setTimeout(() => { onSaved(); }, 300);
             }
-
         } catch (e) {
             toast(e?.response?.data?.message || 'Có lỗi xảy ra', 'error');
         } finally {
@@ -271,84 +259,23 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                     </button>
                 </div>
 
-                {/* Body - overflow-y-auto để scroll */}
+                {/* Body */}
                 <div className="overflow-y-auto flex-1 p-5 space-y-4">
-                    {/* Nhà cung cấp - chỉ chọn từ dropdown */}
-                    <div ref={supplierDropdownRef}>
+                    {/* Người nhận / Nhà cung cấp / Đơn vị */}
+                    <div>
                         <label className="text-sm font-semibold text-ink flex items-center gap-1.5 mb-1.5">
-                            <Building2 size={14} className="text-gold" /> Nhà cung cấp / Đơn vị
+                            <Building2 size={14} className="text-gold" /> Người nhận / NCC / Đơn vị
                         </label>
-                        <div className="relative" ref={supplierButtonRef}>
-                            <div
-                                onClick={() => setSupplierDropOpen(o => !o)}
-                                className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-hairline-2 bg-surface cursor-pointer hover:border-gold transition"
-                            >
-                                <span className={vendorName ? 'text-ink text-sm' : 'text-muted text-sm'}>
-                                    {vendorName || (supplierLoading ? 'Đang tải...' : suppliers.length === 0 ? 'Chưa có nhà cung cấp' : 'Chọn nhà cung cấp...')}
-                                </span>
-                                <ChevronDown size={16} className={`text-muted transition-transform ${supplierDropOpen ? 'rotate-180' : ''}`} />
-                            </div>
-
-                            {/* Dropdown nhà cung cấp - render ra ngoài modal bằng portal */}
-                            {supplierDropOpen && (
-                                <div
-                                    className="fixed z-[9999] bg-surface border border-hairline-2 rounded-xl shadow-2xl overflow-hidden"
-                                    style={{
-                                        width: supplierButtonRef.current?.offsetWidth || '100%',
-                                        maxWidth: 'calc(100vw - 32px)',
-                                        top: supplierButtonRef.current ?
-                                            Math.min(
-                                                supplierButtonRef.current.getBoundingClientRect().bottom + 8,
-                                                window.innerHeight - 280
-                                            ) : 'auto',
-                                        left: supplierButtonRef.current ?
-                                            Math.max(16, supplierButtonRef.current.getBoundingClientRect().left) : '16px',
-                                        maxHeight: '280px',
-                                    }}
-                                >
-                                    <div className="p-2 border-b border-hairline sticky top-0 bg-surface">
-                                        <input
-                                            autoFocus
-                                            value={supplierSearch}
-                                            onChange={e => setSupplierSearch(e.target.value)}
-                                            placeholder="Tìm kiếm nhà cung cấp..."
-                                            className="w-full px-3 py-2 text-sm rounded-lg border border-hairline-2 focus:outline-none focus:ring-2 focus:ring-gold/40"
-                                            onClick={e => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>
-                                        {supplierLoading ? (
-                                            <p className="text-center py-3 text-xs text-muted">Đang tải...</p>
-                                        ) : filteredSuppliers.length === 0 ? (
-                                            <p className="text-center py-3 text-xs text-muted">
-                                                {supplierSearch ? 'Không tìm thấy nhà cung cấp' : 'Chưa có nhà cung cấp nào'}
-                                            </p>
-                                        ) : (
-                                            filteredSuppliers.map(s => (
-                                                <button key={s.id}
-                                                    onClick={() => {
-                                                        setVendorName(s.name);
-                                                        setVendorId(s.id);
-                                                        setSupplierDropOpen(false);
-                                                        setSupplierSearch('');
-                                                    }}
-                                                    className={`w-full text-left px-4 py-2.5 hover:bg-canvas transition ${vendorId === s.id ? 'bg-gold/10' : ''
-                                                        }`}
-                                                >
-                                                    <p className="text-sm font-medium text-ink">{s.name}</p>
-                                                    {s.phone && <p className="text-xs text-muted">{s.phone}</p>}
-                                                </button>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        {vendorName && (
-                            <p className="text-xs text-muted mt-1">
-                                Đã chọn: <span className="font-medium text-ink">{vendorName}</span>
-                            </p>
-                        )}
+                        <VendorEmployeeDropdown
+                            selected={vendorName ? {
+                                name: vendorName,
+                                id: vendorId,
+                                isEmployee: vendorName.startsWith('[NN]'),
+                            } : null}
+                            onSelect={handleVendorSelect}
+                            vendors={suppliers}
+                            vendorLoading={supplierLoading}
+                        />
                     </div>
 
                     {/* Lý do chi */}
@@ -371,7 +298,6 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                             <input
                                 value={paymentNumber}
                                 onChange={e => {
-                                    // Chỉ cho phép nhập số (0-9), xóa các ký tự không phải số
                                     const value = e.target.value.replace(/[^0-9]/g, '');
                                     setPaymentNumber(value);
                                 }}
@@ -396,14 +322,13 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                         <p className="text-xs text-muted mt-0.5">Chỉ được nhập số, không nhập chữ.</p>
                     </div>
 
-
                     {/* Thời điểm chi */}
                     <div>
                         <label className="block text-sm font-semibold text-ink mb-1.5">Thời điểm chi</label>
                         <ExpenseDatePeriodPicker value={when} onChange={setWhen} />
                         <p className="text-xs text-muted mt-1">
-                            Mặc định là <b>ngày hôm nay</b>. Chọn <b>Ngày</b> để ghi đúng ngày phát sinh (tiện tạo lại phiếu chi cũ);
-                            hoặc chọn <b>Kỳ</b> để tính khoản chi vào cả tháng. Kỳ cho phép cả tháng hiện tại và tương lai.
+                            Mặc định là <b>ngày hôm nay</b>. Chọn <b>Ngày</b> để ghi đúng ngày phát sinh;
+                            hoặc chọn <b>Kỳ</b> để tính khoản chi vào cả tháng.
                         </p>
                     </div>
 
@@ -418,7 +343,7 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                         />
                     </div>
 
-                    {/* Khoản chi - có dropdown chọn danh mục */}
+                    {/* Khoản chi — luôn dùng dropdown danh mục cho cả nhân viên và NCC */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <label className="text-sm font-semibold text-ink">Các khoản chi *</label>
@@ -426,6 +351,7 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                                 <Plus size={13} /> Thêm khoản
                             </button>
                         </div>
+
                         <div className="space-y-2">
                             {items.map((item, idx) => {
                                 const isOpen = categoryDropOpen === idx;
@@ -450,8 +376,15 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                                                     }}
                                                     className="w-full px-3 py-2 rounded-lg border border-hairline-2 bg-surface text-sm flex items-center justify-between hover:border-gold transition"
                                                 >
-                                                    <span className={selectedCat ? 'text-ink' : 'text-muted'}>
-                                                        {selectedCat ? selectedCat.name : (categoriesLoading ? 'Đang tải...' : 'Chọn danh mục khoản chi...')}
+                                                    <span className={selectedCat ? 'text-ink' : (item.itemName ? 'text-ink' : 'text-muted')}>
+                                                        {selectedCat
+                                                            ? selectedCat.name
+                                                            : item.itemName
+                                                                ? item.itemName
+                                                                : (categoriesLoading
+                                                                    ? 'Đang tải...'
+                                                                    : 'Chọn danh mục khoản chi...')
+                                                        }
                                                     </span>
                                                     <ChevronDown size={14} className={`text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                                                 </button>
@@ -499,8 +432,7 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                                                                         key={cat.id}
                                                                         type="button"
                                                                         onClick={() => selectCategory(idx, cat.id)}
-                                                                        className={`w-full text-left px-4 py-2.5 text-sm hover:bg-canvas transition ${item.categoryId === cat.id ? 'bg-gold/10 text-gold-strong' : 'text-ink'
-                                                                            }`}
+                                                                        className={`w-full text-left px-4 py-2.5 text-sm hover:bg-canvas transition ${item.categoryId === cat.id ? 'bg-gold/10 text-gold-strong' : 'text-ink'}`}
                                                                     >
                                                                         {cat.name}
                                                                     </button>
@@ -537,6 +469,7 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                                 );
                             })}
                         </div>
+
                         <div className="text-right mt-2 text-sm font-bold text-ink">
                             Tổng: {formatVND(totalAmount)}
                         </div>
