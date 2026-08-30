@@ -82,6 +82,10 @@ export default function PackagingLossReportsPage() {
           <ChevronLeft size={16} /> {t('production','loss_back_to_production')}
         </button>
       )}
+      
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-ink">{t('production','loss_title')}</h1>
+      </div>
 
       {factories.length > 1 && (
         <div className="flex items-center gap-2">
@@ -93,9 +97,6 @@ export default function PackagingLossReportsPage() {
           </select>
         </div>
       )}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink">{t('production','loss_title')}</h1>
-      </div>
 
       <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4">
         <p className="text-xs text-muted">{t('production','loss_total_label')}</p>

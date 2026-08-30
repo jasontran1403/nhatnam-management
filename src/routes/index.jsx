@@ -44,6 +44,7 @@ import OwnerSupplierManagementPage from '../pages/owner/OwnerSupplierManagementP
 import OwnerMaterialStockPage from '../pages/owner/OwnerMaterialStockPage';
 import OwnerFactoryStockPage from '../pages/owner/OwnerFactoryStockPage';
 import OwnerMaterialPriceAnalysisPage from '../pages/owner/OwnerMaterialPriceAnalysisPage';
+import MaterialPriceTrackingPage from '../pages/owner/MaterialPriceTrackingPage';
 import OwnerPlanDetailPage from '../pages/owner/OwnerPlanDetailPage';
 import OwnerWorkOrderDetailPage from '../pages/owner/OwnerWorkOrderDetailPage';
 import OwnerExpenseCategoryPage from '../pages/owner/OwnerExpenseCategoryPage';
@@ -129,6 +130,9 @@ import FactorySemiFinishedGoodsPage from '../pages/factory_worker/FactorySemiFin
 // Factory Accountant (Kế toán kho xưởng)
 import FactoryAccountantTransfersPage from '../pages/factory_accountant/FactoryAccountantTransfersPage';
 import PackagingLossReportsPage from '../pages/factory_accountant/PackagingLossReportsPage';
+import FactoryAccountantWarehousePage from '../pages/factory_accountant/FactoryAccountantWarehousePage';
+import FactoryAccountantMaterialRequestsPage from '../pages/factory_accountant/FactoryAccountantMaterialRequestsPage';
+import ToolsPage from '../pages/tools/ToolsPage';
 
 // Driver (Tài xế)
 import DriverDashboardPage from '../pages/driver/DriverDashboardPage';
@@ -277,6 +281,7 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
+        <Route path="material-price-tracking" element={<MaterialPriceTrackingPage />} />
         <Route path="certificates" element={<CertificatePage />} />
         {/* Quản lý camera */}
         <Route path="cameras" element={<CameraManagementPage />} />
@@ -306,6 +311,7 @@ export default function AppRoutes() {
         {/* Phân tích giá nguyên liệu — gộp đa nhà cung cấp (mở từ Tồn kho NL)
             Cũng dùng cho danh mục khoản chi qua ?kind=EXPENSE */}
         <Route path="production/material-price-analysis" element={<OwnerMaterialPriceAnalysisPage />} />
+        <Route path="material-price-tracking" element={<MaterialPriceTrackingPage />} />
         {/* Phân tích danh mục chi — nguyên liệu + khoản chi/dịch vụ (mở từ Quản lý NCC) */}
         <Route path="production/expense-categories" element={<OwnerExpenseCategoryPage />} />
 
@@ -350,6 +356,7 @@ export default function AppRoutes() {
         <Route path="debt-orders" element={<DebtOrdersPage />} />
         <Route path="sale-kpi" element={<SaleKpiPage />} />
         <Route path="analytics" element={<OwnerAnalyticsPage />} />
+        <Route path="material-price-tracking" element={<MaterialPriceTrackingPage />} />
         {/* Quản lý camera */}
         <Route path="cameras" element={<CameraManagementPage />} />
         <Route path="production" element={<OwnerProductionDashboard />} />
@@ -404,6 +411,8 @@ export default function AppRoutes() {
         <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />
         <Route path="incomes" element={<IncomeListPage />} />
         <Route path="expenses" element={<ExpenseListPage />} />
+        <Route path="cashflow" element={<OwnerCashflowPage />} />
+        <Route path="material-price-tracking" element={<MaterialPriceTrackingPage />} />
         {/* Quản lý lương — phiếu lương theo tháng */}
         {/* ── Kho hàng (CHỈ XEM) — dùng chung page với OWNER/ADMIN.
              Kế toán cần đối chiếu tồn kho với chứng từ, nhưng không được tạo /
@@ -425,6 +434,8 @@ export default function AppRoutes() {
         <Route path="customers" element={<SuperAccountantCustomers />} />
         <Route path="expenses" element={<ExpenseListPage />} />
         <Route path="incomes" element={<IncomeListPage />} />
+        <Route path="cashflow" element={<OwnerCashflowPage />} />
+        <Route path="material-price-tracking" element={<MaterialPriceTrackingPage />} />
         <Route path="suppliers" element={<SupplierManagementPage />} />
         <Route path="vendor-debts" element={<AccountantVendorDebtPage />} />
         <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />
@@ -510,13 +521,15 @@ export default function AppRoutes() {
       {/* ── FACTORY ACCOUNTANT (Kế toán kho xưởng) ── */}
       <Route path="/factory-accountant"
         element={<TranslatedLayout rawNav={factoryAccountantNavRaw} allowedRoles={['FACTORY_ACCOUNTANT']} />}>
-        <Route index element={<Navigate to="/factory-accountant/transfers" replace />} />
-        {/* Xác nhận nhận phiếu chuyển kho bán thành phẩm — mặc định khi vào */}
+        <Route index element={<Navigate to="/factory-accountant/warehouse" replace />} />
+        {/* Kho (2 tab: thành phẩm + nguyên liệu) — mặc định khi vào */}
+        <Route path="warehouse" element={<FactoryAccountantWarehousePage />} />
+        {/* Phiếu chuyển kho bán TP — truy cập từ nút trong tab Kho thành phẩm */}
         <Route path="transfers" element={<FactoryAccountantTransfersPage />} />
-        {/* Quản lý kho thành phẩm — chuyển kho bán hàng / xuất kho */}
-        <Route path="finished-goods" element={<FactoryFinishedGoodsPage />} />
-        {/* Biên bản hao hụt đóng gói */}
+        {/* Biên bản hao hụt đóng gói — truy cập từ nút trong tab Kho thành phẩm */}
         <Route path="loss-reports" element={<PackagingLossReportsPage />} />
+        {/* Đặt hàng nguyên liệu — có nút back về Kho (tab nguyên liệu) */}
+        <Route path="material-requests" element={<FactoryAccountantMaterialRequestsPage />} />
         {/* Quản lý lương — phiếu lương theo tháng + thưởng KPI */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
         <Route path="my-requests" element={<MyRequestsPage />} />
@@ -575,6 +588,9 @@ export default function AppRoutes() {
           ]} />}>
         <Route index element={<MyRequestsPage />} />
       </Route>
+
+      {/* ── TOOLS (tất cả roles) ── */}
+      <Route path="/tools" element={<PrivateRoute><ToolsPage /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

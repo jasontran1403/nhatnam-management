@@ -8,8 +8,9 @@ import {
 import {
   ShoppingBag, TrendingUp, Clock, AlertTriangle,
   Crown, Package, CheckCircle, Truck, ChefHat, Wallet,
-  Medal, AlertCircle,
+  Medal, AlertCircle, Activity, BarChart3,
 } from 'lucide-react';
+import { SubPageButtons } from '../../components/common/SubPageNav';
 import { accountantDashboardApi } from '../../api/accountantApi';
 import DateRangePicker, { presetToRange } from '../../components/ui/DateRangePicker';
 import { useLang } from '../../context/LangContext';
@@ -312,6 +313,14 @@ export default function AccountantDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── Trang phụ: Dòng tiền + Biến động giá NL ────────────────────── */}
+      <SubPageButtons
+        items={[
+          { to: `${basePath}/cashflow`, label: 'Dòng tiền', icon: Activity },
+          { to: `${basePath}/material-price-tracking`, label: 'Biến động giá NL', icon: BarChart3 },
+        ]}
+      />
 
       {/* Date picker */}
       <div className="bg-surface rounded-2xl border border-line-soft px-4 py-3 shadow-sm">

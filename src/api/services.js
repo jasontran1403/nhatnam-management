@@ -192,6 +192,9 @@ export const orderApi = {
       params: { from, to, ...(categoryIds?.length ? { categoryIds: categoryIds.join(',') } : {}) },
       responseType: 'blob',
     }),
+
+  /** Trả hàng do feedback xấu (Feature 1) */
+  returnItems: (id, data) => api.post(`/api/seller/orders/${id}/return`, data),
 };
 
 // ─── Draft Order API ──────────────────────────────────────────────────────────
@@ -419,6 +422,17 @@ export function downloadBlob(blob, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ─── Biến động giá nguyên liệu (Feature 4) ───────────────────────────────────
+export const materialPriceTrackingApi = {
+  /** Danh sách nguyên liệu + đồ dùng tiêu hao */
+  listMaterials: () => api.get('/api/material-price-tracking/materials').then(r => r.data?.data || r.data || []),
+  /** Dữ liệu chart cho 1 nguyên liệu */
+  getChart: (materialName) =>
+    api.get('/api/material-price-tracking/chart', { params: { materialName } }).then(r => r.data?.data || r.data),
+  /** Thêm giá mới */
+  addEntry: (data) => api.post('/api/material-price-tracking/entries', data).then(r => r.data?.data || r.data),
+};
 
 // ─── Operator API ─────────────────────────────────────────────────────────────
 export const operatorApi = {

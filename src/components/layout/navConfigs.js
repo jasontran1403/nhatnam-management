@@ -117,8 +117,7 @@ export const accountantNavRaw = [
   // Kho hàng CHỈ XEM — Kho văn phòng phẩm mở bằng nút trong trang này.
   { to: '/accountant/warehouses', labelKey: 'warehouses', icon: Warehouse },
   { to: '/accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
-  { to: '/accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
-  { to: '/accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
+  // Phiếu thu / Phiếu chi đã chuyển vào bên trong page Dòng tiền (mở từ Dashboard).
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/accountant/my-requests', labelKey: 'my_requests', icon: FileText },
@@ -131,8 +130,7 @@ export const superAccountantNavRaw = [
   // Kho hàng CHỈ XEM — Kho văn phòng phẩm mở bằng nút trong trang này.
   { to: '/super-accountant/warehouses', labelKey: 'warehouses', icon: Warehouse },
   { to: '/super-accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
-  { to: '/super-accountant/expenses', labelKey: 'expenses', icon: TrendingDown },
-  { to: '/super-accountant/incomes', labelKey: 'incomes', icon: TrendingUp },
+  // Phiếu thu / Phiếu chi đã chuyển vào bên trong page Dòng tiền (mở từ Dashboard).
   { to: '/super-accountant/warehouse-receipts', labelKey: 'warehouse_receipts', icon: FileText },
   { to: '/super-accountant/lot-pricing', labelKey: 'lot_pricing', icon: Layers },
   // ── Phiếu đặt hàng nguyên liệu xưởng ────────────────────────────────────
@@ -192,12 +190,10 @@ export const superFactoryWorkerNavRaw = [
 ];
 
 // ── FACTORY_ACCOUNTANT (Kế toán kho xưởng): xác nhận nhận phiếu chuyển kho bán
-// thành phẩm (mặc định), quản lý kho thành phẩm (chuyển kho bán hàng/xuất kho),
-// biên bản hao hụt đóng gói. ─────────────────────────────────────────────────
+// Kế toán kho xưởng: "Kho" (4 tab: thành phẩm, nguyên liệu, phiếu chuyển kho, BB hao hụt).
+// Phiếu đặt hàng NL truy cập từ nút trong tab Kho nguyên liệu.
 export const factoryAccountantNavRaw = [
-  { to: '/factory-accountant/transfers', labelKey: 'semi_finished_transfers', icon: FileText },
-  { to: '/factory-accountant/finished-goods', labelKey: 'finished_goods', icon: Package },
-  { to: '/factory-accountant/loss-reports', labelKey: 'packaging_loss_reports', icon: ClipboardCheck },
+  { to: '/factory-accountant/warehouse', labelKey: 'warehouses', icon: Package },
   { to: '/factory-accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/factory-accountant/my-requests', labelKey: 'my_requests', icon: FileText },
 ];
@@ -277,7 +273,7 @@ export const ROLE_DEFAULT_PATH = {
   FACTORY_WORKER: '/factory/orders',
   FACTORY_STAFF: '/factory-staff/history',
   SUPER_FACTORY_WORKER: '/super-factory/production',
-  FACTORY_ACCOUNTANT: '/factory-accountant/transfers',
+  FACTORY_ACCOUNTANT: '/factory-accountant/warehouse',
   SELLER: '/seller/dashboard',
   SUPER_SELLER: '/seller/dashboard',
   HR: '/hr/manage',

@@ -1,8 +1,9 @@
 import { useLang } from '../../context/LangContext';
 import { customerContractApi } from '../../api/customerContractApi';
 import {
-  X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote, Ticket,
+  X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote, Ticket, RotateCcw,
 } from 'lucide-react';
+import ReturnOrderModal from './ReturnOrderModal';
 import VoucherPaymentModal from '../payment/VoucherPaymentModal';
 import MisaOrderModal from '../misa/MisaOrderModal';
 import MisaReceiptModal from '../misa/MisaReceiptModal';
@@ -320,6 +321,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
   const [showPartialModal, setShowPartialModal] = useState(false);
   const [showMisaOrder, setShowMisaOrder] = useState(false);
   const [showMisaReceipt, setShowMisaReceipt] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
   const [misaOrderCreated, setMisaOrderCreated] = useState(false);
   const [misaChecked, setMisaChecked] = useState(false);
@@ -367,6 +369,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
     // Thu tiền TRƯỚC khi giao (khách bị yêu cầu thanh toán trước)
     PREPAYMENT_FULL: 'Thu trước — đã đủ', PREPAYMENT_PARTIAL: 'Thu trước — chưa đủ',
     WAIVE_REMAINDER: 'Bỏ số lẻ',
+    ITEM_RETURNED: 'Trả hàng (feedback)',
   };
 
   const ACTION_STYLE = {
@@ -383,6 +386,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
     WAIVE_REMAINDER: 'bg-canvas text-ink-2 border-line',
     PAYMENT_METHOD_UPDATED: 'bg-canvas text-ink-2 border-line',
     ORDER_UPDATED: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/28',
+    ITEM_RETURNED: 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/28',
   };
 
   const ROLE_LABEL = {
@@ -458,6 +462,12 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
               <h2 className="font-bold text-ink font-mono">{o.orderCode}</h2>
             </div>
             <div className="flex items-center gap-2 mr-3 flex-wrap justify-end">
+              {['PENDING_PAYMENT', 'COMPLETED'].includes(o.status) && (
+                <button onClick={() => setShowReturnModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-500/18 text-xs font-semibold">
+                  <RotateCcw size={13} /> Trả hàng
+                </button>
+              )}
               {canChangePayment(o) && (
                 <button onClick={() => setShowPaymentModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:bg-blue-500/18 text-xs font-semibold">
@@ -777,6 +787,14 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
             setMisaOrderCreated(true);  // set trước
             if (onRefresh) onRefresh();  // refetch list sau
           }}
+        />
+      )}
+
+      {showReturnModal && (
+        <ReturnOrderModal
+          order={o}
+          onClose={() => setShowReturnModal(false)}
+          onSuccess={handleActionSuccess}
         />
       )}
 

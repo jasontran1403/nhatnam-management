@@ -1,6 +1,7 @@
 // src/pages/factory_worker/FactoryMaterialStockPage.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { Package, AlertTriangle, ChevronDown, ChevronUp, Search, ArrowUpFromLine, ArrowRightLeft, History, FileText, FlaskConical } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Package, AlertTriangle, ChevronDown, ChevronUp, Search, ArrowUpFromLine, ArrowRightLeft, History, FileText, FlaskConical, Plus, ClipboardList } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
 import { factoryMaterialRequestApi } from '../../api/materialRequestApi.js';
@@ -171,8 +172,9 @@ function NoteHistory({ factoryId }) {
 export default function FactoryMaterialStockPage() {
   const { t } = useLang();
   const { role } = useAuth();
-  // SUPER_FACTORY_WORKER quản lý kho NL xưởng → được xuất/chuyển kho.
-  const canManage = role === 'SUPER_FACTORY_WORKER';
+  // SUPER_FACTORY_WORKER + FACTORY_ACCOUNTANT quản lý kho NL xưởng → được xuất/chuyển/đặt hàng.
+  const canManage = role === 'SUPER_FACTORY_WORKER' || role === 'FACTORY_ACCOUNTANT';
+  const navigate = useNavigate();
 
   const [tab, setTab] = useState('stock');   // stock | history
   const [stocks, setStocks] = useState([]);
@@ -222,9 +224,23 @@ export default function FactoryMaterialStockPage() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-xl font-bold text-ink">{t('production','inv_factory_stock_title')}</h1>
         {canManage && (
-          <div className="flex gap-2">
-            <button onClick={() => setMixOpen(true)}
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => {
+              const base = role === 'FACTORY_ACCOUNTANT' ? '/factory-accountant' : '/super-factory-worker';
+              navigate(`${base}/material-requests?create=1`);
+            }}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-gold text-white hover:bg-gold-strong">
+              <Plus size={13} /> Tạo đơn đặt hàng
+            </button>
+            <button onClick={() => {
+              const base = role === 'FACTORY_ACCOUNTANT' ? '/factory-accountant' : '/super-factory-worker';
+              navigate(`${base}/material-requests`);
+            }}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-surface border border-hairline-2 text-ink hover:bg-canvas">
+              <ClipboardList size={13} /> Phiếu đặt hàng
+            </button>
+            <button onClick={() => setMixOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-surface border border-hairline-2 text-ink hover:bg-canvas">
               <FlaskConical size={13} /> Mix gia vị
             </button>
             <button onClick={() => setExportOpen(true)}

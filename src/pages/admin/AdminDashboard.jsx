@@ -255,6 +255,7 @@ export default function AdminDashboard() {
           { to: `${basePath}/cashflow`, label: 'Dòng tiền', icon: Activity },
           { to: `${basePath}/sale-kpi`, label: 'Quản lý sales', icon: Receipt },
           { to: `${basePath}/analytics`, label: 'Dự báo', icon: BarChart2 },
+          { to: `${basePath}/material-price-tracking`, label: 'Biến động giá NL', icon: BarChart2 },
         ]}
       />
 

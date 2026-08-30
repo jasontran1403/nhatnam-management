@@ -1,6 +1,6 @@
 // src/pages/accountant/ExpenseEditModal.jsx
 import { useState, useEffect, useRef } from 'react';
-import { X, Receipt, Save, XCircle, AlertCircle, ChevronDown, Building2, Hash, Trash2, Plus, Search } from 'lucide-react';
+import { X, Receipt, Save, XCircle, AlertCircle, ChevronDown, Building2, Hash, Trash2, Plus, Search, Landmark, CreditCard } from 'lucide-react';
 import { useToast } from '../../components/common/Toast';
 import { expenseApi } from '../../api/services';
 import api from '../../api/axios';
@@ -46,6 +46,11 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
     const [requestedByName, setRequestedByName] = useState(voucher.requestedByName || '');
     const [paymentNumber, setPaymentNumber] = useState(voucher.paymentNumber || '');
     const [suggestedPaymentNumber, setSuggestedPaymentNumber] = useState('');
+
+    // Phương thức thanh toán
+    const [paymentType, setPaymentType] = useState(voucher.paymentType || 'CASH');
+    const [bankName, setBankName] = useState(voucher.bankName || '');
+    const [bankRef, setBankRef] = useState(voucher.bankRef || '');
 
     // Danh sách khoản chi
     const [items, setItems] = useState(() =>
@@ -188,6 +193,18 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
             return;
         }
 
+        // Validate phương thức thanh toán
+        if (paymentType === 'BANK_TRANSFER') {
+            if (!bankName.trim()) {
+                toast('Tên ngân hàng là bắt buộc khi chọn chuyển khoản', 'error');
+                return;
+            }
+            if (!bankRef.trim()) {
+                toast('Mã tham chiếu giao dịch là bắt buộc khi chọn chuyển khoản', 'error');
+                return;
+            }
+        }
+
         const payload = {
             reason: reason.trim(),
             vendorName: vendorName.trim() || null,
@@ -196,6 +213,9 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
             expenseDate: when.mode === 'DATE' ? (when.expenseDate ?? null) : null,
             expensePeriod: when.mode === 'PERIOD' ? (when.expensePeriod || null) : null,
             requestedByName: requestedByName.trim() || null,
+            paymentType: paymentType || 'CASH',
+            bankName: paymentType === 'BANK_TRANSFER' ? bankName.trim() : null,
+            bankRef: paymentType === 'BANK_TRANSFER' ? bankRef.trim() : null,
             items: validItems.map(i => ({
                 id: i.id || null,
                 categoryId: i.categoryId,
@@ -330,6 +350,60 @@ export default function ExpenseEditModal({ voucher, onClose, onChanged, onSaved 
                             Mặc định là <b>ngày hôm nay</b>. Chọn <b>Ngày</b> để ghi đúng ngày phát sinh;
                             hoặc chọn <b>Kỳ</b> để tính khoản chi vào cả tháng.
                         </p>
+                    </div>
+
+                    {/* Phương thức thanh toán */}
+                    <div>
+                        <label className="text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5">
+                            <CreditCard size={14} className="text-gold" /> Phương thức thanh toán
+                        </label>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => { setPaymentType('CASH'); setBankName(''); setBankRef(''); }}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition flex items-center justify-center gap-1.5
+                                    ${paymentType === 'CASH'
+                                        ? 'border-gold bg-gold/10 text-gold'
+                                        : 'border-hairline-2 bg-surface text-muted hover:border-gold/40'}`}
+                            >
+                                💵 Tiền mặt
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPaymentType('BANK_TRANSFER')}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition flex items-center justify-center gap-1.5
+                                    ${paymentType === 'BANK_TRANSFER'
+                                        ? 'border-gold bg-gold/10 text-gold'
+                                        : 'border-hairline-2 bg-surface text-muted hover:border-gold/40'}`}
+                            >
+                                🏦 Chuyển khoản
+                            </button>
+                        </div>
+                        {paymentType === 'BANK_TRANSFER' && (
+                            <div className="mt-3 space-y-2">
+                                <div>
+                                    <label className="text-xs text-muted mb-1 block">Tên ngân hàng *</label>
+                                    <div className="relative">
+                                        <Landmark size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                                        <input
+                                            value={bankName}
+                                            onChange={e => setBankName(e.target.value)}
+                                            placeholder="VD: Vietcombank, MB Bank..."
+                                            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-muted mb-1 block">Mã tham chiếu giao dịch *</label>
+                                    <input
+                                        value={bankRef}
+                                        onChange={e => setBankRef(e.target.value)}
+                                        placeholder="Mã giao dịch / số bút toán..."
+                                        className="w-full px-4 py-2.5 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Người yêu cầu */}

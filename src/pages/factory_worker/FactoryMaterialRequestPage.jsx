@@ -1,6 +1,7 @@
 // src/pages/factory_worker/FactoryMaterialRequestPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, X, Package, Search, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
@@ -794,9 +795,19 @@ export default function FactoryMaterialRequestPage() {
   const [data, setData] = useState(null);
   const [allMaterials, setAllMaterials] = useState([]); // từ factory_material
   const [loading, setLoading] = useMinLoading();
-  const [showCreate, setShowCreate] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showCreate, setShowCreate] = useState(searchParams.get('create') === '1');
   const [receiveTarget, setReceiveTarget] = useState(null);
   const [search, setSearch] = useState('');
+
+  // Xóa param ?create=1 sau khi đã mở modal (tránh mở lại khi navigate back)
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      setShowCreate(true);
+      searchParams.delete('create');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []); // eslint-disable-line
   const [statusFilter, setStatusFilter] = useState('');
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [page, setPage] = useState(0);
