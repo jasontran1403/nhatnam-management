@@ -37,7 +37,13 @@ export default function OwnerCashflowPage() {
   const PRESETS = useMemo(() => getPresets(t), [t]);
 
   // Trang dùng chung cho OWNER và ADMIN — nút con phải trỏ đúng nhánh route.
-  const cashBase = window.location.pathname.startsWith('/owner') ? '/owner' : '/admin';
+  const cashBase = (() => {
+    const p = window.location.pathname;
+    if (p.startsWith('/owner')) return '/owner';
+    if (p.startsWith('/super-accountant')) return '/super-accountant';
+    if (p.startsWith('/accountant')) return '/accountant';
+    return '/admin';
+  })();
   const [preset, setPreset] = useState('today');
   const [range, setRange] = useState(() => presetToRange('today'));
   const [data, setData] = useState(null);

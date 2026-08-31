@@ -9,7 +9,8 @@ import {
   X, Plus, CheckCircle, XCircle, Clock,
   Building2, Eye, TrendingDown, TrendingUp, Wallet,
   Landmark, ShieldCheck, Filter,
-  Download, Upload, Loader2, AlertTriangle, FileSpreadsheet, ListChecks
+  Download, Upload, Loader2, AlertTriangle, FileSpreadsheet, ListChecks,
+  ArrowLeft, // Thêm icon ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ExpenseBulkActionModal, { canApproveVoucher } from '../../components/expense/ExpenseBulkActionModal';
@@ -80,6 +81,8 @@ const PAGE_SIZE = 10;
 
 export default function ExpenseListPage() {
   const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { role } = useAuth();
   const searchDebounce = useRef(null);
   const searchTextRef = useRef('');
@@ -138,20 +141,33 @@ export default function ExpenseListPage() {
       const ignoreDateForSearch = !!q && !userPickedRange;
 
       const range = dateRange || getCurrentMonthRange();
-      const from = ignoreDateForSearch ? undefined : range.from;
-      const to = ignoreDateForSearch ? undefined : range.to;
 
-      // Sử dụng API mới theo ngày chi, sort theo expenseDate
+      // ─── ĐIỀU CHỈNH TIMESTAMP CHO TIMEZONE ───────────────────────────────
+      let from = ignoreDateForSearch ? undefined : range.from;
+      let to = ignoreDateForSearch ? undefined : range.to;
+
+      if (from && to) {
+        const fromDate = new Date(from);
+        const toDate = new Date(to);
+
+        fromDate.setHours(0, 0, 0, 0);
+        toDate.setHours(23, 59, 59, 999);
+
+        // Cộng thêm 7 tiếng (UTC+7)
+        from = fromDate.getTime() + (7 * 60 * 60 * 1000);
+        to = toDate.getTime() + (7 * 60 * 60 * 1000);
+      }
+
       const res = q
         ? await expenseApi.searchByExpenseDate(q, from, to, {
           page: p,
           size: PAGE_SIZE,
-          sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
+          sort: 'expenseDate,desc'
         })
-        : await expenseApi.listByExpenseDate(range.from, range.to, {
+        : await expenseApi.listByExpenseDate(from, to, {
           page: p,
           size: PAGE_SIZE,
-          sort: 'expenseDate,desc'  // Sắp xếp theo ngày chi giảm dần
+          sort: 'expenseDate,desc'
         });
 
       const data = res.data?.data || res.data || {};
@@ -275,6 +291,17 @@ export default function ExpenseListPage() {
     return next;
   });
 
+  // ─── Xử lý nút Back ──────────────────────────────────────────────────────
+  const handleBack = () => {
+    // Nếu có state từ trang trước (ví dụ OwnerCashflowPage), quay lại đó
+    if (location.state?.from) {
+      navigate(location.state.from);
+    } else {
+      // Nếu không, quay lại trang trước đó trong lịch sử
+      navigate(-1);
+    }
+  };
+
   // Hàm render pagination
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -385,7 +412,15 @@ export default function ExpenseListPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
+      {/* ─── Header với nút Back ───────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={handleBack}
+          className="p-2 rounded-xl hover:bg-canvas transition-colors text-muted hover:text-ink"
+          title="Quay lại"
+        >
+          <ArrowLeft size={20} />
+        </button>
         <Receipt size={22} className="text-gold" />
         <h1 className="text-xl font-bold text-ink">Phiếu chi</h1>
         <span className="text-xs text-muted ml-1">{totalElements} phiếu</span>

@@ -31,15 +31,15 @@ function getCurrentMonthRange() {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
-  
+
   // Ngày đầu tháng
   const firstDay = new Date(year, month, 1);
   // Ngày cuối tháng
   const lastDay = new Date(year, month + 1, 0);
-  
+
   const from = firstDay.getTime();
   const to = lastDay.getTime();
-  
+
   return { from, to };
 }
 
@@ -67,7 +67,7 @@ export default function IncomeListPage({ adminMode = false }) {
   // OWNER/ADMIN (adminMode): mặc định KHÔNG chọn ngày → fetch TẤT CẢ phiếu.
   // ACCOUNTANT/SUPER_ACCOUNTANT: mặc định lọc theo tháng hiện tại (từ ngày 1 đến cuối tháng)
   const initialRange = adminMode ? null : getCurrentMonthRange();
-  
+
   const [selectedDate, setSelectedDate] = useState(adminMode ? null : todayStr());
   const [dateRange, setDateRange] = useState(initialRange);
   const [searchText, setSearchText] = useState('');
@@ -136,23 +136,33 @@ export default function IncomeListPage({ adminMode = false }) {
       }
 
       // Quy tắc lọc ngày khi tìm kiếm:
-      //  - dateRange === null  → đang ở mặc định "tháng hiện tại" (user CHƯA chỉnh filter).
-      //      · Không search  → lọc theo tháng hiện tại.
-      //      · Có search     → BỎ filter ngày, tìm trên toàn bộ.
-      //  - dateRange !== null  → user ĐÃ chủ động chọn khoảng ngày.
-      //      · Search hay không, đều áp filter ngày đó.
-      //  (Nút X gọi setDateRange(null) → về "tháng hiện tại" → search lại thành không-filter.)
       const userPickedRange = dateRange !== null;
       const ignoreDateForSearch = !!q && !userPickedRange;
 
       const range = dateRange || dayRange(selectedDate || todayStr());
-      const from = ignoreDateForSearch ? undefined : range.from;
-      const to = ignoreDateForSearch ? undefined : range.to;
+
+      // ─── ĐIỀU CHỈNH TIMESTAMP CHO TIMEZONE ───────────────────────────────
+      let from = ignoreDateForSearch ? undefined : range.from;
+      let to = ignoreDateForSearch ? undefined : range.to;
+
+      if (from && to) {
+        // Chuyển từ timestamp sang Date object
+        const fromDate = new Date(from);
+        const toDate = new Date(to);
+
+        // Set về đầu ngày (00:00:00) và cuối ngày (23:59:59.999)
+        fromDate.setHours(0, 0, 0, 0);
+        toDate.setHours(23, 59, 59, 999);
+
+        // Chuyển sang UTC+7 (Vietnam timezone) - cộng thêm 7 tiếng
+        from = fromDate.getTime() + (7 * 60 * 60 * 1000);
+        to = toDate.getTime() + (7 * 60 * 60 * 1000);
+      }
 
       const [res, sumRes] = await Promise.all([
         q
           ? incomeApi.search(q, from, to, { page: p, size: PAGE_SIZE })
-          : incomeApi.listByDate(range.from, range.to, { page: p, size: PAGE_SIZE }),
+          : incomeApi.listByDate(from, to, { page: p, size: PAGE_SIZE }),
         incomeApi.summary(q || undefined, from, to),
       ]);
 
@@ -227,12 +237,12 @@ export default function IncomeListPage({ adminMode = false }) {
           )}
         </div>
         <div className="flex-shrink-0">
-          <DateRangePicker 
-            from={currentRange.from} 
-            to={currentRange.to} 
-            onChange={handleDateRangeChange} 
-            placeholder={adminMode ? "Chọn ngày" : "Tháng hiện tại"} 
-            align="right" 
+          <DateRangePicker
+            from={currentRange.from}
+            to={currentRange.to}
+            onChange={handleDateRangeChange}
+            placeholder={adminMode ? "Chọn ngày" : "Tháng hiện tại"}
+            align="right"
           />
         </div>
         {dateRange && (
@@ -337,11 +347,10 @@ export default function IncomeListPage({ adminMode = false }) {
                     <button
                       key={opt.key}
                       onClick={() => setExportPaymentType(opt.key)}
-                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                        exportPaymentType === opt.key
+                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${exportPaymentType === opt.key
                           ? 'bg-emerald-500 text-white border-emerald-500'
                           : 'bg-surface text-ink-2 border-line hover:bg-surface-2'
-                      }`}>
+                        }`}>
                       {opt.label}
                     </button>
                   ))}
