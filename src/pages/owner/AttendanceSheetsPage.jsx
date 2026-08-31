@@ -2366,6 +2366,13 @@ export default function AttendanceSheetsPage() {
   const [adjResult, setAdjResult] = useState(null);
   const [adjResultTitle, setAdjResultTitle] = useState('');
   const [kpi, setKpi] = useState(null);
+  // ── Export file lương tổng hợp ──────────────────────────────────────────────
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportDepts, setExportDepts] = useState({
+    MANAGEMENT: true, ACCOUNTING: true, FACTORY: true, SALES: true, WAREHOUSE: true, DRIVER: true,
+  });
+  const [exportType, setExportType] = useState('SALARY_AND_BONUS');
+  const [exporting, setExporting] = useState(false);
   const toast = useToast();
 
   const status = statuses.find(s => s.department === department) || null;
@@ -2398,6 +2405,23 @@ export default function AttendanceSheetsPage() {
   }, []); // eslint-disable-line
 
   useEffect(() => { loadStatus(selected); }, [selected, loadStatus]);
+
+  // ── Xuất file lương tổng hợp ────────────────────────────────────────────────
+  const handleExportSalary = async () => {
+    if (!selected) return;
+    const depts = Object.entries(exportDepts).filter(([, v]) => v).map(([k]) => k);
+    if (!depts.length) { toast('Vui lòng chọn ít nhất một phòng ban', 'error'); return; }
+    setExporting(true);
+    try {
+      await factoryPayrollApi.exportSalaryReport(selected.month, selected.year, depts, exportType);
+      toast('Đã xuất file lương thành công', 'success');
+      setExportModalOpen(false);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không xuất được file lương', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // ── Số dòng thưởng/phụ cấp đã import + quỹ KPI của kỳ ─────────────────────
   const loadAdjustments = useCallback(async (p, dept) => {
@@ -2639,6 +2663,9 @@ export default function AttendanceSheetsPage() {
           <SecondaryButton onClick={() => loadStatus(selected)} disabled={loading}>
             <RefreshCw size={14} /> Làm mới
           </SecondaryButton>
+          <PrimaryButton onClick={() => setExportModalOpen(true)} disabled={loading || !selected}>
+            <Download size={14} /> Xuất file lương
+          </PrimaryButton>
         </div>
       </div>
 
@@ -2915,6 +2942,83 @@ export default function AttendanceSheetsPage() {
           onClose={() => setPreview(null)}
         />
       )}
+
+      {/* ═══ MODAL XUẤT FILE LƯƠNG ═══ */}
+      <Modal open={exportModalOpen} onClose={() => setExportModalOpen(false)}
+        title="Xuất file lương tổng hợp" size="md">
+        <div className="px-5 py-4 space-y-5">
+          {/* Chọn phòng ban */}
+          <div>
+            <p className="text-sm font-bold text-ink mb-2.5">Chọn phòng ban</p>
+            <div className="space-y-2">
+              {[
+                { code: 'MANAGEMENT', label: 'Quản lý cấp cao' },
+                { code: 'ACCOUNTING', label: 'Kế toán' },
+                { code: 'FACTORY',    label: 'Xưởng sản xuất' },
+                { code: 'SALES',      label: 'Kinh doanh' },
+                { code: 'WAREHOUSE',  label: 'Kho' },
+                { code: 'DRIVER',     label: 'Tài xế' },
+              ].map(d => (
+                <label key={d.code}
+                  className="flex items-center gap-2.5 cursor-pointer select-none group">
+                  <input type="checkbox"
+                    checked={!!exportDepts[d.code]}
+                    onChange={e => setExportDepts(prev => ({ ...prev, [d.code]: e.target.checked }))}
+                    className="w-4 h-4 rounded border-hairline-2 text-gold focus:ring-gold/30 cursor-pointer" />
+                  <span className="text-sm text-ink group-hover:text-gold transition-colors">{d.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3 mt-2">
+              <button onClick={() => setExportDepts({ MANAGEMENT: true, ACCOUNTING: true, FACTORY: true, SALES: true, WAREHOUSE: true, DRIVER: true })}
+                className="text-xs text-gold hover:underline">Chọn tất cả</button>
+              <button onClick={() => setExportDepts({ MANAGEMENT: false, ACCOUNTING: false, FACTORY: false, SALES: false, WAREHOUSE: false, DRIVER: false })}
+                className="text-xs text-muted hover:underline">Bỏ chọn tất cả</button>
+            </div>
+          </div>
+
+          {/* Loại xuất */}
+          <div>
+            <p className="text-sm font-bold text-ink mb-2.5">Nội dung xuất</p>
+            <div className="space-y-2">
+              {[
+                { value: 'SALARY_AND_BONUS', label: 'Lương + Thưởng' },
+                { value: 'SALARY_ONLY',      label: 'Chỉ lương' },
+                { value: 'BONUS_ONLY',       label: 'Chỉ thưởng' },
+              ].map(opt => (
+                <label key={opt.value}
+                  className="flex items-center gap-2.5 cursor-pointer select-none group">
+                  <input type="radio" name="exportType"
+                    checked={exportType === opt.value}
+                    onChange={() => setExportType(opt.value)}
+                    className="w-4 h-4 border-hairline-2 text-gold focus:ring-gold/30 cursor-pointer" />
+                  <span className="text-sm text-ink group-hover:text-gold transition-colors">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Thông tin tháng */}
+          {selected && (
+            <p className="text-xs text-muted bg-canvas rounded-xl px-3 py-2">
+              <CalendarDays size={13} className="inline -mt-0.5 mr-1 text-gold" />
+              Xuất file cho <span className="font-bold text-ink">Tháng {selected.month}/{selected.year}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-hairline">
+          <SecondaryButton onClick={() => setExportModalOpen(false)} disabled={exporting}>
+            Huỷ
+          </SecondaryButton>
+          <PrimaryButton onClick={handleExportSalary} disabled={exporting}>
+            {exporting
+              ? <><RefreshCw size={14} className="animate-spin" /> Đang xuất...</>
+              : <><Download size={14} /> Xuất file</>}
+          </PrimaryButton>
+        </div>
+      </Modal>
     </div>
   );
 }

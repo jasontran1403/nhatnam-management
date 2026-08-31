@@ -239,6 +239,29 @@ export const factoryPayrollApi = {
 
   deleteCarryOverSeed: (id) =>
     api.delete(`/api/factory-payroll/kpi/carry-over-seeds/${id}`).then(r),
+
+  // ── Export file lương tổng hợp (OWNER/ADMIN) ─────────────────────────────
+
+  /**
+   * departments: ['MANAGEMENT','ACCOUNTING','FACTORY','SALES','WAREHOUSE']
+   * exportType: 'SALARY_ONLY' | 'BONUS_ONLY' | 'SALARY_AND_BONUS'
+   */
+  exportSalaryReport: async (month, year, departments, exportType) => {
+    const res = await api.post(
+      '/api/factory-payroll/salary-export',
+      { departments, exportType },
+      { params: { month, year }, responseType: 'blob' },
+    );
+    const typeSlug = exportType === 'BONUS_ONLY' ? 'thuong'
+      : exportType === 'SALARY_ONLY' ? 'luong' : 'luong-thuong';
+    const mm = String(month).padStart(2, '0');
+    const name = `bang-${typeSlug}-thang-${mm}-${year}.xlsx`;
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    a.remove(); window.URL.revokeObjectURL(url);
+  },
 };
 
 export default factoryPayrollApi;

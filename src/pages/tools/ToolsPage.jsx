@@ -1,8 +1,9 @@
 // src/pages/tools/ToolsPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileSpreadsheet, Plus, Hash, Upload, Download, Users, ShoppingCart,
-  FileText, X, AlertTriangle, CheckCircle2, Pencil, Search, Trash2,
+  FileText, X, AlertTriangle, CheckCircle2, Pencil, Search, Trash2, ChevronLeft,
 } from 'lucide-react';
 import * as XLSX from 'xlsx/xlsx.mjs';
 import api from '../../api/axios';
@@ -30,7 +31,31 @@ const toolApi = {
   deleteCustomer: (id) => api.delete(`/api/tools/customers/${id}`),
   listInvoiceDetails: (q, page = 0, size = 500) => api.get('/api/tools/invoice-details', { params: { q, page, size } }).then(r => r.data?.data || r.data),
   deleteInvoiceDetail: (id) => api.delete(`/api/tools/invoice-details/${id}`),
+  // Clear all
+  clearTracking: () => api.delete('/api/tools/clear/tracking'),
+  clearSales: () => api.delete('/api/tools/clear/sales'),
+  clearCustomers: () => api.delete('/api/tools/clear/customers'),
+  clearInvoiceDetails: () => api.delete('/api/tools/clear/invoice-details'),
+  clearReceipts: () => api.delete('/api/tools/clear/receipts'),
 };
+
+/** Excel serial date → dd/MM/yyyy (Excel epoch = 30/12/1899) */
+function excelDateToStr(v) {
+  if (typeof v === 'number' && v > 30000 && v < 100000) {
+    const d = new Date((v - 25569) * 86400000);
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${d.getUTCFullYear()}`;
+  }
+  return String(v ?? '');
+}
+
+/** Normalize cell: nếu là số serial date → convert, nếu ko → string */
+function normalizeCell(v, isDateCol) {
+  if (v == null) return '';
+  if (isDateCol) return excelDateToStr(v);
+  return String(v);
+}
 
 function fmtMoney(v) {
   if (!v) return '';
@@ -76,7 +101,7 @@ function FileDropZone({ onFile }) {
 }
 
 // ── IMPORT MODAL ───────────────────────────────────────────────────────────
-function ImportModal({ title, expectedHeaders, headerRowIndex = 0, onImport, onClose }) {
+function ImportModal({ title, expectedHeaders, dateColumns = [], headerRowIndex = 0, onImport, onClose }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -96,7 +121,11 @@ function ImportModal({ title, expectedHeaders, headerRowIndex = 0, onImport, onC
       const dataRows = raw.slice(headerRowIndex + 1).filter(r => r.some(c => c !== ''));
       const parsed = dataRows.map(r => {
         const obj = {};
-        expectedHeaders.forEach(h => { const ci = headers.indexOf(h); obj[h] = ci >= 0 ? String(r[ci] ?? '') : ''; });
+        expectedHeaders.forEach(h => {
+          const ci = headers.indexOf(h);
+          const raw = ci >= 0 ? r[ci] : '';
+          obj[h] = normalizeCell(raw, dateColumns.includes(h));
+        });
         return obj;
       });
       setRows(parsed);
@@ -250,9 +279,11 @@ function AddInvoiceModal({ onClose, onAdded }) {
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 rounded-2xl">
             <div className="bg-surface rounded-xl shadow-lg p-5 max-w-sm mx-4 space-y-3">
               <div className="flex items-center gap-2 text-amber-600"><AlertTriangle size={18} /><span className="text-sm font-bold">Số phiếu trùng!</span></div>
-              <p className="text-xs text-ink">Số phiếu <span className="font-mono font-bold">{dupWarning.orderNumber}</span> đã được nhập trước đó.</p>
+              <p className="text-xs text-ink">Số phiếu <span className="font-mono font-bold">{dupWarning.orderNumber}</span> đã được nhập trước đó. Bạn vẫn muốn nhập lại?</p>
               <div className="flex gap-2">
-                <button onClick={() => setDupWarning(null)} className="flex-1 py-2 rounded-lg border border-line-soft text-sm text-muted">Cancel</button>
+                <button onClick={() => setDupWarning(null)} className="flex-1 py-2 rounded-lg border border-line-soft text-sm text-muted">Huỷ</button>
+                <button onClick={() => { const d = dupWarning; setDupWarning(null); doAdd(d.orderNumber, d.amount, d.date); }}
+                  className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold">Vẫn nhập</button>
               </div>
             </div>
           </div>
@@ -301,7 +332,7 @@ function EditableSoChungTu({ value, receiptId, onSaved }) {
 const PAGE_SIZE = 500;
 const SCROLL_THRESHOLD = 0.7;
 
-function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, onClose }) {
+function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, onClose }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -389,11 +420,17 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, onClose })
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface rounded-2xl shadow-2xl flex flex-col" style={{ width: '85dvw', height: '85dvh' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-line-soft shrink-0">
           <h3 className="text-sm font-bold text-ink">{title} <span className="text-muted font-normal">({total} dòng{rows.length < total ? `, đang hiện ${rows.length}` : ''})</span></h3>
           <div className="flex items-center gap-2">
+            {clearFn && <button onClick={async () => {
+              if (!confirm('Xóa toàn bộ dữ liệu? Không thể hoàn tác.')) return;
+              try { await clearFn(); toast('Đã xóa tất cả', 'success'); fetchPage('', 0, false); } catch { toast('Lỗi', 'error'); }
+            }} className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 text-[10px] font-semibold hover:bg-red-100">
+              <Trash2 size={11} className="inline mr-1" />Xóa tất cả
+            </button>}
             <div className="relative">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
               <input value={search} onChange={e => handleSearch(e.target.value)} placeholder="Tìm kiếm..."
@@ -467,26 +504,94 @@ const DATA_VIEW_CONFIG = {
     title: 'Theo dõi Invoice',
     columns: ['Date', 'Invoice', 'Customer', 'Value', 'F.Inv', 'COD'],
     fetchFn: toolApi.listTracking, updateFn: toolApi.updateTracking, deleteFn: toolApi.deleteTracking,
+    clearFn: toolApi.clearTracking,
   },
   sales: {
     title: 'Bán hàng',
     columns: ['Ngày hạch toán', 'Ngày chứng từ', 'Số chứng từ', 'Số hóa đơn', 'Khách hàng', 'Diễn giải', 'Tổng tiền hàng', 'Tiền chiết khấu', 'Tiền thuế GTGT', 'Tổng tiền thanh toán', 'Đã lập hóa đơn', 'Đã xuất hàng', 'Loại chứng từ'],
     fetchFn: toolApi.listSales, updateFn: toolApi.updateSales, deleteFn: toolApi.deleteSales,
+    clearFn: toolApi.clearSales,
   },
   customers: {
     title: 'Khách hàng',
     columns: ['Mã khách hàng', 'Tên khách hàng', 'Địa chỉ', 'Nhóm KH, NCC', 'Mã số thuế', 'Điện thoại', 'Ngừng theo dõi'],
     fetchFn: toolApi.listCustomers, updateFn: toolApi.updateCustomer, deleteFn: toolApi.deleteCustomer,
+    clearFn: toolApi.clearCustomers,
   },
   invoiceDetails: {
     title: 'Phiếu đặt hàng đã nhập',
     columns: ['STT', 'Số phiếu ĐH', 'Số tiền', 'Ngày', 'Ghi chú lỗi'],
     fetchFn: toolApi.listInvoiceDetails, updateFn: null, deleteFn: toolApi.deleteInvoiceDetail,
+    clearFn: toolApi.clearInvoiceDetails,
   },
 };
 
-// ── MAIN PAGE ──────────────────────────────────────────────────────────────
-export default function ToolsPage() {
+// ── TOOLS NAV WRAPPER ──────────────────────────────────────────────────────
+export default function ToolsPageWrapper() {
+  const [tab, setTab] = useState('receipt');
+  const navigate = useNavigate();
+
+  // Detect role → back to correct dashboard
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem('user')); } catch {}
+  const role = user?.role ?? 'seller';
+  const ROLE_PATHS = {
+    OWNER: '/owner/dashboard', ADMIN: '/admin/dashboard', SUPERADMIN: '/admin/dashboard',
+    SELLER: '/seller/dashboard', SUPER_SELLER: '/seller/dashboard',
+    ACCOUNTANT: '/accountant/dashboard', SUPER_ACCOUNTANT: '/super-accountant/dashboard',
+    WAREHOUSE: '/warehouse/dashboard', SUPER_WAREHOUSE: '/warehouse/dashboard',
+  };
+  const backPath = ROLE_PATHS[role] || '/seller/dashboard';
+
+  return (
+    <div className="flex flex-col" style={{ minHeight: '100dvh' }}>
+      {/* Nav bar */}
+      <div className="shrink-0 px-4 pt-3 pb-2 flex items-center gap-4 border-b border-line-soft bg-surface">
+        <button onClick={() => navigate(backPath)}
+          className="flex items-center gap-1 text-sm text-muted hover:text-ink font-medium">
+          <ChevronLeft size={16} /> Dashboard
+        </button>
+        <div className="flex gap-1 bg-canvas rounded-xl p-1 border border-line-soft">
+          {[{ key: 'receipt', label: 'Phiếu thu', icon: FileSpreadsheet },
+            { key: 'orders', label: 'Đơn hàng', icon: ShoppingCart }].map(t => {
+            const Icon = t.icon;
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap
+                  ${tab === t.key ? 'bg-gold text-white shadow-sm' : 'text-muted hover:text-ink hover:bg-surface'}`}>
+                <Icon size={15} />{t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content with fade transition */}
+      <div className="flex-1 min-h-0 relative">
+        <div key={tab} className="animate-fadeIn">
+          {tab === 'receipt' && <ToolsReceiptPage />}
+          {tab === 'orders' && (
+            <div className="flex items-center justify-center h-full p-12">
+              <div className="text-center space-y-3">
+                <ShoppingCart size={48} className="mx-auto text-muted/30" />
+                <p className="text-lg font-semibold text-muted">Xử lý Đơn hàng</p>
+                <p className="text-sm text-muted">Tính năng đang được phát triển...</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-fadeIn { animation: fadeIn 0.25s ease-out; }
+      `}</style>
+    </div>
+  );
+}
+
+// ── Phiếu thu page (was the old default export) ───────────────────────────
+function ToolsReceiptPage() {
   const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -595,8 +700,8 @@ export default function ToolsPage() {
 
       {showRenumber && <RenumberModal onSubmit={handleRenumber} onClose={() => setShowRenumber(false)} />}
       {showAddInvoice && <AddInvoiceModal onClose={() => setShowAddInvoice(false)} onAdded={load} />}
-      {importModal === 'tracking' && <ImportModal title="Import Theo dõi Invoice" expectedHeaders={['Date','Invoice','Customer','Value','F.Inv','COD']} onImport={toolApi.importTracking} onClose={() => { setImportModal(null); load(); }} />}
-      {importModal === 'sales' && <ImportModal title="Import Bán hàng" expectedHeaders={['Ngày hạch toán','Ngày chứng từ','Số chứng từ','Số hóa đơn','Khách hàng','Diễn giải','Tổng tiền hàng','Tiền chiết khấu','Tiền thuế GTGT','Tổng tiền thanh toán','Đã lập hóa đơn','Đã xuất hàng','Loại chứng từ']} headerRowIndex={1} onImport={toolApi.importSales} onClose={() => { setImportModal(null); load(); }} />}
+      {importModal === 'tracking' && <ImportModal title="Import Theo dõi Invoice" expectedHeaders={['Date','Invoice','Customer','Value','F.Inv','COD']} dateColumns={['Date']} onImport={toolApi.importTracking} onClose={() => { setImportModal(null); load(); }} />}
+      {importModal === 'sales' && <ImportModal title="Import Bán hàng" expectedHeaders={['Ngày hạch toán','Ngày chứng từ','Số chứng từ','Số hóa đơn','Khách hàng','Diễn giải','Tổng tiền hàng','Tiền chiết khấu','Tiền thuế GTGT','Tổng tiền thanh toán','Đã lập hóa đơn','Đã xuất hàng','Loại chứng từ']} dateColumns={['Ngày hạch toán','Ngày chứng từ']} headerRowIndex={1} onImport={toolApi.importSales} onClose={() => { setImportModal(null); load(); }} />}
       {importModal === 'customers' && <ImportModal title="Import Khách hàng" expectedHeaders={['Mã khách hàng','Tên khách hàng','Địa chỉ','Nhóm KH, NCC','Mã số thuế','Điện thoại','Ngừng theo dõi']} headerRowIndex={1} onImport={toolApi.importCustomers} onClose={() => { setImportModal(null); load(); }} />}
       {viewModal && DATA_VIEW_CONFIG[viewModal] && (
         <DataViewModal {...DATA_VIEW_CONFIG[viewModal]} onClose={() => { setViewModal(null); load(); }} />
