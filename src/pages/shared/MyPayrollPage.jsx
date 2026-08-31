@@ -35,9 +35,9 @@ const fmtNum = (v, d = 2) =>
 /** Mức độ chạy xe trong ngày của tài xế — tô màu ô lịch theo số km. */
 const KM_LEVEL = [
   { min: 120, cls: 'bg-gold-deep text-white border-gold-deep', label: 'Trên 120 km' },
-  { min: 60,  cls: 'bg-gold text-white border-gold', label: '60 – 120 km' },
-  { min: 1,   cls: 'bg-gold/20 text-gold-deep border-gold/40', label: 'Dưới 60 km' },
-  { min: 0,   cls: 'bg-canvas text-faint border-hairline', label: 'Không chạy' },
+  { min: 60, cls: 'bg-gold text-white border-gold', label: '60 – 120 km' },
+  { min: 1, cls: 'bg-gold/20 text-gold-deep border-gold/40', label: 'Dưới 60 km' },
+  { min: 0, cls: 'bg-canvas text-faint border-hairline', label: 'Không chạy' },
 ];
 const kmLevel = (km) => KM_LEVEL.find(l => (km || 0) >= l.min) || KM_LEVEL[KM_LEVEL.length - 1];
 
@@ -48,9 +48,9 @@ const kmLevel = (km) => KM_LEVEL.find(l => (km || 0) >= l.min) || KM_LEVEL[KM_LE
  *   GRAY   = không chạy / không có dữ liệu
  */
 const DAY_COLOR = {
-  GREEN:  { cls: 'bg-emerald-500 text-white border-emerald-500', dot: 'bg-emerald-500', label: 'Có chạy' },
-  YELLOW: { cls: 'bg-amber-400 text-amber-950 border-amber-400', dot: 'bg-amber-400',  label: 'ODO đầu = cuối' },
-  GRAY:   { cls: 'bg-canvas text-faint border-hairline',         dot: 'bg-hairline-2', label: 'Không chạy' },
+  GREEN: { cls: 'bg-emerald-500 text-white border-emerald-500', dot: 'bg-emerald-500', label: 'Có chạy' },
+  YELLOW: { cls: 'bg-amber-400 text-amber-950 border-amber-400', dot: 'bg-amber-400', label: 'ODO đầu = cuối' },
+  GRAY: { cls: 'bg-canvas text-faint border-hairline', dot: 'bg-hairline-2', label: 'Không chạy' },
 };
 const dayColorCfg = (d) => DAY_COLOR[d?.dayColor] || DAY_COLOR.GRAY;
 
@@ -667,7 +667,19 @@ function MyPayrollContent({ onNeedPasscode }) {
         const list = await factoryPayrollApi.periods();
         const arr = Array.isArray(list) ? list : [];
         setPeriods(arr);
-        if (arr.length) setSelected(arr[0]);
+
+        if (arr.length) {
+          // Ưu tiên chọn tháng hiện tại (nếu có)
+          const now = new Date();
+          const currentMonth = now.getMonth() + 1;
+          const currentYear = now.getFullYear();
+
+          const currentPeriod = arr.find(
+            p => p.month === currentMonth && p.year === currentYear
+          );
+
+          setSelected(currentPeriod || arr[0]);
+        }
       } catch (e) {
         setError(e?.response?.data?.message || 'Không tải được danh sách tháng');
       } finally {
@@ -675,6 +687,7 @@ function MyPayrollContent({ onNeedPasscode }) {
       }
     })();
   }, []);
+
 
   // Nạp phiếu lương khi đổi tháng
   const loadSlip = useCallback(async (p) => {
@@ -809,7 +822,7 @@ function MyPayrollContent({ onNeedPasscode }) {
             {isDriver
               ? <DriverCalendar driver={slip.driver} month={slip.month} year={slip.year} />
               : <AttendanceCalendar attendance={slip.attendance}
-                  month={slip.month} year={slip.year} />}
+                month={slip.month} year={slip.year} />}
 
             {/* THƯỞNG KPI SẢN XUẤT — CHỈ bộ phận Xưởng */}
             {slip.hasKpiBonus && (
@@ -863,7 +876,7 @@ export default function MyPayrollPage() {
     setUnlocked(false);
     setGateKey(k => k + 1);
     // Huỷ luôn "vé" phía server — bấm "Khoá lại" phải khoá thật, không chỉ ẩn UI
-    payrollPasscodeApi.lock().catch(() => {});
+    payrollPasscodeApi.lock().catch(() => { });
   }, []);
 
   if (!unlocked)
