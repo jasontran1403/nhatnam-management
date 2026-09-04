@@ -28,7 +28,7 @@ const DAY_TYPE = {
   WORK: { cls: 'bg-emerald-500 text-white border-emerald-500', label: 'Đủ công', icon: Check },
   MISSING: { cls: 'bg-red-400 text-white border-red-400', label: 'Thiếu chấm công (0 công)', icon: AlertTriangle },
   EXCEPTION: { cls: 'bg-violet-500 text-white border-violet-500', label: 'Nghỉ có phép (đủ công)', icon: Plane },
-  HALF: { cls: 'bg-emerald-100 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/35', label: 'Nửa công', icon: Minus },
+  HALF: { cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/35', label: 'Nửa công', icon: Minus },
   HOLIDAY: { cls: 'bg-violet-100 dark:bg-violet-500/18 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/35', label: 'Lễ / Tết', icon: Sun },
   LEAVE: { cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-500/35', label: 'Nghỉ phép', icon: Plane },
   UNPAID: { cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/35', label: 'Nghỉ không lương', icon: AlertCircle },
@@ -122,14 +122,16 @@ function DayDetail({ day, month, year, onClose }) {
           </span>
           {day.lateMinutes > 0 && (
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg
-              bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 text-amber-700 dark:text-amber-300">
-              Đi trễ {day.lateMinutes} phút
+              bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 text-amber-700 dark:text-amber-300"
+              title="Ghi nhận cho KPI — không trừ lương">
+              Đi trễ {day.lateMinutes} phút <span className="opacity-60">(KPI)</span>
             </span>
           )}
           {day.earlyMinutes > 0 && (
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg
-              bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 text-blue-700 dark:text-blue-300">
-              Về sớm {day.earlyMinutes} phút
+              bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/28 text-blue-700 dark:text-blue-300"
+              title="Ghi nhận cho KPI — không trừ lương">
+              Về sớm {day.earlyMinutes} phút <span className="opacity-60">(KPI)</span>
             </span>
           )}
           {day.workedMinutes > 0 && (
@@ -315,12 +317,12 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
               sub: `${attendance.presentDays ?? 0} ngày có chấm công`
             },
             {
-              label: 'Tổng phút đi trễ', value: (attendance.lateMinutes ?? 0).toLocaleString('vi-VN'),
-              color: 'text-amber-600 dark:text-amber-300', sub: `${attendance.lateCount ?? 0} ngày`
+              label: 'Tổng phút đi trễ (KPI)', value: (attendance.lateMinutes ?? 0).toLocaleString('vi-VN'),
+              color: 'text-amber-600 dark:text-amber-300', sub: `${attendance.lateCount ?? 0} ngày · không trừ lương`
             },
             {
-              label: 'Tổng phút về sớm', value: (attendance.earlyMinutes ?? 0).toLocaleString('vi-VN'),
-              color: 'text-blue-600 dark:text-blue-300', sub: `${attendance.earlyCount ?? 0} ngày`
+              label: 'Tổng phút về sớm (KPI)', value: (attendance.earlyMinutes ?? 0).toLocaleString('vi-VN'),
+              color: 'text-blue-600 dark:text-blue-300', sub: `${attendance.earlyCount ?? 0} ngày · không trừ lương`
             },
           ].map(st => (
             <div key={st.label} className="bg-canvas rounded-xl px-3 py-2.5">

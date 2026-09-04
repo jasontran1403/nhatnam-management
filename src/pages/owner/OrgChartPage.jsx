@@ -714,8 +714,8 @@ function FactoryContent({ salary, attendance, month, year }) {
               <Row label="Công thực tế" val={fmt(attendance.actualDays, 1)} bold />
               {attendance.leaveDays > 0 && <Row label="Nghỉ có lương" val={fmt(attendance.leaveDays, 1)} />}
               {attendance.unpaidDays > 0 && <Row label="Nghỉ không lương" val={fmt(attendance.unpaidDays, 1)} />}
-              {attendance.lateCount > 0 && <Row label="Đi trễ" val={`${attendance.lateCount} lần / ${attendance.lateMinutes}p`} />}
-              {attendance.earlyCount > 0 && <Row label="Về sớm" val={`${attendance.earlyCount} lần / ${attendance.earlyMinutes}p`} />}
+              {attendance.lateCount > 0 && <Row label="Đi trễ (KPI)" val={`${attendance.lateCount} lần / ${attendance.lateMinutes}p`} />}
+              {attendance.earlyCount > 0 && <Row label="Về sớm (KPI)" val={`${attendance.earlyCount} lần / ${attendance.earlyMinutes}p`} />}
             </div>
             <FactoryCalendar days={attendance.days} month={month} year={year} />
           </>

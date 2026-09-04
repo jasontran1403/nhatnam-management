@@ -69,6 +69,9 @@ export const operatorApi = {
   // ── Batches ──────────────────────────────────────────────────────────────
   submitBatch: (data) => api.post('/api/operator/batches', data),
   getMyBatches: () => api.get('/api/operator/batches'),
+
+  // ── SKU ─────────────────────────────────────────────────────────────────
+  suggestSku: (name, category) => api.get('/api/operator/products/suggest-sku', { params: { name, category } }),
 };
 
 export const adminBatchApi = {

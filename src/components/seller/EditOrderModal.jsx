@@ -968,14 +968,32 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved, isSupe
         });
       }
 
-      // Giảm giá
-      if (Number(d?.discountRate) > 0) {
-        setDiscount(Number(d.discountRate));
-        setDiscountFixed(null); setDiscountFixedDisplay('');
-      } else if (Number(d?.discountAmount) > 0) {
-        setDiscount(0);
-        setDiscountFixed(Number(d.discountAmount));
-        setDiscountFixedDisplay(new Intl.NumberFormat('vi-VN').format(Number(d.discountAmount)));
+      // Giảm giá — phân biệt giảm giá chung vs giảm giá món
+      // Logic: 
+      //  - discountRate > 0 → luôn là giảm giá chung (%)
+      //  - discountAmount > 0 VÀ discountRate == 0:
+      //    + Kiểm tra xem có item nào có discountPercent > 0 không
+      //    + Nếu TẤT CẢ discountAmount đến từ item-level discount → KHÔNG hiển thị giảm giá chung
+      //    + Nếu có giảm giá chung thực sự → hiển thị
+      {
+        const itemsRaw = d?.items ?? d?.orderItems ?? [];
+        const hasItemDiscount = itemsRaw.some(i =>
+          i.discountPercent > 0 && i.priceMode !== 'DISCOUNT_PERCENT'
+        );
+        const hasOrderDiscountRate = Number(d?.discountRate) > 0;
+        const hasOrderDiscountAmount = Number(d?.discountAmount) > 0;
+
+        if (hasOrderDiscountRate) {
+          // Giảm giá chung theo %
+          setDiscount(Number(d.discountRate));
+          setDiscountFixed(null); setDiscountFixedDisplay('');
+        } else if (hasOrderDiscountAmount && !hasItemDiscount) {
+          // Giảm giá chung cố định (không phải từ item discount)
+          setDiscount(0);
+          setDiscountFixed(Number(d.discountAmount));
+          setDiscountFixedDisplay(new Intl.NumberFormat('vi-VN').format(Number(d.discountAmount)));
+        }
+        // Nếu chỉ có item-level discount → không set giảm giá chung (để = 0)
       }
 
       // Tài xế giao hàng

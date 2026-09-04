@@ -1497,6 +1497,111 @@ function PayrollTables({ data, loading }) {
       {/* Bảng "Chi tiết số km theo tháng" đã BỎ — thông tin km/số đơn đã hiện
           đầy đủ trong bảng "Lương tài xế theo km & lượt giao" ở panel bên trên. */}
 
+      {/* ── BẢNG ĐI TRỄ / VỀ SỚM — THAM KHẢO KPI ────────────────────────────
+          Chỉ hiện với bộ phận có chấm công (Xưởng, Kế toán, Kinh doanh, Kho).
+          Đi trễ / về sớm KHÔNG trừ lương nữa, chỉ ghi nhận cho KPI. */}
+      {!isDriver && rows.some(r => (r.lateCount > 0 || r.earlyCount > 0)) && (
+        <SectionCard>
+          <div className="px-5 py-4 border-b border-hairline">
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-amber-500 shrink-0" />
+              <h3 className="text-sm font-bold text-ink">
+                Đi trễ / Về sớm — Tham khảo KPI · {data.periodLabel}
+              </h3>
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              Đi trễ và về sớm <strong>không trừ lương</strong> — chỉ ghi nhận để tính KPI.
+            </p>
+          </div>
+
+          {/* DESKTOP */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>Nhân viên</Th>
+                  <Th right>Số lần đi trễ</Th>
+                  <Th right>Tổng phút đi trễ</Th>
+                  <Th right>Số lần về sớm</Th>
+                  <Th right>Tổng phút về sớm</Th>
+                  <Th right>Tổng phút vi phạm</Th>
+                </Tr>
+              </Thead>
+              <tbody>
+                {rows.filter(r => (r.lateCount > 0 || r.earlyCount > 0)).map(r => {
+                  const totalViolation = (r.lateMinutes || 0) + (r.earlyMinutes || 0);
+                  return (
+                    <Tr key={r.userId}>
+                      <Td>
+                        <div className="font-medium">{r.userFullName}</div>
+                        <div className="text-xs text-muted">{r.roleLabel || '—'}</div>
+                      </Td>
+                      <Td right>
+                        <span className={r.lateCount > 0 ? 'text-amber-600 dark:text-amber-300 font-semibold' : ''}>
+                          {r.lateCount || 0}
+                        </span>
+                      </Td>
+                      <Td right>
+                        <span className={r.lateMinutes > 0 ? 'text-amber-600 dark:text-amber-300 font-semibold' : ''}>
+                          {(r.lateMinutes || 0).toLocaleString('vi-VN')} phút
+                        </span>
+                      </Td>
+                      <Td right>
+                        <span className={r.earlyCount > 0 ? 'text-blue-600 dark:text-blue-300 font-semibold' : ''}>
+                          {r.earlyCount || 0}
+                        </span>
+                      </Td>
+                      <Td right>
+                        <span className={r.earlyMinutes > 0 ? 'text-blue-600 dark:text-blue-300 font-semibold' : ''}>
+                          {(r.earlyMinutes || 0).toLocaleString('vi-VN')} phút
+                        </span>
+                      </Td>
+                      <Td right>
+                        <span className={totalViolation > 0 ? 'text-red-600 dark:text-red-300 font-bold' : ''}>
+                          {totalViolation.toLocaleString('vi-VN')} phút
+                        </span>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          </div>
+
+          {/* MOBILE */}
+          <div className="md:hidden p-3 space-y-2">
+            {rows.filter(r => (r.lateCount > 0 || r.earlyCount > 0)).map(r => {
+              const totalViolation = (r.lateMinutes || 0) + (r.earlyMinutes || 0);
+              return (
+                <div key={r.userId} className="rounded-xl border border-hairline p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-sm text-ink">{r.userFullName}</p>
+                      <p className="text-xs text-muted">{r.roleLabel || '—'}</p>
+                    </div>
+                    <span className={`text-sm font-bold ${totalViolation > 0 ? 'text-red-600 dark:text-red-300' : 'text-muted'}`}>
+                      {totalViolation.toLocaleString('vi-VN')} phút
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    {r.lateCount > 0 && (
+                      <span className="text-amber-600 dark:text-amber-300">
+                        Đi trễ: {r.lateCount} lần / {(r.lateMinutes || 0).toLocaleString('vi-VN')}p
+                      </span>
+                    )}
+                    {r.earlyCount > 0 && (
+                      <span className="text-blue-600 dark:text-blue-300">
+                        Về sớm: {r.earlyCount} lần / {(r.earlyMinutes || 0).toLocaleString('vi-VN')}p
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+
       {/* Modal chi tiết ngày công của nhân viên vừa bấm */}
       <EmployeeAttendanceModal
         employee={detailOf}
@@ -1783,6 +1888,87 @@ function DriverPayrollPanel({ month, year, onSaved }) {
               </p>
             )}
           </>
+        )}
+
+        {/* ── Nhân viên ngoài bộ phận Tài xế có hỗ trợ giao hàng ── */}
+        {(cfg?.nonDriverRows || []).length > 0 && (
+          <div className="mt-6 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center shrink-0">
+                <Truck size={14} className="text-blue-500" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-ink">Phụ cấp xăng xe & giao hàng cho nhân viên hỗ trợ</p>
+                <p className="text-xs text-muted mt-1 leading-relaxed max-w-2xl">
+                  Nhân viên thuộc bộ phận khác nhưng có điểm danh ODO / đơn hàng giao trong tháng.
+                  Phụ cấp xăng xe (km × đơn giá) và phụ cấp giao hàng (lượt × thưởng) được tính riêng vào lương của bộ phận gốc.
+                </p>
+              </div>
+            </div>
+            {/* DESKTOP */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-hairline">
+              <table className="w-full text-xs">
+                <thead className="bg-canvas">
+                  <tr className="text-left text-muted">
+                    <th className="px-3 py-2 font-semibold">Nhân viên</th>
+                    <th className="px-3 py-2 font-semibold">Bộ phận / Chức vụ</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tổng km</th>
+                    <th className="px-3 py-2 font-semibold text-right">Phụ cấp xăng xe</th>
+                    <th className="px-3 py-2 font-semibold text-right">Lượt xe máy</th>
+                    <th className="px-3 py-2 font-semibold text-right">Lượt xe tải</th>
+                    <th className="px-3 py-2 font-semibold text-right">Phụ cấp giao hàng</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tổng cộng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cfg.nonDriverRows.map(r => {
+                    const fuelPay = r.motorbike?.fuelPay || 0;
+                    const deliveryPay = (r.motorbike?.bonusPay || 0) + (r.truck?.bonusPay || 0);
+                    return (
+                      <tr key={r.userId} className="border-t border-hairline hover:bg-canvas/50">
+                        <td className="px-3 py-2 font-semibold text-ink">{r.driverName}</td>
+                        <td className="px-3 py-2 text-muted">{[r.department, r.position].filter(Boolean).join(' / ')}</td>
+                        <td className="px-3 py-2 text-right">{r.motorbike?.totalKm?.toLocaleString('vi-VN', {maximumFractionDigits: 1}) || '0'} km</td>
+                        <td className="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 font-semibold">{formatCurrency(fuelPay)}</td>
+                        <td className="px-3 py-2 text-right">{r.motorbike?.totalTrips || 0} lượt</td>
+                        <td className="px-3 py-2 text-right">{r.truck?.totalTrips || 0} lượt</td>
+                        <td className="px-3 py-2 text-right text-amber-600 dark:text-amber-400 font-semibold">{formatCurrency(deliveryPay)}</td>
+                        <td className="px-3 py-2 text-right font-bold text-blue-600 dark:text-blue-400">
+                          {formatCurrency(r.grandTotalSalary || 0)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* MOBILE */}
+            <div className="md:hidden space-y-2">
+              {cfg.nonDriverRows.map(r => {
+                const fuelPay = r.motorbike?.fuelPay || 0;
+                const deliveryPay = (r.motorbike?.bonusPay || 0) + (r.truck?.bonusPay || 0);
+                return (
+                  <div key={r.userId} className="rounded-xl border border-hairline p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-sm text-ink">{r.driverName}</p>
+                        <p className="text-xs text-muted">{[r.department, r.position].filter(Boolean).join(' / ')}</p>
+                      </div>
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {formatCurrency(r.grandTotalSalary || 0)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      <span className="text-muted">Tổng km: <strong className="text-ink">{r.motorbike?.totalKm?.toLocaleString('vi-VN', {maximumFractionDigits: 1}) || '0'}</strong></span>
+                      <span className="text-emerald-600 dark:text-emerald-400">Xăng xe: {formatCurrency(fuelPay)}</span>
+                      <span className="text-muted">Xe máy: {r.motorbike?.totalTrips || 0} lượt · Xe tải: {r.truck?.totalTrips || 0} lượt</span>
+                      <span className="text-amber-600 dark:text-amber-400">Giao hàng: {formatCurrency(deliveryPay)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
 

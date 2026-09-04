@@ -17,6 +17,8 @@ import {
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
 const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Mét'];
+const MISA_CATEGORIES = ['', 'Kem', 'Xúc xích bò', 'Xúc xích heo', 'Xúc xích gà'];
+const SPECIFICATIONS = [210, 410, 424, 500, 1000];
 
 // ── SKU Generator ─────────────────────────────────────────────────────────────
 // Tạo SKU ngắn gọn, dễ nhớ cho ~500 sản phẩm thực phẩm
@@ -214,6 +216,8 @@ const emptyForm = () => ({
   // ── NEW: conversion fields ──
   conversionUnit: '',
   conversionFactor: '',
+  specification: '',
+  misaCategory: '',
   hasWholesale: false,
   tiers: DEFAULT_TIERS.map(t => ({ ...t, _id: `${t._id}-${Date.now()}` })),
   ingredients: [emptyIngredient()],
@@ -370,6 +374,8 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
         // ── NEW: conversion fields ──
         conversionUnit: editProduct.conversionUnit || '',
         conversionFactor: editProduct.conversionFactor != null ? String(editProduct.conversionFactor) : '',
+        specification: editProduct.specification ? String(editProduct.specification) : '',
+        misaCategory: editProduct.misaCategory || '',
         hasWholesale: hasTiers,
         tiers: hasTiers
           ? editProduct.tiers.map((t, idx) => ({
@@ -491,26 +497,8 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
     if (form.unitsPerBox && parseInt(form.unitsPerBox) < 1)
       return toast('Số đơn vị/thùng không hợp lệ', 'error');
 
-    // ── Validate conversion fields ──
-    // Chỉ validate khi đơn vị KHÔNG phải Kg và có nhập ít nhất 1 trong 2 field
+    // ── Validate MISA fields (no special validation needed) ──
     const unitIsKg = form.unit.toLowerCase() === 'kg';
-    const hasConversionUnit = form.conversionUnit && form.conversionUnit.trim() !== '';
-    const hasConversionFactor = form.conversionFactor && form.conversionFactor.trim() !== '';
-
-    if (!unitIsKg) {
-      if (hasConversionUnit && !hasConversionFactor) {
-        return toast('Vui lòng nhập hệ số quy đổi khi đã chọn đơn vị quy đổi', 'error');
-      }
-      if (!hasConversionUnit && hasConversionFactor) {
-        return toast('Vui lòng chọn đơn vị quy đổi khi đã nhập hệ số', 'error');
-      }
-      if (hasConversionUnit && hasConversionFactor) {
-        const factor = parseFloat(form.conversionFactor);
-        if (isNaN(factor) || factor <= 0) {
-          return toast('Hệ số quy đổi phải là số dương', 'error');
-        }
-      }
-    }
 
     if (form.hasWholesale) {
       const p1 = Number(String(form.tiers[0].price).replace(/[^0-9]/g, ''));
@@ -545,6 +533,8 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
           conversionFactor: (!unitIsKg && form.conversionFactor && form.conversionFactor.trim() !== '')
             ? parseFloat(form.conversionFactor)
             : null,
+          specification: form.specification ? parseInt(form.specification, 10) : null,
+          misaCategory: form.misaCategory || null,
           tiers: form.hasWholesale
             ? form.tiers.map((tier, idx) => ({
               tierName: tier.tierName,
@@ -633,7 +623,13 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
                     placeholder="VD: KEM-SDA-001"
                     className="flex-1 px-3 py-2 text-sm rounded-xl border border-line focus:outline-none focus:border-gold bg-surface font-mono" />
                   <button type="button"
-                    onClick={() => upd({ sku: generateSKU(form.name, form.categoryName, form.existingProductId) })}
+                    onClick={async () => {
+                      try {
+                        const res = await operatorApi.suggestSku(form.name, form.categoryName);
+                        const sku = res?.data?.data?.sku || generateSKU(form.name, form.categoryName, form.existingProductId);
+                        upd({ sku });
+                      } catch { upd({ sku: generateSKU(form.name, form.categoryName, form.existingProductId) }); }
+                    }}
                     className="px-3 py-2 text-xs rounded-xl bg-gold/10 text-gold hover:bg-gold/20 font-semibold whitespace-nowrap transition-colors">
                     Tạo SKU
                   </button>
@@ -662,61 +658,60 @@ function ProductFormModal({ open, onClose, onSaved, editProduct, categories, ing
             </div>
           </div>
 
-          {/* ── Quy đổi đơn vị ────────────────────────────────────────────────────── */}
-          {form.unit && form.unit.toLowerCase() !== 'kg' && (
-            <div className="rounded-xl border border-line overflow-hidden bg-canvas/40">
-              <div className="px-4 py-2.5 bg-canvas border-b border-line-soft flex items-center gap-2">
-                <span className="text-xs font-semibold text-ink-2">Quy đổi đơn vị</span>
-                <span className="text-[10px] text-muted">
-                  (1 {form.unit} = ? kg)
-                </span>
-              </div>
-              <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-2 font-medium">1 {form.unit} =</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={form.conversionFactor}
-                    onChange={e => {
-                      const val = e.target.value.replace(/[^0-9.]/g, '');
-                      // Chỉ cho phép 1 dấu chấm
-                      const parts = val.split('.');
-                      const sanitized = parts[0] + (parts.length > 1 ? '.' + parts.slice(1).join('') : '');
-                      upd({ conversionFactor: sanitized });
-                    }}
-                    placeholder="VD: 0.454"
-                    className="w-28 px-3 py-2 text-sm font-bold text-center rounded-xl border-2 border-gold/60 focus:border-gold focus:outline-none bg-surface"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-2 font-medium">Đơn vị quy đổi</span>
-                  <select
-                    value={form.conversionUnit}
-                    onChange={e => upd({ conversionUnit: e.target.value })}
-                    className="px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold"
-                  >
-                    <option value="">— Chọn —</option>
-                    <option value="Kg">Kg</option>
-                    <option value="Gram">Gram</option>
-                    <option value="Lít">Lít</option>
-                    <option value="ml">ml</option>
+          {/* Danh mục hóa đơn MISA */}
+          <div className="rounded-xl border border-line overflow-hidden bg-canvas/40">
+            <div className="px-4 py-2.5 bg-canvas border-b border-line-soft flex items-center gap-2">
+              <span className="text-xs font-semibold text-ink-2">🧾 Danh mục hóa đơn MISA</span>
+            </div>
+            <div className="px-4 py-3 space-y-3">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                  <span className="text-xs text-ink-2 font-medium whitespace-nowrap">Danh mục</span>
+                  <select value={form.misaCategory}
+                    onChange={e => upd({ misaCategory: e.target.value })}
+                    className="flex-1 px-3 py-2 text-sm rounded-xl border border-line bg-surface focus:outline-none focus:border-gold">
+                    <option value="">-- Không chọn --</option>
+                    {MISA_CATEGORIES.filter(c => c).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                {form.conversionFactor && form.conversionUnit && (
+                {form.misaCategory && (
                   <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl px-3 py-2 border border-emerald-200 dark:border-emerald-500/28">
-                    <span className="text-xs text-muted">1 {form.unit} =</span>
-                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-300">
-                      {parseFloat(form.conversionFactor).toFixed(3)} {form.conversionUnit}
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-300">
+                      ✓ {form.misaCategory}
                     </span>
                   </div>
                 )}
-                <span className="text-[10px] text-muted ml-auto">
-                  ⚡ Dùng để quy đổi khi xuất hoá đơn Misa
-                </span>
               </div>
+              {form.unit && form.unit.toLowerCase() !== 'kg' && (
+                <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-line-soft">
+                  <span className="text-xs text-ink-2 font-medium whitespace-nowrap">Quy cách (gr/{form.unit})</span>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {SPECIFICATIONS.map(s => (
+                      <button key={s} type="button"
+                        onClick={() => upd({ specification: String(s) })}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors
+                          ${form.specification === String(s)
+                            ? 'bg-gold text-white border-gold'
+                            : 'bg-surface border-line text-ink hover:border-gold/50'}`}>
+                        {s}g
+                      </button>
+                    ))}
+                    <input type="text" inputMode="numeric"
+                      value={form.specification && !SPECIFICATIONS.includes(parseInt(form.specification)) ? form.specification : ''}
+                      onChange={e => upd({ specification: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="Khác"
+                      className="w-16 px-2 py-1.5 rounded-lg border border-line text-xs bg-surface focus:outline-none focus:border-gold text-center" />
+                  </div>
+                  {form.specification && (
+                    <span className="text-[10px] text-muted">
+                      1 {form.unit} = {form.specification}g → SL × {form.specification} ÷ 1000 = Kg
+                    </span>
+                  )}
+                </div>
+              )}
+              <p className="text-[10px] text-muted">Dùng để gộp sản phẩm cùng loại khi xuất hóa đơn MISA</p>
             </div>
-          )}
+          </div>
 
           {/* Giá + VAT */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -945,6 +940,11 @@ function ProductCard({ product, onEdit, onDelete, imgSrc }) {
                   <path d="M4 4L20 20M20 4L4 20" />
                 </svg>
                 1 {product.unit} = {Number(product.conversionFactor).toFixed(3)} {product.conversionUnit}
+              </span>
+            )}
+            {product.misaCategory && (
+              <span className="text-[10px] bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-300 border border-teal-200 dark:border-teal-500/28 rounded-full px-2 py-0.5">
+                🧾 {product.misaCategory}
               </span>
             )}
             {hasTiers && (

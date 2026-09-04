@@ -6,6 +6,8 @@ import { useToast } from '../common/Toast';
 
 const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Con', 'Mét'];
 const VAT_RATES = [0, 5, 8, 10];
+const MISA_CATEGORIES = ['', 'Kem', 'Xúc xích bò', 'Xúc xích heo', 'Xúc xích gà'];
+const SPECIFICATIONS = [210, 410, 424, 500, 1000];
 
 // ── Map giữa UI label và backend enum ────────────────────────────────────────
 // Backend: INCLUSIVE (trong giá) | EXCLUSIVE (ngoài giá)
@@ -290,6 +292,8 @@ export default function ProductFormModal({
     vatRate: 0,
     vatMode: 'INCLUDED',   // UI value — map sang INCLUSIVE khi submit
     unitsPerBox: '',       // Số đơn vị / thùng (rỗng = không hỗ trợ bán thùng)
+    specification: '',     // Quy cách (gr/đơn vị) - chỉ khi unit ≠ Kg
+    misaCategory: '',      // Danh mục MISA
   });
   const [tiers, setTiers] = useState([{ fromQty: 0, price: '' }]);
   const [ingredients, setIngredients] = useState([]);
@@ -306,6 +310,8 @@ export default function ProductFormModal({
         // backend trả về INCLUSIVE/EXCLUSIVE → map về INCLUDED/ADDED cho UI
         vatMode: toUiVatMode(product.vatMode),
         unitsPerBox: product.unitsPerBox ? String(product.unitsPerBox) : '',
+        specification: product.specification ? String(product.specification) : '',
+        misaCategory: product.misaCategory || '',
       });
       if (product.priceTiers?.length > 0) {
         setTiers(product.priceTiers.map(t => ({
@@ -375,6 +381,8 @@ export default function ProductFormModal({
         vatMode: toBackendVatMode(form.vatMode),
         basePrice: tiers[0].price || 0,
         unitsPerBox: form.unitsPerBox ? parseInt(form.unitsPerBox, 10) : null,
+        specification: form.specification ? parseInt(form.specification, 10) : null,
+        misaCategory: form.misaCategory || null,
         tiers: tiers.map((t, idx) => ({
           tierName: idx === 0 ? 'Mặc định': `Từ ${t.fromQty}`,
           minQuantity: parseFloat(t.fromQty) || 0,
@@ -445,35 +453,85 @@ export default function ProductFormModal({
                 className="input-elegant w-full rounded-xl px-3 py-2.5 text-sm" />
             </div>
 
-            {/* Category */}
-            {categories?.length > 0 && (
+            {/* Category + Unit (side by side) */}
+            <div className="grid grid-cols-2 gap-3">
+              {categories?.length > 0 && (
+                <div>
+                  <label className="text-xs text-muted mb-1 block font-medium">Danh mục</label>
+                  <div className="relative">
+                    <select
+                      value={form.categoryId || ''}
+                      onChange={(e) => setForm({ ...form, categoryId: e.target.value ? Number(e.target.value) : null })}
+                      className="w-full px-3 py-2 pr-8 rounded-lg border border-line text-sm bg-surface appearance-none focus:outline-none focus:border-gold">
+                      <option value="">-- Chọn --</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="text-xs text-muted mb-1 block font-medium">Danh mục</label>
+                <label className="text-xs text-muted mb-1 block font-medium">
+                  Đơn vị tính <span className="text-red-400">*</span>
+                </label>
                 <div className="relative">
-                  <select
-                    value={form.categoryId || ''}
-                    onChange={(e) => setForm({ ...form, categoryId: e.target.value ? Number(e.target.value) : null })}
+                  <select value={form.unit}
+                    onChange={(e) => setForm({ ...form, unit: e.target.value, unitsPerBox: '' })}
                     className="w-full px-3 py-2 pr-8 rounded-lg border border-line text-sm bg-surface appearance-none focus:outline-none focus:border-gold">
-                    <option value="">-- Không chọn --</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <option value="">-- Chọn --</option>
+                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                   <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Unit */}
-            <div>
-              <label className="text-xs text-muted mb-1 block font-medium">Đơn vị tính</label>
+            {/* Danh mục hóa đơn MISA */}
+            <div className="rounded-xl border border-line-soft bg-canvas/50 p-3 space-y-2">
+              <label className="text-xs text-muted block font-medium">🧾 Danh mục hóa đơn MISA</label>
               <div className="relative">
-                <select value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value, unitsPerBox: '' })}
+                <select value={form.misaCategory}
+                  onChange={e => setForm(f => ({ ...f, misaCategory: e.target.value }))}
                   className="w-full px-3 py-2 pr-8 rounded-lg border border-line text-sm bg-surface appearance-none focus:outline-none focus:border-gold">
-                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  <option value="">-- Không chọn --</option>
+                  {MISA_CATEGORIES.filter(c => c).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               </div>
+              <p className="text-[10px] text-muted">Dùng để gộp sản phẩm cùng loại khi xuất hóa đơn MISA</p>
             </div>
+
+            {/* Quy cách (chỉ hiện khi unit ≠ Kg) */}
+            {form.unit && form.unit.toLowerCase() !== 'kg' && (
+              <div className="rounded-xl border border-line-soft bg-canvas/50 p-3 space-y-2">
+                <label className="text-xs text-muted block font-medium">⚖️ Quy cách (gr / {form.unit})</label>
+                <div className="flex gap-2 flex-wrap">
+                  {SPECIFICATIONS.map(s => (
+                    <button key={s} type="button"
+                      onClick={() => setForm(f => ({ ...f, specification: String(s) }))}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors
+                        ${form.specification === String(s)
+                          ? 'bg-gold text-white border-gold'
+                          : 'bg-surface border-line text-ink hover:border-gold/50'}`}>
+                      {s}g
+                    </button>
+                  ))}
+                  <input
+                    type="text" inputMode="numeric"
+                    value={form.specification && !SPECIFICATIONS.includes(parseInt(form.specification)) ? form.specification : ''}
+                    onChange={e => setForm(f => ({ ...f, specification: e.target.value.replace(/[^0-9]/g, '') }))}
+                    placeholder="Khác..."
+                    className="w-20 px-3 py-2 rounded-lg border border-line text-sm bg-surface focus:outline-none focus:border-gold"
+                  />
+                </div>
+                {form.specification && (
+                  <p className="text-[10px] text-muted">
+                    1 {form.unit} = {form.specification}g → Quy đổi: SL × {form.specification} ÷ 1000 = Kg
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Quy cách bán thùng */}
             <div className="rounded-xl border border-line overflow-hidden">

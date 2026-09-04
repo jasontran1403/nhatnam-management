@@ -62,6 +62,7 @@ function SalaryModal({ user, onClose, onSaved }) {
   const [bonus, setBonus] = useState('');
   const [bonusTaxable, setBonusTaxable] = useState(true);  // luôn chịu thuế
   const [dependents, setDependents] = useState('0');
+  const [partTime, setPartTime] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingCurrent, setLoadingCurrent] = useState(true);
   const [current, setCurrent] = useState(null);
@@ -90,6 +91,7 @@ function SalaryModal({ user, onClose, onSaved }) {
         setBonus(data.bonus != null ? String(data.bonus) : '');
         setBonusTaxable(true);
         setDependents(data.dependents != null ? String(data.dependents) : '0');
+        setPartTime(Boolean(data.partTime));
         if (Array.isArray(data.allowances) && data.allowances.length > 0) {
           setAllowances(data.allowances.map(a => ({
             label: a.label || '', amount: String(a.amount ?? ''), taxable: true,
@@ -110,10 +112,11 @@ function SalaryModal({ user, onClose, onSaved }) {
     bonus: toNumber(bonus),
     bonusTaxable,
     dependents: Number(digitsOnly(dependents) || 0),
+    partTime,
     allowances: allowances
       .filter(a => toNumber(a.amount) > 0)
       .map(a => ({ label: a.label || 'Phụ cấp', amount: toNumber(a.amount), taxable: true })),
-  }), [user.id, baseSalary, insuranceSalary, bonus, bonusTaxable, dependents, allowances]);
+  }), [user.id, baseSalary, insuranceSalary, bonus, bonusTaxable, dependents, partTime, allowances]);
 
   // Live preview (debounce 450ms) — gọi cùng công thức backend để khớp màn Owner
   useEffect(() => {
@@ -250,6 +253,18 @@ function SalaryModal({ user, onClose, onSaved }) {
               <input className={inputCls} inputMode="numeric" value={dependents}
                 onChange={e => setDependents(digitsOnly(e.target.value))} placeholder="0" />
             </Field>
+
+            <div className="mt-3 px-1">
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none group">
+                <input type="checkbox" checked={partTime}
+                  onChange={e => setPartTime(e.target.checked)}
+                  className="w-4 h-4 rounded border-line text-brand accent-brand focus:ring-brand/30" />
+                <span className="text-ink group-hover:text-brand transition-colors">
+                  Nhân viên part-time
+                  <span className="text-muted text-xs ml-1">(bán thời gian — 0.5 công/ngày)</span>
+                </span>
+              </label>
+            </div>
           </div>
 
           {/* ── Cột phải: preview giống màn Owner ── */}

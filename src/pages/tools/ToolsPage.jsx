@@ -8,6 +8,7 @@ import {
 import * as XLSX from 'xlsx/xlsx.mjs';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
+import DateRangePicker from '../../components/ui/DateRangePicker';
 
 const toolApi = {
   getData: () => api.get('/api/tools/data').then(r => r.data?.data || r.data),
@@ -31,6 +32,9 @@ const toolApi = {
   deleteCustomer: (id) => api.delete(`/api/tools/customers/${id}`),
   listInvoiceDetails: (q, page = 0, size = 500) => api.get('/api/tools/invoice-details', { params: { q, page, size } }).then(r => r.data?.data || r.data),
   deleteInvoiceDetail: (id) => api.delete(`/api/tools/invoice-details/${id}`),
+  // MISA Orders
+  listMisaOrders: (params) => api.get('/api/tools/misa-orders', { params }).then(r => r.data?.data || r.data),
+  generateMisaData: (orderIds) => api.post('/api/tools/misa-generate', orderIds).then(r => r.data?.data || r.data),
   // Clear all
   clearTracking: () => api.delete('/api/tools/clear/tracking'),
   clearSales: () => api.delete('/api/tools/clear/sales'),
@@ -570,15 +574,7 @@ export default function ToolsPageWrapper() {
       <div className="flex-1 min-h-0 relative">
         <div key={tab} className="animate-fadeIn">
           {tab === 'receipt' && <ToolsReceiptPage />}
-          {tab === 'orders' && (
-            <div className="flex items-center justify-center h-full p-12">
-              <div className="text-center space-y-3">
-                <ShoppingCart size={48} className="mx-auto text-muted/30" />
-                <p className="text-lg font-semibold text-muted">Xử lý Đơn hàng</p>
-                <p className="text-sm text-muted">Tính năng đang được phát triển...</p>
-              </div>
-            </div>
-          )}
+          {tab === 'orders' && <ToolsOrdersPage />}
         </div>
       </div>
 
@@ -587,6 +583,364 @@ export default function ToolsPageWrapper() {
         .animate-fadeIn { animation: fadeIn 0.25s ease-out; }
       `}</style>
     </div>
+  );
+}
+
+// ── MISA EXPORT HEADERS (55 cột layout MISA) ──────────────────────────────
+const MISA_HEADERS = [
+  'Hiển thị trên sổ','Hình thức bán hàng','Phương thức thanh toán','Kiêm phiếu xuất kho',
+  'XK vào khu phi thuế quan và các TH được coi như XK','Lập kèm hóa đơn','Đã lập hóa đơn',
+  'Ngày hạch toán','Ngày chứng từ','Số chứng từ','Số phiếu xuất','Lý do xuất',
+  'Mẫu số HĐ','Ký hiệu HĐ','Số hóa đơn','Ngày hóa đơn',
+  'Mã khách hàng','Tên khách hàng','Địa chỉ','Mã số thuế','Diễn giải',
+  'Nộp vào TK','NV bán hàng','Loại tiền','Tỷ giá',
+  'Mã hàng','Tên hàng','Hàng khuyến mại',
+  'TK Tiền/Chi phí/Nợ','TK Doanh thu/Có','ĐVT','Số lượng','Đơn giá sau thuế','Đơn giá',
+  'Thành tiền','Thành tiền quy đổi',
+  'Tỷ lệ CK (%)','Tiền chiết khấu','Tiền chiết khấu quy đổi','TK chiết khấu',
+  'Giá tính thuế XK','% thuế XK','Tiền thuế XK','TK thuế XK',
+  '% thuế GTGT','Tỷ lệ tính thuế (Thuế suất KHAC)','Tiền thuế GTGT','Tiền thuế GTGT quy đổi',
+  'TK thuế GTGT','HH không TH trên tờ khai thuế GTGT',
+  'Kho','TK giá vốn','TK Kho','Đơn giá vốn','Tiền vốn','Hàng hóa giữ hộ/bán hộ',
+];
+
+function misaRowToArray(row) {
+  return [
+    '', '', '', '', '', '', '',
+    row.ngayHachToan || '', row.ngayChungTu || '', row.soChungTu || '',
+    '', '', '', '', '', '',
+    row.maKhachHang || '', row.tenKhachHang || '', row.diaChi || '', row.maSoThue || '',
+    row.dienGiai || '', '', '', '', '',
+    row.maHang || '', row.tenHang || '', '',
+    row.tkTienNo || '131', row.tkDoanhThuCo || '5111',
+    row.dvt || 'Kg', row.soLuong ?? '', '', row.donGia ?? '',
+    row.thanhTien ?? '', '', '', '', '', '',
+    '', '', '', '', '', '', '', '',
+    '', '', '', '', '', '', '',
+  ];
+}
+
+// ── ToolsOrdersPage ────────────────────────────────────────────────────────
+function ToolsOrdersPage() {
+  const toast = useToast();
+  const [orders, setOrders] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
+  // Filters
+  const [dateFrom, setDateFrom] = useState(null);
+  const [dateTo, setDateTo] = useState(null);
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  // Selection
+  const [selected, setSelected] = useState(new Set());
+
+  // MISA data view
+  const [misaData, setMisaData] = useState(null);
+  const [generating, setGenerating] = useState(false);
+
+  const fetchOrders = useCallback(async (p = 0) => {
+    setLoading(true);
+    try {
+      const params = { page: p, size: 50 };
+      if (dateFrom) params.from = dateFrom;
+      if (dateTo) params.to = dateTo;
+      if (statusFilter) params.status = statusFilter;
+      // customerFilter is searched via name - backend filters by customerId only
+      const res = await toolApi.listMisaOrders(params);
+      const content = res.content || [];
+      if (p === 0) setOrders(content);
+      else setOrders(prev => [...prev, ...content]);
+      setTotal(res.total || 0);
+      setHasMore(res.hasMore || false);
+      setPage(p);
+    } catch (e) { toast('Lỗi tải đơn hàng: ' + (e?.response?.data?.message || e.message), 'error'); }
+    finally { setLoading(false); }
+  }, [dateFrom, dateTo, statusFilter]);
+
+  useEffect(() => { fetchOrders(0); }, [fetchOrders]);
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === orders.length) setSelected(new Set());
+    else setSelected(new Set(orders.map(o => o.id)));
+  };
+
+  const handleGenerate = async () => {
+    if (selected.size === 0) { toast('Chọn ít nhất 1 đơn', 'warning'); return; }
+    setGenerating(true);
+    try {
+      const data = await toolApi.generateMisaData([...selected]);
+      // Assign default soChungTu starting from 0000001
+      let counter = 1;
+      data.forEach(row => { row.soChungTu = String(counter).padStart(7, '0'); counter++; });
+      setMisaData(data);
+    } catch (e) { toast('Lỗi tạo data: ' + (e?.response?.data?.message || e.message), 'error'); }
+    finally { setGenerating(false); }
+  };
+
+  // Back from MISA preview
+  if (misaData) {
+    return <MisaDataPreview data={misaData} onBack={() => setMisaData(null)} />;
+  }
+
+  const filteredOrders = customerFilter
+    ? orders.filter(o => (o.customerName || '').toLowerCase().includes(customerFilter.toLowerCase()))
+    : orders;
+
+  const STATUS_OPTIONS = [
+    { value: '', label: 'Tất cả' },
+    { value: 'PENDING', label: 'Chờ xử lý' },
+    { value: 'CONFIRMED', label: 'Đã xác nhận' },
+    { value: 'PREPARING', label: 'Đang chuẩn bị' },
+    { value: 'READY', label: 'Sẵn sàng' },
+    { value: 'DELIVERING', label: 'Đang giao' },
+    { value: 'DELIVERED', label: 'Đã giao' },
+    { value: 'COMPLETED', label: 'Hoàn thành' },
+    { value: 'CANCELLED', label: 'Đã hủy' },
+  ];
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 pb-24">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShoppingCart size={22} className="text-gold" />
+          <div>
+            <h1 className="text-lg font-bold text-ink">Đơn hàng → MISA Export</h1>
+            <p className="text-xs text-muted">Chọn đơn hàng, tạo data và export Excel theo layout MISA</p>
+          </div>
+        </div>
+        <button onClick={handleGenerate} disabled={selected.size === 0 || generating}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong shadow-sm disabled:opacity-50">
+          {generating ? 'Đang tạo...' : `Tạo data (${selected.size})`}
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-3 flex-wrap items-center">
+        <DateRangePicker
+          from={dateFrom}
+          to={dateTo}
+          onChange={({ from, to }) => { setDateFrom(from); setDateTo(to); }}
+          placeholder="Chọn khoảng ngày"
+        />
+        <div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40 h-[38px]">
+            {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
+        <div className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input value={customerFilter} onChange={e => setCustomerFilter(e.target.value)}
+            placeholder="Tìm khách hàng..."
+            className="pl-8 pr-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40 w-52 h-[38px]" />
+        </div>
+      </div>
+
+      {/* Order list */}
+      <div className="bg-surface rounded-xl border border-line-soft overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-canvas">
+              <th className="px-3 py-2.5 text-left w-10">
+                <input type="checkbox" checked={selected.size > 0 && selected.size === filteredOrders.length}
+                  onChange={toggleAll} className="accent-gold" />
+              </th>
+              <th className="px-3 py-2.5 text-left text-muted font-semibold">Mã đơn</th>
+              <th className="px-3 py-2.5 text-left text-muted font-semibold">Khách hàng</th>
+              <th className="px-3 py-2.5 text-left text-muted font-semibold">Trạng thái</th>
+              <th className="px-3 py-2.5 text-right text-muted font-semibold">Tổng tiền</th>
+              <th className="px-3 py-2.5 text-left text-muted font-semibold">Ngày tạo</th>
+              <th className="px-3 py-2.5 text-center text-muted font-semibold">SP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && orders.length === 0 ? (
+              <tr><td colSpan={7} className="p-8 text-center text-muted">Đang tải...</td></tr>
+            ) : filteredOrders.length === 0 ? (
+              <tr><td colSpan={7} className="p-8 text-center text-muted">Không có đơn hàng</td></tr>
+            ) : filteredOrders.map((o, idx) => {
+              const isSelected = selected.has(o.id);
+              const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleDateString('vi-VN') : '';
+              return (
+                <tr key={o.id} onClick={() => toggleSelect(o.id)}
+                  className={`border-t border-line-soft cursor-pointer transition-colors ${isSelected ? 'bg-gold/10' : idx % 2 === 0 ? 'bg-surface' : 'bg-canvas/50'} hover:bg-gold/5`}>
+                  <td className="px-3 py-2">
+                    <input type="checkbox" checked={isSelected} onChange={() => {}} className="accent-gold" />
+                  </td>
+                  <td className="px-3 py-2 font-mono font-semibold text-ink">{o.orderCode}</td>
+                  <td className="px-3 py-2 text-ink">{o.customerName || 'Khách vãng lai'}</td>
+                  <td className="px-3 py-2">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold
+                      ${o.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300'
+                        : o.status === 'CANCELLED' ? 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-300'
+                        : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'}`}>
+                      {o.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono">{fmtMoney(o.finalAmount)}</td>
+                  <td className="px-3 py-2 text-muted">{dateStr}</td>
+                  <td className="px-3 py-2 text-center text-muted">{o.itemCount}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {hasMore && (
+        <button onClick={() => fetchOrders(page + 1)} disabled={loading}
+          className="w-full py-2 text-center text-xs text-gold font-semibold hover:underline disabled:opacity-50">
+          {loading ? 'Đang tải...' : 'Tải thêm'}
+        </button>
+      )}
+      <p className="text-[10px] text-muted text-center">Hiển thị {filteredOrders.length} / {total} đơn hàng · Đã chọn {selected.size}</p>
+    </div>
+  );
+}
+
+// ── MISA Data Preview Page ─────────────────────────────────────────────────
+function MisaDataPreview({ data: initialData, onBack }) {
+  const toast = useToast();
+  const [rows, setRows] = useState(initialData);
+
+  // Update soChungTu from a given row index and auto-increment subsequent rows
+  const updateSoChungTu = useCallback((idx, value) => {
+    setRows(prev => {
+      const next = [...prev];
+      // Parse the new value to get prefix and number
+      const prefix = value.replace(/\d+$/, '');
+      const numPart = value.substring(prefix.length);
+      const numLen = numPart.length || 7;
+      let startNum = parseInt(numPart, 10);
+      if (isNaN(startNum)) startNum = 1;
+
+      // Update from idx onward
+      for (let i = idx; i < next.length; i++) {
+        next[i] = { ...next[i], soChungTu: prefix + String(startNum).padStart(numLen, '0') };
+        startNum++;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleExport = () => {
+    if (!rows?.length) { toast('Chưa có dữ liệu', 'error'); return; }
+    const wb = XLSX.utils.book_new();
+    const sheetRows = [MISA_HEADERS, ...rows.map(misaRowToArray)];
+    const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+    ws['!cols'] = MISA_HEADERS.map(() => ({ wch: 16 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'BanHang');
+    XLSX.writeFile(wb, `MISA_BanHang_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast('Đã export file Excel', 'success');
+  };
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 pb-24">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="flex items-center gap-1 text-sm text-muted hover:text-ink font-medium">
+            <ChevronLeft className="cursor-pointer hover:text-ink" size={24} />
+          </button>
+          <div>
+            <h1 className="text-lg font-bold text-ink">Xem trước data MISA</h1>
+            <p className="text-xs text-muted">{rows.length} dòng · Click vào ô "Số chứng từ" để chỉnh sửa (tự tăng từ dòng đó)</p>
+          </div>
+        </div>
+        <button onClick={handleExport}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-sm">
+          <Download size={14} /> Export XLSX
+        </button>
+      </div>
+
+      <div className="bg-surface rounded-xl border border-line-soft overflow-x-auto">
+        <table className="w-full text-xs border-collapse min-w-[1200px]">
+          <thead>
+            <tr className="bg-canvas">
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold w-10 sticky left-0 bg-canvas z-10">#</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">Mã đơn</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">Ngày HT</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">Ngày CT</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap bg-gold/10">Số chứng từ</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:140}}>Khách hàng</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:180}}>Diễn giải</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:140}}>Mã hàng</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:160}}>Tên hàng</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">TK Nợ</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">TK Có</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">ĐVT</th>
+              <th className="px-3 py-2.5 text-right text-[10px] text-muted font-bold whitespace-nowrap">Số lượng</th>
+              <th className="px-3 py-2.5 text-right text-[10px] text-muted font-bold whitespace-nowrap">Đơn giá</th>
+              <th className="px-3 py-2.5 text-right text-[10px] text-muted font-bold whitespace-nowrap">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={idx} className={`border-t border-line-soft ${idx % 2 === 0 ? 'bg-surface' : 'bg-canvas/50'} hover:bg-gold/5`}>
+                <td className="px-3 py-2 text-muted font-mono sticky left-0 bg-inherit">{idx + 1}</td>
+                <td className="px-3 py-2 font-mono text-ink whitespace-nowrap">{row.orderCode}</td>
+                <td className="px-3 py-2 text-muted whitespace-nowrap">{row.ngayHachToan}</td>
+                <td className="px-3 py-2 text-muted whitespace-nowrap">{row.ngayChungTu}</td>
+                <td className="px-3 py-2 bg-gold/5">
+                  <MisaSoChungTuEditor value={row.soChungTu} idx={idx} onUpdate={updateSoChungTu} />
+                </td>
+                <td className="px-3 py-2 text-ink truncate" style={{maxWidth:200}} title={row.tenKhachHang}>{row.tenKhachHang}</td>
+                <td className="px-3 py-2 text-muted truncate" style={{maxWidth:240}} title={row.dienGiai}>{row.dienGiai}</td>
+                <td className="px-3 py-2 font-mono">{row.maHang}</td>
+                <td className="px-3 py-2">{row.tenHang}</td>
+                <td className="px-3 py-2 font-mono text-center">{row.tkTienNo}</td>
+                <td className="px-3 py-2 font-mono text-center">{row.tkDoanhThuCo}</td>
+                <td className="px-3 py-2 text-center">{row.dvt}</td>
+                <td className="px-3 py-2 text-right font-mono">{Number(row.soLuong).toFixed(3)}</td>
+                <td className="px-3 py-2 text-right font-mono">{fmtMoney(row.donGia)}</td>
+                <td className="px-3 py-2 text-right font-mono font-semibold">{fmtMoney(row.thanhTien)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Inline editable Số chứng từ for MISA preview ──────────────────────────
+function MisaSoChungTuEditor({ value, idx, onUpdate }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value);
+  const inputRef = useRef();
+
+  useEffect(() => { setVal(value); }, [value]);
+  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
+
+  const save = () => {
+    if (val.trim() && val.trim() !== value) {
+      onUpdate(idx, val.trim());
+    }
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <span className="cursor-pointer group flex items-center gap-1" onClick={() => setEditing(true)}>
+        <span className="font-mono text-ink">{value}</span>
+        <Pencil size={10} className="text-muted opacity-0 group-hover:opacity-100 transition" />
+      </span>
+    );
+  }
+  return (
+    <input ref={inputRef} value={val} onChange={e => setVal(e.target.value)}
+      onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setVal(value); setEditing(false); } }}
+      className="w-28 px-1.5 py-0.5 rounded border border-gold text-xs font-mono bg-canvas focus:outline-none" />
   );
 }
 
