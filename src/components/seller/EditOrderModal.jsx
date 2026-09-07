@@ -10,6 +10,7 @@ import { orderApi, productApi, categoryApi } from '../../api/services';
 import api from '../../api/axios';
 import { useToast } from '../common/Toast';
 import useWebSocket from '../../hooks/useWebSocket';
+import SaleTypeModal from './SaleTypeModal';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -1171,22 +1172,45 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved, isSupe
     setTierProduct(null);
   }, [tierEditId]);
 
-  const addProduct = useCallback((product) => {
+  // ── Thêm sản phẩm (hỗ trợ BOX/RETAIL) ──────────────────────────────────
+  const [pendingSaleProduct, setPendingSaleProduct] = useState(null);
+
+  const addProductWithSaleType = useCallback((product, saleType) => {
+    const isBOX = saleType === 'BOX' && product.unitsPerBox > 0;
+    const unitsPerBox = isBOX ? product.unitsPerBox : null;
+    const basePrice = Number(product.basePrice);
+    const unitPrice = isBOX ? basePrice * product.unitsPerBox : basePrice;
+
     setItems(prev => {
-      const existing = prev.find(i => i.productId === product.id);
-      if (existing) return prev.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      // Tìm item cùng productId VÀ cùng saleType
+      const existing = prev.find(i => i.productId === product.id && (i.saleType ?? 'RETAIL') === saleType);
+      if (existing) return prev.map(i =>
+        (i.productId === product.id && (i.saleType ?? 'RETAIL') === saleType)
+          ? { ...i, quantity: i.quantity + 1 } : i
+      );
       return [...prev, {
         _editId: nextId(),
         productId: product.id, productName: product.name, productImageUrl: product.imageUrl,
         unit: product.unit ?? 'kg', quantity: 1, originalQuantity: undefined,
-        unitPrice: Number(product.basePrice), basePrice: Number(product.basePrice),
+        unitPrice, basePrice,
         priceSource: 'BASE', tierId: null, tierName: null,
         vatRate: product.vatRate ?? 0, vatMode: product.vatMode ?? 'INCLUSIVE',
-        itemDiscountRate: 0, isPromo: false, promoNote: '', saleType: 'RETAIL',
+        itemDiscountRate: 0, isPromo: false, promoNote: '',
+        saleType, unitsPerBox,
       }];
     });
-    toast(`Đã thêm "${product.name}"`, 'success');
+    toast(`Đã thêm "${product.name}"${isBOX ? ' (thùng)' : ''}`, 'success');
   }, [toast]);
+
+  const addProduct = useCallback((product) => {
+    // Sản phẩm có quy cách thùng → hỏi RETAIL hay BOX
+    if (product.unitsPerBox && product.unitsPerBox > 0) {
+      setPendingSaleProduct(product);
+      return;
+    }
+    // Không có quy cách → thêm RETAIL trực tiếp
+    addProductWithSaleType(product, 'RETAIL');
+  }, [addProductWithSaleType]);
 
   const handleSelectCustomer = useCallback((customer) => {
     setSelectedCustomer(customer);
@@ -1872,6 +1896,17 @@ export default function EditOrderModal({ open, orderId, onClose, onSaved, isSupe
         onSelect={handleSelectCustomer}
         selected={selectedCustomer}
       />
+
+      {pendingSaleProduct && (
+        <SaleTypeModal
+          product={pendingSaleProduct}
+          onConfirm={({ saleType }) => {
+            addProductWithSaleType(pendingSaleProduct, saleType);
+            setPendingSaleProduct(null);
+          }}
+          onClose={() => setPendingSaleProduct(null)}
+        />
+      )}
     </>
   );
 }

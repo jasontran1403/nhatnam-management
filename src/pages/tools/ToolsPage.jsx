@@ -148,7 +148,7 @@ function ImportModal({ title, expectedHeaders, dateColumns = [], headerRowIndex 
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-line-soft shrink-0">
           <h3 className="text-sm font-bold text-ink flex items-center gap-2"><Upload size={15} className="text-gold" />{title}</h3>
@@ -172,77 +172,93 @@ function ImportModal({ title, expectedHeaders, dateColumns = [], headerRowIndex 
   );
 }
 
-// ── RENUMBER MODAL ─────────────────────────────────────────────────────────
-function RenumberModal({ onSubmit, onClose }) {
-  const [oldDoc, setOldDoc] = useState('');
-  const [newDoc, setNewDoc] = useState('');
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-line-soft">
-          <h3 className="text-sm font-bold text-ink flex items-center gap-2"><Hash size={15} className="text-gold" />Đổi số chứng từ</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted"><X size={16} /></button>
-        </div>
-        <div className="p-5 space-y-3">
-          <div><label className="text-xs text-muted mb-1 block">Số chứng từ cũ</label>
-            <input value={oldDoc} onChange={e => setOldDoc(e.target.value)} placeholder="PT00002353" className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono" /></div>
-          <div><label className="text-xs text-muted mb-1 block">Số chứng từ mới</label>
-            <input value={newDoc} onChange={e => setNewDoc(e.target.value)} placeholder="PT00003000" className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono" /></div>
-        </div>
-        <div className="p-5 border-t border-line-soft flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line-soft text-sm text-muted">Huỷ</button>
-          <button onClick={() => { onSubmit(oldDoc.trim(), newDoc.trim()); onClose(); }} disabled={!oldDoc.trim() || !newDoc.trim()}
-            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold disabled:opacity-50">Áp dụng</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── ADD INVOICE MODAL (with duplicate warning) ─────────────────────────────
-function AddInvoiceModal({ onClose, onAdded }) {
+// ── BATCH ADD INVOICE MODAL (nhập nhiều phiếu 1 lần) ──────────────────────
+function BatchAddInvoiceModal({ onClose, onAdded }) {
   const toast = useToast();
   const [order, setOrder] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
-  const [dupWarning, setDupWarning] = useState(null); // { orderNumber, amount, date }
+  // Batch: danh sách các phiếu đã thêm trong lần này, chưa submit
+  const [batch, setBatch] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [dupWarning, setDupWarning] = useState(null);
   const orderRef = useRef();
 
-  const doAdd = async (orderNumber, amountStr, dateStr) => {
-    setLoading(true);
-    try {
-      const rawAmount = amountStr.replace(/\D/g, '');
-      const res = await toolApi.addInvoice({ orderNumber, amount: Number(rawAmount), invoiceDate: dateStr });
-      setResults(prev => [res, ...prev]);
-      setOrder(''); setAmount(''); setDate('');
-      onAdded?.();
-      orderRef.current?.focus();
-    } catch (e) { toast('Lỗi: ' + (e?.response?.data?.message || e.message), 'error'); }
-    finally { setLoading(false); }
+  // Kiểm tra trùng trong batch hiện tại
+  const isDupInBatch = (orderNumber) => {
+    return batch.some(b => b.orderNumber === orderNumber);
   };
 
-  const handleAdd = async () => {
-    if (!order.trim() || !amount.trim() || !date.trim()) { toast('Nhập đủ 3 trường', 'error'); return; }
-    // Check duplicate
-    try {
-      const exists = await toolApi.checkDuplicate(order.trim());
-      if (exists) {
-        setDupWarning({ orderNumber: order.trim(), amount, date: date.trim() });
-        return;
+  const addToBatch = () => {
+    const trimOrder = order.trim();
+    const trimDate = date.trim();
+    if (!trimOrder || !amount.trim() || !trimDate) {
+      toast('Nhập đủ 3 trường', 'error');
+      return;
+    }
+    // Kiểm tra trùng trong batch
+    if (isDupInBatch(trimOrder)) {
+      toast(`Số phiếu ${trimOrder} đã có trong danh sách nhập lần này`, 'error');
+      return;
+    }
+    setBatch(prev => [...prev, {
+      orderNumber: trimOrder,
+      amount: amount.trim(),
+      amountRaw: amount.replace(/\D/g, ''),
+      date: trimDate,
+    }]);
+    setOrder('');
+    setAmount('');
+    setDate('');
+    orderRef.current?.focus();
+  };
+
+  const removeFromBatch = (idx) => {
+    setBatch(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmitBatch = async () => {
+    if (batch.length === 0) { toast('Chưa có phiếu nào trong danh sách', 'error'); return; }
+    setSubmitting(true);
+    const results = [];
+    let hasError = false;
+    for (const item of batch) {
+      try {
+        // Kiểm tra trùng trên server
+        let exists = false;
+        try { exists = await toolApi.checkDuplicate(item.orderNumber); } catch {}
+        if (exists) {
+          results.push({ ...item, status: 'dup', message: 'Đã tồn tại trên hệ thống' });
+          continue;
+        }
+        const res = await toolApi.addInvoice({
+          orderNumber: item.orderNumber,
+          amount: Number(item.amountRaw),
+          invoiceDate: item.date,
+        });
+        results.push({ ...item, status: res.errorNote ? 'warn' : 'ok', message: res.errorNote || 'Tạo phiếu thu OK', data: res });
+      } catch (e) {
+        results.push({ ...item, status: 'error', message: e?.response?.data?.message || e.message });
+        hasError = true;
       }
-    } catch {}
-    doAdd(order.trim(), amount, date.trim());
+    }
+    const okCount = results.filter(r => r.status === 'ok' || r.status === 'warn').length;
+    const dupCount = results.filter(r => r.status === 'dup').length;
+    const errCount = results.filter(r => r.status === 'error').length;
+    toast(`Hoàn tất: ${okCount} thành công, ${dupCount} trùng, ${errCount} lỗi`, okCount > 0 ? 'success' : 'error');
+    setBatch([]);
+    onAdded?.();
+    onClose();
   };
 
   const fmtInput = (v) => { const d = v.replace(/\D/g, ''); return d ? new Intl.NumberFormat('vi-VN').format(Number(d)) : ''; };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-line-soft shrink-0">
-          <h3 className="text-sm font-bold text-ink flex items-center gap-2"><Plus size={15} className="text-gold" />Nhập Chi tiết invoice</h3>
+          <h3 className="text-sm font-bold text-ink flex items-center gap-2"><Plus size={15} className="text-gold" />Nhập Chi tiết invoice (Batch)</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted"><X size={16} /></button>
         </div>
         <div className="p-5 space-y-3 shrink-0">
@@ -250,48 +266,49 @@ function AddInvoiceModal({ onClose, onAdded }) {
             <div><label className="text-xs text-muted mb-1 block">Số phiếu đặt hàng</label>
               <input ref={orderRef} value={order} onChange={e => setOrder(e.target.value)} placeholder="20094"
                 className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
-                onKeyDown={e => e.key === 'Enter' && handleAdd()} /></div>
+                onKeyDown={e => e.key === 'Enter' && addToBatch()} /></div>
             <div><label className="text-xs text-muted mb-1 block">Số tiền</label>
               <input value={amount} onChange={e => setAmount(fmtInput(e.target.value))} placeholder="1,370,304"
                 className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40"
-                onKeyDown={e => e.key === 'Enter' && handleAdd()} /></div>
+                onKeyDown={e => e.key === 'Enter' && addToBatch()} /></div>
             <div><label className="text-xs text-muted mb-1 block">Ngày (d/m/yy)</label>
               <input value={date} onChange={e => setDate(e.target.value)} placeholder="3/5/26"
                 className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40"
-                onKeyDown={e => e.key === 'Enter' && handleAdd()} /></div>
+                onKeyDown={e => e.key === 'Enter' && addToBatch()} /></div>
           </div>
-          <button onClick={handleAdd} disabled={loading}
-            className="w-full py-2 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong disabled:opacity-50">
-            {loading ? 'Đang xử lý...' : 'Thêm & Lookup'}
+          <button onClick={addToBatch} disabled={loading}
+            className="w-full py-2 rounded-xl bg-surface border border-gold/50 text-gold text-sm font-semibold hover:bg-gold/5 disabled:opacity-50">
+            + Thêm vào danh sách
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-5 pt-0 space-y-1">
-          <p className="text-xs text-muted font-semibold mb-1">Kết quả ({results.length})</p>
-          {results.map((r, i) => (
-            <div key={i} className={`rounded-lg p-2 text-xs border ${r.errorNote ? 'border-amber-200 dark:border-amber-500/28 bg-amber-50 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/28 bg-emerald-50 dark:bg-emerald-500/10'}`}>
-              <span className="font-mono font-semibold">{r.orderNumber}</span>
-              <span className="ml-2">{fmtMoney(r.amount)} đ</span>
-              <span className="ml-2 text-muted">{r.invoiceDate}</span>
-              {r.errorNote && <p className="mt-0.5 text-amber-700 dark:text-amber-300 flex items-center gap-1"><AlertTriangle size={11} />{r.errorNote}</p>}
-              {!r.errorNote && <span className="ml-2 text-emerald-600">✓ Tạo phiếu thu OK</span>}
+
+        {/* Danh sách batch */}
+        <div className="flex-1 overflow-y-auto px-5 pb-2 space-y-1">
+          <p className="text-xs text-muted font-semibold mb-1">Danh sách chờ nhập ({batch.length})</p>
+          {batch.length === 0 ? (
+            <div className="text-center py-6 text-xs text-muted">Thêm phiếu vào danh sách rồi nhấn "Thêm & Lookup" để xử lý tất cả</div>
+          ) : batch.map((b, i) => (
+            <div key={i} className="rounded-lg p-2.5 text-xs border border-line-soft bg-canvas flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-muted font-mono text-[10px] w-5 text-right shrink-0">{i + 1}</span>
+                <span className="font-mono font-semibold text-ink">{b.orderNumber}</span>
+                <span className="text-muted">{b.amount} đ</span>
+                <span className="text-muted">{b.date}</span>
+              </div>
+              <button onClick={() => removeFromBatch(i)} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400 hover:text-red-500 shrink-0">
+                <X size={12} />
+              </button>
             </div>
           ))}
         </div>
 
-        {/* Duplicate warning */}
-        {dupWarning && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 rounded-2xl">
-            <div className="bg-surface rounded-xl shadow-lg p-5 max-w-sm mx-4 space-y-3">
-              <div className="flex items-center gap-2 text-amber-600"><AlertTriangle size={18} /><span className="text-sm font-bold">Số phiếu trùng!</span></div>
-              <p className="text-xs text-ink">Số phiếu <span className="font-mono font-bold">{dupWarning.orderNumber}</span> đã được nhập trước đó. Bạn vẫn muốn nhập lại?</p>
-              <div className="flex gap-2">
-                <button onClick={() => setDupWarning(null)} className="flex-1 py-2 rounded-lg border border-line-soft text-sm text-muted">Huỷ</button>
-                <button onClick={() => { const d = dupWarning; setDupWarning(null); doAdd(d.orderNumber, d.amount, d.date); }}
-                  className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold">Vẫn nhập</button>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="p-5 border-t border-line-soft flex gap-2 shrink-0">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line-soft text-sm text-muted">Huỷ</button>
+          <button onClick={handleSubmitBatch} disabled={batch.length === 0 || submitting}
+            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong disabled:opacity-50">
+            {submitting ? 'Đang xử lý...' : `Thêm & Lookup (${batch.length})`}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -332,11 +349,17 @@ function EditableSoChungTu({ value, receiptId, onSaved }) {
   );
 }
 
-// ── DATA VIEW MODAL (search / edit / delete / infinite scroll) ─────────────
+// ── DATA VIEW MODAL (search / edit / delete / infinite scroll / import) ────
 const PAGE_SIZE = 500;
 const SCROLL_THRESHOLD = 0.7;
 
-function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, onClose }) {
+/**
+ * @param importConfig  nếu có, sẽ hiện nút Import trong header modal.
+ *   { title, expectedHeaders, dateColumns, headerRowIndex, onImport }
+ * @param extraHeaderButton  nút phụ thêm vào header (ví dụ: "Nhập chi tiết invoice")
+ */
+function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, onClose,
+                          importConfig, extraHeaderButton }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -347,6 +370,7 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
   const [search, setSearch] = useState('');
   const [editId, setEditId] = useState(null);
   const [editRow, setEditRow] = useState({});
+  const [showImport, setShowImport] = useState(false);
   const searchTimeout = useRef();
   const scrollRef = useRef();
   const searchRef = useRef('');
@@ -429,6 +453,15 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
         <div className="flex items-center justify-between p-4 border-b border-line-soft shrink-0">
           <h3 className="text-sm font-bold text-ink">{title} <span className="text-muted font-normal">({total} dòng{rows.length < total ? `, đang hiện ${rows.length}` : ''})</span></h3>
           <div className="flex items-center gap-2">
+            {/* Extra header button (e.g. "Nhập chi tiết invoice") */}
+            {extraHeaderButton}
+            {/* Import button - nằm bên trái nút Xóa tất cả */}
+            {importConfig && (
+              <button onClick={() => setShowImport(true)}
+                className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 text-[10px] font-semibold hover:bg-blue-100 dark:hover:bg-blue-500/20 flex items-center gap-1">
+                <Upload size={11} />Import
+              </button>
+            )}
             {clearFn && <button onClick={async () => {
               if (!confirm('Xóa toàn bộ dữ liệu? Không thể hoàn tác.')) return;
               try { await clearFn(); toast('Đã xóa tất cả', 'success'); fetchPage('', 0, false); } catch { toast('Lỗi', 'error'); }
@@ -499,9 +532,46 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
           {hasMore && <span className="text-[10px] text-gold">↓ Cuộn để tải thêm</span>}
         </div>
       </div>
+
+      {/* Import modal - hiện đè lên DataViewModal */}
+      {showImport && importConfig && (
+        <ImportModal
+          title={importConfig.title}
+          expectedHeaders={importConfig.expectedHeaders}
+          dateColumns={importConfig.dateColumns || []}
+          headerRowIndex={importConfig.headerRowIndex || 0}
+          onImport={importConfig.onImport}
+          onClose={() => { setShowImport(false); fetchPage('', 0, false); }}
+        />
+      )}
     </div>
   );
 }
+
+// ── IMPORT CONFIGS cho từng loại data ──────────────────────────────────────
+const IMPORT_CONFIGS = {
+  tracking: {
+    title: 'Import Theo dõi Invoice',
+    expectedHeaders: ['Date', 'Invoice', 'Customer', 'Value', 'F.Inv', 'COD'],
+    dateColumns: ['Date'],
+    headerRowIndex: 0,
+    onImport: toolApi.importTracking,
+  },
+  sales: {
+    title: 'Import Bán hàng',
+    expectedHeaders: ['Ngày hạch toán', 'Ngày chứng từ', 'Số chứng từ', 'Số hóa đơn', 'Khách hàng', 'Diễn giải', 'Tổng tiền hàng', 'Tiền chiết khấu', 'Tiền thuế GTGT', 'Tổng tiền thanh toán', 'Đã lập hóa đơn', 'Đã xuất hàng', 'Loại chứng từ'],
+    dateColumns: ['Ngày hạch toán', 'Ngày chứng từ'],
+    headerRowIndex: 1,
+    onImport: toolApi.importSales,
+  },
+  customers: {
+    title: 'Import Khách hàng',
+    expectedHeaders: ['Mã khách hàng', 'Tên khách hàng', 'Địa chỉ', 'Nhóm KH, NCC', 'Mã số thuế', 'Điện thoại', 'Ngừng theo dõi'],
+    dateColumns: [],
+    headerRowIndex: 1,
+    onImport: toolApi.importCustomers,
+  },
+};
 
 const DATA_VIEW_CONFIG = {
   tracking: {
@@ -509,18 +579,21 @@ const DATA_VIEW_CONFIG = {
     columns: ['Date', 'Invoice', 'Customer', 'Value', 'F.Inv', 'COD'],
     fetchFn: toolApi.listTracking, updateFn: toolApi.updateTracking, deleteFn: toolApi.deleteTracking,
     clearFn: toolApi.clearTracking,
+    importConfig: IMPORT_CONFIGS.tracking,
   },
   sales: {
     title: 'Bán hàng',
     columns: ['Ngày hạch toán', 'Ngày chứng từ', 'Số chứng từ', 'Số hóa đơn', 'Khách hàng', 'Diễn giải', 'Tổng tiền hàng', 'Tiền chiết khấu', 'Tiền thuế GTGT', 'Tổng tiền thanh toán', 'Đã lập hóa đơn', 'Đã xuất hàng', 'Loại chứng từ'],
     fetchFn: toolApi.listSales, updateFn: toolApi.updateSales, deleteFn: toolApi.deleteSales,
     clearFn: toolApi.clearSales,
+    importConfig: IMPORT_CONFIGS.sales,
   },
   customers: {
     title: 'Khách hàng',
     columns: ['Mã khách hàng', 'Tên khách hàng', 'Địa chỉ', 'Nhóm KH, NCC', 'Mã số thuế', 'Điện thoại', 'Ngừng theo dõi'],
     fetchFn: toolApi.listCustomers, updateFn: toolApi.updateCustomer, deleteFn: toolApi.deleteCustomer,
     clearFn: toolApi.clearCustomers,
+    importConfig: IMPORT_CONFIGS.customers,
   },
   invoiceDetails: {
     title: 'Phiếu đặt hàng đã nhập',
@@ -529,6 +602,41 @@ const DATA_VIEW_CONFIG = {
     clearFn: toolApi.clearInvoiceDetails,
   },
 };
+
+// ── INVOICE DETAILS MODAL (bọc DataViewModal + nút Nhập chi tiết invoice) ──
+function InvoiceDetailsModal({ onClose, onDataChanged }) {
+  const [showBatchAdd, setShowBatchAdd] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleAdded = () => {
+    setRefreshKey(k => k + 1);
+    onDataChanged?.();
+  };
+
+  const config = DATA_VIEW_CONFIG.invoiceDetails;
+
+  return (
+    <>
+      <DataViewModal
+        key={refreshKey}
+        {...config}
+        onClose={onClose}
+        extraHeaderButton={
+          <button onClick={() => setShowBatchAdd(true)}
+            className="px-2.5 py-1 rounded-lg bg-gold/10 text-gold text-[10px] font-semibold hover:bg-gold/20 flex items-center gap-1">
+            <Plus size={11} />Nhập chi tiết invoice
+          </button>
+        }
+      />
+      {showBatchAdd && (
+        <BatchAddInvoiceModal
+          onClose={() => setShowBatchAdd(false)}
+          onAdded={handleAdded}
+        />
+      )}
+    </>
+  );
+}
 
 // ── TOOLS NAV WRAPPER ──────────────────────────────────────────────────────
 export default function ToolsPageWrapper() {
@@ -649,7 +757,6 @@ function ToolsOrdersPage() {
       if (dateFrom) params.from = dateFrom;
       if (dateTo) params.to = dateTo;
       if (statusFilter) params.status = statusFilter;
-      // customerFilter is searched via name - backend filters by customerId only
       const res = await toolApi.listMisaOrders(params);
       const content = res.content || [];
       if (p === 0) setOrders(content);
@@ -681,7 +788,6 @@ function ToolsOrdersPage() {
     setGenerating(true);
     try {
       const data = await toolApi.generateMisaData([...selected]);
-      // Assign default soChungTu starting from 0000001
       let counter = 1;
       data.forEach(row => { row.soChungTu = String(counter).padStart(7, '0'); counter++; });
       setMisaData(data);
@@ -818,14 +924,12 @@ function MisaDataPreview({ data: initialData, onBack }) {
   const updateSoChungTu = useCallback((idx, value) => {
     setRows(prev => {
       const next = [...prev];
-      // Parse the new value to get prefix and number
       const prefix = value.replace(/\d+$/, '');
       const numPart = value.substring(prefix.length);
       const numLen = numPart.length || 7;
       let startNum = parseInt(numPart, 10);
       if (isNaN(startNum)) startNum = 1;
 
-      // Update from idx onward
       for (let i = idx; i < next.length; i++) {
         next[i] = { ...next[i], soChungTu: prefix + String(startNum).padStart(numLen, '0') };
         startNum++;
@@ -944,15 +1048,12 @@ function MisaSoChungTuEditor({ value, idx, onUpdate }) {
   );
 }
 
-// ── Phiếu thu page (was the old default export) ───────────────────────────
+// ── Phiếu thu page ────────────────────────────────────────────────────────
 function ToolsReceiptPage() {
   const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showRenumber, setShowRenumber] = useState(false);
-  const [showAddInvoice, setShowAddInvoice] = useState(false);
-  const [importModal, setImportModal] = useState(null);
-  const [viewModal, setViewModal] = useState(null); // 'tracking' | 'sales' | 'customers'
+  const [viewModal, setViewModal] = useState(null); // 'tracking' | 'sales' | 'customers' | 'invoiceDetails'
   const [doneRow, setDoneRow] = useState('');
 
   const load = useCallback(async () => {
@@ -962,11 +1063,6 @@ function ToolsReceiptPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const handleRenumber = async (oldDoc, newDoc) => {
-    try { await toolApi.renumber({ oldPrefix: oldDoc, newPrefix: newDoc }); toast('Đã đổi số chứng từ', 'success'); load(); }
-    catch (e) { toast('Lỗi: ' + (e?.response?.data?.message || e.message), 'error'); }
-  };
 
   const handleSetDone = async (val) => { setDoneRow(val); try { await toolApi.setConfig('done_up_to_row', val); } catch {} };
 
@@ -998,22 +1094,12 @@ function ToolsReceiptPage() {
         </button>
       </div>
 
+      {/* Các nút chức năng — đã bỏ "Đổi số chứng từ", "Nhập chi tiết invoice", và các nút Import riêng */}
       <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setShowRenumber(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line-soft text-sm font-semibold text-ink hover:bg-canvas shadow-sm"><Hash size={14} className="text-blue-500" />Đổi số chứng từ</button>
-        <button onClick={() => setShowAddInvoice(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong shadow-sm"><Plus size={14} />Nhập Chi tiết invoice</button>
         <button onClick={() => setViewModal('invoiceDetails')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line-soft text-sm font-semibold text-ink hover:bg-canvas shadow-sm"><FileText size={14} className="text-indigo-500" />Xem phiếu ĐH đã nhập</button>
-        <div className="flex rounded-xl overflow-hidden border border-line-soft shadow-sm">
-          <button onClick={() => setImportModal('tracking')} className="flex items-center gap-1.5 px-3 py-2 bg-surface text-sm font-semibold text-ink hover:bg-canvas"><Upload size={12} className="text-purple-500" />Import</button>
-          <button onClick={() => setViewModal('tracking')} className="flex items-center gap-1.5 px-3 py-2 bg-surface text-sm font-semibold text-ink hover:bg-canvas border-l border-line-soft"><FileText size={12} className="text-purple-500" />Theo dõi Invoice</button>
-        </div>
-        <div className="flex rounded-xl overflow-hidden border border-line-soft shadow-sm">
-          <button onClick={() => setImportModal('sales')} className="flex items-center gap-1.5 px-3 py-2 bg-surface text-sm font-semibold text-ink hover:bg-canvas"><Upload size={12} className="text-amber-500" />Import</button>
-          <button onClick={() => setViewModal('sales')} className="flex items-center gap-1.5 px-3 py-2 bg-surface text-sm font-semibold text-ink hover:bg-canvas border-l border-line-soft"><ShoppingCart size={12} className="text-amber-500" />Bán hàng</button>
-        </div>
-        <div className="flex rounded-xl overflow-hidden border border-line-soft shadow-sm">
-          <button onClick={() => setImportModal('customers')} className="flex items-center gap-1.5 px-3 py-2 bg-surface text-sm font-semibold text-ink hover:bg-canvas"><Upload size={12} className="text-teal-500" />Import</button>
-          <button onClick={() => setViewModal('customers')} className="flex items-center gap-1.5 px-3 py-2 bg-surface text-sm font-semibold text-ink hover:bg-canvas border-l border-line-soft"><Users size={12} className="text-teal-500" />Khách hàng</button>
-        </div>
+        <button onClick={() => setViewModal('tracking')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line-soft text-sm font-semibold text-ink hover:bg-canvas shadow-sm"><FileText size={14} className="text-purple-500" />Theo dõi Invoice</button>
+        <button onClick={() => setViewModal('sales')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line-soft text-sm font-semibold text-ink hover:bg-canvas shadow-sm"><ShoppingCart size={14} className="text-amber-500" />Bán hàng</button>
+        <button onClick={() => setViewModal('customers')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line-soft text-sm font-semibold text-ink hover:bg-canvas shadow-sm"><Users size={14} className="text-teal-500" />Khách hàng</button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -1031,7 +1117,7 @@ function ToolsReceiptPage() {
           </tr></thead>
           <tbody>
             {loading ? <tr><td colSpan={22} className="p-8 text-center text-muted">Đang tải...</td></tr>
-            : receipts.length === 0 ? <tr><td colSpan={22} className="p-8 text-center text-muted">Chưa có dữ liệu. Nhập Chi tiết invoice để bắt đầu.</td></tr>
+            : receipts.length === 0 ? <tr><td colSpan={22} className="p-8 text-center text-muted">Chưa có dữ liệu. Mở "Xem phiếu ĐH đã nhập" → "Nhập chi tiết invoice" để bắt đầu.</td></tr>
             : receipts.map((r, i) => {
               const row = receiptToRow(r);
               const isDone = (i + 1) <= doneRowNum;
@@ -1052,12 +1138,16 @@ function ToolsReceiptPage() {
         </table>
       </div>
 
-      {showRenumber && <RenumberModal onSubmit={handleRenumber} onClose={() => setShowRenumber(false)} />}
-      {showAddInvoice && <AddInvoiceModal onClose={() => setShowAddInvoice(false)} onAdded={load} />}
-      {importModal === 'tracking' && <ImportModal title="Import Theo dõi Invoice" expectedHeaders={['Date','Invoice','Customer','Value','F.Inv','COD']} dateColumns={['Date']} onImport={toolApi.importTracking} onClose={() => { setImportModal(null); load(); }} />}
-      {importModal === 'sales' && <ImportModal title="Import Bán hàng" expectedHeaders={['Ngày hạch toán','Ngày chứng từ','Số chứng từ','Số hóa đơn','Khách hàng','Diễn giải','Tổng tiền hàng','Tiền chiết khấu','Tiền thuế GTGT','Tổng tiền thanh toán','Đã lập hóa đơn','Đã xuất hàng','Loại chứng từ']} dateColumns={['Ngày hạch toán','Ngày chứng từ']} headerRowIndex={1} onImport={toolApi.importSales} onClose={() => { setImportModal(null); load(); }} />}
-      {importModal === 'customers' && <ImportModal title="Import Khách hàng" expectedHeaders={['Mã khách hàng','Tên khách hàng','Địa chỉ','Nhóm KH, NCC','Mã số thuế','Điện thoại','Ngừng theo dõi']} headerRowIndex={1} onImport={toolApi.importCustomers} onClose={() => { setImportModal(null); load(); }} />}
-      {viewModal && DATA_VIEW_CONFIG[viewModal] && (
+      {/* Modal "Phiếu đặt hàng đã nhập" — có nút "Nhập chi tiết invoice" */}
+      {viewModal === 'invoiceDetails' && (
+        <InvoiceDetailsModal
+          onClose={() => { setViewModal(null); load(); }}
+          onDataChanged={load}
+        />
+      )}
+
+      {/* Modal Theo dõi Invoice / Bán hàng / Khách hàng — có nút Import bên trong */}
+      {viewModal && viewModal !== 'invoiceDetails' && DATA_VIEW_CONFIG[viewModal] && (
         <DataViewModal {...DATA_VIEW_CONFIG[viewModal]} onClose={() => { setViewModal(null); load(); }} />
       )}
     </div>

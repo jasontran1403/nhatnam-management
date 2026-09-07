@@ -92,6 +92,13 @@ export const employeeRequestApi = {
   myLeaveBalance: (year) =>
     api.get('/api/employee-requests/my-leave-balance', { params: { year } }).then(r),
 
+  /**
+   * Ngày đã có phiếu nghỉ (PENDING hoặc đã duyệt) trong khoảng ngày.
+   * Trả về [{ date, morning, afternoon, status, statusLabel, requestId }].
+   */
+  myOccupiedDates: (from, to) =>
+    api.get('/api/employee-requests/my-occupied-dates', { params: { from, to } }).then(r),
+
   /** Lịch sử nghỉ phép của chính mình. */
   myLeaveHistory: (year) =>
     api.get('/api/employee-requests/my-leave-history', { params: { year } }).then(r),

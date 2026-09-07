@@ -383,9 +383,9 @@ const ORG = {
   'Quản lý cấp cao': ['Chủ Tịch', 'Giám Đốc'],
   'Xưởng sản xuất': ['Trưởng xưởng', 'Quản lý xưởng', 'Kế toán xưởng',
                      'Công nhân sản xuất', 'Trợ lý xưởng', 'Nhân viên văn phòng', 'Bảo vệ'],
-  'Kế Toán':        ['Kế toán trưởng', 'Chuyên viên kế toán'],
+  'Kế Toán':        ['Kế toán trưởng', 'Chuyên viên kế toán', 'Nhân viên tổng hợp'],
   'Kinh doanh':     ['Trưởng phòng kinh doanh', 'Nhân viên kinh doanh'],
-  'Kho':            ['Quản lý kho', 'Nhân viên kho'],
+  'Kho':            ['Quản lý kho', 'Nhân viên kho', 'Nhân viên đóng gói'],
   'Tài xế':         ['Tài xế giao nhận'],
 };
 

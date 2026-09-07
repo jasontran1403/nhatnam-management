@@ -25,14 +25,15 @@ export const WEEKDAY_LABEL = { 2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5', 6: 'T6', 7: '
 
 /** Màu + icon cho từng loại ngày công trên lịch. */
 const DAY_TYPE = {
-  WORK: { cls: 'bg-emerald-500 text-white border-emerald-500', label: 'Đủ công', icon: Check },
-  MISSING: { cls: 'bg-red-400 text-white border-red-400', label: 'Thiếu chấm công (0 công)', icon: AlertTriangle },
+  WORK:      { cls: 'bg-emerald-500 text-white border-emerald-500', label: 'Đủ công', icon: Check },
+  HALF:      { cls: 'bg-amber-400 text-white border-amber-400', label: 'Nửa công (0.5)', icon: Minus },
+  MISSING:   { cls: 'bg-red-400 text-white border-red-400', label: 'Thiếu chấm công (0 công)', icon: AlertTriangle },
   EXCEPTION: { cls: 'bg-violet-500 text-white border-violet-500', label: 'Nghỉ có phép (đủ công)', icon: Plane },
-  HALF: { cls: 'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/35', label: 'Nửa công', icon: Minus },
-  HOLIDAY: { cls: 'bg-violet-100 dark:bg-violet-500/18 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/35', label: 'Lễ / Tết', icon: Sun },
-  LEAVE: { cls: 'bg-blue-100 dark:bg-blue-500/18 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-500/35', label: 'Nghỉ phép', icon: Plane },
-  UNPAID: { cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/35', label: 'Nghỉ không lương', icon: AlertCircle },
-  OFF: { cls: 'bg-canvas text-faint border-hairline', label: 'Không chấm công', icon: Coffee },
+  HOLIDAY:   { cls: 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300 border-gray-400 dark:border-gray-500', label: 'Lễ / Tết / Nghỉ', icon: Sun },
+  LEAVE:     { cls: 'bg-sky-400 text-white border-sky-400', label: 'Nghỉ có phép', icon: Plane },
+  UNPAID:    { cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/35', label: 'Nghỉ không lương', icon: AlertCircle },
+  BUSINESS:  { cls: 'bg-indigo-500 text-white border-indigo-500', label: 'Công tác', icon: Plane },
+  OFF:       { cls: 'bg-canvas text-faint border-hairline', label: 'Không chấm công', icon: Coffee },
 };
 
 /** Đổi số phút thành dạng "8h33" cho dễ đọc. */
@@ -49,7 +50,14 @@ const fmtDuration = (m) => {
 function DayDetail({ day, month, year, onClose }) {
   if (!day) return null;
 
-  const cfg = DAY_TYPE[day.type] || DAY_TYPE.OFF;
+  // Derive type from value for old data: type="WORK" but value=0.5 → HALF
+  let effectiveType = day.type;
+  if (day.type === 'WORK' && day.value != null && day.value < 1 && day.value > 0)
+    effectiveType = 'HALF';
+  if (day.type === 'WORK' && day.value != null && day.value <= 0)
+    effectiveType = 'MISSING';
+
+  const cfg = DAY_TYPE[effectiveType] || DAY_TYPE.OFF;
   const Icon = cfg.icon;
   const dateStr = `${String(day.day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
 
@@ -221,7 +229,11 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
   const leading = Math.max(0, days[0].weekday - 2);   // T2 = cột 0
   const cells = [...Array(leading).fill(null), ...days];
 
-  const usedTypes = [...new Set(days.map(d => d.type))].filter(t => DAY_TYPE[t]);
+  const usedTypes = [...new Set(days.map(d => {
+    if (d.type === 'WORK' && d.value != null && d.value < 1 && d.value > 0) return 'HALF';
+    if (d.type === 'WORK' && d.value != null && d.value <= 0) return 'MISSING';
+    return d.type;
+  }))].filter(t => DAY_TYPE[t]);
   const hasPunchData = days.some(d => d.checkIn || d.checkOut || d.sessions?.length);
 
   return (
@@ -261,7 +273,13 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
             <div className="grid grid-cols-[repeat(7,44px)] gap-1.5">
               {cells.map((d, i) => {
                 if (!d) return <div key={`empty-${i}`} />;
-                const cfg = DAY_TYPE[d.type] || DAY_TYPE.OFF;
+                // Derive type from value for old data compatibility
+                let cellType = d.type;
+                if (d.type === 'WORK' && d.value != null && d.value < 1 && d.value > 0)
+                  cellType = 'HALF';
+                if (d.type === 'WORK' && d.value != null && d.value <= 0)
+                  cellType = 'MISSING';
+                const cfg = DAY_TYPE[cellType] || DAY_TYPE.OFF;
                 const isSelected = selected?.day === d.day;
                 const clickable = !!(d.checkIn || d.checkOut || d.sessions?.length || d.value > 0);
 

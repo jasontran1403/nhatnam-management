@@ -3,7 +3,7 @@
  *
  * THAY ĐỔI: Cho phép nhập ODO nhỏ hơn ngày trước, nhưng bắt buộc ghi chú lý do.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Gauge, CheckCircle2, Clock, Bike, Truck, Save, Loader2, Pencil, Search, X, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
@@ -252,8 +252,198 @@ function VehicleSection({ row, date, onUpdate }) {
   );
 }
 
+// ── KM Summary Modal ─────────────────────────────────────────────────────────
+import MonthRangePicker from '../../components/ui/MonthRangePicker';
+
+const MONTH_LABELS = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
+
+function KmSummaryModal({ driver, onClose }) {
+  const toast = useToast();
+  const now = new Date();
+  const curYear  = now.getFullYear();
+  const curMonth = now.getMonth() + 1;
+
+  // Mặc định: tháng hiện tại
+  const defaultKey = `${curYear}-${String(curMonth).padStart(2, '0')}`;
+  const [range, setRange] = useState({ from: defaultKey, to: defaultKey });
+  const [loading, setLoading]     = useState(false);
+  const [monthData, setMonthData] = useState([]);
+
+  // Parse "YYYY-MM" → { year, month(1-indexed) }
+  const parseYM = (k) => {
+    if (!k) return null;
+    const [y, m] = k.split('-').map(Number);
+    return { year: y, month: m };
+  };
+
+  useEffect(() => {
+    if (!range?.from || !range?.to) return;
+    let alive = true;
+    const fetchAll = async () => {
+      setLoading(true);
+      const results = [];
+      const f = parseYM(range.from);
+      const t = parseYM(range.to);
+      if (!f || !t) return;
+
+      // Duyệt từ from đến to (có thể cross-year)
+      let y = f.year, m = f.month;
+      const endY = t.year, endM = t.month;
+      try {
+        while (y < endY || (y === endY && m <= endM)) {
+          const mStr = String(m).padStart(2, '0');
+          const from = `${y}-${mStr}-01`;
+          const lastDay = new Date(y, m, 0).getDate();
+          const to   = `${y}-${mStr}-${String(lastDay).padStart(2, '0')}`;
+
+          const res = await api.get('/api/warehouse/driver-odometer', {
+            params: { from, to, includeInactive: true },
+          });
+          const arr = res.data?.data || res.data || [];
+          const found = arr.find(d => d.driverId === driver.driverId);
+          results.push({
+            year: y, month: m,
+            label: `${MONTH_LABELS[m - 1]}/${y}`,
+            vehicles: found?.vehicles || [],
+            totalKm: found?.totalKm ?? 0,
+          });
+
+          // Next month
+          m++;
+          if (m > 12) { m = 1; y++; }
+        }
+        if (alive) setMonthData(results);
+      } catch {
+        if (alive) toast('Không tải được dữ liệu KM', 'error');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    fetchAll();
+    return () => { alive = false; };
+  }, [range, driver.driverId]);
+
+  const grandTotal = monthData.reduce((s, d) => s + (d.totalKm || 0), 0);
+
+  const allVehicleTypes = useMemo(() => {
+    const set = new Set();
+    monthData.forEach(d => d.vehicles.forEach(v => set.add(v.vehicleType)));
+    return [...set].sort();
+  }, [monthData]);
+
+  const totalByVehicle = useMemo(() => {
+    const map = {};
+    allVehicleTypes.forEach(vt => { map[vt] = 0; });
+    monthData.forEach(d => d.vehicles.forEach(v => {
+      map[v.vehicleType] = (map[v.vehicleType] || 0) + (v.km || 0);
+    }));
+    return map;
+  }, [monthData, allVehicleTypes]);
+
+  const VtIcon = (vt) => vt === 'TRUCK' ? Truck : Bike;
+  const vtLabel = (vt) => vt === 'TRUCK' ? 'Xe tải' : 'Xe máy';
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-line-soft">
+          <div>
+            <p className="text-lg font-bold text-ink">{driver.driverName}</p>
+            <p className="text-xs text-muted">Tổng hợp KM theo loại xe</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-canvas"><X size={18} /></button>
+        </div>
+
+        {/* Month range picker */}
+        <div className="px-5 py-3 border-b border-line-soft">
+          <MonthRangePicker
+            value={range}
+            onChange={(r) => setRange(r || { from: defaultKey, to: defaultKey })}
+            placeholder="Chọn khoảng tháng"
+          />
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto px-5 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-muted">
+              <Loader2 size={18} className="animate-spin text-gold" />
+              <span className="text-sm">Đang tải...</span>
+            </div>
+          ) : monthData.length === 0 ? (
+            <p className="text-sm text-muted text-center py-10">Không có dữ liệu</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-line-soft">
+                  <th className="text-left py-2 pr-3 font-semibold text-muted">Tháng</th>
+                  {allVehicleTypes.map(vt => {
+                    const Icon = VtIcon(vt);
+                    return (
+                      <th key={vt} className="text-right py-2 px-3 font-semibold text-muted">
+                        <span className="inline-flex items-center gap-1 justify-end">
+                          <Icon size={12} /> {vtLabel(vt)}
+                        </span>
+                      </th>
+                    );
+                  })}
+                  <th className="text-right py-2 pl-3 font-bold text-ink">Tổng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthData.map(d => (
+                  <tr key={`${d.year}-${d.month}`} className="border-b border-line-soft hover:bg-canvas/50">
+                    <td className="py-2.5 pr-3 font-medium text-ink">{d.label}</td>
+                    {allVehicleTypes.map(vt => {
+                      const v = d.vehicles.find(x => x.vehicleType === vt);
+                      return (
+                        <td key={vt} className="py-2.5 px-3 text-right tabular-nums text-ink">
+                          {v?.km != null ? fmtOdo(v.km) : '—'}
+                        </td>
+                      );
+                    })}
+                    <td className="py-2.5 pl-3 text-right font-bold text-gold tabular-nums">
+                      {fmtOdo(d.totalKm)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {monthData.length > 1 && (
+                <tfoot>
+                  <tr className="border-t-2 border-line-soft">
+                    <td className="py-2.5 pr-3 font-bold text-ink">Tổng cộng</td>
+                    {allVehicleTypes.map(vt => (
+                      <td key={vt} className="py-2.5 px-3 text-right font-bold tabular-nums text-ink">
+                        {fmtOdo(totalByVehicle[vt])}
+                      </td>
+                    ))}
+                    <td className="py-2.5 pl-3 text-right font-extrabold text-gold tabular-nums text-base">
+                      {fmtOdo(grandTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-5 border-t border-line-soft">
+          <button onClick={onClose}
+            className="w-full py-2.5 rounded-xl border border-line text-sm font-semibold text-muted hover:bg-canvas transition">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Driver Card ───────────────────────────────────────────────────────────────
-function DriverCard({ driver, date, onUpdate }) {
+function DriverCard({ driver, date, onUpdate, onNameClick }) {
   const { driverId, driverName, vehicles } = driver;
   const allDone = vehicles.every(v => v.startOdometer != null && v.endOdometer != null);
   const anyDone = vehicles.some(v => v.startOdometer != null || v.endOdometer != null);
@@ -268,7 +458,8 @@ function DriverCard({ driver, date, onUpdate }) {
       <div className={`flex items-center gap-2 px-4 py-2.5
         ${allDone ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : anyDone ? 'bg-gold-tint' : 'bg-surface'}`}>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-ink">{driverName}</p>
+          <p className="font-bold text-sm text-ink cursor-pointer hover:text-gold active:text-gold/80 transition"
+             onClick={() => onNameClick?.(driver)}>{driverName}</p>
         </div>
         {allDone
           ? <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
@@ -300,6 +491,7 @@ export default function DriverAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [kmSummaryDriver, setKmSummaryDriver] = useState(null);
   const debounceRef = useRef(null);
   const today = toLocalDate();
 
@@ -414,10 +606,15 @@ export default function DriverAttendancePage() {
         ) : (
           grouped.map(driver => (
             <DriverCard key={driver.driverId} driver={driver}
-              date={today} onUpdate={handleUpdate} />
+              date={today} onUpdate={handleUpdate} onNameClick={setKmSummaryDriver} />
           ))
         )}
       </div>
+
+      {kmSummaryDriver && (
+        <KmSummaryModal driver={kmSummaryDriver}
+          onClose={() => setKmSummaryDriver(null)} />
+      )}
     </div>
   );
 }

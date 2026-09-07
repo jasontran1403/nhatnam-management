@@ -3,9 +3,11 @@ import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useCallback } from 'react';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
+import { hrSalaryApi, hrLeaveApi } from '../../api/hrApi';
+import { downloadBlob } from '../../api/services';
 import {
   UserCog, Plus, Search, Lock, Unlock, KeyRound, Edit2, X, Check, AlertCircle, Trash2,
-  DollarSign, CalendarClock, ShieldAlert, Gauge, ClipboardSignature, Network, Cake, ArrowDownWideNarrow,
+  DollarSign, CalendarClock, ShieldAlert, Gauge, ClipboardSignature, Network, Cake, ArrowDownWideNarrow, Download
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { payrollPasscodeApi } from '../../api/payrollPasscodeApi';
@@ -32,34 +34,34 @@ import {
 // ── TOP-LEVEL constants ───────────────────────────────────────────────────────
 
 const getRoleConfig = (t) => [
-  { value: 'OWNER',            label: t('admin', 'owner_role') },
-  { value: 'ADMIN',            label: t('admin', 'admin_role') },
+  { value: 'OWNER', label: t('admin', 'owner_role') },
+  { value: 'ADMIN', label: t('admin', 'admin_role') },
   { value: 'SUPER_ACCOUNTANT', label: t('admin', 'super_accountant_role') },
-  { value: 'ACCOUNTANT',       label: t('admin', 'accountant_role') },
-  { value: 'SUPER_SELLER',     label: 'Trưởng phòng kinh doanh' },
-  { value: 'SELLER',           label: 'Nhân viên kinh doanh' },
-  { value: 'SUPER_WAREHOUSE',  label: 'Trưởng xưởng' },
-  { value: 'WAREHOUSE',        label: 'Nhân viên kho' },
-  { value: 'OPERATOR',         label: 'Nhân viên nhập liệu' },
+  { value: 'ACCOUNTANT', label: t('admin', 'accountant_role') },
+  { value: 'SUPER_SELLER', label: 'Trưởng phòng kinh doanh' },
+  { value: 'SELLER', label: 'Nhân viên kinh doanh' },
+  { value: 'SUPER_WAREHOUSE', label: 'Trưởng xưởng' },
+  { value: 'WAREHOUSE', label: 'Nhân viên kho' },
+  { value: 'OPERATOR', label: 'Nhân viên nhập liệu' },
   { value: 'SUPER_FACTORY_WORKER', label: 'Trưởng xưởng sản xuất' },
-  { value: 'FACTORY_WORKER',   label: 'Nhân viên xưởng SX' },
+  { value: 'FACTORY_WORKER', label: 'Nhân viên xưởng SX' },
   { value: 'FACTORY_ACCOUNTANT', label: 'Kế toán kho xưởng' },
-  { value: 'HR',               label: 'Nhân viên nhân sự' },
+  { value: 'HR', label: 'Nhân viên nhân sự' },
 
   // ── ROLE MỚI ──────────────────────────────────────────────────────────────
-  { value: 'DRIVER',                    label: 'Tài xế' },
-  { value: 'SECURITY',                  label: 'Bảo vệ' },
-  { value: 'FACTORY_MANAGER',           label: 'Quản lý xưởng' },
+  { value: 'DRIVER', label: 'Tài xế' },
+  { value: 'SECURITY', label: 'Bảo vệ' },
+  { value: 'FACTORY_MANAGER', label: 'Quản lý xưởng' },
   { value: 'FACTORY_PRODUCTION_WORKER', label: 'Nhân viên sản xuất' },
-  { value: 'FACTORY_STAFF',             label: 'Trợ lý kho (xưởng)' },
-  { value: 'FACTORY_SECURITY',          label: 'Bảo vệ xưởng' },
+  { value: 'FACTORY_STAFF', label: 'Trợ lý kho (xưởng)' },
+  { value: 'FACTORY_SECURITY', label: 'Bảo vệ xưởng' },
 ];
 
 const CONFLICT_GROUPS = [
   ['ACCOUNTANT', 'SUPER_ACCOUNTANT'],
-  ['WAREHOUSE',  'SUPER_WAREHOUSE'],
-  ['SELLER',     'SUPER_SELLER'],
-  ['OWNER',      'ADMIN'],
+  ['WAREHOUSE', 'SUPER_WAREHOUSE'],
+  ['SELLER', 'SUPER_SELLER'],
+  ['OWNER', 'ADMIN'],
   ['FACTORY_WORKER', 'SUPER_FACTORY_WORKER'],
 
   // ── Vị trí XƯỞNG loại trừ nhau ────────────────────────────────────────────
@@ -68,9 +70,9 @@ const CONFLICT_GROUPS = [
   ['FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER'],
   ['FACTORY_PRODUCTION_WORKER', 'FACTORY_STAFF'],
   ['FACTORY_PRODUCTION_WORKER', 'FACTORY_SECURITY'],
-  ['FACTORY_STAFF',             'FACTORY_MANAGER'],
-  ['FACTORY_STAFF',             'FACTORY_SECURITY'],
-  ['FACTORY_MANAGER',           'FACTORY_SECURITY'],
+  ['FACTORY_STAFF', 'FACTORY_MANAGER'],
+  ['FACTORY_STAFF', 'FACTORY_SECURITY'],
+  ['FACTORY_MANAGER', 'FACTORY_SECURITY'],
 ];
 
 // ── Helpers (dùng ROLE_LABEL động) ───────────────────────────────────────────
@@ -174,7 +176,7 @@ export default function AdminUsers() {
 
   const ROLE_CONFIG = getRoleConfig(t);
   const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
-  const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+  const ROLE_LABEL = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
 
   const [filters, setFilters] = useState({ q: '', role: '', locked: '' });
   const debouncedQ = useDebounce(filters.q, 600);
@@ -185,26 +187,28 @@ export default function AdminUsers() {
   /** Bật = xếp theo sinh nhật gần đến nhất (hôm nay lên đầu, chưa khai báo xuống cuối). */
   const [birthdaySort, setBirthdaySort] = useState(false);
 
-  const [formOpen, setFormOpen]     = useState(false);
-  const [editing, setEditing]       = useState(null);
-  const [saving, setSaving]         = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null);
   // Xoá mềm nhân viên
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [pwdTarget, setPwdTarget]   = useState(null);
-  const [newPwd, setNewPwd]         = useState('');
-  const [pwdErr, setPwdErr]         = useState('');
+  const [pwdTarget, setPwdTarget] = useState(null);
+  const [newPwd, setNewPwd] = useState('');
+  const [pwdErr, setPwdErr] = useState('');
+  const [exportingSalary, setExportingSalary] = useState(false);
+  const [exportingLeave, setExportingLeave] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, size: 20, sort: 'id,desc' };
-      if (debouncedQ)       params.q      = debouncedQ;
-      if (filters.role)     params.role   = filters.role;
+      if (debouncedQ) params.q = debouncedQ;
+      if (filters.role) params.role = filters.role;
       if (filters.locked !== '') params.locked = filters.locked;
       // Sắp xếp theo sinh nhật phải làm Ở SERVER: thứ tự phụ thuộc ngày hiện tại và
       // trải trên toàn bộ tập lọc, sort trong trang hiện tại sẽ chỉ đúng cho 20 người.
-      if (birthdaySort)     params.birthdaySort = true;
+      if (birthdaySort) params.birthdaySort = true;
       const res = await adminUserApi.list(params);
       setData(res);
     } catch (e) { console.error(e); }
@@ -217,6 +221,29 @@ export default function AdminUsers() {
   // Route con chỉ tồn tại cho OWNER; ADMIN dùng chung trang Tài xế.
   const rolePrefix = window.location.pathname.startsWith('/owner') ? '/owner' : '/admin';
   const isOwner = rolePrefix === '/owner';
+
+  const handleExportSalary = async () => {
+    setExportingSalary(true);
+    try {
+      const res = await hrSalaryApi.exportAll();
+      downloadBlob(res.data ?? res, 'Bang_luong_nhan_vien.xlsx');
+      toast('Đã tải bảng lương', 'success');
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Xuất bảng lương thất bại', 'error');
+    } finally { setExportingSalary(false); }
+  };
+
+  const handleExportLeave = async () => {
+    setExportingLeave(true);
+    try {
+      const res = await hrLeaveApi.exportReport();
+      const year = new Date().getFullYear();
+      downloadBlob(res.data ?? res, `Leave_Report_${year}.xlsx`);
+      toast('Đã tải báo cáo ngày phép', 'success');
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Xuất ngày phép thất bại', 'error');
+    } finally { setExportingLeave(false); }
+  };
 
   const [salaryTarget, setSalaryTarget] = useState(null);
   const [requestsTarget, setRequestsTarget] = useState(null);
@@ -239,7 +266,7 @@ export default function AdminUsers() {
   useEffect(() => { loadPayrollLocks(); }, [loadPayrollLocks]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
-  const openEdit   = (u) => { setEditing(u);   setFormOpen(true); };
+  const openEdit = (u) => { setEditing(u); setFormOpen(true); };
 
   // XOÁ MỀM: BE set deleted=true, khoá tài khoản, thu hồi token và đổi username/email/SĐT
   // thành SOFT_DELETED_{id}_... → có thể tạo lại nhân viên mới với đúng thông tin cũ.
@@ -301,7 +328,25 @@ export default function AdminUsers() {
         icon={UserCog}
         title="Người dùng"
         subtitle={`Tổng ${formatNumber(data.totalElements)} tài khoản`}
-        action={<PrimaryButton onClick={openCreate}><Plus size={15} /> Thêm user</PrimaryButton>}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {isOwner && (
+              <>
+                <SecondaryButton onClick={handleExportSalary} disabled={exportingSalary}>
+                  <Download size={15} />
+                  {exportingSalary ? 'Đang xuất…' : 'Xuất bảng lương'}
+                </SecondaryButton>
+                <SecondaryButton onClick={handleExportLeave} disabled={exportingLeave}>
+                  <Download size={15} />
+                  {exportingLeave ? 'Đang xuất…' : 'Xuất ngày phép'}
+                </SecondaryButton>
+              </>
+            )}
+            <PrimaryButton onClick={openCreate}>
+              <Plus size={15} /> Thêm user
+            </PrimaryButton>
+          </div>
+        }
       />
 
       {/* Các trang trước đây nằm ở sidebar, nay mở từ đây và có nút Quay lại. */}
@@ -644,7 +689,7 @@ export default function AdminUsers() {
 function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) {
   const ROLE_CONFIG = getRoleConfig(t);
   const ADMIN_ROLES = ROLE_CONFIG.filter(r => r.value !== 'OWNER');
-  const ROLE_LABEL  = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
+  const ROLE_LABEL = Object.fromEntries(ROLE_CONFIG.map(r => [r.value, r.label]));
 
   const availableRoles = currentUserRole === 'OWNER' ? ROLE_CONFIG : ADMIN_ROLES;
 
@@ -658,10 +703,10 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
 
   const [selectedRoles, setSelectedRoles] = useState(initRoles);
   const [form, setForm] = useState({
-    username:    editing?.username    || '',
-    password:    '',
-    fullName:    editing?.fullName    || '',
-    email:       editing?.email       || '',
+    username: editing?.username || '',
+    password: '',
+    fullName: editing?.fullName || '',
+    email: editing?.email || '',
     phoneNumber: editing?.phoneNumber || '',
     dateOfBirth: editing?.dateOfBirth ?? null,
     warehouseId: editing?.warehouseId ? String(editing.warehouseId) : '',
@@ -670,8 +715,8 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
   const initWarehouseIds = editing?.warehouses?.map(w => String(w.id)) ||
     (editing?.warehouseId ? [String(editing.warehouseId)] : []);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState(initWarehouseIds);
-  const [saving, setSaving]     = useState(false);
-  const [err, setErr]           = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
   const [warehouses, setWarehouses] = useState([]);
 
   useEffect(() => {
@@ -721,9 +766,9 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
     try {
       const payload = {
         ...form,
-        roles:        selectedRoles,
-        role:         selectedRoles[0],
-        warehouseId:  selectedWarehouseIds.length > 0 ? Number(selectedWarehouseIds[0]) : null,
+        roles: selectedRoles,
+        role: selectedRoles[0],
+        warehouseId: selectedWarehouseIds.length > 0 ? Number(selectedWarehouseIds[0]) : null,
         warehouseIds: selectedWarehouseIds.map(Number),
       };
       if (editing) {

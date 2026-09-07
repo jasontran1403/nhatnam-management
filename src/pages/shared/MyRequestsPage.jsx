@@ -67,20 +67,24 @@ function CreateForm({ config, onCreated }) {
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // ── Ngày đã bị chiếm bởi phiếu cũ (PENDING / đã duyệt) ──────────────
+  // Map: 'YYYY-MM-DD' → { morning, afternoon, status, statusLabel, requestId }
+  const [occupied, setOccupied] = useState({});
+  const [loadingOccupied, setLoadingOccupied] = useState(false);
+
   const type = useMemo(
     () => config?.types?.find(t => t.value === typeValue) || null,
     [config, typeValue]
   );
 
-  // Đổi loại phiếu là đổi cả hình dạng dữ liệu (khoảng ngày ↔ một ngày, có/không
-  // số phút). Giữ lại giá trị cũ sẽ gửi lên những trường không thuộc loại mới,
-  // nên xoá sạch trừ lý do — lý do thường vẫn dùng lại được.
+  // Đổi loại phiếu → reset hết.
   useEffect(() => {
     setRange({ from: null, to: null });
     setSingle(null);
     setMinutes('');
     setSessions({});
     setDropConfirm(null);
+    setOccupied({});
   }, [typeValue]);
 
   // Danh sách ngày trong khoảng đã chọn — chỉ dùng cho phiếu nghỉ phép.
@@ -93,15 +97,57 @@ function CreateForm({ config, onCreated }) {
     return out;
   }, [type, range.from, range.to]);
 
-  // Ngày mới xuất hiện thì mặc định nghỉ CẢ NGÀY; ngày bị bỏ khỏi khoảng thì
-  // xoá luôn trạng thái, tránh gửi lên buổi của ngày không còn được chọn.
+  // ── Fetch ngày đã chiếm khi khoảng ngày thay đổi ─────────────────────
+  useEffect(() => {
+    if (!type?.allowPartialDay || dayList.length === 0) {
+      setOccupied({});
+      return;
+    }
+    const from = dayList[0];
+    const to = dayList[dayList.length - 1];
+    let cancelled = false;
+    setLoadingOccupied(true);
+    employeeRequestApi.myOccupiedDates(from, to)
+      .then(list => {
+        if (cancelled) return;
+        const map = {};
+        (list || []).forEach(item => {
+          map[item.date] = item;
+        });
+        setOccupied(map);
+
+        // Cảnh báo nếu có ngày trùng
+        const count = Object.keys(map).length;
+        if (count > 0) {
+          toast(`${count} ngày trong khoảng đã có phiếu nghỉ — sẽ tự bỏ qua`, 'warning');
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingOccupied(false); });
+    return () => { cancelled = true; };
+  }, [dayList.join(',')]);
+
+  // Ngày mới xuất hiện thì mặc định nghỉ CẢ NGÀY, TRỪCHI ngày đã bị chiếm
+  // → auto bỏ tick. Nhờ vậy phiếu mới tự loại ngày trùng.
   useEffect(() => {
     setSessions(prev => {
       const next = {};
-      dayList.forEach(d => { next[d] = prev[d] ?? { morning: true, afternoon: true }; });
+      dayList.forEach(d => {
+        const occ = occupied[d];
+        if (occ) {
+          // Ngày đã bị chiếm → bỏ tick hoàn toàn các buổi đã chiếm
+          const prevSess = prev[d];
+          next[d] = {
+            morning: occ.morning ? false : (prevSess?.morning ?? true),
+            afternoon: occ.afternoon ? false : (prevSess?.afternoon ?? true),
+          };
+        } else {
+          next[d] = prev[d] ?? { morning: true, afternoon: true };
+        }
+      });
       return next;
     });
-  }, [dayList.join(',')]);
+  }, [dayList.join(','), JSON.stringify(occupied)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Bỏ tick một buổi.
@@ -171,7 +217,8 @@ function CreateForm({ config, onCreated }) {
     setRange({ from: null, to: null });
     setSingle(null);
     setMinutes('');
-    setPartial(false);
+    setSessions({});
+    setDropConfirm(null);
     setReason('');
   };
 
@@ -283,38 +330,81 @@ function CreateForm({ config, onCreated }) {
         {/* ── Chọn buổi nghỉ từng ngày ────────────────────────────────────
             Mặc định tick cả 2 buổi. Bỏ một buổi = nghỉ nửa ngày (0,5 ngày phép);
             bỏ cả 2 = ngày đó KHÔNG nghỉ, nhờ vậy một phiếu khai được lịch nghỉ
-            ngắt quãng thay vì phải xé thành nhiều phiếu. */}
+            ngắt quãng thay vì phải xé thành nhiều phiếu.
+            Ngày đã có phiếu cũ (PENDING/duyệt) hiện DISABLED với note trạng thái. */}
         {type?.allowPartialDay && dayList.length > 0 && (
           <Field label="Buổi nghỉ từng ngày" required
             hint="Bỏ tick để nghỉ nửa ngày. Bỏ cả hai buổi thì ngày đó không nghỉ.">
+            {loadingOccupied && (
+              <div className="flex items-center gap-2 text-xs text-muted py-2">
+                <Loader2 size={12} className="animate-spin" /> Đang kiểm tra ngày đã nghỉ…
+              </div>
+            )}
             <div className="rounded-xl border border-hairline-2 divide-y divide-hairline overflow-hidden">
               {dayList.map(d => {
                 const ss = sessions[d] || {};
+                const occ = occupied[d];
+                const isOccupied = !!occ;
+                // Buổi nào bị chiếm thì disabled
+                const morningOccupied = occ?.morning;
+                const afternoonOccupied = occ?.afternoon;
+                const fullyOccupied = morningOccupied && afternoonOccupied;
+
                 const off = !ss.morning && !ss.afternoon;
-                const set = (k, v) => toggleSession(d, k, v);
+                const set = (k, v) => {
+                  // Không cho tick lại buổi đã bị chiếm
+                  if (k === 'morning' && morningOccupied) return;
+                  if (k === 'afternoon' && afternoonOccupied) return;
+                  toggleSession(d, k, v);
+                };
                 const [yy, mm, dd] = d.split('-');
+
+                // Style theo trạng thái chiếm
+                const bgCls = fullyOccupied
+                  ? 'bg-amber-50/60 dark:bg-amber-500/5'
+                  : isOccupied
+                    ? 'bg-amber-50/30 dark:bg-amber-500/3'
+                    : off ? 'bg-canvas' : 'bg-surface';
+
                 return (
                   <div key={d}
-                    className={`flex items-center gap-3 px-3 py-2.5 ${off ? 'bg-canvas' : 'bg-surface'}`}>
+                    className={`flex items-center gap-3 px-3 py-2.5 ${bgCls}`}>
                     <span className={`text-sm font-medium w-24 flex-shrink-0
-                      ${off ? 'text-faint line-through' : 'text-ink'}`}>
+                      ${fullyOccupied ? 'text-amber-600 dark:text-amber-400'
+                        : off ? 'text-faint line-through' : 'text-ink'}`}>
                       {dd}/{mm}/{yy}
                     </span>
 
-                    {[['morning', 'Sáng'], ['afternoon', 'Chiều']].map(([k, label]) => (
-                      <label key={k} className="flex items-center gap-1.5 cursor-pointer select-none">
+                    {[['morning', 'Sáng', morningOccupied], ['afternoon', 'Chiều', afternoonOccupied]].map(([k, label, isBlocked]) => (
+                      <label key={k} className={`flex items-center gap-1.5 select-none
+                        ${isBlocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                         <input type="checkbox" checked={!!ss[k]}
+                          disabled={isBlocked}
                           onChange={e => set(k, e.target.checked)}
-                          className="w-4 h-4 accent-gold cursor-pointer" />
-                        <span className={`text-sm ${ss[k] ? 'text-ink' : 'text-muted'}`}>
+                          className={`w-4 h-4 ${isBlocked ? 'accent-gray-400 cursor-not-allowed' : 'accent-gold cursor-pointer'}`} />
+                        <span className={`text-sm ${isBlocked ? 'text-faint line-through' : ss[k] ? 'text-ink' : 'text-muted'}`}>
                           {label}
                         </span>
                       </label>
                     ))}
 
-                    <span className="ml-auto text-xs text-muted">
-                      {off ? 'không nghỉ'
-                           : (ss.morning && ss.afternoon) ? '1 ngày' : '0,5 ngày'}
+                    <span className="ml-auto text-xs flex items-center gap-1.5">
+                      {isOccupied ? (
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded
+                          ${occ.status === 'PENDING'
+                            ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                            : 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'}`}>
+                          <AlertCircle size={10} />
+                          {fullyOccupied
+                            ? occ.statusLabel
+                            : `${morningOccupied ? 'Sáng' : 'Chiều'}: ${occ.statusLabel}`}
+                        </span>
+                      ) : (
+                        <span className="text-muted">
+                          {off ? 'không nghỉ'
+                               : (ss.morning && ss.afternoon) ? '1 ngày' : '0,5 ngày'}
+                        </span>
+                      )}
                     </span>
                   </div>
                 );
@@ -357,6 +447,11 @@ function CreateForm({ config, onCreated }) {
             <div className="flex items-center justify-between mt-2 px-1">
               <span className="text-xs text-muted">
                 {dayList.filter(d => sessions[d]?.morning || sessions[d]?.afternoon).length} ngày được chọn
+                {Object.keys(occupied).length > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400 ml-1">
+                    · {Object.keys(occupied).length} ngày đã có phiếu (tự bỏ qua)
+                  </span>
+                )}
               </span>
               <span className="text-sm font-semibold text-gold">
                 Tổng {String(

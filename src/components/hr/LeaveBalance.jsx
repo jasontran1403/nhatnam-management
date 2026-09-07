@@ -207,7 +207,7 @@ export default function LeaveBalanceCard({ userId, year, compact = false, title 
             <div>
               <p className="text-sm font-semibold text-ink">{title || `Ngày phép năm ${y}`}</p>
               <p className="text-[11px] text-muted">
-                12 ngày cơ bản, cộng 1 ngày mỗi 5 năm thâm niên
+                1 ngày/tháng, cộng thâm niên mỗi 5 năm
                 {balance.seniorityYears != null && ` · thâm niên ${balance.seniorityYears} năm`}
               </p>
             </div>
