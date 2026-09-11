@@ -2,13 +2,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileSpreadsheet, Plus, Hash, Upload, Download, Users, ShoppingCart,
+  FileSpreadsheet, Plus, Hash, Upload, Download, Users, ShoppingCart, Database,
   FileText, X, AlertTriangle, CheckCircle2, Pencil, Search, Trash2, ChevronLeft,
 } from 'lucide-react';
 import * as XLSX from 'xlsx/xlsx.mjs';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
 import DateRangePicker from '../../components/ui/DateRangePicker';
+import MisaCatalogTab from './MisaCatalogTab';
 
 const toolApi = {
   getData: () => api.get('/api/tools/data').then(r => r.data?.data || r.data),
@@ -20,7 +21,6 @@ const toolApi = {
   importSales: (rows) => api.post('/api/tools/import/sales', rows).then(r => r.data?.data || r.data),
   importCustomers: (rows) => api.post('/api/tools/import/customers', rows).then(r => r.data?.data || r.data),
   setConfig: (key, value) => api.post('/api/tools/config', { key, value }),
-  // CRUD with pagination
   listTracking: (q, page = 0, size = 500) => api.get('/api/tools/tracking', { params: { q, page, size } }).then(r => r.data?.data || r.data),
   updateTracking: (id, body) => api.put(`/api/tools/tracking/${id}`, body),
   deleteTracking: (id) => api.delete(`/api/tools/tracking/${id}`),
@@ -32,10 +32,8 @@ const toolApi = {
   deleteCustomer: (id) => api.delete(`/api/tools/customers/${id}`),
   listInvoiceDetails: (q, page = 0, size = 500) => api.get('/api/tools/invoice-details', { params: { q, page, size } }).then(r => r.data?.data || r.data),
   deleteInvoiceDetail: (id) => api.delete(`/api/tools/invoice-details/${id}`),
-  // MISA Orders
   listMisaOrders: (params) => api.get('/api/tools/misa-orders', { params }).then(r => r.data?.data || r.data),
   generateMisaData: (orderIds) => api.post('/api/tools/misa-generate', orderIds).then(r => r.data?.data || r.data),
-  // Clear all
   clearTracking: () => api.delete('/api/tools/clear/tracking'),
   clearSales: () => api.delete('/api/tools/clear/sales'),
   clearCustomers: () => api.delete('/api/tools/clear/customers'),
@@ -43,7 +41,7 @@ const toolApi = {
   clearReceipts: () => api.delete('/api/tools/clear/receipts'),
 };
 
-/** Excel serial date → dd/MM/yyyy (Excel epoch = 30/12/1899) */
+/** Excel serial date → dd/MM/yyyy */
 function excelDateToStr(v) {
   if (typeof v === 'number' && v > 30000 && v < 100000) {
     const d = new Date((v - 25569) * 86400000);
@@ -54,7 +52,6 @@ function excelDateToStr(v) {
   return String(v ?? '');
 }
 
-/** Normalize cell: nếu là số serial date → convert, nếu ko → string */
 function normalizeCell(v, isDateCol) {
   if (v == null) return '';
   if (isDateCol) return excelDateToStr(v);
@@ -172,20 +169,17 @@ function ImportModal({ title, expectedHeaders, dateColumns = [], headerRowIndex 
   );
 }
 
-// ── BATCH ADD INVOICE MODAL (nhập nhiều phiếu 1 lần) ──────────────────────
+// ── BATCH ADD INVOICE MODAL ──────────────────────────────────────────────
 function BatchAddInvoiceModal({ onClose, onAdded }) {
   const toast = useToast();
   const [order, setOrder] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(false);
-  // Batch: danh sách các phiếu đã thêm trong lần này, chưa submit
   const [batch, setBatch] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  const [dupWarning, setDupWarning] = useState(null);
   const orderRef = useRef();
 
-  // Kiểm tra trùng trong batch hiện tại
   const isDupInBatch = (orderNumber) => {
     return batch.some(b => b.orderNumber === orderNumber);
   };
@@ -197,7 +191,6 @@ function BatchAddInvoiceModal({ onClose, onAdded }) {
       toast('Nhập đủ 3 trường', 'error');
       return;
     }
-    // Kiểm tra trùng trong batch
     if (isDupInBatch(trimOrder)) {
       toast(`Số phiếu ${trimOrder} đã có trong danh sách nhập lần này`, 'error');
       return;
@@ -222,10 +215,8 @@ function BatchAddInvoiceModal({ onClose, onAdded }) {
     if (batch.length === 0) { toast('Chưa có phiếu nào trong danh sách', 'error'); return; }
     setSubmitting(true);
     const results = [];
-    let hasError = false;
     for (const item of batch) {
       try {
-        // Kiểm tra trùng trên server
         let exists = false;
         try { exists = await toolApi.checkDuplicate(item.orderNumber); } catch {}
         if (exists) {
@@ -240,7 +231,6 @@ function BatchAddInvoiceModal({ onClose, onAdded }) {
         results.push({ ...item, status: res.errorNote ? 'warn' : 'ok', message: res.errorNote || 'Tạo phiếu thu OK', data: res });
       } catch (e) {
         results.push({ ...item, status: 'error', message: e?.response?.data?.message || e.message });
-        hasError = true;
       }
     }
     const okCount = results.filter(r => r.status === 'ok' || r.status === 'warn').length;
@@ -282,7 +272,6 @@ function BatchAddInvoiceModal({ onClose, onAdded }) {
           </button>
         </div>
 
-        {/* Danh sách batch */}
         <div className="flex-1 overflow-y-auto px-5 pb-2 space-y-1">
           <p className="text-xs text-muted font-semibold mb-1">Danh sách chờ nhập ({batch.length})</p>
           {batch.length === 0 ? (
@@ -349,15 +338,10 @@ function EditableSoChungTu({ value, receiptId, onSaved }) {
   );
 }
 
-// ── DATA VIEW MODAL (search / edit / delete / infinite scroll / import) ────
+// ── DATA VIEW MODAL ────────────────────────────────────────────────────────
 const PAGE_SIZE = 500;
 const SCROLL_THRESHOLD = 0.7;
 
-/**
- * @param importConfig  nếu có, sẽ hiện nút Import trong header modal.
- *   { title, expectedHeaders, dateColumns, headerRowIndex, onImport }
- * @param extraHeaderButton  nút phụ thêm vào header (ví dụ: "Nhập chi tiết invoice")
- */
 function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, onClose,
                           importConfig, extraHeaderButton }) {
   const toast = useToast();
@@ -392,10 +376,8 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
     finally { setLoading(false); setLoadingMore(false); }
   }, [fetchFn]);
 
-  // Initial load
   useEffect(() => { fetchPage('', 0, false); }, [fetchPage]);
 
-  // Debounced search
   const handleSearch = (v) => {
     setSearch(v);
     searchRef.current = v;
@@ -405,7 +387,6 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
     }, 600);
   };
 
-  // Infinite scroll — trigger at 70%
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || loadingMore || !hasMore) return;
     const el = scrollRef.current;
@@ -431,7 +412,6 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
       await updateFn(id, body);
       toast('Đã lưu', 'success');
       setEditId(null);
-      // Update row in place
       setRows(prev => prev.map(r => r.id === id ? { ...r, ...body } : r));
     } catch (e) { toast('Lỗi: ' + (e?.response?.data?.message || e.message), 'error'); }
   };
@@ -449,13 +429,10 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-surface rounded-2xl shadow-2xl flex flex-col" style={{ width: '85dvw', height: '85dvh' }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-line-soft shrink-0">
           <h3 className="text-sm font-bold text-ink">{title} <span className="text-muted font-normal">({total} dòng{rows.length < total ? `, đang hiện ${rows.length}` : ''})</span></h3>
           <div className="flex items-center gap-2">
-            {/* Extra header button (e.g. "Nhập chi tiết invoice") */}
             {extraHeaderButton}
-            {/* Import button - nằm bên trái nút Xóa tất cả */}
             {importConfig && (
               <button onClick={() => setShowImport(true)}
                 className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 text-[10px] font-semibold hover:bg-blue-100 dark:hover:bg-blue-500/20 flex items-center gap-1">
@@ -476,7 +453,6 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted"><X size={16} /></button>
           </div>
         </div>
-        {/* Table with scroll */}
         <div ref={scrollRef} className="flex-1 overflow-auto">
           <table className="w-full text-xs border-collapse">
             <thead className="sticky top-0 z-10">
@@ -526,14 +502,12 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
             </tbody>
           </table>
         </div>
-        {/* Footer */}
         <div className="px-5 py-2 border-t border-line-soft shrink-0 flex items-center justify-between bg-canvas rounded-b-2xl">
           <span className="text-[10px] text-muted">Hiển thị {rows.length} / {total.toLocaleString('vi-VN')}</span>
           {hasMore && <span className="text-[10px] text-gold">↓ Cuộn để tải thêm</span>}
         </div>
       </div>
 
-      {/* Import modal - hiện đè lên DataViewModal */}
       {showImport && importConfig && (
         <ImportModal
           title={importConfig.title}
@@ -548,7 +522,7 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
   );
 }
 
-// ── IMPORT CONFIGS cho từng loại data ──────────────────────────────────────
+// ── IMPORT CONFIGS ──────────────────────────────────────────────────────────
 const IMPORT_CONFIGS = {
   tracking: {
     title: 'Import Theo dõi Invoice',
@@ -603,7 +577,7 @@ const DATA_VIEW_CONFIG = {
   },
 };
 
-// ── INVOICE DETAILS MODAL (bọc DataViewModal + nút Nhập chi tiết invoice) ──
+// ── INVOICE DETAILS MODAL ──────────────────────────────────────────────────
 function InvoiceDetailsModal({ onClose, onDataChanged }) {
   const [showBatchAdd, setShowBatchAdd] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -643,7 +617,6 @@ export default function ToolsPageWrapper() {
   const [tab, setTab] = useState('receipt');
   const navigate = useNavigate();
 
-  // Detect role → back to correct dashboard
   let user = null;
   try { user = JSON.parse(localStorage.getItem('user')); } catch {}
   const role = user?.role ?? 'seller';
@@ -657,7 +630,6 @@ export default function ToolsPageWrapper() {
 
   return (
     <div className="flex flex-col" style={{ minHeight: '100dvh' }}>
-      {/* Nav bar */}
       <div className="shrink-0 px-4 pt-3 pb-2 flex items-center gap-4 border-b border-line-soft bg-surface">
         <button onClick={() => navigate(backPath)}
           className="flex items-center gap-1 text-sm text-muted hover:text-ink font-medium">
@@ -665,7 +637,8 @@ export default function ToolsPageWrapper() {
         </button>
         <div className="flex gap-1 bg-canvas rounded-xl p-1 border border-line-soft">
           {[{ key: 'receipt', label: 'Phiếu thu', icon: FileSpreadsheet },
-            { key: 'orders', label: 'Đơn hàng', icon: ShoppingCart }].map(t => {
+            { key: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
+            { key: 'misa', label: 'Misa', icon: Database }].map(t => {
             const Icon = t.icon;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
@@ -678,11 +651,11 @@ export default function ToolsPageWrapper() {
         </div>
       </div>
 
-      {/* Content with fade transition */}
       <div className="flex-1 min-h-0 relative">
         <div key={tab} className="animate-fadeIn">
           {tab === 'receipt' && <ToolsReceiptPage />}
           {tab === 'orders' && <ToolsOrdersPage />}
+          {tab === 'misa' && <MisaCatalogTab />}
         </div>
       </div>
 
@@ -694,7 +667,7 @@ export default function ToolsPageWrapper() {
   );
 }
 
-// ── MISA EXPORT HEADERS (55 cột layout MISA) ──────────────────────────────
+// ── MISA EXPORT HEADERS ────────────────────────────────────────────────────
 const MISA_HEADERS = [
   'Hiển thị trên sổ','Hình thức bán hàng','Phương thức thanh toán','Kiêm phiếu xuất kho',
   'XK vào khu phi thuế quan và các TH được coi như XK','Lập kèm hóa đơn','Đã lập hóa đơn',
@@ -737,16 +710,13 @@ function ToolsOrdersPage() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
-  // Filters
   const [dateFrom, setDateFrom] = useState(null);
   const [dateTo, setDateTo] = useState(null);
   const [customerFilter, setCustomerFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  // Selection
   const [selected, setSelected] = useState(new Set());
 
-  // MISA data view
   const [misaData, setMisaData] = useState(null);
   const [generating, setGenerating] = useState(false);
 
@@ -795,7 +765,6 @@ function ToolsOrdersPage() {
     finally { setGenerating(false); }
   };
 
-  // Back from MISA preview
   if (misaData) {
     return <MisaDataPreview data={misaData} onBack={() => setMisaData(null)} />;
   }
@@ -832,7 +801,6 @@ function ToolsOrdersPage() {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3 flex-wrap items-center">
         <DateRangePicker
           from={dateFrom}
@@ -854,7 +822,6 @@ function ToolsOrdersPage() {
         </div>
       </div>
 
-      {/* Order list */}
       <div className="bg-surface rounded-xl border border-line-soft overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -920,7 +887,6 @@ function MisaDataPreview({ data: initialData, onBack }) {
   const toast = useToast();
   const [rows, setRows] = useState(initialData);
 
-  // Update soChungTu from a given row index and auto-increment subsequent rows
   const updateSoChungTu = useCallback((idx, value) => {
     setRows(prev => {
       const next = [...prev];
@@ -1048,12 +1014,12 @@ function MisaSoChungTuEditor({ value, idx, onUpdate }) {
   );
 }
 
-// ── Phiếu thu page ────────────────────────────────────────────────────────
+// ── Phiếu thu page (đã đơn giản hóa, giống File 2) ────────────────────────
 function ToolsReceiptPage() {
   const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [viewModal, setViewModal] = useState(null); // 'tracking' | 'sales' | 'customers' | 'invoiceDetails'
+  const [viewModal, setViewModal] = useState(null);
   const [doneRow, setDoneRow] = useState('');
 
   const load = useCallback(async () => {
