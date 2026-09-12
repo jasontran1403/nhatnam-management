@@ -8,9 +8,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useWarehouse } from '../../context/WarehouseContext';
 import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
+import { useNavigate } from 'react-router-dom';
 import {
   RefreshCw, Package, Truck, Clock, X,
-  ChevronRight, Box, Search, FileText, Ban, UserCircle, Plus, Check, Lock,
+  ChevronRight, Box, Search, FileText, Ban, UserCircle, Plus, Check, Lock, MessageSquare,
 } from 'lucide-react';
 import api from '../../api/axios';
 
@@ -456,6 +457,7 @@ function OrderCard({ order, onClick, onInvoice, invoiceLoadingId }) {
 export default function WarehouseOrdersPage() {
   const { t } = useLang();
   const toast = useToast();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { activeWarehouseId, activeWarehouseName } = useWarehouse();
 
@@ -543,6 +545,12 @@ export default function WarehouseOrdersPage() {
           <button onClick={fetchOrders}
             className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          </button>
+          {/* Nút Feedback — mở form ghi nhận phản hồi KH ở /feedback. Chung route
+              với seller/super_seller vì cùng chức năng "tiếp KH". */}
+          <button onClick={() => navigate('/feedback')} title="Feedback đơn hàng"
+            className="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-500/18 transition-colors">
+            <MessageSquare size={15} />
           </button>
         </div>
         <div className="relative mt-3">

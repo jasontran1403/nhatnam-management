@@ -695,9 +695,15 @@ function misaRowToArray(row) {
     row.maHang || '', row.tenHang || '', '',
     row.tkTienNo || '131', row.tkDoanhThuCo || '5111',
     row.dvt || 'Kg', row.soLuong ?? '', '', row.donGia ?? '',
-    row.thanhTien ?? '', '', '', '', '', '',
-    '', '', '', '', '', '', '', '',
-    '', '', '', '', '', '', '',
+    row.thanhTien ?? '', '',
+    // Vị trí AK-AN (Chiết khấu) & AW (TK thuế GTGT): mặc định cứng theo yêu cầu nghiệp vụ MISA
+    //   AK "Tỷ lệ CK (%)" = 0 · AN "TK chiết khấu" = 5211 · AW "TK thuế GTGT" = 33311
+    // Cùng convention với misaRowToArray bên MisaCatalogTab.jsx.
+    0, '', '', '5211',
+    '', '', '', '',
+    '', '', '', '',
+    '33311', '',
+    '', '', '', '', '',
   ];
 }
 

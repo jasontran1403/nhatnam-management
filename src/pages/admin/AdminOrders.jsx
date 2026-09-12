@@ -1,11 +1,12 @@
 import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import {
   ShoppingCart, Search, Eye, Ban,
   User, Users, X,
-  Download, FileText, FileBarChart,
+  Download, FileText, FileBarChart, Gift, MessageSquare,
 } from 'lucide-react';
 import { adminOrderApi, getImageUrl } from '../../api/adminApi';
 import { downloadBlob, orderApi } from '../../api/services';
@@ -200,6 +201,13 @@ function SellerBadge({ name }) {
 
 export default function AdminOrders() {
   const { t } = useLang();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Suy tiền tố route hiện tại (/owner hoặc /admin) để nút "Quà tặng" đi đúng
+  // trang gift-management của role tương ứng. Không dựa vào user.role vì một số
+  // owner có thêm role admin và dùng chung route với admin.
+  const rolePrefix = location.pathname.startsWith('/admin') ? '/admin' : '/owner';
+
   const [filters, setFilters] = useState({ q: '', status: '' });
   const [page, setPage] = useState(0);
   const [data, setData] = useState({ content: [], totalPages: 0, totalElements: 0 });
@@ -384,6 +392,23 @@ export default function AdminOrders() {
     hover:bg-gold/20 transition-colors text-sm font-medium whitespace-nowrap"
           title="Báo cáo KH × Sản phẩm">
           <FileBarChart size={15} /> Báo cáo KH×SP
+        </button>
+        {/* Nút "Quà tặng" — mở trang Quản lý quà tặng của role hiện tại.
+            Trang này gộp: (1) đơn có SP khuyến mãi [KM], (2) phiếu tặng quà đã duyệt. */}
+        <button onClick={() => navigate(`${rolePrefix}/gift-management`)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-50 dark:bg-violet-500/10
+    text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/28
+    hover:bg-violet-100 dark:hover:bg-violet-500/18 transition-colors text-sm font-medium whitespace-nowrap"
+          title="Quản lý quà tặng — đơn KM + phiếu quà tặng đã duyệt">
+          <Gift size={15} /> Quà tặng
+        </button>
+        {/* Nút "Feedback" — mở list feedback KH của role hiện tại. */}
+        <button onClick={() => navigate(`${rolePrefix}/feedback-list`)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-50 dark:bg-sky-500/10
+    text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/28
+    hover:bg-sky-100 dark:hover:bg-sky-500/18 transition-colors text-sm font-medium whitespace-nowrap"
+          title="Xem feedback của khách hàng">
+          <MessageSquare size={15} /> Feedback
         </button>
       </div>
 

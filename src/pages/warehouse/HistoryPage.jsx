@@ -50,6 +50,7 @@ export default function HistoryPage() {
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [warehouseName, setWarehouseName] = useState('');
   const [slipLoadingId, setSlipLoadingId] = useState(null);
+  const [reportLoadingId, setReportLoadingId] = useState(null);
 
   // ── Phiếu đi đường (Giấy thông tin nguồn gốc động vật) ─────────────────────
   // Chỉ áp dụng cho phiếu CHUYỂN RA (TRANSFER_OUT). Mở PDF ở tab mới để in luôn.
@@ -71,6 +72,29 @@ export default function HistoryPage() {
       alert('Không tạo được phiếu đi đường. Vui lòng thử lại.');
     } finally {
       setSlipLoadingId(null);
+    }
+  };
+
+  // ── Báo cáo PDF chi tiết phiếu ─────────────────────────────────────────────
+  // Áp dụng cho MỌI loại phiếu. Cùng cách mở như phiếu đi đường: mở tab mới,
+  // fallback tải file khi popup bị chặn.
+  const openReceiptReport = async (receipt) => {
+    setReportLoadingId(receipt.id);
+    try {
+      const res = await warehouseApi.getReceiptReport(receipt.id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const win = window.open(url, '_blank');
+      if (!win) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bao-cao-phieu-${receipt.receiptCode}.pdf`;
+        a.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      alert('Không tạo được báo cáo phiếu. Vui lòng thử lại.');
+    } finally {
+      setReportLoadingId(null);
     }
   };
 
@@ -250,6 +274,24 @@ export default function HistoryPage() {
                             </tbody>
                           </table>
                           {r.note && <p style={{ marginTop: 8, fontSize: 12, color: 'var(--wh-muted)', fontStyle: 'italic' }}>📝 {r.note}</p>}
+
+                          {/* Nút "Xuất báo cáo (PDF)" — có ở MỌI loại phiếu.
+                              Đặt trên nút phiếu đi đường vì đây là nút dùng cho cả 4 tab
+                              (Nhập / Xuất / Điều chỉnh / Chuyển kho); phiếu đi đường chỉ
+                              là trường hợp phụ và giới hạn cho TRANSFER_OUT. */}
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--wh-border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <button
+                              className="wh-btn wh-btn-sm"
+                              disabled={reportLoadingId === r.id}
+                              onClick={(e) => { e.stopPropagation(); openReceiptReport(r); }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              {reportLoadingId === r.id ? '⏳ Đang tạo...' : '📄 Xuất báo cáo (PDF)'}
+                            </button>
+                            <span style={{ fontSize: 11.5, color: 'var(--wh-muted)' }}>
+                              Báo cáo chi tiết phiếu — dùng để in / lưu trữ / gửi kế toán
+                            </span>
+                          </div>
 
                           {/* Chỉ phiếu CHUYỂN RA mới in được phiếu đi đường */}
                           {r.receiptType === 'TRANSFER_OUT' && (

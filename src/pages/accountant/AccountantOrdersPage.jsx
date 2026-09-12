@@ -1,6 +1,7 @@
 // src/pages/accountant/AccountantOrdersPage.jsx
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, incomeApi, getImageUrl, downloadBlob } from '../../api/services';
@@ -16,7 +17,7 @@ import {
   Search, RefreshCw, ChevronLeft, ChevronRight, Filter,
   Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
   ChevronDown, DollarSign, X, AlertCircle, Calendar,
-  Download, FileText, Paperclip, List, Ban, Ticket,
+  Download, FileText, Paperclip, List, Ban, Ticket, Gift,
 } from 'lucide-react';
 import VoucherPaymentModal from '../../components/payment/VoucherPaymentModal';
 
@@ -546,6 +547,13 @@ function OrderCard({ o, actionLoading, invoiceLoadingId, detailLoading, onComple
 export default function AccountantOrdersPage() {
   const { t } = useLang();
   const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // AccountantOrdersPage được share ở 3 chỗ: /seller/orders-manage, /accountant/orders
+  // và /super-accountant/history. Nút "Quà tặng" CHỈ áp dụng cho super_accountant
+  // theo yêu cầu — kiểm tra bằng pathname thay vì role để không hiện nhầm khi
+  // owner/admin ghé qua tab kế toán.
+  const isSuperAccountantView = location.pathname.startsWith('/super-accountant');
 
   const FILTER_TABS = [
     { value: 'ALL', label: t('common', 'all') },
@@ -850,6 +858,17 @@ export default function AccountantOrdersPage() {
           <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0" title={t('common', 'export')}>
             {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
           </button>
+          {/* Nút "Quà tặng" — CHỈ super_accountant. Mở trang gộp đơn KM + phiếu tặng quà đã duyệt.
+              Cùng route với owner/admin nhưng dưới prefix /super-accountant. */}
+          {isSuperAccountantView && (
+            <button
+              onClick={() => navigate('/super-accountant/gift-management')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/28 hover:bg-violet-100 dark:hover:bg-violet-500/18 transition-colors text-sm font-medium whitespace-nowrap shrink-0"
+              title="Quản lý quà tặng — đơn KM + phiếu quà tặng đã duyệt"
+            >
+              <Gift size={14} /> Quà tặng
+            </button>
+          )}
         </div>
 
         {/* ── Mobile header (< sm) — 2 rows ── */}
@@ -887,6 +906,16 @@ export default function AccountantOrdersPage() {
             <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0" title={t('common', 'export')}>
               {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
             </button>
+            {/* Nút "Quà tặng" mobile — cùng logic desktop */}
+            {isSuperAccountantView && (
+              <button
+                onClick={() => navigate('/super-accountant/gift-management')}
+                className="p-2 rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/28 hover:bg-violet-100 dark:hover:bg-violet-500/18 transition-colors shrink-0"
+                title="Quản lý quà tặng"
+              >
+                <Gift size={14} />
+              </button>
+            )}
           </div>
 
           {/* Row 2: full-width search */}

@@ -75,6 +75,13 @@ import VoucherManagementPage from '../pages/shared/VoucherManagementPage';
 import VoucherDetailPage from '../pages/shared/VoucherDetailPage';
 import GiftOrdersPage from '../pages/shared/GiftOrdersPage';
 import GiftOrderDetailPage from '../pages/shared/GiftOrderDetailPage';
+// Trang QUẢN LÝ QUÀ TẶNG — dùng chung cho OWNER / ADMIN / SUPER_ACCOUNTANT.
+// Gộp đơn hàng có SP khuyến mãi + phiếu tặng quà đã duyệt.
+import GiftManagementPage from '../pages/shared/GiftManagementPage';
+// Trang FEEDBACK — /feedback (tạo, cho seller/super_seller/warehouse) và
+// /*/feedback-list (list cho owner/admin).
+import FeedbackPage from '../pages/shared/FeedbackPage';
+import FeedbackListPage from '../pages/shared/FeedbackListPage';
 import WarehouseGiftQueuePage from '../pages/warehouse/WarehouseGiftQueuePage';
 import SubPageShell from '../components/common/SubPageShell';
 import SellerProductionPage from '../pages/seller/SellerProductionPage';
@@ -177,6 +184,12 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<RootRedirect />} />
 
+      {/* /feedback — trang tạo feedback dùng chung cho SELLER / SUPER_SELLER /
+          WAREHOUSE. Dùng route top-level thay vì nested dưới role để mọi role
+          truy cập cùng URL, nút "Feedback" ở các trang đơn hàng cũng chỉ trỏ đến
+          một địa chỉ duy nhất. Auth do axios interceptor + BE PreAuthorize xử lý. */}
+      <Route path="/feedback" element={<FeedbackPage />} />
+
       {/* ── HR */}
       <Route path="/hr"
         element={<TranslatedLayout rawNav={hrNavRaw} allowedRoles={['HR', 'SUPER_ACCOUNTANT', 'OWNER', 'ADMIN']} />}>
@@ -267,6 +280,10 @@ export default function AppRoutes() {
             <GiftOrdersPage />
           </SubPageShell>} />
         <Route path="gift-orders/:id" element={<GiftOrderDetailPage />} />
+        {/* Quản lý quà tặng — mở từ nút "Quà tặng" ở tab Đơn hàng */}
+        <Route path="gift-management" element={<GiftManagementPage />} />
+        {/* List feedback của KH — mở từ nút "Feedback" ở tab Đơn hàng */}
+        <Route path="feedback-list" element={<FeedbackListPage />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="employees" element={<OwnerEmployeesPage />} />
         <Route path="org-chart" element={<OrgChartPage />} />
@@ -341,6 +358,10 @@ export default function AppRoutes() {
             <GiftOrdersPage />
           </SubPageShell>} />
         <Route path="gift-orders/:id" element={<GiftOrderDetailPage />} />
+        {/* Quản lý quà tặng — mở từ nút "Quà tặng" ở tab Đơn hàng */}
+        <Route path="gift-management" element={<GiftManagementPage />} />
+        {/* List feedback của KH — mở từ nút "Feedback" ở tab Đơn hàng */}
+        <Route path="feedback-list" element={<FeedbackListPage />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="warehouses" element={<AdminWarehouses />} />
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
@@ -441,6 +462,8 @@ export default function AppRoutes() {
         <Route path="vendor-debts/:vendorId" element={<AccountantVendorDebtPage />} />
         {/* 2 tab: "Nguyên liệu sản xuất" (page cũ, giữ nguyên) + "Đồ dùng" */}
         <Route path="material-requests" element={<SuperAccountantOrdersPage />} />
+        {/* Quản lý quà tặng — mở từ nút "Quà tặng" ở tab Đơn hàng */}
+        <Route path="gift-management" element={<GiftManagementPage />} />
         <Route path="pricing" element={<PricingCalculatorPage />} />
         <Route path="warehouse-receipts" element={<AccountantWarehouseReceiptsPage />} />
         {/* Panel điều chỉnh lô — nhập giá vốn cho lô mới do kho tạo */}

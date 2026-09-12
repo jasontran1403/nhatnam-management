@@ -72,6 +72,14 @@ export const warehouseApi = {
   getTransportSlip: (receiptId) =>
     api.get(`${BASE}/receipt/${receiptId}/transport-slip`, { responseType: 'blob' }),
 
+  /**
+   * BÁO CÁO PDF chi tiết một phiếu kho — dùng cho MỌI loại phiếu (nhập / xuất / điều
+   * chỉnh / chuyển kho). Khác với transport-slip: cái đó chỉ cho TRANSFER_OUT theo mẫu
+   * giấy tờ thú y.
+   */
+  getReceiptReport: (receiptId) =>
+    api.get(`${BASE}/receipt/${receiptId}/report`, { responseType: 'blob' }),
+
   // ── Orders — gửi warehouseId qua query param ─────────────────────────────
   getPreparingOrders: (warehouseId) =>
     api.get(`${BASE}/orders/preparing`, {

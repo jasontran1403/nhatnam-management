@@ -93,13 +93,17 @@ function misaRowToArray(row) {
     row.donGia ?? '',         // AH: Đơn giá
     row.thanhTien ?? '',      // AI: Thành tiền
     '',                       // AJ: Thành tiền quy đổi
-    '', '', '', '',           // AK-AN: CK
+    // AK-AN: Chiết khấu — MISA yêu cầu mặc định cứng theo nghiệp vụ công ty:
+    //   AK "Tỷ lệ CK (%)" = 0    (không giảm giá theo %)
+    //   AN "TK chiết khấu" = 5211 (tài khoản chiết khấu bán hàng chuẩn MISA)
+    0, '', '', '5211',
     '', '', '', '',           // AO-AR: Thuế XK
     vatPercent,               // AS: % thuế GTGT (chỉ lấy số, không có %)
     '',                       // AT: Tỷ lệ tính thuế
     row.tienThue ?? '',       // AU: Tiền thuế GTGT
     '',                       // AV: Tiền thuế GTGT quy đổi
-    '', '',                   // AW-AX: TK thuế, HH không TH
+    // AW "TK thuế GTGT" = 33311 (tài khoản thuế GTGT đầu ra chuẩn MISA), AX = trống
+    '33311', '',
     row.kho || '',            // AY: Kho
     row.tkGiaVon || '',       // AZ: TK giá vốn
     row.tkKho || '',          // BA: TK Kho
@@ -192,6 +196,13 @@ export default function MisaCatalogTab() {
   const [importingInvoice, setImportingInvoice] = useState(false);
   const [invoiceResult, setInvoiceResult] = useState(null);
   const [rawInvoiceData, setRawInvoiceData] = useState(null);
+  // Các dòng bị BỎ QUA ngay từ bước parse file (không đủ dữ liệu để gửi BE).
+  // Trước đây các dòng này bị `continue` âm thầm — người dùng không biết vì sao
+  // 360 dòng nhập vào lại chỉ ra 354 (ví dụ). Giờ giữ lại kèm số thứ tự dòng gốc
+  // và lý do để hiển thị trong modal "Xử lý lỗi".
+  const [droppedRows, setDroppedRows] = useState([]);
+  // Điều khiển hiển thị modal Xử lý lỗi
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const catalogFileRef = useRef(null);
   const invoiceFileRef = useRef(null);
@@ -284,10 +295,30 @@ export default function MisaCatalogTab() {
 
       const rawRows = [];
       const invoiceRows = [];
+      // Track các dòng bị bỏ để hiển thị ở modal "Xử lý lỗi". Row number = i + 1
+      // trong file gốc (1-indexed, tính cả header ⇒ dòng data đầu tiên là 2).
+      const dropped = [];
       for (let i = 1; i < json.length; i++) {
         const r = json[i];
         const maHang = String(r[16] ?? '').trim();
-        if (!maHang) continue;
+        const tenHang = String(r[17] ?? '').trim();
+
+        // File FPT đôi khi có dòng thiếu Mã hàng — nhưng nếu có Tên hàng thì BE
+        // vẫn match được với catalog (catalog có productName). Chỉ bỏ dòng nếu
+        // THIẾU CẢ HAI: mã hàng lẫn tên hàng — không có căn cứ nào để tra catalog.
+        if (!maHang && !tenHang) {
+          const hasAnyData = r.some(c => c !== '' && c != null);
+          if (!hasAnyData) continue;  // dòng blank hoàn toàn — bỏ im lặng
+          dropped.push({
+            rowNumber: i + 1,
+            sttHoaDon: String(r[0] ?? '').trim(),
+            soHoaDon: String(r[5] ?? '').trim(),
+            tenKhachHang: String(r[8] ?? '').trim(),
+            tenHang: '',
+            reason: 'Thiếu cả Mã hàng và Tên hàng',
+          });
+          continue;
+        }
 
         const rawRow = {
           sttHoaDon: String(r[0] ?? ''),
@@ -300,14 +331,16 @@ export default function MisaCatalogTab() {
           diaChi: String(r[9] ?? ''),
           maSoThue: String(r[10] ?? ''),
           hinhThucTT: String(r[12] ?? ''),
-          maHang,
-          tenHang: String(r[17] ?? ''),
+          maHang,          // có thể là '' — BE sẽ fallback match theo tenHang
+          tenHang,
           dvt: String(r[20] ?? ''),
           soLuong: Number(r[21]) || 0,
           donGia: Number(r[23]) || 0,
           thanhTien: Number(r[24]) || 0,
           vatPercent: String(r[27] ?? ''),
           tienThue: Number(r[29]) || 0,
+          // Nhớ số dòng gốc để nếu BE trả matchNote còn map ngược được về file
+          _rowNumber: i + 1,
         };
 
         rawRows.push(rawRow);
@@ -320,11 +353,23 @@ export default function MisaCatalogTab() {
       }
 
       setRawInvoiceData(rawRows);
+      setDroppedRows(dropped);
 
       const result = await misaCatalogApi.processInvoice(invoiceRows);
-      setInvoiceResult(result);
-      const unmatched = result.filter(r => r.matchNote);
-      toast(`Đã xử lý ${result.length} dòng${unmatched.length > 0 ? ` (${unmatched.length} không match)` : ''}`, 'success');
+      // Gán lại _rowNumber từ input vào result vì BE giữ nguyên thứ tự nhưng
+      // không nhất thiết echo lại field _rowNumber — ta dùng index để map.
+      const resultWithRow = result.map((r, idx) => ({
+        ...r,
+        _rowNumber: invoiceRows[idx]?._rowNumber,
+      }));
+      setInvoiceResult(resultWithRow);
+
+      const unmatched = resultWithRow.filter(r => r.matchNote);
+      const errorCount = dropped.length + unmatched.length;
+      const msg = `Đã xử lý ${resultWithRow.length} dòng`
+        + (dropped.length > 0 ? `, bỏ qua ${dropped.length} dòng thiếu dữ liệu` : '')
+        + (unmatched.length > 0 ? `, ${unmatched.length} không match` : '');
+      toast(msg, errorCount > 0 ? 'warning' : 'success');
     } catch (err) {
       toast(err?.response?.data?.message || 'Lỗi xử lý hóa đơn', 'error');
     } finally {
@@ -416,7 +461,7 @@ export default function MisaCatalogTab() {
       <div className="p-4 sm:p-6 space-y-4 pb-24">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => { setInvoiceResult(null); setRawInvoiceData(null); }}
+            <button onClick={() => { setInvoiceResult(null); setRawInvoiceData(null); setDroppedRows([]); }}
               className="flex items-center gap-1 text-sm text-muted hover:text-ink font-medium">
               <ChevronLeft size={18} />
             </button>
@@ -425,13 +470,25 @@ export default function MisaCatalogTab() {
               <p className="text-xs text-muted">
                 {invoiceResult.length} dòng
                 {unmatched.length > 0 && <span className="text-amber-600 ml-2">⚠ {unmatched.length} không match</span>}
+                {droppedRows.length > 0 && <span className="text-red-600 ml-2">✕ {droppedRows.length} bị bỏ qua</span>}
               </p>
             </div>
           </div>
-          <button onClick={exportMisa}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong transition shadow-sm">
-            <Download size={15} /> Export XLSX
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Nút "Xử lý lỗi" — chỉ hiện khi có ít nhất 1 loại lỗi.
+                Gộp 2 nguồn lỗi: (1) rows bị dropped khi parse (thiếu mã hàng),
+                (2) rows BE trả về có matchNote (không match được catalog). */}
+            {(unmatched.length + droppedRows.length) > 0 && (
+              <button onClick={() => setShowErrorModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm font-semibold hover:bg-amber-100 dark:hover:bg-amber-500/20 transition shadow-sm">
+                <AlertTriangle size={15} /> Xử lý lỗi ({unmatched.length + droppedRows.length})
+              </button>
+            )}
+            <button onClick={exportMisa}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong transition shadow-sm">
+              <Download size={15} /> Export XLSX
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -513,6 +570,18 @@ export default function MisaCatalogTab() {
             </div>
           </div>
         </div>
+
+        {/* Modal "Xử lý lỗi" — 2 sections:
+            1. Dòng bị bỏ qua (client-side, thiếu mã hàng) — user cần sửa file gốc
+            2. Dòng không match catalog (BE trả matchNote) — user cần bổ sung mã hàng vào catalog
+            Đóng bằng click backdrop, click X, hoặc phím ESC. */}
+        {showErrorModal && (
+          <ErrorReviewModal
+            dropped={droppedRows}
+            unmatched={unmatched}
+            onClose={() => setShowErrorModal(false)}
+          />
+        )}
       </div>
     );
   }
@@ -666,6 +735,144 @@ export default function MisaCatalogTab() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+// ══════════════════════════════════════════════════════════════════════════════
+// ERROR REVIEW MODAL — hiển thị các dòng KHÔNG được xuất qua MISA và lý do
+// ══════════════════════════════════════════════════════════════════════════════
+function ErrorReviewModal({ dropped, unmatched, onClose }) {
+  // ESC để đóng — pattern chung của các modal khác trong app
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const total = dropped.length + unmatched.length;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}>
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-line-soft shrink-0">
+          <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+            <AlertTriangle size={16} className="text-amber-600" />
+            Các dòng chưa được xử lý ({total})
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          {/* Section 1: bị bỏ qua khi parse (thiếu mã hàng) */}
+          {dropped.length > 0 && (
+            <section>
+              <div className="mb-2">
+                <h4 className="text-sm font-semibold text-red-700 dark:text-red-300">
+                  ✕ Bị bỏ qua khi đọc file ({dropped.length})
+                </h4>
+                <p className="text-[11px] text-muted mt-0.5">
+                  Các dòng thiếu <b>Mã hàng</b> (cột Q trong file FPT) không thể map — cần
+                  sửa file gốc rồi import lại.
+                </p>
+              </div>
+              <div className="border border-line rounded-xl overflow-hidden">
+                <div className="overflow-x-auto max-h-[40vh] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-canvas sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Dòng</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">STT HĐ</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Số HĐ</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Khách hàng</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Tên hàng</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Lý do</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dropped.map((d, idx) => (
+                        <tr key={idx} className="border-t border-line-soft hover:bg-canvas/50">
+                          <td className="px-3 py-2 font-mono text-muted">{d.rowNumber}</td>
+                          <td className="px-3 py-2">{d.sttHoaDon || '—'}</td>
+                          <td className="px-3 py-2 font-mono">{d.soHoaDon || '—'}</td>
+                          <td className="px-3 py-2 max-w-[180px] truncate" title={d.tenKhachHang}>{d.tenKhachHang || '—'}</td>
+                          <td className="px-3 py-2 max-w-[180px] truncate" title={d.tenHang}>{d.tenHang || '—'}</td>
+                          <td className="px-3 py-2">
+                            <span className="text-[10px] bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 rounded px-1.5 py-0.5 whitespace-nowrap">
+                              {d.reason}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Section 2: có trong output nhưng có matchNote (không match catalog) */}
+          {unmatched.length > 0 && (
+            <section>
+              <div className="mb-2">
+                <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                  ⚠ Không match được catalog ({unmatched.length})
+                </h4>
+                <p className="text-[11px] text-muted mt-0.5">
+                  Các dòng vẫn có trong file export nhưng thiếu thông tin MISA. Bổ sung
+                  mã hàng tương ứng vào catalog MISA rồi import lại để có kết quả đầy đủ.
+                </p>
+              </div>
+              <div className="border border-line rounded-xl overflow-hidden">
+                <div className="overflow-x-auto max-h-[40vh] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-canvas sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Dòng</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Mã hàng</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Tên hàng</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Khách hàng</th>
+                        <th className="px-3 py-2 text-left font-semibold text-muted whitespace-nowrap">Lý do</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unmatched.map((r, idx) => (
+                        <tr key={idx} className="border-t border-line-soft hover:bg-canvas/50 bg-amber-50/40 dark:bg-amber-900/10">
+                          <td className="px-3 py-2 font-mono text-muted">{r._rowNumber ?? '—'}</td>
+                          <td className="px-3 py-2 font-mono">{r.maHang || '—'}</td>
+                          <td className="px-3 py-2 max-w-[200px] truncate" title={r.tenHang}>{r.tenHang || '—'}</td>
+                          <td className="px-3 py-2 max-w-[180px] truncate" title={r.tenKhachHang}>{r.tenKhachHang || '—'}</td>
+                          <td className="px-3 py-2">
+                            <span className="text-[10px] bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded px-1.5 py-0.5 whitespace-nowrap">
+                              {r.matchNote}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {total === 0 && (
+            <div className="text-center py-8 text-sm text-muted">
+              ✅ Không có lỗi nào — tất cả các dòng đã được xử lý thành công.
+            </div>
+          )}
+        </div>
+
+        <div className="p-5 border-t border-line-soft flex justify-end shrink-0">
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong">
+            Đóng
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import CancelOrderModal from '../../components/common/CancelOrderModal';
 import SuperSellerCancelOrderModal from '../../components/seller/SuperSellerCancelOrderModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
+import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '../../utils/formatPrice';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
@@ -17,7 +18,7 @@ import {
   ChevronDown, DollarSign, X, AlertCircle, Calendar,
   Download, FileText, List, Ban, Edit2, FileBarChart,
   ClipboardCheck,
-  FileClock, Ticket,
+  FileClock, Ticket, MessageSquare,
 } from 'lucide-react';
 import VoucherPaymentModal from '../../components/payment/VoucherPaymentModal';
 import { PageToggle } from '../../components/common/PageSwitchButtons';
@@ -406,6 +407,7 @@ function getRowBg(o) {
 export default function OrdersPage() {
   const { t } = useLang();
   const toast = useToast();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]); const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(null); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0); const [loading, setLoading] = useMinLoading();
@@ -755,6 +757,12 @@ export default function OrdersPage() {
               <FileBarChart size={14} />
             </button>
           )}
+          {/* Nút Feedback — mở form ghi nhận phản hồi KH ở /feedback. Dùng chung
+              cho SELLER + SUPER_SELLER (page này share cho cả hai). */}
+          <button onClick={() => navigate('/feedback')} title="Feedback đơn hàng"
+            className="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-500/18 transition-colors shrink-0">
+            <MessageSquare size={14} />
+          </button>
         </div>
 
         {/* ── Mobile header (< sm) — 2 rows ── */}
@@ -800,6 +808,10 @@ export default function OrdersPage() {
                 <FileBarChart size={14} />
               </button>
             )}
+            <button onClick={() => navigate('/feedback')} title="Feedback"
+              className="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-500/18 transition-colors shrink-0">
+              <MessageSquare size={14} />
+            </button>
           </div>
 
           {/* Row 2: full-width search */}
