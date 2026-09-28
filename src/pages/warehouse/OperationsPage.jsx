@@ -11,18 +11,32 @@ import WarehouseSelector from '../../components/warehouse/WarehouseSelector';
 import ImageUploader from '../../components/warehouse/ImageUploader';
 import IngredientSelector from '../../components/warehouse/IngredientSelector';
 import LotAdjustCard from '../../components/warehouse/LotAdjustCard';
+import { useToast } from '../../components/common/Toast';
+
+const ADJUST_ALLOWED_USERNAMES = new Set(['nguyenhai', 'thuytm']);
 
 export default function OperationsPage() {
+  const { user } = useAuth();
   const { t } = useLang();
   const [tab, setTab] = useState('import');
   const { activeWarehouseName, hasMultipleWarehouses } = useWarehouse();
 
-  const TABS = [
+  const canAdjust = ADJUST_ALLOWED_USERNAMES.has(
+    String(user?.username || '').trim().toLowerCase()
+  );
+
+  const ALL_TABS = [
     { key: 'import', label: t('warehouse', 'import_label') },
     { key: 'export', label: t('warehouse', 'export_label') },
     { key: 'transfer', label: t('warehouse', 'transfer_label') },
     { key: 'adjust', label: t('warehouse', 'adjust_label') },
   ];
+
+  const TABS = canAdjust ? ALL_TABS : ALL_TABS.filter(x => x.key !== 'adjust');
+
+  useEffect(() => {
+    if (!canAdjust && tab === 'adjust') setTab('import');
+  }, [canAdjust, tab]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -39,10 +53,11 @@ export default function OperationsPage() {
           </button>
         ))}
       </div>
+
       {tab === 'import' && <ImportForm />}
       {tab === 'export' && <ExportForm />}
       {tab === 'transfer' && <TransferForm />}
-      {tab === 'adjust' && <AdjustForm />}
+      {tab === 'adjust' && canAdjust && <AdjustForm />}
     </div>
   );
 }
@@ -516,6 +531,7 @@ function TransferForm() {
 // User cũng có thể TẠO LÔ MỚI (nhập số lượng + HSD). Lô mới được tạo ngay với
 // giá vốn tạm = 1 và gửi sang KẾ TOÁN TRƯỞNG để nhập giá vốn thật.
 function AdjustForm() {
+  const toast = useToast();
   const { myWarehouse, stocks, reloadStocks } = useMyWarehouse();
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
@@ -525,7 +541,7 @@ function AdjustForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const updateRow = (i, v) => setRows(rows.map((r, idx) => (idx === i ? v : r)));
+  const updateRow = (i, v) => setRows(rows.map((r, idx) => idx === i ? v : r));
   const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
@@ -547,9 +563,6 @@ function AdjustForm() {
           return setError(`Số lượng lô của "${ingName}" không được âm.`);
         if (lot.isNew && qty <= 0)
           return setError(`Lô mới của "${ingName}" phải có số lượng lớn hơn 0.`);
-        // HSD KHÔNG bắt buộc: nhiều mặt hàng không có hạn (dây buộc, bao bì,
-        // vật tư tính theo mét/bó). Backend vốn đã nhận expiryDate = null và
-        // FIFO xếp lô không HSD xuống cuối, nên chỉ có chốt chặn ở đây là thừa.
       }
     }
 
@@ -575,10 +588,24 @@ function AdjustForm() {
           ? ` — Đã gửi ${newLotCount} lô mới cho Kế toán trưởng nhập giá vốn.`
           : '')
       );
+      toast('Điều chỉnh tồn kho thành công.',
+        'success'
+      );
       setRows([emptyRow('adjust')]); setReason(''); setNote(''); setImages([]);
       reloadStocks();
     } catch (e) {
-      setError(e?.response?.data?.message || e?.message || 'Có lỗi xảy ra');
+      const status  = e?.response?.status;
+      const bizCode = e?.response?.data?.code;
+      const msg     = e?.response?.data?.message || e?.message || 'Có lỗi xảy ra';
+
+      // Lỗi không có quyền điều chỉnh → toast, KHÔNG hiện inline
+      if (status === 403 || bizCode === 903) {
+        toast(msg,
+        'error'
+      );
+      } else {
+        setError(msg);
+      }
     } finally { setLoading(false); }
   };
 
