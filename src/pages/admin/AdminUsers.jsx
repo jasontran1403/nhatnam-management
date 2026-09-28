@@ -339,10 +339,10 @@ export default function AdminUsers() {
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && (
               <>
-                <SecondaryButton onClick={handleExportSalary} disabled={exportingSalary}>
+                {/* <SecondaryButton onClick={handleExportSalary} disabled={exportingSalary}>
                   <Download size={15} />
                   {exportingSalary ? 'Đang xuất…' : 'Xuất bảng lương'}
-                </SecondaryButton>
+                </SecondaryButton> */}
                 <SecondaryButton onClick={() => navigate('/owner/leave-management')}>
                   <CalendarClock size={15} />
                   Quản lý phép
