@@ -180,6 +180,10 @@ function NewPayslipBreakdownCards({ row, className = '' }) {
 
   const totalAllowance = allowances.reduce((s, a) => s + (a.amount || 0), 0);
 
+  // Chi tiết "Thưởng KPI 100%" của tài xế — nếu BE trả về (có xăng / thưởng
+  // đơn hàng) thì render thêm card breakdown bên dưới card lương chính.
+  const driverKpi = row.driverOrderBonusDetail;
+
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="bg-canvas rounded-xl p-4 space-y-2">
@@ -236,6 +240,14 @@ function NewPayslipBreakdownCards({ row, className = '' }) {
         <Row label="LƯƠNG THỰC NHẬN" val={fmt(row.netSalary)} bold green />
       </div>
 
+      {/* ── Card CHI TIẾT Thưởng KPI 100% của TÀI XẾ ─────────────────────────
+          Hiện tổng ở card lương trên (dòng "Thưởng KPI — đạt 100%"), còn card
+          này bung chi tiết: tiền xăng + thưởng xe máy + thưởng xe tải. Chỉ
+          render khi có driverOrderBonusDetail (tài xế đã được tính KPI). */}
+      {driverKpi && (driverKpi.totalAmount || 0) > 0 && (
+        <DriverKpiDetailCard detail={driverKpi} />
+      )}
+
       <p className="text-[11px] text-muted leading-relaxed">
         {flat ? (
           <>
@@ -250,6 +262,65 @@ function NewPayslipBreakdownCards({ row, className = '' }) {
           </>
         )}
       </p>
+    </div>
+  );
+}
+
+/**
+ * CARD CHI TIẾT "Thưởng KPI 100%" cho TÀI XẾ.
+ * Hiện dưới card lương chính, bung 3 dòng:
+ *   1. Tiền xăng     = tổng km × đơn giá xăng
+ *   2. Thưởng xe máy = số lượt × đơn giá xe máy
+ *   3. Thưởng xe tải = số lượt × đơn giá xe tải
+ * Chỉ hiển thị các dòng có giá trị > 0.
+ */
+function DriverKpiDetailCard({ detail }) {
+  const fmt = (n) => formatCurrency(n || 0);
+  const fmtNum = (v, d = 1) =>
+    v == null ? '—' : Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d });
+
+  const gasAmount   = detail.gasAmount || 0;
+  const gasKm       = detail.gasKm || 0;
+  const gasPrice    = detail.gasPrice || 0;
+  const motoAmount  = detail.motorbikeAmount || 0;
+  const motoTrips   = detail.motorbikeTrips || 0;
+  const truckAmount = detail.truckAmount || 0;
+  const truckTrips  = detail.truckTrips || 0;
+  const total       = detail.totalAmount || (gasAmount + motoAmount + truckAmount);
+
+  const rowCount = (gasAmount > 0 ? 1 : 0) + (motoAmount > 0 ? 1 : 0) + (truckAmount > 0 ? 1 : 0);
+
+  return (
+    <div className="bg-canvas rounded-xl p-4 space-y-2">
+      <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+        Chi tiết Thưởng KPI 100%
+      </p>
+
+      {gasAmount > 0 && (
+        <Row
+          label={`Tiền xăng (${fmtNum(gasKm)} km × ${fmt(gasPrice)}/km)`}
+          val={`+ ${fmt(gasAmount)}`}
+        />
+      )}
+      {motoAmount > 0 && (
+        <Row
+          label={`Thưởng đơn hàng xe máy (${motoTrips} lượt)`}
+          val={`+ ${fmt(motoAmount)}`}
+        />
+      )}
+      {truckAmount > 0 && (
+        <Row
+          label={`Thưởng đơn hàng xe tải (${truckTrips} lượt)`}
+          val={`+ ${fmt(truckAmount)}`}
+        />
+      )}
+
+      {rowCount > 1 && (
+        <>
+          <Divider />
+          <Row label="Tổng Thưởng KPI 100%" val={`+ ${fmt(total)}`} bold green />
+        </>
+      )}
     </div>
   );
 }

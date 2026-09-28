@@ -22,6 +22,46 @@ import {
   Field, inputCls, formatCurrency, formatNumber, formatDateTime,
 } from '../../components/ui';
 
+/** Parse returnExchangeNote JSON → { type, count } */
+function parseReturnNote(note) {
+  if (!note) return null;
+  try {
+    const entries = JSON.parse(note);
+    const exchangeItems = entries.filter(n => n.type === 'EXCHANGE_SRC');
+    const refundItems   = entries.filter(n => n.type === 'REFUND');
+    if (exchangeItems.length > 0) return { type: 'EXCHANGE', count: exchangeItems.length };
+    if (refundItems.length > 0)   return { type: 'REFUND',   count: refundItems.length };
+    return { type: 'REFUND', count: 1 };
+  } catch { return { type: 'REFUND', count: 1 }; }
+}
+
+function ReturnExchangeBadge({ returnExchangeNote, linkType }) {
+  if (linkType === 'EXCHANGE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap
+        bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/28">
+        🔄 Đơn đổi SP
+      </span>
+    );
+  }
+  const info = parseReturnNote(returnExchangeNote);
+  if (!info) return null;
+  if (info.type === 'EXCHANGE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap
+        bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/28">
+        🔄 Có {info.count} SP đổi
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap
+      bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 border-orange-200 dark:border-orange-500/28">
+      ↩ Có {info.count} SP hoàn
+    </span>
+  );
+}
+
 
 
 // ── Customer filter ──────────────────────────────────────────────────────────
@@ -438,7 +478,14 @@ export default function AdminOrders() {
                 <tbody>
                   {data.content.map(o => (
                     <tr key={o.id} className={`border-t border-hairline hover:bg-canvas/50 transition-colors ${o.status === 'CANCELLED' ? 'opacity-60' : ''}`}>
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-gold whitespace-nowrap">{o.orderCode}</td>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-gold whitespace-nowrap">
+                        {o.orderCode}
+                        {(o.returnExchangeNote || o.linkType === 'EXCHANGE') && (
+                          <div className="mt-0.5">
+                            <ReturnExchangeBadge returnExchangeNote={o.returnExchangeNote} linkType={o.linkType} />
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <p className="font-medium text-ink">{o.customerName || '—'}</p>
                         {o.customerPhone && <p className="text-xs text-muted">{o.customerPhone}</p>}

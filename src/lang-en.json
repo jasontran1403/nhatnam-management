@@ -199,7 +199,11 @@
     "attendance_sheets": "Timesheets",
     "payroll_passcode": "Payroll lock",
     "supply_orders": "Office Supply Orders",
-    "supply_warehouse": "Office Supply Stock",
+    "supply_warehouse": "Office Supply",
+    "office_supply_requests": "Office Supply Requests",
+    "office_supply_manage": "Office Supply Management",
+    "office_supply_items": "Office Supply Catalog",
+    "leave_management": "Leave Management",
     "order_forecast": "Order Forecast",
     "vouchers": "Vouchers",
     "gift_orders": "Gift Orders"

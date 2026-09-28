@@ -1,9 +1,10 @@
 import { useLang } from '../../context/LangContext';
 import { customerContractApi } from '../../api/customerContractApi';
 import {
-  X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote, Ticket, RotateCcw,
+  X, FileText, CreditCard, CheckSquare, CheckCircle, Banknote, Ticket, RotateCcw, RefreshCw,
 } from 'lucide-react';
 import ReturnOrderModal from './ReturnOrderModal';
+import OrderExchangeModal from './OrderExchangeModal';
 import VoucherPaymentModal from '../payment/VoucherPaymentModal';
 import MisaOrderModal from '../misa/MisaOrderModal';
 import MisaReceiptModal from '../misa/MisaReceiptModal';
@@ -322,6 +323,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
   const [showMisaOrder, setShowMisaOrder] = useState(false);
   const [showMisaReceipt, setShowMisaReceipt] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
 
   const [misaOrderCreated, setMisaOrderCreated] = useState(false);
   const [misaChecked, setMisaChecked] = useState(false);
@@ -370,6 +372,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
     PREPAYMENT_FULL: 'Thu trước — đã đủ', PREPAYMENT_PARTIAL: 'Thu trước — chưa đủ',
     WAIVE_REMAINDER: 'Bỏ số lẻ',
     ITEM_RETURNED: 'Trả hàng (feedback)',
+    REFUND_DISBURSED: 'Phiếu chi hoàn tiền', REFUND: 'Hoàn tiền', RESTOCK: 'Hoàn tiền và nhập kho', EXCHANGE: 'Đổi sản phẩm', DESTROY: 'Hoàn tiền và tiêu hủy', CREATED_EXCHANGE: 'Đơn hàng đổi'
   };
 
   const ACTION_STYLE = {
@@ -462,23 +465,31 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
               <h2 className="font-bold text-ink font-mono">{o.orderCode}</h2>
             </div>
             <div className="flex items-center gap-2 mr-3 flex-wrap justify-end">
-              {['PENDING_PAYMENT', 'COMPLETED'].includes(o.status) && (
+              {/* Đơn ĐỔI SẢN PHẨM (linkType=EXCHANGE) hoặc đã có lịch sử hoàn/đổi:
+                  ẩn nút Trả hàng và Hoàn/Đổi SP */}
+              {/* {!o.linkType && !o.returnExchangeNote && ['PENDING_PAYMENT', 'COMPLETED'].includes(o.status) && (
                 <button onClick={() => setShowReturnModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-500/18 text-xs font-semibold">
                   <RotateCcw size={13} /> Trả hàng
                 </button>
-              )}
-              {canChangePayment(o) && (
+              )} */}
+              {/* {!o.linkType && !o.returnExchangeNote && o.status === 'COMPLETED' && (
+                <button onClick={() => setShowExchangeModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 hover:bg-purple-100 text-xs font-semibold">
+                  <RefreshCw size={13} /> Hoàn/Đổi SP
+                </button>
+              )} */}
+              {/* {canChangePayment(o) && (
                 <button onClick={() => setShowPaymentModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:bg-blue-500/18 text-xs font-semibold">
                   <CreditCard size={13} /> Đổi TT
                 </button>
-              )}
+              )} */}
 
-              {/* ── CHỈ HIỂN THỊ KHI ĐƠN Ở TRẠNG THÁI PENDING_PAYMENT HOẶC COMPLETED ── */}
+              {/* ── CHỈ HIỂN THỊ KHI ĐƠN Ở TRẠNG THÁI PENDING_PAYMENT HOẶC COMPLETED ── 
               {showMisaButtons && (
                 <>
-                  {/* Nút Tạo/Xem đơn Misa */}
+                  Nút Tạo/Xem đơn Misa 
                   <button onClick={() => setShowMisaOrder(true)}
                     disabled={!misaChecked}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
@@ -489,7 +500,7 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                     {misaOrderCreated ? '📋 Xem đơn Misa' : '📋 Tạo đơn Misa'}
                   </button>
 
-                  {/* Nút Tạo/Xem phiếu thu — enable khi đã có đơn Misa */}
+                  Nút Tạo/Xem phiếu thu — enable khi đã có đơn Misa
                   <button onClick={() => setShowMisaReceipt(true)}
                     disabled={!misaOrderCreated}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
@@ -500,6 +511,8 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
                   </button>
                 </>
               )}
+              */}
+              
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:bg-surface-2" style={{ marginRight: 30 }}>
               <X size={17} />
@@ -580,115 +593,215 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
             <div>
               <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Chi tiết đơn hàng</p>
               <div className="bg-canvas rounded-xl overflow-hidden">
-                {o.items?.map((item, i) => (
-                  <div key={i}
-                    className={`flex items-start justify-between px-4 py-3 ${i < o.items.length - 1 ? 'border-b border-line-soft' : ''}`}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink truncate">{item.productName}</p>
-                      {item.variantName && <p className="text-xs text-muted">{item.variantName}</p>}
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        {item.saleType === 'BOX' ? (
-                          <span className="text-[10px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28 rounded px-1.5 py-0.5">
-                            📦 Thùng {item.unitsPerBox ? `(${item.unitsPerBox} ${item.unit}/thùng)` : ''}
-                          </span>
-                        ) : item.unit && (
-                          <span className="text-[10px] text-muted bg-surface-2 rounded px-1.5 py-0.5">
-                            ĐVT: {item.unit}
-                          </span>
-                        )}
-                        {item.priceName && item.priceMode !== 'DISCOUNT_PERCENT' && (
-                          <span className="text-[10px] text-gold bg-gold/10 rounded px-1.5 py-0.5">
-                            {item.priceName}
-                          </span>
-                        )}
-                        {(item.discountPercent ?? 0) > 0 && (
-                          <span className="text-[10px] text-orange-600 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/10 rounded px-1.5 py-0.5">
-                            Giảm {item.discountPercent}%
-                          </span>
-                        )}
-                        {(item.vatRate ?? 0) > 0 && (
-                          <span className="text-[10px] text-muted bg-surface-2 rounded px-1.5 py-0.5">
-                            VAT {item.vatRate}% · {item.vatMode === 'EXCLUSIVE' ? 'ngoài giá' : 'trong giá'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                {(() => {
+                  // Danh sách orderItemId đã đổi (EXCHANGE_SRC)
+                  const exchangedItemIds = new Set();
+                  if (o.returnExchangeNote) {
+                    try {
+                      JSON.parse(o.returnExchangeNote)
+                        .filter(n => n.type === 'EXCHANGE_SRC')
+                        .forEach(n => { if (n.orderItemId) exchangedItemIds.add(Number(n.orderItemId)); });
+                    } catch { /* ignore */ }
+                  }
 
-                    {/* ── Giá item: dùng unitPrice trực tiếp, KHÔNG reverse ── */}
-                    <div className="text-right ml-3 shrink-0">
-                      {(() => {
+                  // ── Tính tổng tiền hiệu dụng (sau khi trừ SP hoàn/đổi + phân bổ discount) ──
+                  const orderSubtotal = Number(o.subtotal || 0);
+                  const billDiscount  = Number(o.discountAmount || 0);
+                  const surcharge     = Number(o.surcharge || 0);
+                  const discountRatio = orderSubtotal > 0 ? billDiscount / orderSubtotal : 0;
+
+                  let returnedSubtotal = 0;
+                  (o.items || []).forEach(item => {
+                    const isRet  = item.returnedQty != null && Number(item.returnedQty) > 0;
+                    const isExch = exchangedItemIds.has(Number(item.id));
+                    if (isRet || isExch) {
+                      const ratio = Math.min(
+                        Number(isExch ? item.quantity : item.returnedQty) / Math.max(Number(item.quantity), 1),
+                        1
+                      );
+                      returnedSubtotal += Number(item.subtotal || 0) * ratio;
+                    }
+                  });
+
+                  const hasReturned       = returnedSubtotal > 0;
+                  const effectiveSubtotal = orderSubtotal - returnedSubtotal;
+                  const effectiveDiscount = billDiscount - returnedSubtotal * discountRatio;
+                  const effectiveFinal    = Math.max(0, Math.round(effectiveSubtotal - effectiveDiscount + surcharge));
+
+                  return (
+                    <>
+                      {o.items?.map((item, i) => {
+                        const isReturned = item.returnedQty != null && Number(item.returnedQty) > 0;
+                        const isExchanged = exchangedItemIds.has(Number(item.id));
+                        const isAffected  = isReturned || isExchanged;
+
                         const isBox = item.saleType === 'BOX' && item.unitsPerBox > 0;
-                        // unitPrice từ BE = giá gốc (gross cho INCLUSIVE)
-                        // discountPercent chỉ là metadata badge, không dùng để tính ngược giá
                         const displayPrice = isBox
                           ? Number(item.unitPrice) * item.unitsPerBox
                           : Number(item.unitPrice ?? 0);
                         const lineTotal = displayPrice * Number(item.quantity ?? 1);
+
                         return (
-                          <>
-                            <p className="text-xs text-muted">
-                              {item.quantity} × {formatPrice(displayPrice)}
-                            </p>
-                            <p className="font-bold text-sm text-ink">{formatPrice(lineTotal)}</p>
-                          </>
+                          <div key={i}
+                            className={`flex items-start justify-between px-4 py-3
+                              ${i < o.items.length - 1 ? 'border-b border-line-soft' : ''}
+                              ${isAffected ? 'opacity-60' : ''}`}>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold truncate text-ink ${isAffected ? 'line-through' : ''}`}>
+                                {item.productName}
+                              </p>
+                              {item.variantName && (
+                                <p className={`text-xs text-muted ${isAffected ? 'line-through' : ''}`}>
+                                  {item.variantName}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                {item.saleType === 'BOX' ? (
+                                  <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5
+                                    bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300
+                                    border border-amber-200 dark:border-amber-500/28
+                                    ${isAffected ? 'line-through' : ''}`}>
+                                    📦 Thùng {item.unitsPerBox ? `(${item.unitsPerBox} ${item.unit}/thùng)` : ''}
+                                  </span>
+                                ) : item.unit && (
+                                  <span className={`text-[10px] text-muted bg-surface-2 rounded px-1.5 py-0.5
+                                    ${isAffected ? 'line-through' : ''}`}>
+                                    ĐVT: {item.unit}
+                                  </span>
+                                )}
+                                {item.priceName && item.priceMode !== 'DISCOUNT_PERCENT' && (
+                                  <span className={`text-[10px] text-gold bg-gold/10 rounded px-1.5 py-0.5
+                                    ${isAffected ? 'line-through' : ''}`}>
+                                    {item.priceName}
+                                  </span>
+                                )}
+                                {(item.discountPercent ?? 0) > 0 && (
+                                  <span className={`text-[10px] text-orange-600 dark:text-orange-300
+                                    bg-orange-50 dark:bg-orange-500/10 rounded px-1.5 py-0.5
+                                    ${isAffected ? 'line-through' : ''}`}>
+                                    Giảm {item.discountPercent}%
+                                  </span>
+                                )}
+                                {(item.vatRate ?? 0) > 0 && (
+                                  <span className={`text-[10px] text-muted bg-surface-2 rounded px-1.5 py-0.5
+                                    ${isAffected ? 'line-through' : ''}`}>
+                                    VAT {item.vatRate}% · {item.vatMode === 'EXCLUSIVE' ? 'ngoài giá' : 'trong giá'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="text-right ml-3 shrink-0">
+                              <p className={`text-xs text-muted ${isAffected ? 'line-through' : ''}`}>
+                                {item.quantity} × {formatPrice(displayPrice)}
+                              </p>
+                              <p className={`font-bold text-sm text-ink ${isAffected ? 'line-through' : ''}`}>
+                                {formatPrice(isAffected ? 0 : lineTotal)}
+                              </p>
+                            </div>
+                          </div>
                         );
-                      })()}
-                    </div>
-                  </div>
-                ))}
+                      })}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
-            {/* Tổng tiền */}
-            <div className="bg-chrome rounded-xl p-4 space-y-1.5">
+            {/* Tổng tiền — tự trừ SP đã hoàn/đổi */}
+            {(() => {
+              const exchangedItemIds = new Set();
+              if (o.returnExchangeNote) {
+                try {
+                  JSON.parse(o.returnExchangeNote)
+                    .filter(n => n.type === 'EXCHANGE_SRC')
+                    .forEach(n => { if (n.orderItemId) exchangedItemIds.add(Number(n.orderItemId)); });
+                } catch { /* ignore */ }
+              }
+              const orderSubtotal = Number(o.subtotal || 0);
+              const billDiscount  = Number(o.discountAmount || 0);
+              const surcharge     = Number(o.surcharge || 0);
+              const discountRatio = orderSubtotal > 0 ? billDiscount / orderSubtotal : 0;
+              let returnedSubtotal = 0;
+              (o.items || []).forEach(item => {
+                const isRet  = item.returnedQty != null && Number(item.returnedQty) > 0;
+                const isExch = exchangedItemIds.has(Number(item.id));
+                if (isRet || isExch) {
+                  const ratio = Math.min(
+                    Number(isExch ? item.quantity : item.returnedQty) / Math.max(Number(item.quantity), 1), 1
+                  );
+                  returnedSubtotal += Number(item.subtotal || 0) * ratio;
+                }
+              });
+              const hasReturned       = returnedSubtotal > 0;
+              const effectiveSubtotal = orderSubtotal - returnedSubtotal;
+              const effectiveDiscount = billDiscount - returnedSubtotal * discountRatio;
+              const effectiveFinal    = Math.max(0, Math.round(effectiveSubtotal - effectiveDiscount + surcharge));
 
-              {/* Tạm tính — dùng o.subtotal từ BE (gross) */}
-              <TotalRow label="Tạm tính" value={formatPrice(subtotalDisplay)} />
-
-              {/* Giảm giá — dùng o.discountAmount từ BE (đã gồm item + bill discount) */}
-              {Number(o.discountAmount) > 0 && (
-                <TotalRow label="Giảm" value={`-${formatPrice(o.discountAmount)}`} />
-              )}
-
-              {/* Phụ phí */}
-              {Number(o.surcharge) > 0 && (
-                <TotalRow label="Phụ phí" value={`+${formatPrice(o.surcharge)}`} />
-              )}
-
-              {/* Tổng tiền */}
-              <div className="flex justify-between pt-2 border-t border-white/10">
-                <span className="text-sm font-bold text-white">Tổng tiền</span>
-                <span className="text-sm font-bold text-gold">{formatPrice(o.finalAmount)}</span>
-              </div>
-
-              {/* VAT */}
-              {hasItemBreakdown ? (
-                <VatBreakdownBlock groups={vatGroups} total={vatTotal} light />
-              ) : Number(o.vatAmount) > 0 ? (
-                <div className="border-t border-white/10 pt-1.5 mt-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-white/40">VAT</span>
-                    <span className="text-xs text-white/50">{formatPrice(o.vatAmount)}</span>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Đã thu / còn nợ */}
-              {o.paymentStatus === 'PARTIAL' && Number(o.paidAmount) > 0 && (
-                <>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-xs text-emerald-400">Đã thu</span>
-                    <span className="text-xs font-semibold text-emerald-400">{formatPrice(o.paidAmount)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-orange-400">Còn nợ</span>
-                    <span className="text-xs font-bold text-orange-400">
-                      {formatPrice(Number(o.finalAmount) - Number(o.paidAmount))}
+              return (
+                <div className="bg-chrome rounded-xl p-4 space-y-1.5">
+                  <TotalRow label="Tạm tính" value={formatPrice(hasReturned ? effectiveSubtotal : subtotalDisplay)} />
+                  {Number(o.discountAmount) > 0 && (
+                    <TotalRow label="Giảm" value={`-${formatPrice(hasReturned ? effectiveDiscount : billDiscount)}`} />
+                  )}
+                  {surcharge > 0 && (
+                    <TotalRow label="Phụ phí" value={`+${formatPrice(surcharge)}`} />
+                  )}
+                  <div className="flex justify-between pt-2 border-t border-white/10">
+                    <span className="text-sm font-bold text-white">Tổng tiền</span>
+                    <span className="text-sm font-bold text-gold">
+                      {formatPrice(hasReturned ? effectiveFinal : o.finalAmount)}
                     </span>
                   </div>
-                </>
-              )}
-            </div>
+                  {hasItemBreakdown ? (
+                    <VatBreakdownBlock groups={vatGroups} total={vatTotal} light />
+                  ) : Number(o.vatAmount) > 0 ? (
+                    <div className="border-t border-white/10 pt-1.5 mt-1.5">
+                      <div className="flex justify-between">
+                        <span className="text-xs text-white/40">VAT</span>
+                        <span className="text-xs text-white/50">{formatPrice(o.vatAmount)}</span>
+                      </div>
+                    </div>
+                  ) : null}
+                  {o.paymentStatus === 'PARTIAL' && Number(o.paidAmount) > 0 && (
+                    <>
+                      <div className="flex justify-between pt-1">
+                        <span className="text-xs text-emerald-400">Đã thu</span>
+                        <span className="text-xs font-semibold text-emerald-400">{formatPrice(o.paidAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-orange-400">Còn nợ</span>
+                        <span className="text-xs font-bold text-orange-400">
+                          {formatPrice(Number(o.finalAmount) - Number(o.paidAmount))}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── Banner đơn đổi SP ── */}
+            {o.linkType === 'EXCHANGE' && o.sourceOrderCode && (
+              <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border
+                border-amber-200 dark:border-amber-500/28 px-4 py-3 flex items-start gap-2">
+                <RefreshCw size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                <div className="text-xs">
+                  <p className="font-semibold text-amber-800 dark:text-amber-200">
+                    Đơn đổi sản phẩm
+                  </p>
+                  <p className="text-amber-700 dark:text-amber-300 mt-0.5">
+                    Khấu trừ <strong>{formatPrice(o.creditedFromSource)}</strong> từ đơn gốc{' '}
+                    <span className="font-mono font-bold">{o.sourceOrderCode}</span>
+                  </p>
+                  {Number(o.overpaidAmount) > 0 && (
+                    <p className="text-emerald-600 dark:text-emerald-300 mt-0.5 font-semibold">
+                      ↩ Cần hoàn lại cho khách: {formatPrice(o.overpaidAmount)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Tài xế giao hàng */}
             {o.deliveryInfo && o.deliveryInfo.length > 0 && (
@@ -795,6 +908,14 @@ export default function OrderDetailModal({ order: o, onClose, onRefresh }) {
           order={o}
           onClose={() => setShowReturnModal(false)}
           onSuccess={handleActionSuccess}
+        />
+      )}
+
+      {showExchangeModal && (
+        <OrderExchangeModal
+          order={o}
+          onClose={() => setShowExchangeModal(false)}
+          onSuccess={() => { setShowExchangeModal(false); if (onRefresh) onRefresh(); }}
         />
       )}
 

@@ -16,6 +16,37 @@ const fmtDays = (v) => {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 };
 
+/**
+ * Quy đổi số ngày (Double) → chuỗi "N ngày M phút".
+ * Cùng công thức với BE {@code LeaveBalanceDto.getRemainingDisplay()} để 2 phía
+ * hiển thị giống nhau. Dùng đơn vị NỬA BUỔI (240 phút) làm mốc để giữ định dạng
+ * "N.5 ngày" (thay vì đổi 0.5 ngày thành 240 phút cho khó đọc).
+ *
+ *   0.0   → "0 ngày"
+ *   2.0   → "2 ngày"
+ *   2.5   → "2.5 ngày"
+ *   2.6   → "2.5 ngày 48 phút" (2.5 ngày + 48 phút)
+ *   0.1   → "48 phút"
+ *   -1.5  → "-1.5 ngày"
+ */
+const fmtDaysMins = (v) => {
+  const days = Number(v ?? 0);
+  const totalMin = Math.round(days * 480);
+  if (totalMin === 0) return '0 ngày';
+  const neg = totalMin < 0;
+  const abs = Math.abs(totalMin);
+  const halfDays = Math.trunc(abs / 240);   // số NỬA BUỔI
+  const remMin   = abs % 240;               // phút LẺ dưới 1 nửa buổi
+  const daysStr  = halfDays % 2 === 0
+    ? String(halfDays / 2)
+    : `${Math.trunc(halfDays / 2)}.5`;
+  let body;
+  if (halfDays === 0)      body = `${remMin} phút`;
+  else if (remMin === 0)   body = `${daysStr} ngày`;
+  else                     body = `${daysStr} ngày ${remMin} phút`;
+  return neg ? '-' + body : body;
+};
+
 const fmtDate = (iso) => {
   if (!iso) return '—';
   const [y, m, d] = String(iso).split('-');
@@ -207,8 +238,7 @@ export default function LeaveBalanceCard({ userId, year, compact = false, title 
             <div>
               <p className="text-sm font-semibold text-ink">{title || `Ngày phép năm ${y}`}</p>
               <p className="text-[11px] text-muted">
-                1 ngày/tháng, cộng thâm niên mỗi 5 năm
-                {balance.seniorityYears != null && ` · thâm niên ${balance.seniorityYears} năm`}
+                1 ngày phép cộng dồn mỗi tháng
               </p>
             </div>
           </div>
@@ -217,13 +247,18 @@ export default function LeaveBalanceCard({ userId, year, compact = false, title 
 
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Được nghỉ', value: balance.entitledDays, cls: 'text-ink' },
-            { label: 'Đã nghỉ', value: balance.usedDays, cls: 'text-muted' },
-            { label: 'Còn lại', value: remaining, cls: remainColor },
+            { label: 'Số ngày phép (tính đến hiện tại)', value: balance.entitledDays, cls: 'text-ink' },
+            { label: 'Đã dùng', value: balance.usedDays, cls: 'text-muted' },
+            { label: 'Ngày phép còn lại', value: remaining, cls: remainColor },
           ].map(x => (
-            <div key={x.label} className="rounded-xl bg-canvas px-3 py-2.5 text-center">
-              <p className={`text-xl font-bold ${x.cls}`}>{fmtDays(x.value)}</p>
-              <p className="text-[11px] text-muted mt-0.5">{x.label}</p>
+            <div key={x.label} className="rounded-xl bg-canvas px-2 py-2.5 text-center">
+              {/* Đổi từ "N ngày" sang "N ngày M phút" — dùng fmtDaysMins.
+                  Font nhỏ hơn text-xl cũ để chuỗi dài ("2.5 ngày 48 phút")
+                  vẫn nằm gọn trong 1 ô grid-cols-3 trên mobile. */}
+              <p className={`text-sm sm:text-base font-bold leading-tight ${x.cls}`}>
+                {fmtDaysMins(x.value)}
+              </p>
+              <p className="text-[10px] leading-tight text-muted mt-1">{x.label}</p>
             </div>
           ))}
         </div>
@@ -233,8 +268,8 @@ export default function LeaveBalanceCard({ userId, year, compact = false, title 
                           border border-amber-200 dark:border-amber-500/28 rounded-xl px-2.5 py-2">
             <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" />
             <span>
-              Hồ sơ chưa có ngày vào làm nên chỉ được tính 12 ngày cơ bản, chưa cộng
-              thâm niên. Liên hệ Nhân sự để bổ sung.
+              Hồ sơ chưa có ngày vào làm nên chỉ được tính 12 ngày cơ bản.
+              Liên hệ Nhân sự để bổ sung.
             </span>
           </div>
         )}

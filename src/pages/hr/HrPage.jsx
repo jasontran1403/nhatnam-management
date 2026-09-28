@@ -381,21 +381,19 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
 const ORG = {
   // Ban lãnh đạo — lương tính tách riêng, không gộp với bộ phận nào khác.
   'Quản lý cấp cao': ['Chủ Tịch', 'Giám Đốc'],
-  'Xưởng sản xuất': ['Trưởng xưởng', 'Quản lý xưởng', 'Kế toán xưởng',
+  'Xưởng sản xuất': ['Trưởng xưởng', 'Quản lý xưởng', 'Kế toán xưởng', 'Nhân viên đóng gói',
                      'Công nhân sản xuất', 'Trợ lý xưởng', 'Nhân viên văn phòng', 'Bảo vệ'],
   'Kế Toán':        ['Kế toán trưởng', 'Chuyên viên kế toán', 'Nhân viên tổng hợp'],
   'Kinh doanh':     ['Trưởng phòng kinh doanh', 'Nhân viên kinh doanh'],
-  'Kho':            ['Quản lý kho', 'Nhân viên kho', 'Nhân viên đóng gói'],
+  'Kho':            ['Quản lý kho', 'Nhân viên kho', 'Nhân viên tạp vụ'],
   'Tài xế':         ['Tài xế giao nhận'],
 };
 
 /**
- * Số năm thâm niên TRÒN tính tới HÔM NAY — chỉ để hiển thị tham khảo ở bảng nhân sự.
+ * Số năm gắn bó TRÒN tính tới HÔM NAY — chỉ để hiển thị tham khảo ở bảng nhân sự.
  *
- * <p>Con số CHÍNH THỨC dùng để trả phụ cấp là bản do BE chốt lúc Chủ bấm
- * "Hoàn tất" phiếu lương ({@code SeniorityCalculator.java}), lấy mốc là ngày
- * hoàn tất chấm công chứ không phải hôm nay. Hai số có thể lệch nhau nếu ngày kỷ
- * niệm vào làm rơi vào khoảng giữa hai mốc — đây chỉ là chỗ xem nhanh.
+ * <p>[2026] Công ty đã bỏ phụ cấp thâm niên nên số này chỉ dùng cho UI/nhân sự
+ * xem nhanh nhân viên gắn bó bao lâu; không còn ảnh hưởng đến lương.
  *
  * <p>Đếm theo lịch (so ngày/tháng) chứ không chia 365 ngày, để năm nhuận và
  * người vào làm 29/02 không bị lệch.
@@ -425,6 +423,12 @@ function InfoModal({ user, onClose, onSaved }) {
     position: '',
     // Ngày vào làm — epoch ms (DatePicker nhận/trả ms). null = chưa nhập.
     workStartDate: user.workStartDate ?? null,
+    // Thông tin ngân hàng để chi lương qua NH — HR nhập tay. Chuỗi rỗng khi
+    // chưa có, để form controlled không bị lỗi input value = null.
+    bankAccountNumber: user.bankAccountNumber || '',
+    bankName: user.bankName || '',
+    // Đang nghỉ thai sản → tạm dừng vào file chi lương NH; đi làm lại thì gỡ.
+    onMaternityLeave: !!user.onMaternityLeave,
   });
 
   // Đổi bộ phận thì chức vụ phải nằm trong bộ phận mới, nếu không thì xoá trắng
@@ -449,6 +453,13 @@ function InfoModal({ user, onClose, onSaved }) {
         ...form,
         // BE nhận epoch millis; gửi 0 khi để trống = xoá ngày vào làm.
         workStartDate: form.workStartDate || 0,
+        // Bank fields: chuỗi rỗng có ý nghĩa "xoá thông tin cũ" (BE hiểu vậy).
+        // Trim để bỏ khoảng trắng thừa lúc copy-paste số tài khoản.
+        bankAccountNumber: (form.bankAccountNumber || '').trim(),
+        bankName: (form.bankName || '').trim(),
+        // Gửi rõ ràng true/false — BE nhận null = không đổi, ta luôn gửi
+        // boolean vì đây là toggle bật/tắt tường minh trên UI.
+        onMaternityLeave: !!form.onMaternityLeave,
       });
       toast('Đã cập nhật thông tin', 'success');
       onSaved();
@@ -478,7 +489,7 @@ function InfoModal({ user, onClose, onSaved }) {
         </Field>
 
         <Field label="Ngày vào làm việc"
-          hint="Căn cứ tính thâm niên & phụ cấp thâm niên. Để trống nếu chưa rõ.">
+          hint="Căn cứ tính số năm gắn bó của nhân viên. Để trống nếu chưa rõ.">
           <DatePicker
             value={form.workStartDate}
             onChange={v => setForm(f => ({ ...f, workStartDate: v }))}
@@ -486,13 +497,50 @@ function InfoModal({ user, onClose, onSaved }) {
             maxDate={new Date()} />
         </Field>
 
-        {form.workStartDate && (
-          <p className="text-xs text-muted leading-relaxed">
-            Thâm niên được CHỐT khi Chủ bấm “Hoàn tất” phiếu lương của tháng, tính
-            theo số năm tròn từ ngày này tới ngày hoàn tất chấm công. Đủ 1 năm được
-            2% lương cơ bản, mỗi năm sau +1%, tối đa 10%.
-          </p>
-        )}
+        {/* Thông tin ngân hàng — dùng để chi lương qua NH. Bỏ trống thì file
+            "DANH SÁCH CHI LƯƠNG THÁNG mm/yyyy" xuất ra sẽ để trống 2 ô tương
+            ứng, HR điền tay trước khi gửi. */}
+        <Field label="Số tài khoản ngân hàng"
+          hint="Điền để tự động vào file chi lương gửi ngân hàng. Để trống nếu chưa có.">
+          <input
+            type="text"
+            inputMode="numeric"
+            className={selectCls}
+            value={form.bankAccountNumber}
+            onChange={e => setForm(f => ({ ...f, bankAccountNumber: e.target.value }))}
+            placeholder="VD: 104887870403"
+            maxLength={50} />
+        </Field>
+
+        <Field label="Tên ngân hàng"
+          hint="Ví dụ VIETINBANK CN2, VCB, MB Bank…">
+          <input
+            type="text"
+            className={selectCls}
+            value={form.bankName}
+            onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))}
+            placeholder="VD: VIETINBANK CN2"
+            maxLength={100} />
+        </Field>
+
+        {/* Nghỉ thai sản — checkbox riêng, tách khỏi lock account vì mục đích
+            khác: chỉ tạm dừng chuyển khoản, KHÔNG chặn đăng nhập / xoá hồ sơ.
+            Đi làm lại → bỏ tích → tháng sau tự có trong file chi lương. */}
+        <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="mt-0.5 w-4 h-4 accent-amber-500 shrink-0"
+            checked={form.onMaternityLeave}
+            onChange={e => setForm(f => ({ ...f, onMaternityLeave: e.target.checked }))} />
+          <span className="text-sm text-ink">
+            Đang nghỉ thai sản
+            <span className="block text-xs text-muted mt-0.5 font-normal">
+              Tạm dừng đưa vào file chi lương gửi ngân hàng. Hồ sơ và tài khoản
+              đăng nhập không đổi — khi nhân viên đi làm lại, bỏ tích ô này thì
+              tháng sau tự có tên trong file như cũ.
+            </span>
+          </span>
+        </label>
 
         <p className="text-xs text-muted leading-relaxed">
           Role hưởng lương được đặt tự động theo chức vụ. Nhân viên kiêm nhiệm vẫn
@@ -732,7 +780,7 @@ function ImportEmployeesModal({ onClose, onDone }) {
             </p>
             <p className="text-xs text-muted">
               Cột <strong>Ngày vào làm</strong> để trống thì hệ thống lấy <strong>ngày import</strong> làm mốc
-              tính thâm niên (chỉ với nhân viên chưa có ngày nào).
+              tính số năm gắn bó (chỉ với nhân viên chưa có ngày nào).
             </p>
             {uploadError && (
               <div className="flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-xl px-3 py-2.5 text-left">
@@ -768,8 +816,8 @@ function ImportEmployeesModal({ onClose, onDone }) {
               <p className="text-xs text-amber-700 dark:text-amber-300">
                 Đã tự điền <strong>ngày hôm nay</strong> làm ngày vào làm cho{' '}
                 <strong>{result.backfilled}</strong> nhân viên còn để trống.
-                Ai có ngày vào làm thật khác thì sửa lại ở nút “Bộ phận / Chức vụ”,
-                vì con số này quyết định phụ cấp thâm niên.
+                Ai có ngày vào làm thật khác thì sửa lại ở nút “Bộ phận / Chức vụ”
+                để hiển thị đúng số năm gắn bó của nhân viên.
               </p>
             </div>
           )}
@@ -903,7 +951,17 @@ function EmployeesTab() {
                   <Td><input type="checkbox" checked={selected.includes(u.id)}
                     onChange={() => toggleOne(u.id)} className="w-4 h-4 accent-amber-500" /></Td>
                   <Td>
-                    <div className="font-medium text-ink">{u.fullName}</div>
+                    <div className="font-medium text-ink flex items-center gap-1.5 flex-wrap">
+                      <span>{u.fullName}</span>
+                      {u.onMaternityLeave && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider
+                          px-1.5 py-0.5 rounded bg-pink-100 text-pink-700
+                          dark:bg-pink-500/20 dark:text-pink-200"
+                          title="Đang nghỉ thai sản — không có trong file chi lương ngân hàng">
+                          Nghỉ thai sản
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted">{u.username}</div>
                   </Td>
                   <Td><span className="text-sm">{u.department || '—'}</span></Td>
@@ -1587,8 +1645,6 @@ export default function HrPage() {
   const TABS = [
     { id: 'employees', label: 'Quản lý nhân viên', icon: Users },
     { id: 'payroll', label: 'Tính lương', icon: Calculator },
-    { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
-    { id: 'ot', label: 'Phiếu OT', icon: Clock },
   ];
 
   return (
@@ -1603,8 +1659,6 @@ export default function HrPage() {
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'employees' && <EmployeesTab />}
       {tab === 'payroll' && <PayrollTab />}
-      {tab === 'leaves' && <LeavesTabGroup />}
-      {tab === 'ot' && <OtTab />}
       {showDriverReport && <DriverReportModal onClose={() => setShowDriverReport(false)} />}
     </div>
   );

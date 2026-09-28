@@ -29,11 +29,11 @@ import {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const STATUS_STYLE = {
-  PENDING:           { cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28', icon: Clock },
-  APPROVED_PAID:     { cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: Check },
-  APPROVED_UNPAID:   { cls: 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/28', icon: Check },
+  PENDING: { cls: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28', icon: Clock },
+  APPROVED_PAID: { cls: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28', icon: Check },
+  APPROVED_UNPAID: { cls: 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/28', icon: Check },
   APPROVED_DEDUCTED: { cls: 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/28', icon: MinusCircle },
-  REJECTED:          { cls: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/28', icon: X },
+  REJECTED: { cls: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/28', icon: X },
 };
 
 function StatusBadge({ status, label }) {
@@ -122,7 +122,7 @@ function CreateForm({ config, onCreated }) {
           toast(`${count} ngày trong khoảng đã có phiếu nghỉ — sẽ tự bỏ qua`, 'warning');
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => { if (!cancelled) setLoadingOccupied(false); });
     return () => { cancelled = true; };
   }, [dayList.join(',')]);
@@ -281,15 +281,21 @@ function CreateForm({ config, onCreated }) {
         {/* ── Loại phiếu ─────────────────────────────────────────────────── */}
         <Field label="Loại phiếu" required>
           <div className="flex flex-wrap gap-2">
-            {config.types.map(t => (
-              <button key={t.value} type="button" onClick={() => setTypeValue(t.value)}
-                className={`px-3.5 py-2 rounded-xl text-sm font-medium border transition-all
-                  ${typeValue === t.value
-                    ? 'bg-chrome text-white border-chrome shadow-sm'
-                    : 'bg-surface text-muted border-hairline-2 hover:border-gold hover:text-gold'}`}>
-                {t.label}
-              </button>
-            ))}
+            {config.types
+              .filter(t => t.value !== 'BUSINESS_TRIP')
+              .map(t => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setTypeValue(t.value)}
+                  className={`px-3.5 py-2 rounded-xl text-sm font-medium border transition-all
+        ${typeValue === t.value
+                      ? 'bg-chrome text-white border-chrome shadow-sm'
+                      : 'bg-surface text-muted border-hairline-2 hover:border-gold hover:text-gold'}`}
+                >
+                  {t.label}
+                </button>
+              ))}
           </div>
         </Field>
 
@@ -402,7 +408,7 @@ function CreateForm({ config, onCreated }) {
                       ) : (
                         <span className="text-muted">
                           {off ? 'không nghỉ'
-                               : (ss.morning && ss.afternoon) ? '1 ngày' : '0,5 ngày'}
+                            : (ss.morning && ss.afternoon) ? '1 ngày' : '0,5 ngày'}
                         </span>
                       )}
                     </span>
@@ -432,7 +438,7 @@ function CreateForm({ config, onCreated }) {
                       <b className="text-ink">
                         {kept.length === 0 ? '(không còn ngày nào)'
                           : kept.length === 1 ? f(kept[0])
-                          : `${f(kept[0])} → ${f(kept[kept.length - 1])}`}
+                            : `${f(kept[0])} → ${f(kept[kept.length - 1])}`}
                       </b>
                     </div>
                   );

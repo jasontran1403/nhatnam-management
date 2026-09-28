@@ -1,6 +1,7 @@
 // src/pages/admin/AdminUsers.jsx
 import { useLang } from '../../context/LangContext';
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { hrSalaryApi, hrLeaveApi } from '../../api/hrApi';
@@ -221,6 +222,7 @@ export default function AdminUsers() {
   // Route con chỉ tồn tại cho OWNER; ADMIN dùng chung trang Tài xế.
   const rolePrefix = window.location.pathname.startsWith('/owner') ? '/owner' : '/admin';
   const isOwner = rolePrefix === '/owner';
+  const navigate = useNavigate();
 
   const handleExportSalary = async () => {
     setExportingSalary(true);
@@ -232,6 +234,11 @@ export default function AdminUsers() {
       toast(e?.response?.data?.message || 'Xuất bảng lương thất bại', 'error');
     } finally { setExportingSalary(false); }
   };
+
+  // Nút "Quản lý phép" thay cho "Xuất ngày phép" cũ: điều hướng sang trang
+  // OwnerLeaveManagementPage, nơi có bảng chi tiết + nút Xuất Leave Report.
+  // handleExportLeave giữ nguyên bên trong trang mới (không xoá code cũ để có
+  // thể quay lại nhanh nếu cần).
 
   const handleExportLeave = async () => {
     setExportingLeave(true);
@@ -336,9 +343,9 @@ export default function AdminUsers() {
                   <Download size={15} />
                   {exportingSalary ? 'Đang xuất…' : 'Xuất bảng lương'}
                 </SecondaryButton>
-                <SecondaryButton onClick={handleExportLeave} disabled={exportingLeave}>
-                  <Download size={15} />
-                  {exportingLeave ? 'Đang xuất…' : 'Xuất ngày phép'}
+                <SecondaryButton onClick={() => navigate('/owner/leave-management')}>
+                  <CalendarClock size={15} />
+                  Quản lý phép
                 </SecondaryButton>
               </>
             )}

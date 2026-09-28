@@ -108,6 +108,12 @@ export const supplyWarehouseApi = {
   /** Kho user được thao tác. FE auto-select khi chỉ có 1 kho. */
   myWarehouses: () => api.get('/api/supply-warehouses').then(unwrap),
 
+  /** Alias ngắn hơn — dùng trong trang đăng ký nhân viên. */
+  list: () => api.get('/api/supply-warehouses').then(unwrap),
+
+  /** Tất cả kho (OWNER) — dùng trong trang quản lý VPP của owner. */
+  listAll: () => api.get('/api/owner/supply-warehouses').then(unwrap),
+
   /** onlyPositive = true cho dropdown Rút sử dụng (chỉ món có tồn > 0). */
   stock: (warehouseId, { onlyPositive = false, search } = {}) =>
     api.get(`/api/supply-warehouses/${warehouseId}/stock`, {

@@ -5,6 +5,95 @@ import ExpiryDatePicker from './ExpiryDatePicker';
 import { Search, X, ChevronDown, ChevronRight, Check, Layers, Package } from 'lucide-react';
 import { warehouseApi, getImageUrl } from '../../api/warehouseApi';
 
+// ══════════════════════════════════════════════════════════════════════════════
+// CALCULATOR INPUT — ô nhập số lượng chấp nhận biểu thức + và *
+// ──────────────────────────────────────────────────────────────────────────────
+// Yêu cầu (24/9/2026): ô "Số lượng" ở Nhập / Xuất / Chuyển kho cho phép nhập
+// biểu thức tính toán:
+//   "123.5"        → 123.5
+//   "123.1 + 42.4" → 165.5   (khi blur)
+//   "20 * 4"       → 80
+// Chỉ hỗ trợ + và * (bao gồm cả kết hợp: "10 + 2 * 3" = 16 vì * ưu tiên hơn).
+// KHÔNG cho gõ - và / — filter ngay khi typing, không phải chờ đến blur.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Bộ ký tự hợp lệ: chữ số, dấu chấm, dấu phẩy (thay dấu chấm kiểu VN), + * và space.
+const CALC_ALLOWED_RE = /[^0-9.,+*\s]/g;
+
+/**
+ * Ép chuỗi input về đúng các ký tự cho phép — dùng cho onChange để lọc realtime
+ * (tránh trường hợp paste dính - hoặc /).
+ */
+function sanitizeCalcInput(raw) {
+  return String(raw ?? '').replace(CALC_ALLOWED_RE, '');
+}
+
+/**
+ * Đánh giá biểu thức cộng-nhân — trả về Number hoặc null nếu không hợp lệ.
+ * Không dùng eval() vì eval dễ chạy code không mong muốn; ở đây parse tay
+ * theo đúng 2 phép + * với * ưu tiên cao hơn.
+ */
+function evalCalcExpression(raw) {
+  const s = sanitizeCalcInput(raw).replace(/,/g, '.').trim();
+  if (s === '') return null;
+
+  // Cắt theo + trước (mức thấp), rồi trong mỗi hạng cắt tiếp theo *.
+  const terms = s.split('+');
+  let total = 0;
+  for (const term of terms) {
+    const factors = term.split('*').map(f => f.trim());
+    let prod = 1;
+    for (const f of factors) {
+      if (f === '' || f === '.') return null;         // toán tử liền toán tử / trống
+      const n = parseFloat(f);
+      if (Number.isNaN(n) || !Number.isFinite(n)) return null;
+      // Không cho số hạng có nhiều dấu chấm ("1.2.3" → parseFloat cho 1.2 nhưng
+      // chuỗi gốc sai → chặn để tránh im lặng nuốt số).
+      if ((f.match(/\./g) || []).length > 1) return null;
+      prod *= n;
+    }
+    total += prod;
+  }
+  return total;
+}
+
+/**
+ * Ô nhập số lượng với hỗ trợ biểu thức. API giống một `<input type="number">`:
+ *   value    — string (chưa parse) hoặc số
+ *   onChange — nhận string mới (đã lọc ký tự không hợp lệ)
+ *   onBlur   — nếu ô là biểu thức hợp lệ, TỰ ĐỘNG thay thế bằng kết quả
+ *              (gọi onChange với kết quả); nếu không hợp lệ thì giữ nguyên
+ *              để user tự sửa (validate 'quantity > 0' ở submit sẽ chặn).
+ */
+function CalcQtyInput({ value, onChange, placeholder, className, disabled }) {
+  const handleChange = (e) => {
+    const cleaned = sanitizeCalcInput(e.target.value);
+    onChange(cleaned);
+  };
+  const handleBlur = () => {
+    const result = evalCalcExpression(value);
+    if (result == null) return;                                    // không hợp lệ → giữ nguyên
+    // Chuẩn hoá 165.5 → "165.5", 80 → "80" (bỏ dấu phẩy nghìn để BE parse dễ)
+    // Làm tròn 6 chữ số thập phân đủ cho mọi cân đo trong kho — tránh 0.1+0.2 = 0.30000000004
+    const rounded = Math.round(result * 1e6) / 1e6;
+    const asStr = String(rounded);
+    if (asStr !== String(value)) onChange(asStr);
+  };
+  return (
+    <input
+      className={className}
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      placeholder={placeholder}
+      value={value ?? ''}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      disabled={disabled}
+    />
+  );
+}
+
 // ── Cache categories/subcategories/meta ở module level để tránh fetch lại mỗi row ──
 let _catCache = null, _subCache = null, _metaCache = null;
 async function loadMeta() {
@@ -423,15 +512,17 @@ export default function IngredientSelector({ stocks = [], value, onChange, onRem
           )}
         </button>
 
-        {/* Số lượng */}
+        {/* Số lượng — CalcQtyInput cho phép nhập biểu thức "10 + 2 * 3" và tự
+            tính ra khi blur. Chỉ áp dụng cho 3 mode nhập/xuất/chuyển kho theo
+            yêu cầu; mode 'adjust' bên dưới giữ input số thường vì OWNER kiểm
+            kê thực tế đọc số trên cân, không cần cộng dồn. */}
         {(mode === 'import' || mode === 'export' || mode === 'transfer') && (
           <div>
-            <input
+            <CalcQtyInput
               className="wh-input"
-              type="number" min="0" step="0.01"
               placeholder="Số lượng"
               value={value.quantity || ''}
-              onChange={e => onChange({ ...value, quantity: e.target.value })}
+              onChange={v => onChange({ ...value, quantity: v })}
             />
           </div>
         )}

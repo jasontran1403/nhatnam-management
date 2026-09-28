@@ -53,6 +53,33 @@ export const hrLeaveApi = {
   list: (params) => api.get('/api/hr/leaves', { params }).then(r),
   get: (id) => api.get(`/api/hr/leaves/${id}`).then(r),
   exportReport: () => api.get('/api/hr/leave-report/export', { responseType: 'blob' }),
+  /**
+   * Dữ liệu bảng "Quản lý phép" (JSON) — Owner/Admin.
+   * Cùng bộ số với XLSX export, format sẵn "n days m mins" cho từng ô.
+   */
+  management: () => api.get('/api/hr/leave-management').then(r),
+
+  /**
+   * Ghi 1 ô "Đã dùng" T1..T8 của bảng "Quản lý phép" cho 1 nhân viên.
+   * `minutes = 0` ⇒ xoá bản ghi (ô hiển thị " - "). Trả về response bảng
+   * đầy đủ sau khi ghi để FE reload trực tiếp.
+   */
+  setManualUsage: ({ userId, year, month, minutes }) =>
+    api.patch('/api/hr/leave-management/manual-usage',
+              { userId, year, month, minutes }).then(r),
+
+  /** Ghi cột "TỒN NĂM TRƯỚC" (priorYearLeaveBalance). `days` cho phép thập phân. */
+  setPriorYearBalance: ({ userId, days }) =>
+    api.patch('/api/hr/leave-management/prior-year-balance',
+              { userId, days }).then(r),
+
+  /**
+   * Ghi cột "PHÉP NĂM HIỆN TẠI". BE lưu OFFSET so với auto formula để mỗi
+   * đầu tháng số hiển thị tự tăng 1 mà không cần cronjob.
+   */
+  setCurrentYearEntitled: ({ userId, days }) =>
+    api.patch('/api/hr/leave-management/current-year-entitled',
+              { userId, days }).then(r),
 };
 
 // ── Overtime ──────────────────────────────────────────────────────────────────

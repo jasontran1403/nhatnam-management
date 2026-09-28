@@ -141,6 +141,9 @@ export const customerApi = {
     api.get('/api/seller/customers/receiver-infos/check-phone', { params: { phone } }),
   setDefaultReceiverInfo: (customerId, rid) =>
     api.patch(`/api/seller/customers/${customerId}/receiver-infos/${rid}/set-default`),
+  /** Tỷ lệ thanh toán công nợ — chỉ gọi khi c.debtDays > 0 */
+  getPaymentScore: (customerId) =>
+    api.get(`/api/seller/customers/${customerId}/payment-score`),
 };
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
@@ -245,9 +248,21 @@ export const accountantApi = {
   getOrders: (params) => api.get('/api/accountant/orders', { params }),
   markPendingPayment: (id) => api.patch(`/api/accountant/orders/${id}/pending-payment`),
   markCompleted: (id) => api.patch(`/api/accountant/orders/${id}/complete`),
+  markCompletedNoFixedPaidAmount: (id) => api.patch(`/api/accountant/orders/${id}/mark-as-complete`),
   updatePaymentMethod: (id, paymentMethod) => api.patch(`/api/accountant/orders/${id}/payment`, { paymentMethod }),
   exportOrders: (params) =>
     api.get('/api/accountant/orders/export', { params, responseType: 'blob' }),
+  createRefundDisbursement: (orderId, data) =>
+    api.post(`/api/orders/${orderId}/refund-disbursement`, data),
+  /** Tạo 1 phiếu chi hoàn tiền cho nhiều đơn REFUND cùng lúc. */
+  createBulkRefundDisbursement: (data) =>
+    api.post('/api/orders/refund-disbursement/bulk', data),
+  /** Tìm đơn chờ hoàn tiền (pendingRefundAmount > 0, chưa có phiếu chi). */
+  getRefundPendingOrders: (params) =>
+    api.get('/api/orders/refund-pending', { params }),
+  /** Tìm đơn chờ hoàn tiền cho modal phiếu chi kế toán (filter theo keyword + customerId). */
+  searchPendingRefundOrders: (params) =>
+    api.get('/api/accountant/orders/pending-refund-search', { params }),
   getProducts: () => api.get('/api/accountant/products'),
   getCustomersList: (q) => api.get('/api/accountant/customers', { params: { q, size: 100 } }),
   getCustomers: (params) => api.get('/api/accountant/customers', { params }),
@@ -490,4 +505,3 @@ export const quotationApi = {
   exportPdf: (payload) =>
     api.post('/api/seller/quotations/export-pdf', payload, { responseType: 'blob' }),
 };
-

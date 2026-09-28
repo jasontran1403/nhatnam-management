@@ -20,6 +20,7 @@ import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/common/Toast';
 import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
+import EmployeeRequestsPanel from '../../components/hr/EmployeeRequestsPanel';
 import { BackButton } from '../../components/common/SubPageNav';
 
 function Row({ label, val, bold, red }) {
@@ -880,7 +881,7 @@ export default function OwnerEmployeesPage() {
       <PageHeader icon={Users} title="Duyệt lương" subtitle="Quản lý & duyệt lương nhân viên" />
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {/* {tab === 'employees' && <EmployeesTab />} */}
-      {tab === 'leaves' && <LeavesTab />}
+      {tab === 'leaves' && <EmployeeRequestsPanel />}
       {tab === 'ot' && <OtTab />}
       {tab === 'salary' && <SalaryApprovalTab />}
       {tab === 'breakdown' && <SalaryBreakdownTab />}

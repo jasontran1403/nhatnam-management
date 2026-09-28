@@ -23,8 +23,52 @@ import {
 import VoucherPaymentModal from '../../components/payment/VoucherPaymentModal';
 import { PageToggle } from '../../components/common/PageSwitchButtons';
 import EditOrderModal from '../../components/seller/EditOrderModal';
+// ── THÊM MỚI: import OrderExchangeModal ──────────────────────────────────────
+import OrderExchangeModal from '../../components/seller/OrderExchangeModal';
 
 const CANCELLABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERING']);
+
+/** Parse returnExchangeNote JSON để lấy loại và số sản phẩm hoàn/đổi */
+function parseReturnNote(note) {
+  if (!note) return null;
+  try {
+    const entries = JSON.parse(note);
+    const refundItems  = entries.filter(n => n.type === 'REFUND');
+    const exchangeItems = entries.filter(n => n.type === 'EXCHANGE_SRC');
+    if (exchangeItems.length > 0) return { type: 'EXCHANGE', count: exchangeItems.length };
+    if (refundItems.length > 0)   return { type: 'REFUND',   count: refundItems.length };
+    return { type: 'REFUND', count: 1 };
+  } catch { return { type: 'REFUND', count: 1 }; }
+}
+
+/** Badge hiển thị đơn có SP hoàn hoặc SP đổi */
+function ReturnExchangeBadge({ returnExchangeNote, linkType }) {
+  // Đơn EXCHANGE mới tạo (linkType = 'EXCHANGE')
+  if (linkType === 'EXCHANGE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border whitespace-nowrap
+        bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/28">
+        🔄 Đơn đổi SP
+      </span>
+    );
+  }
+  const info = parseReturnNote(returnExchangeNote);
+  if (!info) return null;
+  if (info.type === 'EXCHANGE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border whitespace-nowrap
+        bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/28">
+        🔄 Có {info.count} SP đổi
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border whitespace-nowrap
+      bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/28">
+      ↩ Có {info.count} SP hoàn
+    </span>
+  );
+}
 
 function formatDate(ts) {
   if (!ts) return '—';
@@ -36,11 +80,6 @@ function formatDateShort(ts) {
 }
 function parseVND(str) { return Number(String(str).replace(/[^0-9]/g, '')); }
 
-/**
- * Mở blob PDF ở tab mới để xem trước / in ngay.
- * (downloadBlob dùng chung đang hard-code MIME xlsx nên không dùng được cho PDF.)
- * Nếu trình duyệt chặn popup thì fallback sang tải file về.
- */
 function openPdfBlob(blobData, filename) {
   const url = URL.createObjectURL(new Blob([blobData], { type: 'application/pdf' }));
   const win = window.open(url, '_blank');
@@ -123,18 +162,10 @@ function PaymentMethodCell({ value, onSave, disabled }) {
   const btnRef = useRef(null);
   const handleSelect = (val) => { setOpen(false); if (val !== value) onSave(val); };
 
-  /*
-   * Dropdown render qua PORTAL ra <body> thay vì đặt absolute trong ô bảng.
-   *
-   * Bảng có vùng cuộn riêng; khi chỉ có 1–2 đơn thì vùng đó thấp hơn dropdown và nó bị
-   * cắt mất — đúng lỗi trong ảnh chụp. Đưa ra ngoài body thì không còn tổ tiên nào cắt
-   * được, và toạ độ lấy từ getBoundingClientRect nên vẫn dính đúng vị trí nút.
-   */
   const toggle = () => {
     if (open) { setOpen(false); return; }
     const r = btnRef.current?.getBoundingClientRect();
     if (r) {
-      // Không đủ chỗ bên dưới thì lật lên trên, tránh dropdown chạy khỏi màn hình.
       const openUp = window.innerHeight - r.bottom < 140;
       setPos({ left: r.left, top: openUp ? r.top - 4 : r.bottom + 4, openUp });
     }
@@ -245,9 +276,6 @@ function PartialPaymentModal({ order, onClose, onConfirm, loading }) {
               ].map(m => <button key={m.value} onClick={() => setPaymentMethod(m.value)} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${paymentMethod === m.value ? 'bg-gold text-white border-gold' : 'border-line text-ink-2 hover:border-gold'}`}>{m.label}</button>)}
             </div>
           </div>
-          {/* Thanh toán bằng VOUCHER — luồng riêng, không phải một lựa chọn của biểu mẫu
-              bên trên: khách đưa mã, hệ thống kiểm tra rồi mới trừ, số tiền do voucher
-              quyết định chứ không gõ tay. */}
           <button
             onClick={() => setVoucherOpen(true)}
             className="w-full py-2 rounded-xl border-2 border-dashed border-gold/50
@@ -310,29 +338,59 @@ function StatusActionButtons({ order, onCancel, onEdit, onVoucher, loading, disa
   const { status } = order;
   const isCancelled = status === 'CANCELLED';
 
-  // SUPER_SELLER: sửa được mọi trạng thái trừ CANCELLED
-  // Seller thường: chỉ sửa PREPARING
+  // ── Đơn ĐỔI SẢN PHẨM (linkType=EXCHANGE): ẩn tất cả nút Sửa / Hủy ──
+  // Đơn này được tạo tự động từ đơn gốc, không cho phép thao tác thủ công.
+  const isExchangeOrder = order.linkType === 'EXCHANGE';
+  if (isExchangeOrder) {
+    // COMPLETED/CANCELLED không cần gì — badge "Đơn đổi SP" đã ở cột Thao tác
+    if (isCancelled || status === 'COMPLETED') return null;
+    const remainingDue = Number(order.finalAmount || 0) - Number(order.paidAmount || 0);
+    const canPayVoucher = status !== 'FAILED' && remainingDue > 0;
+    if (!canPayVoucher) return null;
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button onClick={e => { e.stopPropagation(); onVoucher?.(); }} disabled={loading}
+          title="Thanh toán bằng voucher"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
+          <Ticket size={10} /> Voucher
+        </button>
+      </div>
+    );
+  }
+
+  // ── Đơn đã có lịch sử hoàn/đổi (returnExchangeNote ≠ null): ẩn Sửa / Hủy ──
+  // Khi đơn đã bị REFUND hoặc RESTOCK một phần/toàn bộ, không cho phép sửa/hủy
+  // vì số liệu kho và tài chính đã thay đổi.
+  const hasReturnHistory = !!order.returnExchangeNote;
+  if (hasReturnHistory) {
+    // Đơn COMPLETED hoặc CANCELLED không cần show gì thêm — badge ở cột Thao tác đã đủ
+    if (isCancelled || status === 'COMPLETED') return null;
+    // Còn đang nợ thì vẫn cho Voucher
+    const remainingDue = Number(order.finalAmount || 0) - Number(order.paidAmount || 0);
+    const canPayVoucher = status !== 'FAILED' && remainingDue > 0;
+    if (!canPayVoucher) return null;
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button onClick={e => { e.stopPropagation(); onVoucher?.(); }} disabled={loading}
+          title="Thanh toán bằng voucher"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 transition-colors text-[10px] font-semibold disabled:opacity-50 whitespace-nowrap">
+          <Ticket size={10} /> Voucher
+        </button>
+      </div>
+    );
+  }
+
   const canEdit = isSuperSeller
     ? !isCancelled
     : status === 'PREPARING';
 
   const locked = (status === 'COMPLETED' || isCancelled || status === 'FAILED') && !canEdit;
-  // Đơn khoá nhưng vẫn còn nợ tiền thì vẫn phải cho thu bằng voucher.
   if (locked && !(Number(order.finalAmount || 0) - Number(order.paidAmount || 0) > 0
-        && status !== 'CANCELLED' && status !== 'FAILED'))
+    && status !== 'CANCELLED' && status !== 'FAILED'))
     return <span className="text-[10px] text-faint">—</span>;
 
-  // SUPER_SELLER: hủy được mọi trạng thái trừ CANCELLED
-  // Seller thường: chỉ hủy được các trạng thái chưa xử lý xong (CANCELLABLE_STATUSES)
   const canCancel = isSuperSeller ? !isCancelled : CANCELLABLE_STATUSES.has(status);
 
-  /*
-   * Nút thanh toán bằng voucher hiện khi đơn CÒN THIẾU TIỀN và chưa huỷ.
-   *
-   * Điều kiện dựa trên SỐ TIỀN còn lại chứ không dựa trên trạng thái đơn: đơn phải trả
-   * trước vẫn đang PREPARING mà đã cần thu, còn đơn đã giao thì nằm ở PENDING_PAYMENT —
-   * lọc theo trạng thái sẽ bỏ sót một trong hai.
-   */
   const remainingDue = Number(order.finalAmount || 0) - Number(order.paidAmount || 0);
   const canPayVoucher = !isCancelled && status !== 'FAILED' && remainingDue > 0;
 
@@ -419,15 +477,16 @@ export default function OrdersPage() {
   const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkConfirm, setBulkConfirm] = useState(null);
   const [bulkLoading, setBulkLoading] = useMinLoading(); const [pageSize, setPageSize] = useState(100);
   const [bulkCancelReason, setBulkCancelReason] = useState('');
-  /** Đơn đang mở hộp thoại thanh toán bằng voucher từ cột Thao tác. */
   const [voucherOrder, setVoucherOrder] = useState(null);
+
+  // ── THÊM MỚI: state cho OrderExchangeModal ──────────────────────────────────
+  const [exchangeOrder, setExchangeOrder] = useState(null);
 
   const [exportDateRange, setExportDateRange] = useState({ from: null, to: null });
   const [showExportPicker, setShowExportPicker] = useState(false);
-  // Loại báo cáo trong modal export: ORDER = đơn hàng (Excel, như cũ) | PRODUCT = sản phẩm (PDF để in)
   const [exportType, setExportType] = useState('ORDER');
   const [exportCategories, setExportCategories] = useState([]);
-  const [exportCategoryIds, setExportCategoryIds] = useState([]);   // [] = tất cả
+  const [exportCategoryIds, setExportCategoryIds] = useState([]);
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState('INGREDIENT');
@@ -468,6 +527,8 @@ export default function OrdersPage() {
   const currentId = currentUser.userId || 0;
   const isThuytm = currentId === 15;
   const isSuperSeller = currentUser.role === 'SUPER_SELLER';
+  // ── THÊM MỚI: kiểm tra role có quyền Hoàn/Đổi ───────────────────────────────
+  const canExchangeOrder = currentUser.role === 'SELLER' || currentUser.role === 'SUPER_SELLER';
   const canSeeReport = currentId === 12 || currentId === 15
     || currentUser.role === 'OWNER' || currentUser.role === 'ADMIN';
 
@@ -476,7 +537,6 @@ export default function OrdersPage() {
     return o.createdByUserId === currentUser.userId;
   }, [isSuperSeller, currentUser.userId]);
 
-  // label ngày hôm nay cho nút mobile
   const todayLabel = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const hasDateFilter = !!(dateRange.from || dateRange.to);
 
@@ -502,7 +562,6 @@ export default function OrdersPage() {
   useEffect(() => { fetchOrders(0); }, [fetchOrders]);
   useEffect(() => { const ti = setTimeout(() => setSearch(searchInput), 500); return () => clearTimeout(ti); }, [searchInput]);
 
-  // Nạp danh mục cho ô filter khi mở modal export
   useEffect(() => {
     if (!showExportPicker || exportCategories.length) return;
     categoryApi.getAll()
@@ -524,20 +583,16 @@ export default function OrdersPage() {
     if (!exportDateRange.from || !exportDateRange.to) { setShowExportPicker(true); return; }
     setExporting(true);
     try {
-      // exportDateRange.from/to đã là timestamp từ startOfDay/endOfDay (DateRangePicker).
-      // Truyền thẳng — KHÔNG dùng setHours() để tránh lệch timezone.
       const from = exportDateRange.from;
       const to = exportDateRange.to;
 
       if (exportType === 'PRODUCT') {
-        // Báo cáo SẢN PHẨM → PDF. Chọn hết = không chọn gì = tất cả danh mục.
         const categoryIds = allCategoriesSelected ? [] : exportCategoryIds;
         const res = await orderApi.exportOrderProductReport({ from, to, categoryIds });
         const stamp = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
         openPdfBlob(res.data, `bao-cao-san-pham-${stamp}.pdf`);
         toast('Xuất báo cáo sản phẩm thành công', 'success');
       } else {
-        // Báo cáo ĐƠN HÀNG → giữ nguyên như cũ (Excel)
         const params = { excludeCancelled: true, from, to };
         if (statusFilter !== 'ALL') params.status = statusFilter;
         const res = await accountantApi.exportOrders(params);
@@ -555,7 +610,7 @@ export default function OrdersPage() {
     if (showReportModal && canSeeReport) {
       orderApi.getReportCategories()
         .then(res => setReportCategories(res.data?.data ?? res.data ?? []))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [showReportModal]);
 
@@ -641,7 +696,6 @@ export default function OrdersPage() {
     finally { setCancelLoading(false); }
   };
 
-  // Mobile detail handler
   const handleMobileDetail = async (orderId) => {
     setDetailLoading(orderId);
     try {
@@ -651,21 +705,12 @@ export default function OrdersPage() {
     finally { setDetailLoading(null); }
   };
 
-  /**
-   * Đơn có được chọn để thao tác hàng loạt không.
-   *
-   * <p>Chỉ ĐANG CHUẨN BỊ và ĐANG GIAO. Đơn đã giao (chờ thanh toán / thanh toán một
-   * phần), đã hoàn thành, hoặc đã huỷ thì không huỷ được nữa — hàng đã ra khỏi kho và
-   * công nợ đã ghi nhận, huỷ ở đây sẽ để lại tồn kho và sổ sách lệch nhau.
-   */
   const isBulkSelectable = (o) =>
     o.status === 'PREPARING' || o.status === 'DELIVERING';
 
   const selectableOrders = useMemo(
     () => orders.filter(isBulkSelectable), [orders]);
 
-  // Bỏ đơn không hợp lệ khỏi vùng chọn khi danh sách đổi (lọc, sang trang), tránh
-  // trường hợp bấm huỷ trên một đơn đã kịp chuyển trạng thái ở tab khác.
   useEffect(() => {
     setSelectedIds(prev => {
       const ok = new Set(selectableOrders.map(o => o.id));
@@ -678,8 +723,6 @@ export default function OrdersPage() {
     setBulkLoading(true);
     try {
       const ids = Array.from(selectedIds);
-      // Huỷ tuần tự và đếm kết quả: API huỷ nhận từng đơn, và một đơn hỏng không nên
-      // làm dừng cả lô.
       let ok = 0, failed = 0;
       for (const id of ids) {
         try { await orderApi.cancelOrder(id, bulkCancelReason.trim()); ok++; } catch { failed++; }
@@ -708,7 +751,6 @@ export default function OrdersPage() {
 
   return (
     <div className="flex flex-col h-full bg-canvas">
-      {/* Override calendar dropdown trên mobile — căn giữa màn hình */}
       <style>{`
         @media (max-width: 639px) {
           #mobile-date-picker-seller > div > div.absolute {
@@ -722,14 +764,12 @@ export default function OrdersPage() {
 
       <div className="flex-shrink-0 px-4 sm:px-6 py-4 bg-surface border-b border-line-soft">
 
-        {/* ── Desktop header (sm+) — unchanged ── */}
+        {/* ── Desktop header ── */}
         <div className="hidden sm:flex items-center gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-ink">Đơn hàng</h1>
             <p className="text-[10px] sm:text-xs text-muted">{total} đơn hàng</p>
           </div>
-          {/* Đơn nháp đã gỡ khỏi menu — qua lại bằng công tắc này. Trang đích bọc
-              SubPageShell nên có nút quay lại và hiệu ứng trượt. */}
           <PageToggle
             current="/seller/orders"
             options={[
@@ -757,24 +797,19 @@ export default function OrdersPage() {
               <FileBarChart size={14} />
             </button>
           )}
-          {/* Nút Feedback — mở form ghi nhận phản hồi KH ở /feedback. Dùng chung
-              cho SELLER + SUPER_SELLER (page này share cho cả hai). */}
           <button onClick={() => navigate('/feedback')} title="Feedback đơn hàng"
             className="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-500/18 transition-colors shrink-0">
             <MessageSquare size={14} />
           </button>
         </div>
 
-        {/* ── Mobile header (< sm) — 2 rows ── */}
+        {/* ── Mobile header ── */}
         <div className="sm:hidden mb-3 space-y-2">
-          {/* Row 1: title + date picker + refresh + export */}
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
               <h1 className="text-base font-bold text-ink leading-tight">Đơn hàng</h1>
               <p className="text-[10px] text-muted">{total} đơn hàng</p>
             </div>
-
-            {/* Nút chọn ngày — dropdown mở trực tiếp, căn giữa màn hình */}
             <div id="mobile-date-picker-seller" className="relative shrink-0">
               <DateRangePicker
                 from={dateRange.from}
@@ -784,8 +819,6 @@ export default function OrdersPage() {
                 align="right"
               />
             </div>
-
-            {/* Nút xóa filter ngày */}
             {hasDateFilter && (
               <button
                 onClick={() => { setDateRange({ from: null, to: null }); setPage(0); }}
@@ -794,7 +827,6 @@ export default function OrdersPage() {
                 <X size={13} />
               </button>
             )}
-
             <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors shrink-0">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
@@ -813,8 +845,6 @@ export default function OrdersPage() {
               <MessageSquare size={14} />
             </button>
           </div>
-
-          {/* Row 2: full-width search */}
           <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
@@ -849,7 +879,7 @@ export default function OrdersPage() {
           : orders.length === 0
             ? <div className="flex flex-col items-center justify-center py-16 text-muted gap-2"><Search size={32} strokeWidth={1} /><p className="text-sm">Không có đơn hàng nào</p></div>
             : (<>
-              {/* Desktop table — unchanged */}
+              {/* Desktop table */}
               <div className="hidden md:block bg-surface rounded-2xl border border-line-soft overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -870,9 +900,6 @@ export default function OrdersPage() {
                         return (
                           <tr key={o.id} className={`border-b border-line-soft last:border-0 transition-colors ${getRowBg(o)} ${isThisInvoice ? 'opacity-80' : ''} ${isActioning ? 'opacity-60' : ''}`}>
                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                              {/* Chỉ đơn chưa rời khỏi vòng giao hàng mới huỷ được. Đơn đã
-                                  giao / còn nợ / hoàn thành / đã huỷ mà cho chọn thì người
-                                  dùng sẽ bấm huỷ rồi nhận lỗi từ server cho từng đơn một. */}
                               <input type="checkbox" className="w-3.5 h-3.5 accent-gold disabled:opacity-30"
                                 disabled={!isBulkSelectable(o)}
                                 title={isBulkSelectable(o) ? '' : 'Chỉ chọn được đơn đang chuẩn bị hoặc đang giao'}
@@ -889,6 +916,12 @@ export default function OrdersPage() {
                               {o.status === 'COMPLETED' && o.paymentStatus === 'PAID'
                                 ? (paidAmount > 0 && paidAmount !== Number(o.finalAmount) && <p className="text-[10px] text-sky-600 dark:text-sky-300 font-medium whitespace-nowrap">TT Thực tế: {formatPrice(paidAmount)}</p>)
                                 : (<>{paidAmount > 0 && <p className="text-[10px] text-emerald-600 dark:text-emerald-300 font-medium whitespace-nowrap">Đã thu: {formatPrice(paidAmount)}</p>}{paidAmount > 0 && paidAmount < Number(o.finalAmount) && <p className="text-[10px] text-orange-500 font-medium whitespace-nowrap">Còn: {formatPrice(Number(o.finalAmount) - paidAmount)}</p>}</>)}
+                              {/* Hiển thị cần hoàn lại nếu đơn đổi SP có tiền thừa */}
+                              {Number(o.overpaidAmount) > 0 && o.linkType === 'EXCHANGE' && (
+                                <p className="text-[10px] text-orange-500 font-semibold whitespace-nowrap">
+                                  ↩ Hoàn KH: {formatPrice(o.overpaidAmount)}
+                                </p>
+                              )}
                             </td>
                             <td className="px-4 py-3"><CreatedByBadge name={o.orderedByName} /></td>
                             <td className="px-4 py-3"><SellerBadge name={o.createdByName} /></td>
@@ -897,6 +930,7 @@ export default function OrdersPage() {
                                 ? <a href={getImageUrl(o.receiptFileUrl)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28 whitespace-nowrap hover:bg-emerald-100 dark:bg-emerald-500/18">📄 Chứng từ</a>
                                 : <span className="text-[10px] text-faint">—</span>}
                             </td>
+                            {/* ── CỘT HOÁ ĐƠN ── */}
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1.5">
                                 <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
@@ -912,8 +946,38 @@ export default function OrdersPage() {
                                 </button>
                               </div>
                             </td>
+                            {/* ── CỘT THAO TÁC — nút Hoàn/Đổi SP nằm đây, chỉ SELLER/SUPER_SELLER ── */}
                             <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                              <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} onVoucher={() => setVoucherOrder(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} onVoucher={() => setVoucherOrder(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
+                                {canExchangeOrder && o.status === 'COMPLETED' && (() => {
+                                  // Đơn đã có lịch sử hoàn/đổi → hiện badge, không cho thao tác
+                                  if (o.returnExchangeNote || o.linkType === 'EXCHANGE') {
+                                    return <ReturnExchangeBadge returnExchangeNote={o.returnExchangeNote} linkType={o.linkType} />;
+                                  }
+                                  // Chưa có lịch sử → nút bình thường
+                                  return (
+                                    <button
+                                      onClick={async e => {
+                                        e.stopPropagation();
+                                        try {
+                                          const dr = await accountantApi.getOrderDetail(o.id);
+                                          setExchangeOrder(dr.data?.data || o);
+                                        } catch {
+                                          setExchangeOrder(o);
+                                        }
+                                      }}
+                                      title="Hoàn / Đổi sản phẩm"
+                                      className="flex items-center gap-1 px-2 py-1 rounded-lg
+                                        bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300
+                                        border border-amber-200 dark:border-amber-500/28
+                                        hover:bg-amber-100 dark:hover:bg-amber-500/18
+                                        transition-colors text-[10px] font-semibold whitespace-nowrap">
+                                      <RefreshCw size={10} /> Hoàn/Đổi SP
+                                    </button>
+                                  );
+                                })()}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -932,7 +996,6 @@ export default function OrdersPage() {
                   return (
                     <div key={o.id}
                       className={`rounded-2xl border p-4 space-y-3 transition-all ${invoiceLoadingId === o.id ? 'bg-gold/5 border-gold/40' : 'bg-surface border-line-soft'} ${isActioning ? 'opacity-60' : ''}`}>
-                      {/* Top: mã đơn + tiền */}
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-mono text-xs font-bold text-gold">{o.orderCode}</p>
@@ -944,16 +1007,13 @@ export default function OrdersPage() {
                           <p className="text-[10px] text-muted mt-0.5">{formatDateShort(o.createdAt)}</p>
                         </div>
                       </div>
-                      {/* Badges */}
                       <div className="flex flex-wrap gap-1.5 pt-2 border-t border-line-soft">
                         <StatusBadge status={o.status} />
                         <WarehouseBadge name={o.warehouseName} />
                       </div>
-                      {/* Actions */}
                       <div className="flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
                         <CreatedByBadge name={o.orderedByName} />
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                          {/* Nút kính lúp — chi tiết đơn */}
                           <button
                             onClick={() => handleMobileDetail(o.id)}
                             disabled={!!detailLoading}
@@ -971,6 +1031,32 @@ export default function OrdersPage() {
                           <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
                           <PaymentMethodCell value={o.paymentMethod} onSave={val => handleUpdatePaymentMethod(o.id, val)} disabled={isCompleted || isActioning || !!invoiceLoadingId} />
                           <StatusActionButtons order={o} onCancel={() => setCancelTarget(o)} onEdit={() => setEditTarget(o)} onVoucher={() => setVoucherOrder(o)} loading={isActioning} disabled={!canActOnOrder(o)} isSuperSeller={isSuperSeller} />
+                          {/* Nút Hoàn/Đổi SP — chỉ SELLER/SUPER_SELLER, fetch detail trước khi mở */}
+                          {canExchangeOrder && o.status === 'COMPLETED' && (() => {
+                            if (o.returnExchangeNote || o.linkType === 'EXCHANGE') {
+                              return <ReturnExchangeBadge returnExchangeNote={o.returnExchangeNote} linkType={o.linkType} />;
+                            }
+                            return (
+                              <button
+                                onClick={async e => {
+                                  e.stopPropagation();
+                                  try {
+                                    const dr = await accountantApi.getOrderDetail(o.id);
+                                    setExchangeOrder(dr.data?.data || o);
+                                  } catch {
+                                    setExchangeOrder(o);
+                                  }
+                                }}
+                                title="Hoàn / Đổi sản phẩm"
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg
+                                  bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300
+                                  border border-amber-200 dark:border-amber-500/28
+                                  hover:bg-amber-100 dark:hover:bg-amber-500/18
+                                  transition-colors text-[10px] font-semibold whitespace-nowrap">
+                                <RefreshCw size={10} /> Hoàn/Đổi
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1003,10 +1089,6 @@ export default function OrdersPage() {
         return (
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-surface border border-line rounded-2xl shadow-xl px-4 py-2.5">
             <div className="flex flex-col mr-2"><span className="text-xs font-semibold text-ink-2">{selectedIds.size} đơn đã chọn</span><span className="text-[11px] font-bold text-gold">{new Intl.NumberFormat('vi-VN').format(Math.round(totalSelected))} đ</span></div>
-            {/* Kinh doanh KHÔNG đánh dấu đã giao / hoàn thành hàng loạt nữa: hai trạng
-                thái đó thuộc về kho và kế toán, và đánh dấu hàng loạt từ đây sẽ đóng đơn
-                mà chưa ai thực sự giao hoặc thu tiền. Thao tác hàng loạt duy nhất còn
-                lại là HUỶ đơn. */}
             <button onClick={() => setBulkConfirm({ mode: 'CANCEL' })}
               className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/28 text-xs font-semibold hover:bg-red-100 dark:bg-red-500/18">
               ✕ Huỷ {selectedIds.size} đơn
@@ -1022,8 +1104,6 @@ export default function OrdersPage() {
           <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="font-bold text-ink">Xác nhận huỷ đơn</h2>
             <p className="text-sm text-muted">{selectedIds.size} đơn đã chọn</p>
-            {/* Lý do huỷ là bắt buộc ở API huỷ đơn lẻ, nên hàng loạt cũng phải có —
-                nếu không mọi đơn trong lô sẽ bị server từ chối. */}
             <textarea value={bulkCancelReason} onChange={e => setBulkCancelReason(e.target.value)}
               rows={2} placeholder="Lý do huỷ (áp dụng cho tất cả đơn đã chọn)"
               className="w-full rounded-xl border border-line px-3 py-2 text-sm bg-surface text-ink focus:outline-none focus:border-gold resize-none" />
@@ -1037,7 +1117,19 @@ export default function OrdersPage() {
 
       {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onRefresh={fetchOrders} />}
 
-      {/* Modal chọn ngày Export đơn hàng */}
+      {/* ── THÊM MỚI: OrderExchangeModal ─────────────────────────────────────── */}
+      {exchangeOrder && (
+        <OrderExchangeModal
+          order={exchangeOrder}
+          onClose={() => setExchangeOrder(null)}
+          onSuccess={() => {
+            setExchangeOrder(null);
+            fetchOrders(page);
+          }}
+        />
+      )}
+
+      {/* Modal chọn ngày Export */}
       {showExportPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowExportPicker(false)} />
@@ -1046,8 +1138,6 @@ export default function OrdersPage() {
               <h2 className="font-bold text-ink">Xuất báo cáo</h2>
               <button onClick={() => setShowExportPicker(false)} className="p-1.5 rounded-lg text-muted hover:bg-surface-2"><X size={16} /></button>
             </div>
-
-            {/* Chọn loại báo cáo */}
             <div>
               <label className="block text-xs font-medium text-ink-2 mb-1.5">Loại báo cáo</label>
               <div className="grid grid-cols-2 gap-2">
@@ -1067,15 +1157,12 @@ export default function OrdersPage() {
                   : 'Báo cáo chi tiết sản phẩm theo từng đơn — file PDF khổ A4 để in.'}
               </p>
             </div>
-
             <p className="text-xs text-muted">
               {exportType === 'PRODUCT'
                 ? 'Chỉ gồm đơn: Đang chuẩn bị, Đang giao hàng, Đã giao hàng, Hoàn thành.'
                 : 'Đơn hủy sẽ tự động bị loại khỏi báo cáo.'}
             </p>
             <DateRangePicker from={exportDateRange.from} to={exportDateRange.to} onChange={r => setExportDateRange(r)} placeholder="Chọn khoảng ngày" />
-
-            {/* Filter danh mục — chỉ áp dụng cho báo cáo Sản phẩm */}
             {exportType === 'PRODUCT' && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -1107,7 +1194,6 @@ export default function OrdersPage() {
                 </p>
               </div>
             )}
-
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowExportPicker(false)} className="flex-1 py-2.5 rounded-xl border border-line text-sm text-muted hover:bg-surface-2">Huỷ</button>
               <button onClick={handleExport} disabled={exporting || !exportDateRange.from || !exportDateRange.to}

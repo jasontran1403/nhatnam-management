@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import ProductCard from '../../components/seller/ProductCard';
 import CartItem from '../../components/seller/CartItem';
 import CustomerSearchModal from '../../components/seller/CustomerSearchModal';
+import PaymentScoreBadge from '../../components/seller/PaymentScoreBadge';
 import SaleTypeModal from '../../components/seller/SaleTypeModal';
 import SaveDraftModal from '../../components/common/SaveDraftModal.jsx';
 
@@ -384,6 +385,17 @@ function CartPanel({
                 <p className="text-[10px] text-muted">{customer.customerCode} · {customer.phone}</p>
                 {customer.selectedReceiver && (
                   <p className="text-[10px] text-gold truncate">📦 {customer.selectedReceiver.receiverAddress || '—'}</p>
+                )}
+                {/* Tỷ lệ thanh toán công nợ */}
+                {customer.debtDays > 0 && (
+                  <div className="mt-0.5">
+                    <PaymentScoreBadge
+                      customerId={customer.id}
+                      debtDays={customer.debtDays}
+                      size="sm"
+                      showDetail={true}
+                    />
+                  </div>
                 )}
               </div>
               <button onClick={(e) => { e.stopPropagation(); onClearCustomer(); }} className="text-muted hover:text-red-400 shrink-0">

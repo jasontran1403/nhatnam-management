@@ -45,6 +45,10 @@ export const ownerNavRaw = [
   { to: '/owner/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
   { to: '/owner/production', labelKey: 'production', icon: Factory },
   { to: '/owner/cameras', labelKey: 'cameras', icon: Video },
+  // ── Văn phòng phẩm (module refactor Phương án B) ────────────────────────
+  // Landing page = Danh sách yêu cầu VPP. Từ đó Owner mở "Quản lý" → item
+  // stats, rồi "Danh sách VPP" → catalog Add/Edit. Chỉ 1 entry trong nav.
+  { to: '/owner/office-supply/requests', labelKey: 'office_supply_requests', icon: Archive },
 ];
 
 export const hrNavRaw = [
@@ -52,6 +56,8 @@ export const hrNavRaw = [
   { to: '/hr/salaries', labelKey: 'salaries', icon: Receipt },
   // Mở khoá cho nhân viên nhập sai mật khẩu xem lương 3 lần
   { to: '/hr/payroll-passcode', labelKey: 'payroll_passcode', icon: ShieldAlert },
+  // Yêu cầu văn phòng phẩm — dùng chung route top-level cho mọi nhân viên
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
 ];
 
 export const sellerNavRaw = [
@@ -66,6 +72,9 @@ export const sellerNavRaw = [
   { to: '/seller/production', labelKey: 'production', icon: Factory },
   // Kho VPP — mở Phiếu đặt văn phòng phẩm bằng nút trong trang.
   { to: '/seller/supply-warehouse', labelKey: 'supply_warehouse', icon: Archive, roles: ['SUPER_SELLER'] },
+  // Yêu cầu văn phòng phẩm — dùng chung route top-level cho mọi nhân viên
+  // (khác với /seller/supply-warehouse phía trên — cái đó là kho tồn của SUPER_SELLER).
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Boxes },
   // Quản lý lương — mở Phiếu của tôi bằng nút trong trang.
   { to: '/seller/my-payroll', labelKey: 'my_payroll', icon: Wallet },
 ];
@@ -89,6 +98,8 @@ export const warehouseNavRaw = [
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
   { to: '/warehouse/gift-orders', labelKey: 'gift_orders', icon: Gift },
   { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
+  // Yêu cầu văn phòng phẩm — dùng chung route top-level
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/warehouse/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/warehouse/my-requests', labelKey: 'my_requests', icon: FileText },
@@ -105,6 +116,8 @@ export const superWarehouseNavRaw = [
   { to: '/warehouse/delivery', labelKey: 'delivering', icon: Truck },
   { to: '/warehouse/gift-orders', labelKey: 'gift_orders', icon: Gift },
   { to: '/warehouse/driver-attendance', labelKey: 'driver_attendance', icon: Gauge },
+  // Yêu cầu văn phòng phẩm — top-level, khác với /super-warehouse/supply-warehouse (stock).
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Boxes },
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/super-warehouse/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/super-warehouse/my-requests', labelKey: 'my_requests', icon: FileText },
@@ -117,6 +130,10 @@ export const accountantNavRaw = [
   // Kho hàng CHỈ XEM — Kho văn phòng phẩm mở bằng nút trong trang này.
   { to: '/accountant/warehouses', labelKey: 'warehouses', icon: Warehouse },
   { to: '/accountant/vendor-debts', labelKey: 'vendor_debts', icon: Wallet },
+  // Yêu cầu văn phòng phẩm — top-level route dùng chung cho mọi nhân viên.
+  // (Route cũ /accountant/supply-warehouse vẫn còn trong routes/index.jsx
+  //  để backward compat với deep-link cũ nhưng đã bỏ khỏi nav.)
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   // Phiếu thu / Phiếu chi đã chuyển vào bên trong page Dòng tiền (mở từ Dashboard).
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
@@ -139,6 +156,8 @@ export const superAccountantNavRaw = [
   // ── Quản lý nhân sự (SUPER_ACCOUNTANT được xem HR) ───────────────────────
   { to: '/super-accountant/manage', labelKey: 'hr_manage', icon: UserCog },
   { to: '/super-accountant/salaries', labelKey: 'salaries', icon: Receipt },
+  // Yêu cầu văn phòng phẩm — top-level, dùng chung cho mọi nhân viên
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/super-accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/super-accountant/my-requests', labelKey: 'my_requests', icon: FileText },
@@ -150,6 +169,8 @@ export const operatorNavRaw = [
   { to: '/operator/batches', labelKey: 'batches', icon: Layers },
   { to: '/operator/certificates', labelKey: 'certificates', icon: FileSpreadsheet },
   { to: '/operator/landingpage', labelKey: 'landing_page', icon: Globe },
+  // Yêu cầu văn phòng phẩm — top-level, dùng chung cho mọi nhân viên
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
 ];
 
 // ── FACTORY_WORKER: chỉ còn lệnh SX (mặc định), máy móc & bảo trì (chỉ báo sự cố),
@@ -162,6 +183,8 @@ export const factoryWorkerNavRaw = [
   { to: '/factory/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
   // ── Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm ──
   { to: '/factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  // Yêu cầu văn phòng phẩm — top-level, dùng chung cho mọi nhân viên
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   // ── Quản lý lương (phiếu lương theo tháng + thưởng KPI) ───────────────────
   { to: '/factory/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/factory/my-requests', labelKey: 'my_requests', icon: FileText },
@@ -176,14 +199,15 @@ export const superFactoryWorkerNavRaw = [
   { to: '/super-factory/production', labelKey: 'production', icon: Factory },
   { to: '/super-factory/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
   // ── Phiếu đặt Văn phòng phẩm / Đồ dùng ────────────────────────────────────
-  { to: '/super-factory/supply-orders', labelKey: 'supply_orders', icon: Boxes },
-  { to: '/super-factory/supply-warehouse', labelKey: 'supply_warehouse', icon: Archive },
   { to: '/super-factory/material-stock', labelKey: 'material_stock', icon: Archive },
   { to: '/super-factory/recipes', labelKey: 'production_variants', icon: FlaskConical },
   { to: '/super-factory/machines', labelKey: 'machine_manage', icon: Wrench },
   { to: '/super-factory/history', labelKey: 'work_order_history', icon: ClipboardList },
-  { to: '/super-factory/expenses', labelKey: 'expenses', icon: TrendingDown },
   { to: '/super-factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  // Yêu cầu văn phòng phẩm — top-level, dùng chung cho mọi nhân viên.
+  // (Route cũ /super-factory/office-supply vẫn còn trong routes/index.jsx
+  //  để backward compat với deep-link cũ nhưng đã bỏ khỏi nav.)
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Boxes },
   { to: '/super-factory/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/super-factory/my-requests', labelKey: 'my_requests', icon: FileText },
   // { to: '/super-factory/finished-goods', labelKey: 'finished_goods', icon: Package },
@@ -194,6 +218,8 @@ export const superFactoryWorkerNavRaw = [
 // Phiếu đặt hàng NL truy cập từ nút trong tab Kho nguyên liệu.
 export const factoryAccountantNavRaw = [
   { to: '/factory-accountant/warehouse', labelKey: 'warehouses', icon: Package },
+  // Yêu cầu văn phòng phẩm — top-level
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   { to: '/factory-accountant/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/factory-accountant/my-requests', labelKey: 'my_requests', icon: FileText },
 ];
@@ -201,6 +227,8 @@ export const factoryAccountantNavRaw = [
 // ── TÀI XẾ: chỉ 1 trang duy nhất là danh sách đơn đang giao ───────────────────
 export const driverNavRaw = [
   { to: '/driver/orders', labelKey: 'delivering', icon: Truck },
+  // Yêu cầu văn phòng phẩm — top-level
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
   { to: '/driver/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/driver/my-requests', labelKey: 'my_requests', icon: FileText },
@@ -210,6 +238,8 @@ export const driverNavRaw = [
 export const securityNavRaw = [
   { to: '/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/my-requests', labelKey: 'my_requests', icon: FileText },
+  // Yêu cầu văn phòng phẩm — top-level
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
 ];
 
 // ── NHÂN SỰ XƯỞNG role MỚI (bảo vệ xưởng, trợ lý kho, NV sản xuất, quản lý
@@ -217,6 +247,8 @@ export const securityNavRaw = [
 export const factoryPayrollNavRaw = [
   { to: '/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/my-requests', labelKey: 'my_requests', icon: FileText },
+  // Yêu cầu văn phòng phẩm — top-level
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
 ];
 
 // ── FACTORY_STAFF (Trợ lý xưởng): DÙNG CHUNG các trang của FACTORY_WORKER —
@@ -228,6 +260,8 @@ export const factoryStaffNavRaw = [
   { to: '/factory-staff/machines', labelKey: 'machine_manage', icon: Wrench },
   { to: '/factory-staff/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
   { to: '/factory-staff/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
+  // Yêu cầu văn phòng phẩm — top-level
+  { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   { to: '/factory-staff/my-payroll', labelKey: 'my_payroll', icon: Wallet },
   { to: '/factory-staff/my-requests', labelKey: 'my_requests', icon: FileText },
 ];

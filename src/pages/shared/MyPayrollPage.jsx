@@ -12,8 +12,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Wallet, ChevronDown, Calendar, Award, Factory, AlertCircle, Loader2, X,
   Truck, Route, Package, MapPin, Lock,
-} from 'lucide-react';
-import { factoryPayrollApi } from '../../api/factoryPayrollApi';
+} from 'lucide-react';import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader, SectionCard, LoadingSpinner, formatCurrency } from '../../components/ui';
 import PayslipBreakdownCards from '../../components/hr/PayslipBreakdownCards';
@@ -610,12 +609,19 @@ function PayslipCard({ slip }) {
           </span>
         </div>
 
-        {slip.kpiBonus > 0 && (
+        {slip.kpiBonus > 0 && slip.kpiStatus === 'READY' && (
           <div className="mt-2.5 flex items-center justify-between gap-4">
             <span className="text-[11px] text-white/50">
-              Thưởng KPI sản xuất (chi riêng ngoài bảng lương)
+              Thưởng KPI / Bonus (chi riêng ngoài bảng lương)
             </span>
             <span className="text-sm font-bold text-gold">+ {fmtVnd(slip.kpiBonus)}</span>
+          </div>
+        )}
+
+        {slip.hasKpiBonus && slip.kpiStatus === 'PENDING' && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <Award size={13} className="text-amber-400 animate-pulse shrink-0" />
+            <span className="text-[11px] text-amber-300">Thưởng đang được tính...</span>
           </div>
         )}
       </div>
@@ -824,30 +830,29 @@ function MyPayrollContent({ onNeedPasscode }) {
               : <AttendanceCalendar attendance={slip.attendance}
                 month={slip.month} year={slip.year} />}
 
-            {/* THƯỞNG KPI SẢN XUẤT — CHỈ bộ phận Xưởng */}
-            {slip.hasKpiBonus && (
-              <KpiBreakdown kpi={slip.kpi} amount={slip.kpiBonus} />
-            )}
-
-            {/* Các bộ phận khác: bảng thưởng riêng sẽ bổ sung sau */}
-            {!slip.hasKpiBonus && !isDriver && (
+            {/* THƯỞNG KPI — hiển thị theo kpiStatus */}
+            {slip.hasKpiBonus && slip.kpiStatus === 'PENDING' && (
               <SectionCard>
                 <div className="flex items-center gap-3 px-5 py-6">
-                  <span className="w-10 h-10 rounded-xl bg-canvas flex items-center justify-center shrink-0">
-                    <Package size={17} className="text-faint" />
+                  <span className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10
+                    flex items-center justify-center shrink-0">
+                    <Award size={17} className="text-amber-500 animate-pulse" />
                   </span>
                   <div>
-                    <p className="text-sm font-bold text-ink">
-                      Bảng thưởng của bộ phận {slip.payrollDepartmentLabel}
-                    </p>
+                    <p className="text-sm font-bold text-ink">Đang tính thưởng / KPI</p>
                     <p className="text-xs text-muted mt-0.5 leading-relaxed">
-                      Bộ phận này không áp dụng thưởng KPI sản xuất. Bảng thưởng riêng
-                      sẽ được bổ sung trong bản cập nhật tiếp theo.
+                      Ban quản lý đang tổng hợp KPI và thưởng cho tháng này.
+                      Kết quả sẽ hiển thị ngay khi hoàn tất.
                     </p>
                   </div>
                 </div>
               </SectionCard>
             )}
+
+            {slip.hasKpiBonus && slip.kpiStatus === 'READY' && (
+              <KpiBreakdown kpi={slip.kpi} amount={slip.kpiBonus} />
+            )}
+
           </div>
         )}
     </div>

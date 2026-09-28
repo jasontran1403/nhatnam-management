@@ -10,6 +10,7 @@ import { useToast } from '../common/Toast';
 import DatePicker from '../ui/DatePicker';
 import AddressSelect from '../common/AddressSelect';
 import PickupToggle, { PICKUP_AT_WAREHOUSE } from '../common/PickupToggle';
+import PaymentScoreBadge from './PaymentScoreBadge';
 
 // ── Sanitize customer code ────────────────────────────────────────
 function sanitizeCode(raw) {
@@ -1254,6 +1255,15 @@ export default function CustomerSearchModal({ open, onClose, onSelect, selected 
                           </p>
                           {!isLocked && c.discountRate > 0 && (
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-300 font-medium">Chiết khấu {c.discountRate}%</span>
+                          )}
+                          {/* Tỷ lệ thanh toán công nợ — chỉ hiện khi debtDays > 0 */}
+                          {!isLocked && c.debtDays > 0 && (
+                            <PaymentScoreBadge
+                              customerId={c.id}
+                              debtDays={c.debtDays}
+                              size="sm"
+                              showDetail={true}
+                            />
                           )}
                         </div>
                         {selected?.id === c.id && !isLocked && (

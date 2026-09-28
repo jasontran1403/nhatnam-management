@@ -114,6 +114,18 @@ import SuperAccountantOrdersPage from '../pages/super_accountant/SuperAccountant
 import SupplyOrderPage from '../pages/shared/SupplyOrderPage';
 import SupplyWarehousePage from '../pages/shared/SupplyWarehousePage';
 import OwnerSupplyWarehousePage from '../pages/owner/OwnerSupplyWarehousePage';
+import OwnerOfficeSupplyPage from '../pages/owner/OwnerOfficeSupplyPage';
+import OfficeSupplyRequestPage from '../pages/shared/OfficeSupplyRequestPage';
+// ── Module VPP refactor (Phương án B — 3 trang riêng cho Owner) ──────────
+// OwnerOfficeSupplyPage cũ (tab UI) vẫn còn cho backward compat với các link
+// cũ có thể đã được share, nhưng nav mới của Owner đã trỏ về trang landing
+// Danh sách yêu cầu VPP.
+import OwnerOfficeSupplyRequestListPage from '../pages/owner/OwnerOfficeSupplyRequestListPage';
+import OwnerOfficeSupplyManagePage from '../pages/owner/OwnerOfficeSupplyManagePage';
+import OwnerOfficeSupplyItemsPage from '../pages/owner/OwnerOfficeSupplyItemsPage';
+import OwnerOfficeSupplyPrintPage from '../pages/owner/OwnerOfficeSupplyPrintPage';
+// ── Feature 2: Quản lý phép (Owner) — thay cho nút "Xuất ngày phép" cũ ────
+import OwnerLeaveManagementPage from '../pages/owner/OwnerLeaveManagementPage';
 import PricingCalculatorPage from '../pages/super_accountant/PricingCalculatorPage';
 import SellerMaterialRequestPage from '../pages/seller/SellerMaterialRequestPage';
 
@@ -169,6 +181,43 @@ function TranslatedLayout({ rawNav, allowedRoles, children, ...rest }) {
   const { t } = useLang();
   let userRole = '';
   try { const u = JSON.parse(localStorage.getItem('user')); userRole = u?.role ?? u?.roles?.[0] ?? ''; } catch {}
+  const navItems = buildNav(rawNav, t, userRole);
+  return (
+    <PrivateRoute allowedRoles={allowedRoles}>
+      <AppLayout navItems={navItems} {...rest} />
+    </PrivateRoute>
+  );
+}
+
+// ── Dynamic layout — chọn rawNav theo role của user ──────────────────────────
+// Dùng cho các route DÙNG CHUNG bởi nhiều role (như /office-supply, /my-payroll
+// top-level, /my-requests top-level): mỗi role phải thấy đúng sidebar của role
+// đó, không phải sidebar cứng của 1 role.
+const ROLE_NAV_MAP = {
+  HR:                        hrNavRaw,
+  SELLER:                    sellerNavRaw,
+  SUPER_SELLER:              sellerNavRaw,
+  WAREHOUSE:                 warehouseNavRaw,
+  SUPER_WAREHOUSE:           superWarehouseNavRaw,
+  ACCOUNTANT:                accountantNavRaw,
+  SUPER_ACCOUNTANT:          superAccountantNavRaw,
+  OPERATOR:                  operatorNavRaw,
+  FACTORY_WORKER:            factoryWorkerNavRaw,
+  FACTORY_STAFF:             factoryStaffNavRaw,
+  SUPER_FACTORY_WORKER:      superFactoryWorkerNavRaw,
+  FACTORY_ACCOUNTANT:        factoryAccountantNavRaw,
+  DRIVER:                    driverNavRaw,
+  SECURITY:                  securityNavRaw,
+  FACTORY_SECURITY:          factoryPayrollNavRaw,
+  FACTORY_PRODUCTION_WORKER: factoryPayrollNavRaw,
+  FACTORY_MANAGER:           factoryPayrollNavRaw,
+};
+
+function DynamicNavLayout({ allowedRoles, children, ...rest }) {
+  const { t } = useLang();
+  let userRole = '';
+  try { const u = JSON.parse(localStorage.getItem('user')); userRole = u?.role ?? u?.roles?.[0] ?? ''; } catch {}
+  const rawNav = ROLE_NAV_MAP[userRole] || [];
   const navItems = buildNav(rawNav, t, userRole);
   return (
     <PrivateRoute allowedRoles={allowedRoles}>
@@ -318,8 +367,22 @@ export default function AppRoutes() {
         <Route path="production/vendor-debts" element={<OwnerVendorDebtPage />} />
         <Route path="production/vendor-debts/:vendorId" element={<OwnerVendorDebtPage />} />
         {/* Quản lý nhà cung cấp — công nợ + lịch sử đặt hàng + phân tích giá (chỉ xem) */}
-        {/* Kho văn phòng phẩm — Owner xem cả 2 kho, gán kho, gộp vật dụng */}
-        <Route path="supply-warehouse" element={<OwnerSupplyWarehousePage />} />
+        {/* Kho văn phòng phẩm — legacy (tab UI) — giữ backward compat */}
+        <Route path="supply-warehouse" element={<OwnerOfficeSupplyPage />} />
+
+        {/* ── Module VPP mới (Phương án B — 3 pages riêng) ─────────────
+            /owner/office-supply/requests → landing: danh sách yêu cầu VPP
+            /owner/office-supply/manage   → quản lý (item stats)
+            /owner/office-supply/items    → catalog vật dụng (Add/Edit)
+            /owner/office-supply/print    → phiếu in đặt hàng (window.print) */}
+        <Route path="office-supply/requests" element={<OwnerOfficeSupplyRequestListPage />} />
+        <Route path="office-supply/manage"   element={<OwnerOfficeSupplyManagePage />} />
+        <Route path="office-supply/items"    element={<OwnerOfficeSupplyItemsPage />} />
+        <Route path="office-supply/print"    element={<OwnerOfficeSupplyPrintPage />} />
+
+        {/* ── Feature 2: Quản lý phép ─────────────────────────────────── */}
+        <Route path="leave-management" element={<OwnerLeaveManagementPage />} />
+
         <Route path="production/suppliers" element={<OwnerSupplierManagementPage />} />
         <Route path="production/suppliers/:vendorId" element={<OwnerSupplierManagementPage />} />
         {/* Tồn kho nguyên liệu sản xuất — chỉ xem */}
@@ -441,7 +504,7 @@ export default function AppRoutes() {
              backend vẫn chặn độc lập. */}
         <Route path="warehouses" element={<AdminWarehouses />} />
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
-        <Route path="supply-warehouse" element={<OwnerSupplyWarehousePage />} />
+        <Route path="supply-warehouse" element={<OfficeSupplyRequestPage />} />
         <Route path="my-payroll" element={<MyPayrollPage />} />
         <Route path="my-requests" element={<MyRequestsPage />} />
       </Route>
@@ -473,7 +536,7 @@ export default function AppRoutes() {
              backend vẫn chặn độc lập. */}
         <Route path="warehouses" element={<AdminWarehouses />} />
         <Route path="warehouses/:id/stock" element={<AdminWarehouseStock />} />
-        <Route path="supply-warehouse" element={<OwnerSupplyWarehousePage />} />
+        <Route path="supply-warehouse" element={<OfficeSupplyRequestPage />} />
         <Route path="lot-pricing" element={<AccountantLotPricingPage />} />
         <Route path="manage" element={<HrPage />} />
         <Route path="salaries" element={<HrSalaryStatusPage />} />
@@ -522,7 +585,8 @@ export default function AppRoutes() {
         {/* Phiếu đặt văn phòng phẩm */}
         <Route path="supply-orders" element={<SupplyOrderPage />} />
         <Route path="supply-warehouse" element={<SupplyWarehousePage />} />
-        {/* Quản lý tồn kho nguyên liệu */}
+        {/* Đăng ký văn phòng phẩm */}
+        <Route path="office-supply" element={<OfficeSupplyRequestPage />} />
         <Route path="material-stock" element={<FactoryMaterialStockPage />} />
         {/* Quản lý biến thể sản xuất */}
         <Route path="recipes" element={<FactoryRecipesPage />} />
@@ -610,6 +674,23 @@ export default function AppRoutes() {
             'FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER',
           ]} />}>
         <Route index element={<MyRequestsPage />} />
+      </Route>
+
+      {/* ── YÊU CẦU VĂN PHÒNG PHẨM — top-level, dùng chung cho MỌI nhân viên ──
+          Chỉ OWNER/ADMIN bị chặn (họ có trang tổng hợp riêng ở
+          /owner/office-supply/requests). BE cũng chặn OWNER/ADMIN gọi các
+          endpoint /api/office-supply/my-request qua PreAuthorize nếu cần. */}
+      <Route path="/office-supply"
+        element={<DynamicNavLayout allowedRoles={[
+          'HR', 'SELLER', 'SUPER_SELLER',
+          'WAREHOUSE', 'SUPER_WAREHOUSE',
+          'ACCOUNTANT', 'SUPER_ACCOUNTANT',
+          'OPERATOR',
+          'FACTORY_WORKER', 'FACTORY_STAFF', 'SUPER_FACTORY_WORKER', 'FACTORY_ACCOUNTANT',
+          'DRIVER',
+          'SECURITY', 'FACTORY_SECURITY', 'FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER',
+        ]} />}>
+        <Route index element={<OfficeSupplyRequestPage />} />
       </Route>
 
       {/* ── TOOLS (tất cả roles) ── */}

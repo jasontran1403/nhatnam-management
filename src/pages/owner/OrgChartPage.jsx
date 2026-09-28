@@ -714,8 +714,14 @@ function FactoryContent({ salary, attendance, month, year }) {
               <Row label="Công thực tế" val={fmt(attendance.actualDays, 1)} bold />
               {attendance.leaveDays > 0 && <Row label="Nghỉ có lương" val={fmt(attendance.leaveDays, 1)} />}
               {attendance.unpaidDays > 0 && <Row label="Nghỉ không lương" val={fmt(attendance.unpaidDays, 1)} />}
-              {attendance.lateCount > 0 && <Row label="Đi trễ (KPI)" val={`${attendance.lateCount} lần / ${attendance.lateMinutes}p`} />}
-              {attendance.earlyCount > 0 && <Row label="Về sớm (KPI)" val={`${attendance.earlyCount} lần / ${attendance.earlyMinutes}p`} />}
+              {attendance.lateCount > 0 && <Row label="Đi trễ" val={`${attendance.lateCount} lần / ${attendance.lateMinutes}p`} />}
+              {attendance.earlyCount > 0 && <Row label="Về sớm" val={`${attendance.earlyCount} lần / ${attendance.earlyMinutes}p`} />}
+              {attendance.leaveMinutesUsed > 0 && (
+                <Row label="Phút phép đã trừ" val={`${attendance.leaveMinutesUsed} phút`} />
+              )}
+              {attendance.leaveBalanceMinutesAfter != null && (
+                <Row label="Ngày phép còn lại" val={attendance.leaveBalanceDisplay || formatLeaveMinutes(attendance.leaveBalanceMinutesAfter)} bold />
+              )}
             </div>
             <FactoryCalendar days={attendance.days} month={month} year={year} />
           </>
@@ -872,3 +878,15 @@ function Row({ label, val, bold }) {
 }
 const fmt = (v, d = 0) => v == null ? '—' : Number(v).toLocaleString('vi-VN',
   { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/**
+ * Quy đổi phút phép ra "X.5 ngày Y phút" (bước 0.5 ngày = 240 phút).
+ * Ví dụ: 1901 phút → "3.5 ngày 221 phút"
+ */
+const formatLeaveMinutes = (minutes) => {
+  if (minutes == null || minutes <= 0) return '0 ngày';
+  const halfDays   = Math.floor(minutes / 240);
+  const remMinutes = minutes % 240;
+  const days       = halfDays % 2 === 0 ? String(halfDays / 2) : `${Math.floor(halfDays / 2)}.5`;
+  return remMinutes === 0 ? `${days} ngày` : `${days} ngày ${remMinutes} phút`;
+};

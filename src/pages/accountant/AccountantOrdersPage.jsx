@@ -7,6 +7,7 @@ import useMinLoading from '../../hooks/useMinLoading.js';
 import { accountantApi, incomeApi, getImageUrl, downloadBlob } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import CancelOrderModal from '../../components/common/CancelOrderModal';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import OrderDetailModal from '../../components/seller/OrderDetailModal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import MisaReceiptModal from '../../components/misa/MisaReceiptModal';
@@ -15,13 +16,54 @@ import MisaOrderModal from '../../components/misa/MisaOrderModal';
 import { formatPrice } from '../../utils/formatPrice';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight, Filter,
-  Clock, CheckCircle, XCircle, Truck, Package, CreditCard,
+  Clock, CheckCircle, CheckCheck, XCircle, Truck, Package, CreditCard,
   ChevronDown, DollarSign, X, AlertCircle, Calendar,
-  Download, FileText, Paperclip, List, Ban, Ticket, Gift,
+  Download, FileText, Paperclip, List, Ban, Ticket, Gift, RotateCcw,
 } from 'lucide-react';
 import VoucherPaymentModal from '../../components/payment/VoucherPaymentModal';
+import RefundDisbursementModal from '../../components/accountant/RefundDisbursementModal';
 
 const CANCELLABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERING']);
+
+/** Parse returnExchangeNote JSON → { type, count } */
+function parseReturnNote(note) {
+  if (!note) return null;
+  try {
+    const entries = JSON.parse(note);
+    const exchangeItems = entries.filter(n => n.type === 'EXCHANGE_SRC');
+    const refundItems   = entries.filter(n => n.type === 'REFUND');
+    if (exchangeItems.length > 0) return { type: 'EXCHANGE', count: exchangeItems.length };
+    if (refundItems.length > 0)   return { type: 'REFUND',   count: refundItems.length };
+    return { type: 'REFUND', count: 1 };
+  } catch { return { type: 'REFUND', count: 1 }; }
+}
+
+function ReturnExchangeBadge({ returnExchangeNote, linkType }) {
+  if (linkType === 'EXCHANGE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap
+        bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/28">
+        🔄 Đơn đổi SP
+      </span>
+    );
+  }
+  const info = parseReturnNote(returnExchangeNote);
+  if (!info) return null;
+  if (info.type === 'EXCHANGE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap
+        bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/28">
+        🔄 Có {info.count} SP đổi
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap
+      bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300 border-orange-200 dark:border-orange-500/28">
+      ↩ Có {info.count} SP hoàn
+    </span>
+  );
+}
 
 function formatDate(ts) {
   if (!ts) return '—';
@@ -594,12 +636,37 @@ export default function AccountantOrdersPage() {
   const [bulkLoading, setBulkLoading] = useState(false);
   /** Đơn đang mở hộp thoại thanh toán bằng voucher từ cột Thao tác. */
   const [voucherOrder, setVoucherOrder] = useState(null);
+  const [disbursementOrder, setDisbursementOrder] = useState(null);
+  /** Modal tạo phiếu chi hoàn tiền REFUND (nhiều đơn). */
+  const [showBulkRefundModal, setShowBulkRefundModal] = useState(false);
+
+  const handleCreateDisbursement = async (order) => {
+    try {
+      const res = await accountantApi.createRefundDisbursement(order.id, {
+        amount: Number(order.overpaidAmount),
+        note: `Hoàn tiền thừa đơn đổi SP ${order.sourceOrderCode || order.orderCode}`,
+        orderVersion: order.version,   // BE dùng để optimistic lock
+      });
+      toast('Đã tạo phiếu chi hoàn tiền', 'success');
+      fetchOrders(page);
+    } catch (e) {
+      if (e?.response?.status === 409) {
+        toast('Phiếu chi đã được tạo bởi người dùng khác. Vui lòng tải lại.', 'error');
+      } else {
+        toast(e?.response?.data?.message || 'Lỗi tạo phiếu chi', 'error');
+      }
+      fetchOrders(page);
+    }
+  };
   const [pageSize, setPageSize] = useState(100);
   const [uploadingReceiptId, setUploadingReceiptId] = useState(null);
   const receiptInputRef = useRef(null);
   const [sortNoReceipt, setSortNoReceipt] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  // Đơn đang mở hộp thoại "Hoàn thành đơn hàng" từ cột Hóa đơn — chỉ hiện khi
+  // đơn ở trạng thái PENDING_PAYMENT và khách đã trả một phần (paidAmount > 0).
+  const [completeTarget, setCompleteTarget] = useState(null);
   const [misaReceiptOrder, setMisaReceiptOrder] = useState(null);
   const [misaOrderViewOrder, setMisaOrderViewOrder] = useState(null);
   const totalPages = Math.ceil(total / pageSize);
@@ -694,7 +761,18 @@ export default function AccountantOrdersPage() {
     try {
       const res = await accountantApi.markCompleted(orderId);
       if (res?.data?.success === false) { toast(res.data.message || t('common', 'error'), 'error'); return; }
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'COMPLETED', paymentStatus: 'PAID', paidAmount: o.finalAmount } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'COMPLETED', paymentStatus: 'PAID', paidAmount: o.paidAmount } : o));
+      toast(t('order', 'complete_success'), 'success');
+    } catch (e) { toast(e?.response?.data?.message || t('common', 'error'), 'error'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleCompleteNoFixedPaidAmount = async (orderId) => {
+    setActionLoading(orderId);
+    try {
+      const res = await accountantApi.markCompletedNoFixedPaidAmount(orderId);
+      if (res?.data?.success === false) { toast(res.data.message || t('common', 'error'), 'error'); return; }
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'COMPLETED', paymentStatus: 'PAID', paidAmount: o.paidAmount } : o));
       toast(t('order', 'complete_success'), 'success');
     } catch (e) { toast(e?.response?.data?.message || t('common', 'error'), 'error'); }
     finally { setActionLoading(null); }
@@ -858,6 +936,14 @@ export default function AccountantOrdersPage() {
           <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0" title={t('common', 'export')}>
             {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
           </button>
+          {/* Nút "Phiếu chi hoàn tiền" — cả accountant và super_accountant đều dùng */}
+          <button
+            onClick={() => setShowBulkRefundModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28 hover:bg-emerald-100 dark:hover:bg-emerald-500/18 transition-colors text-sm font-medium whitespace-nowrap shrink-0"
+            title="Tạo phiếu chi hoàn tiền cho các đơn đã hoàn sản phẩm"
+          >
+            <RotateCcw size={14} /> Phiếu chi hoàn
+          </button>
           {/* Nút "Quà tặng" — CHỈ super_accountant. Mở trang gộp đơn KM + phiếu tặng quà đã duyệt.
               Cùng route với owner/admin nhưng dưới prefix /super-accountant. */}
           {isSuperAccountantView && (
@@ -905,6 +991,14 @@ export default function AccountantOrdersPage() {
             </button>
             <button onClick={handleExport} disabled={exporting} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0" title={t('common', 'export')}>
               {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
+            </button>
+            {/* Nút "Phiếu chi hoàn" mobile — hiển thị cho mọi role kế toán */}
+            <button
+              onClick={() => setShowBulkRefundModal(true)}
+              className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28 hover:bg-emerald-100 dark:hover:bg-emerald-500/18 transition-colors shrink-0"
+              title="Tạo phiếu chi hoàn tiền"
+            >
+              <RotateCcw size={14} />
             </button>
             {/* Nút "Quà tặng" mobile — cùng logic desktop */}
             {isSuperAccountantView && (
@@ -988,6 +1082,12 @@ export default function AccountantOrdersPage() {
                               {detailLoading === o.id && <div className="w-3 h-3 border border-gold border-t-transparent rounded-full animate-spin" />}
                               {isThisInvoice && <span className="flex gap-0.5 items-center">{[0, 1, 2].map(i => <span key={i} className="w-1 h-1 rounded-full bg-gold animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>}
                             </div>
+                            {/* Badge đơn đổi hoặc đơn có SP hoàn */}
+                            {(o.returnExchangeNote || o.linkType === 'EXCHANGE') && (
+                              <div className="mt-0.5">
+                                <ReturnExchangeBadge returnExchangeNote={o.returnExchangeNote} linkType={o.linkType} />
+                              </div>
+                            )}
                             {o.misaOrderId && (
                               <div className="flex flex-wrap gap-1 mt-0.5">
                                 <button
@@ -1034,6 +1134,22 @@ export default function AccountantOrdersPage() {
                               {paidAmount > 0 && <p className="text-[10px] text-emerald-600 dark:text-emerald-300 font-medium whitespace-nowrap">{t('payment', 'collected')}: {formatPrice(paidAmount)}</p>}
                               {paidAmount > 0 && paidAmount < Number(o.finalAmount) && <p className="text-[10px] text-orange-500 font-medium whitespace-nowrap">{t('payment', 'remaining')}: {formatPrice(Number(o.finalAmount) - paidAmount)}</p>}
                             </>)}
+                            {Number(o.overpaidAmount) > 0 && o.linkType === 'EXCHANGE' && (
+                              <p className="text-[10px] text-orange-500 font-semibold whitespace-nowrap">
+                                ↩ Cần hoàn: {formatPrice(o.overpaidAmount)}
+                              </p>
+                            )}
+                            {/* Hoàn tiền REFUND (đơn gốc có sản phẩm hoàn) */}
+                            {Number(o.pendingRefundAmount) > 0 && !o.refundVoucherCode && (
+                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap">
+                                ↩ Chờ hoàn: {formatPrice(o.pendingRefundAmount)}
+                              </p>
+                            )}
+                            {o.refundVoucherCode && Number(o.refundedAmount) > 0 && (
+                              <p className="text-[10px] text-emerald-500 font-medium whitespace-nowrap">
+                                ✓ Đã hoàn: {formatPrice(o.refundedAmount)}
+                              </p>
+                            )}
                           </td>
                           <td className="px-4 py-3"><CreatedByBadge name={o.orderedByName} /></td>
                           <td className="px-4 py-3">
@@ -1054,6 +1170,31 @@ export default function AccountantOrdersPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               <InvoiceButton order={o} invoiceLoadingId={invoiceLoadingId} onInvoice={handleInvoice} />
+
+                              {/* NÚT "HOÀN THÀNH ĐƠN HÀNG" — chỉ hiện khi đơn
+                                  đã ở trạng thái Chờ thanh toán và khách đã trả
+                                  một phần. Bấm mở ConfirmModal, xác nhận sẽ gọi
+                                  handleComplete → BE endpoint /complete
+                                  (markAsCompleted): đổi status → COMPLETED,
+                                  paymentStatus → PAID, ghi order_log 'COMPLETED'
+                                  và cộng nốt phần còn thiếu vào paidAmount. */}
+                              {o.status === 'PENDING_PAYMENT'
+                                && Number(o.paidAmount || 0) > 0 && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); setCompleteTarget(o); }}
+                                  disabled={actionLoading === o.id}
+                                  title="Hoàn thành đơn hàng"
+                                  className="relative p-1.5 rounded-lg border bg-emerald-50 dark:bg-emerald-500/10
+                                    text-emerald-600 dark:text-emerald-300 border-transparent
+                                    hover:bg-emerald-100 dark:bg-emerald-500/18 hover:scale-105
+                                    active:scale-95 transition-all duration-200
+                                    disabled:opacity-50 disabled:cursor-not-allowed">
+                                  {actionLoading === o.id
+                                    ? <BtnSpinner size={13} colorClass="border-emerald-400 !border-t-transparent" />
+                                    : <CheckCheck size={13} />}
+                                </button>
+                              )}
+
                               <button onClick={async e => {
                                 e.stopPropagation(); setDetailLoading(o.id);
                                 try {
@@ -1166,6 +1307,27 @@ export default function AccountantOrdersPage() {
         />
       )}
 
+      {completeTarget && (() => {
+        const remaining = Number(completeTarget.finalAmount || 0)
+                        - Number(completeTarget.paidAmount || 0);
+        const hasRemaining = remaining > 0;
+        return (
+          <ConfirmModal
+            title={`Hoàn thành đơn ${completeTarget.orderCode || `#${completeTarget.id}`}?`}
+            message={
+              hasRemaining
+                ? `Số tiền còn thiếu ${formatPrice(remaining)} sẽ được coi là ĐÃ THU (miễn phần còn lại).\n`
+                  + `Đơn sẽ chuyển sang trạng thái "Hoàn thành" và "Đã thanh toán đủ".`
+                : `Đơn sẽ chuyển sang trạng thái "Hoàn thành" và "Đã thanh toán đủ".`
+            }
+            confirmLabel="Hoàn thành đơn"
+            variant="primary"
+            onConfirm={() => handleCompleteNoFixedPaidAmount(completeTarget.id)}
+            onClose={() => setCompleteTarget(null)}
+          />
+        );
+      })()}
+
       {misaReceiptOrder && (
         <MisaReceiptModal
           order={misaReceiptOrder}
@@ -1180,6 +1342,14 @@ export default function AccountantOrdersPage() {
           isViewMode={true}
           onClose={() => setMisaOrderViewOrder(null)}
           onSuccess={() => fetchOrders(page)}
+        />
+      )}
+
+      {/* Modal tạo phiếu chi hoàn tiền nhiều đơn REFUND */}
+      {showBulkRefundModal && (
+        <RefundDisbursementModal
+          onClose={() => setShowBulkRefundModal(false)}
+          onSuccess={() => { fetchOrders(page); }}
         />
       )}
     </div>

@@ -199,7 +199,11 @@
     "attendance_sheets": "Bảng chấm công",
     "payroll_passcode": "Khoá xem lương",
     "supply_orders": "Phiếu đặt văn phòng phẩm",
-    "supply_warehouse": "Kho văn phòng phẩm",
+    "supply_warehouse": "Văn phòng phẩm",
+    "office_supply_requests": "Yêu cầu văn phòng phẩm",
+    "office_supply_manage": "Quản lý văn phòng phẩm",
+    "office_supply_items": "Danh sách văn phòng phẩm",
+    "leave_management": "Quản lý phép",
     "order_forecast": "Dự báo đặt hàng",
     "vouchers": "Quản lý voucher",
     "gift_orders": "Phiếu tặng quà"

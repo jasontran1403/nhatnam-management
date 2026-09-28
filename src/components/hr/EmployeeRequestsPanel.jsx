@@ -14,7 +14,7 @@ import {
   ChevronRight, Filter, RefreshCw,
 } from 'lucide-react';
 
-import LeaveBalanceCard from './LeaveBalance';
+import LeaveBalanceCard, { useLeaveBalance } from './LeaveBalance';
 import { employeeRequestApi } from '../../api/employeeRequestApi';
 import { useToast } from '../common/Toast';
 import Modal from '../ui/Modal';
@@ -64,6 +64,12 @@ function StatusBadge({ status, label }) {
   );
 }
 
+/** Hiển thị số ngày rút gọn: 3, 1,5, 0,5 — không kéo dài số 0 thừa. */
+const fmtDays = (v) => {
+  const n = Number(v ?? 0);
+  return (Number.isInteger(n) ? String(n) : n.toFixed(1)).replace('.', ',');
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // MODAL CHI TIẾT + DUYỆT
 // ══════════════════════════════════════════════════════════════════════════════
@@ -75,21 +81,24 @@ function DecideModal({ item, onClose, onDone }) {
   const [action, setAction] = useState(null);   // 'APPROVE' | 'DEDUCT' | 'REJECT'
   const [paid, setPaid] = useState(true);
   const [deduct, setDeduct] = useState('0.5');
-  // Chia ngày phép / không lương — chỉ dùng cho phiếu NGHỈ PHÉP nhiều ngày
-  const [paidDays, setPaidDays] = useState('');
-  const [unpaidDays, setUnpaidDays] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setAction(null); setPaid(true); setDeduct('0.5'); setNote('');
-    setPaidDays(''); setUnpaidDays('');
   }, [item?.id]);
+
+  // Số dư ngày phép của chính nhân viên gửi phiếu — nạp trước khi render để
+  // auto-split. Hook phải chạy TRƯỚC early return để giữ đúng thứ tự hook giữa
+  // các lần render (mở/đóng modal).
+  const isLeave = item?.type === 'LEAVE';
+  const leaveYear = item?.fromDate ? Number(String(item.fromDate).slice(0, 4))
+                                   : new Date().getFullYear();
+  const { balance: leaveBal } = useLeaveBalance(isLeave ? item?.userId : null, leaveYear);
 
   if (!item) return null;
   const editable = item.status === 'PENDING';
 
-  const isLeave = item.type === 'LEAVE';
   // Số ngày phép phiếu này tiêu tốn — mốc trần khi chia phép / không lương.
   // Nghỉ nửa ngày luôn là 0,5 bất kể khoảng ngày.
   const totalDays = (() => {
@@ -101,6 +110,17 @@ function DecideModal({ item, onClose, onDone }) {
     const a = new Date(item.fromDate), b = new Date(item.toDate);
     return Math.max(1, Math.round((b - a) / 86400000) + 1);
   })();
+
+  // ── AUTO-SPLIT theo quỹ phép của chính nhân viên ─────────────────────────
+  // Trừ hết ngày phép còn lại vào phiếu trước; phần dư (nếu có) mới cần người
+  // duyệt chọn "Có phép — hưởng đủ công" hoặc "Không phép — công 0/0.5". Người
+  // duyệt KHÔNG được sửa split, chỉ xem.
+  const remainingDays = Math.max(0, Number(leaveBal?.remainingDays ?? 0));
+  const autoPaidDays = isLeave ? Math.min(remainingDays, totalDays) : 0;
+  const autoUnpaidDays = isLeave ? Math.max(0, totalDays - autoPaidDays) : 0;
+  // Chỉ khi CÒN PHẦN DƯ mới có ý nghĩa để chọn có/không lương — hết quỹ hoặc
+  // dùng chưa hết đều KHÔNG hiển thị 2 nút.
+  const needsPaidChoice = isLeave && autoUnpaidDays > 0;
 
   const submit = async () => {
     if (action === 'REJECT' && !note.trim())
@@ -114,13 +134,16 @@ function DecideModal({ item, onClose, onDone }) {
     try {
       if (action === 'APPROVE') {
         if (isLeave) {
-          // Bỏ trống = duyệt trọn phiếu theo nhánh có lương / không lương đã chọn.
-          const pd = paidDays === '' ? (paid ? totalDays : 0) : Number(paidDays);
-          const ud = unpaidDays === '' ? (paid ? 0 : totalDays) : Number(unpaidDays);
-          if (pd < 0 || ud < 0) return toast('Số ngày không được âm', 'error');
-          if (pd + ud > totalDays + 0.001)
-            return toast(`Tổng ${pd + ud} ngày vượt quá ${totalDays} ngày của phiếu`, 'error');
-          await employeeRequestApi.approveLeave(item.id, pd, ud, note.trim() || null);
+          // Split đã tự tính từ quỹ; user không sửa được. Nếu không có phần
+          // dư thì mặc định là "có phép" (APPROVED_PAID).
+          const effectivePaid = needsPaidChoice ? paid : true;
+          await employeeRequestApi.decide(item.id, {
+            action: 'APPROVE',
+            paid: effectivePaid,
+            paidLeaveDays: autoPaidDays,
+            unpaidLeaveDays: autoUnpaidDays,
+            note: note.trim() || null,
+          });
         } else {
           await employeeRequestApi.approve(item.id, paid, note.trim() || null);
         }
@@ -214,22 +237,27 @@ function DecideModal({ item, onClose, onDone }) {
                   <LeaveBalanceCard userId={item.userId} compact />
                 </div>
 
-                <Field label={`Chia ${String(totalDays).replace('.', ',')} ngày của phiếu`}
-                  hint="Bỏ trống = duyệt trọn phiếu theo lựa chọn bên dưới. Không đủ quỹ thì chia bớt sang không lương.">
+                {/* Split được tính tự động: trừ hết ngày phép còn lại trước,
+                    phần dư (nếu có) mới cần chọn có/không phép. Readonly. */}
+                <Field label={`Chia ${fmtDays(totalDays)} ngày của phiếu`}
+                  hint={autoUnpaidDays > 0
+                    ? 'Đã dùng hết quỹ phép còn lại cho phiếu này. Phần dư cần chọn nhánh bên dưới.'
+                    : 'Còn đủ quỹ phép — trọn phiếu là nghỉ có phép.'}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
-                      <input type="number" step="0.5" min="0" max={totalDays}
-                        value={paidDays} onChange={e => setPaidDays(e.target.value)}
-                        placeholder={String(totalDays)}
-                        className={inputCls + ' max-w-[90px]'} />
+                      <div className="w-[90px] px-3 py-2.5 bg-canvas border border-hairline-2 rounded-xl
+                          text-sm text-ink text-center font-semibold">
+                        {fmtDays(autoPaidDays)}
+                      </div>
                       <span className="text-xs text-muted">ngày phép</span>
                     </div>
                     <span className="text-muted">+</span>
                     <div className="flex items-center gap-1.5">
-                      <input type="number" step="0.5" min="0" max={totalDays}
-                        value={unpaidDays} onChange={e => setUnpaidDays(e.target.value)}
-                        placeholder="0"
-                        className={inputCls + ' max-w-[90px]'} />
+                      <div className={`w-[90px] px-3 py-2.5 bg-canvas border border-hairline-2 rounded-xl
+                          text-sm text-center font-semibold
+                          ${autoUnpaidDays > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-ink'}`}>
+                        {fmtDays(autoUnpaidDays)}
+                      </div>
                       <span className="text-xs text-muted">ngày không lương</span>
                     </div>
                   </div>
@@ -237,8 +265,12 @@ function DecideModal({ item, onClose, onDone }) {
               </div>
             )}
 
-            {action === 'APPROVE' && (
-              <Field label="Nghỉ có lương hay không lương" required>
+            {action === 'APPROVE' && (!isLeave || needsPaidChoice) && (
+              <Field
+                label={isLeave
+                  ? `Nghỉ có lương hay không lương cho ${fmtDays(autoUnpaidDays)} ngày dư`
+                  : 'Nghỉ có lương hay không lương'}
+                required>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setPaid(true)}
                     className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all
@@ -250,7 +282,7 @@ function DecideModal({ item, onClose, onDone }) {
                     className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all
                       ${!paid ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/35'
                               : 'bg-surface text-muted border-hairline-2 hover:border-sky-300 dark:border-sky-500/35'}`}>
-                    Không phép — công ngày đó = 0
+                    Không phép — công ngày đó = 0 (hoặc 0,5 nếu nửa buổi)
                   </button>
                 </div>
               </Field>

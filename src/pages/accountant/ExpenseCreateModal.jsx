@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import {
   X, Building2, ChevronDown, Plus, Trash2,
-  Upload, Send, Receipt, Search, User, Phone, Wallet, ReceiptText, Hash, MapPin,
+  Upload, Send, Receipt, Search, User, Phone, Wallet, ReceiptText, Hash, MapPin, Banknote,
 } from 'lucide-react';
 import { accountantVendorExpenseApi, superAccountantVendorExpenseApi, fmtVND } from '../../api/materialRequestApi.js';
 import ExpenseDatePeriodPicker, { defaultExpenseWhen } from '../../components/ui/ExpenseDatePeriodPicker';
@@ -606,7 +606,44 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   const fileRef = useRef();
   const dropRef = useRef();
 
-  const [mode, setMode] = useState(initialMode); // EXPENSE | VENDOR_DEBT
+  const [mode, setMode] = useState(initialMode); // EXPENSE | VENDOR_DEBT | SALARY_ADVANCE
+
+  // ── Ứng lương state ──────────────────────────────────────────────────────
+  const [employees, setEmployees] = useState([]);
+  const [empLoading, setEmpLoading] = useState(false);
+  const [selectedEmp, setSelectedEmp] = useState(null); // { id, fullName }
+  const [advanceInfo, setAdvanceInfo] = useState(null); // SalaryAdvanceInfoDto
+  const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+
+  // Load danh sách nhân viên khi chọn tab ứng lương
+  useEffect(() => {
+    if (mode !== 'SALARY_ADVANCE') return;
+    setEmpLoading(true);
+    api.get('/api/hr/employees').then(r => {
+      setEmployees(r.data?.data || []);
+    }).catch(() => {}).finally(() => setEmpLoading(false));
+  }, [mode]);
+
+  // Load thông tin ứng lương khi chọn nhân viên
+  useEffect(() => {
+    if (!selectedEmp?.id || mode !== 'SALARY_ADVANCE') return;
+    setAdvanceLoading(true);
+    setAdvanceInfo(null);
+    api.get(`/api/hr/salary-advance/info/${selectedEmp.id}`).then(r => {
+      setAdvanceInfo(r.data?.data || r.data);
+    }).catch(() => toast('Không tải được thông tin lương', 'error'))
+      .finally(() => setAdvanceLoading(false));
+  }, [selectedEmp, mode]);
+
+  // Tự sinh lý do chi và reset amount khi đổi nhân viên
+  useEffect(() => {
+    if (mode !== 'SALARY_ADVANCE' || !selectedEmp) return;
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    setReason(`Ứng lương Tháng ${month} cho ${selectedEmp.fullName}`);
+    setAdvanceAmount('');
+  }, [selectedEmp, mode]);
 
   // Vendor state
   const [vendors, setVendors] = useState([]);
@@ -739,6 +776,48 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
   };
 
   const handleSubmit = async () => {
+    // ── Ứng lương ─────────────────────────────────────────────────────────
+    if (mode === 'SALARY_ADVANCE') {
+      if (!selectedEmp) { toast('Vui lòng chọn nhân viên', 'error'); return; }
+      const amt = Number(String(advanceAmount).replace(/[^0-9]/g, ''));
+      if (!amt || amt <= 0) { toast('Số tiền ứng phải lớn hơn 0', 'error'); return; }
+      if (advanceInfo && amt > advanceInfo.remainingAdvanceable) {
+        toast(`Vượt hạn mức. Còn có thể ứng: ${advanceInfo.remainingAdvanceable.toLocaleString('vi-VN')} đ`, 'error');
+        return;
+      }
+      if (paymentType === 'BANK_TRANSFER') {
+        if (!bankName.trim()) { toast('Tên ngân hàng là bắt buộc khi chuyển khoản', 'error'); return; }
+        if (!bankRef.trim()) { toast('Mã tham chiếu là bắt buộc khi chuyển khoản', 'error'); return; }
+      }
+      setSubmitting(true);
+      try {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const monthStr = `${now.getFullYear()}-${String(month).padStart(2, '0')}`;
+        await expenseApi.create({
+          vendorName: selectedEmp.fullName,
+          vendorType: 'SALARY_ADVANCE',
+          reason: reason,  // đã tự sinh
+          paymentNumber: (paymentNumber.trim() || suggestedPaymentNumber) || null,
+          paymentType,
+          bankName: paymentType === 'BANK_TRANSFER' ? bankName.trim() : null,
+          bankRef: paymentType === 'BANK_TRANSFER' ? bankRef.trim() : null,
+          expenseDate: Date.now(),
+          requestedByName: selectedEmp.fullName,
+          salaryAdvanceUserId: selectedEmp.id,
+          salaryAdvanceMonth: monthStr,
+          items: [{ itemName: 'Ứng lương', amount: amt, note: null }],
+          imageUrls: [],
+        });
+        toast('Đã tạo phiếu ứng lương', 'success');
+        onCreated();
+      } catch (e) {
+        toast(e?.response?.data?.message || 'Lỗi khi tạo phiếu', 'error');
+      } finally { setSubmitting(false); }
+      return;
+    }
+
+    // ── Chi phí / Trả công nợ NCC ──────────────────────────────────────────
     if (!selectedVendor) { toast('Vui lòng chọn người nhận / nhà cung cấp', 'error'); return; }
     if (!reason.trim()) { toast('Lý do chi là bắt buộc', 'error'); return; }
     const validItems = items.filter(i => i.categoryId && parseVND(i.amount) > 0);
@@ -803,7 +882,7 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
             </button>
           </div>
 
-          {/* Tabs: Chi phí tự do / Trả công nợ NCC */}
+          {/* Tabs: Chi phí tự do / Trả công nợ NCC / Ứng lương */}
           <div className="flex gap-1 bg-canvas m-4 mb-0 rounded-xl p-1 flex-shrink-0">
             <button
               onClick={() => setMode('EXPENSE')}
@@ -815,9 +894,105 @@ export default function ExpenseCreateModal({ onClose, onCreated, initialMode = '
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'VENDOR_DEBT' ? 'bg-surface text-ink shadow-sm' : 'text-muted'}`}>
               <Wallet size={14} /> Trả công nợ NCC
             </button>
+            <button
+              onClick={() => setMode('SALARY_ADVANCE')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'SALARY_ADVANCE' ? 'bg-surface text-ink shadow-sm' : 'text-muted'}`}>
+              <Banknote size={14} /> Ứng lương
+            </button>
           </div>
 
-          {mode === 'VENDOR_DEBT' ? (
+          {mode === 'SALARY_ADVANCE' ? (
+            <div className="overflow-y-auto flex-1 p-5 space-y-4">
+              {/* Chọn nhân viên */}
+              <div>
+                <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 block">
+                  Nhân viên ứng lương <span className="text-red-500">*</span>
+                </label>
+                <select value={selectedEmp?.id || ''}
+                  onChange={e => {
+                    const emp = employees.find(u => String(u.id) === e.target.value);
+                    setSelectedEmp(emp ? { id: emp.id, fullName: emp.fullName } : null);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:border-gold bg-surface">
+                  <option value="">{empLoading ? 'Đang tải...' : '-- Chọn nhân viên --'}</option>
+                  {employees.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+                </select>
+              </div>
+
+              {advanceLoading && <p className="text-xs text-muted">Đang tải thông tin lương...</p>}
+              {advanceInfo && !advanceLoading && (
+                <div className="rounded-xl bg-canvas px-4 py-3 space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">Lương cơ bản</span>
+                    <span className="font-semibold text-ink">{advanceInfo.baseSalary.toLocaleString('vi-VN')} đ</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">Đã ứng tháng này</span>
+                    <span className="font-semibold text-amber-600">{advanceInfo.totalAdvanced.toLocaleString('vi-VN')} đ</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t border-hairline pt-1.5">
+                    <span className="font-semibold text-muted">Còn có thể ứng</span>
+                    <span className={`font-bold ${advanceInfo.remainingAdvanceable > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {advanceInfo.remainingAdvanceable.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                  {advanceInfo.baseSalary === 0 && (
+                    <p className="text-xs text-red-500 pt-1">Nhân viên chưa có hồ sơ lương được duyệt.</p>
+                  )}
+                </div>
+              )}
+
+              {advanceInfo && advanceInfo.remainingAdvanceable > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 block">
+                    Số tiền ứng <span className="text-red-500">*</span>
+                  </label>
+                  <input type="number" min="1" step="1000"
+                    value={advanceAmount} onChange={e => setAdvanceAmount(e.target.value)}
+                    max={advanceInfo.remainingAdvanceable}
+                    placeholder={`Tối đa ${advanceInfo.remainingAdvanceable.toLocaleString('vi-VN')}`}
+                    className="w-full px-3 py-2 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:border-gold" />
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 block">Lý do chi</label>
+                <input readOnly value={reason}
+                  className="w-full px-3 py-2 rounded-xl border border-hairline-2 text-sm bg-canvas text-muted cursor-not-allowed" />
+                <p className="text-[10px] text-muted mt-1">Tự động điền, không chỉnh sửa</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 block">Số phiếu chi</label>
+                <input value={paymentNumber} onChange={e => setPaymentNumber(e.target.value)}
+                  placeholder={suggestedPaymentNumber || 'Tự động'}
+                  className="w-full px-3 py-2 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:border-gold" />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 block">Hình thức</label>
+                <div className="flex gap-2">
+                  {['CASH','BANK_TRANSFER'].map(pt => (
+                    <button key={pt} onClick={() => setPaymentType(pt)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors
+                        ${paymentType === pt ? 'bg-gold text-white border-gold' : 'bg-surface text-ink border-hairline-2'}`}>
+                      {pt === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {paymentType === 'BANK_TRANSFER' && (
+                <div className="space-y-3">
+                  <input value={bankName} onChange={e => setBankName(e.target.value)}
+                    placeholder="Tên ngân hàng *"
+                    className="w-full px-3 py-2 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:border-gold" />
+                  <input value={bankRef} onChange={e => setBankRef(e.target.value)}
+                    placeholder="Mã tham chiếu *"
+                    className="w-full px-3 py-2 rounded-xl border border-hairline-2 text-sm focus:outline-none focus:border-gold" />
+                </div>
+              )}
+            </div>
+          ) : mode === 'VENDOR_DEBT' ? (
             <VendorDebtPaymentForm onClose={onClose} onCreated={onCreated}
               initialVendorId={initialVendorId} initialVendorName={initialVendorName} />
           ) : (

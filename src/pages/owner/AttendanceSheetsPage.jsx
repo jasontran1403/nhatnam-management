@@ -18,7 +18,8 @@ import {
   ClipboardCheck, Upload, RefreshCw, AlertCircle, CheckCircle2, Trash2,
   FileSpreadsheet, Calculator, Download, CalendarDays, ChevronDown, Gift, Wallet,
   CalendarClock, UserCheck, Clock, Lock, Unlock, Users, Receipt, Truck, Route, ShieldCheck,
-  PiggyBank, Plus, X, Search, CornerDownRight, MapPin, User as UserIcon, Package, Eye,
+  PiggyBank, Plus, X, Search, CornerDownRight, MapPin, User as UserIcon, Package, Eye, Award,
+  Landmark,
 } from 'lucide-react';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import { BackButton } from '../../components/common/SubPageNav';
@@ -228,6 +229,12 @@ function DepartmentTabs({ statuses, value, onChange }) {
             </span>
             {s.finalized && (
               <CheckCircle2 size={13} className={active ? 'text-emerald-400' : 'text-emerald-500'} />
+            )}
+            {s.finalized && !s.kpiFinalized && (
+              <span className={`text-[9px] font-bold px-1 py-0.5 rounded
+                ${active ? 'bg-amber-400/30 text-amber-200' : 'bg-amber-100 text-amber-700'}`}>
+                KPI?
+              </span>
             )}
           </button>
         );
@@ -1257,7 +1264,7 @@ function PayrollMobileCard({ row: r, isDriver, showKpi, highlight = false, onAtt
   );
 }
 
-function PayrollTables({ data, loading }) {
+function PayrollTables({ data, loading, preview = false }) {
   // Nhân viên đang mở modal chi tiết ngày công (null = đóng).
   const [detailOf, setDetailOf] = useState(null);
   // Nhân viên đang mở modal breakdown lương (null = đóng).
@@ -1308,12 +1315,33 @@ function PayrollTables({ data, loading }) {
     <>
       {/* ── BẢNG 1: PHIẾU LƯƠNG ─────────────────────────────────────────── */}
       <SectionCard>
+        {/* Banner XEM TRƯỚC — chỉ hiện khi chưa Hoàn tất. Đặt ngoài phần header
+            để mắt bắt ngay khi cuộn tới, tránh chốt nhầm mà tưởng nhân viên
+            đang xem cùng dữ liệu. */}
+        {preview && (
+          <div className="px-5 py-3 border-b border-amber-200 dark:border-amber-500/28
+            bg-amber-50 dark:bg-amber-500/10 flex items-start gap-2">
+            <Eye size={15} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+            <div className="text-[11px] leading-snug text-amber-800 dark:text-amber-200">
+              <strong>Xem trước — chưa Hoàn tất.</strong> Chỉ quản lý thấy bảng
+              này để cân đối; nhân viên vẫn thấy "Đang xử lý lương". Bấm
+              <strong> Hoàn tất</strong> ở trên để công bố cho nhân viên.
+            </div>
+          </div>
+        )}
         <div className="px-5 py-4 border-b border-hairline">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <div className="flex items-center gap-2 min-w-0">
               <Receipt size={16} className="text-gold shrink-0" />
               <h3 className="text-sm font-bold text-ink">
                 Phiếu lương — {data.departmentLabel} · {data.periodLabel}
+                {preview && (
+                  <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded
+                    bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200
+                    uppercase tracking-wider align-middle">
+                    Xem trước
+                  </span>
+                )}
               </h3>
             </div>
 
@@ -1506,11 +1534,13 @@ function PayrollTables({ data, loading }) {
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-amber-500 shrink-0" />
               <h3 className="text-sm font-bold text-ink">
-                Đi trễ / Về sớm — Tham khảo KPI · {data.periodLabel}
+                Đi trễ / Về sớm · {data.periodLabel}
               </h3>
             </div>
             <p className="mt-1 text-xs text-muted">
-              Đi trễ và về sớm <strong>không trừ lương</strong> — chỉ ghi nhận để tính KPI.
+              Xưởng sản xuất & Kế toán: đi trễ/về sớm được <strong>trừ vào ngày phép trước</strong>
+              (du di 5 phút mỗi chiều), hết phép mới trừ lương.
+              Kho & các bộ phận khác: trừ thẳng vào ngày công.
             </p>
           </div>
 
@@ -1746,7 +1776,8 @@ function VNMoneyInput({ value, onChange, placeholder, disabled }) {
   );
 }
 
-function DriverPayrollPanel({ month, year, onSaved }) {
+function DriverPayrollPanel({ month, year, onSaved,
+                             onComputePreview, computingPreview, finalizedPeriod }) {
   const toast = useToast();
   const [cfg, setCfg] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1757,6 +1788,11 @@ function DriverPayrollPanel({ month, year, onSaved }) {
   const [modalDriver, setModalDriver] = useState(null); // { userId, name, vehicleType }
 
   const finalized = cfg?.finalized === true;
+  // Đủ giá xăng + 2 đơn giá thưởng mới cho tính lương xem trước — tránh
+  // hiển thị bảng với các cột đều 0đ vì thiếu cấu hình.
+  const canPreview = cfg?.gasPrice != null
+    && cfg?.bonusUnitPrice != null
+    && cfg?.truckBonusUnitPrice != null;
 
   const load = useCallback(async () => {
     if (!month || !year) return;
@@ -1836,7 +1872,23 @@ function DriverPayrollPanel({ month, year, onSaved }) {
               placeholder="VD: 30.000" disabled={finalized || loading} />
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          {/* Tính lương XEM TRƯỚC — hiển thị "Phiếu lương — Tài xế" bên dưới
+              (chỉ tính cho bộ phận Tài xế, KHÔNG tính cho nhân viên hỗ trợ
+              giao hàng vì họ nằm ở bộ phận khác — phụ cấp xăng/giao hàng của
+              họ đã được cộng vào lương của bộ phận gốc). Ẩn sau khi đã Hoàn
+              tất vì lúc đó bảng đã là bản chính thức. */}
+          {!finalizedPeriod && (
+            <SecondaryButton
+              onClick={onComputePreview}
+              disabled={!canPreview || computingPreview || loading || !onComputePreview}
+              title={canPreview
+                ? 'Tính lương tài xế theo điểm danh ODO & lượt giao'
+                : 'Cần nhập đủ giá xăng + 2 đơn giá thưởng trước khi tính'}>
+              <Calculator size={14} />
+              {computingPreview ? 'Đang tính...' : 'Tính lương'}
+            </SecondaryButton>
+          )}
           <PrimaryButton onClick={save} disabled={saving || loading || finalized}>
             {saving ? 'Đang lưu...' : 'Lưu giá xăng & đơn giá thưởng'}
           </PrimaryButton>
@@ -2533,11 +2585,14 @@ export default function AttendanceSheetsPage() {
   const [busy, setBusy] = useState(null);                 // 'attendance' | 'exception' | 'leave'
   const [deleting, setDeleting] = useState(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [finalizingKpi, setFinalizingKpi] = useState(false);
   const [result, setResult] = useState(null);
   const [resultTitle, setResultTitle] = useState('');
   const [recomputing, setRecomputing] = useState(false);
   const [payroll, setPayroll] = useState(null);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
+  // Cờ nút "Tính lương" đang chạy — dùng chung cho Xưởng và Tài xế.
+  const [computingPreview, setComputingPreview] = useState(false);
   const [adjustments, setAdjustments] = useState(null);   // { bonus, allowance }
   // Mỗi khoản thưởng là một nhãn riêng, tải lên từ một file riêng.
   const [bonusBatches, setBonusBatches] = useState([]);   // [{ label, employeeCount, totalAmount }]
@@ -2557,8 +2612,10 @@ export default function AttendanceSheetsPage() {
   const [exportDepts, setExportDepts] = useState({
     MANAGEMENT: true, ACCOUNTING: true, FACTORY: true, SALES: true, WAREHOUSE: true, DRIVER: true,
   });
-  const [exportType, setExportType] = useState('SALARY_AND_BONUS');
+  const [exportType, setExportType] = useState('SALARY_ONLY');
   const [exporting, setExporting] = useState(false);
+  // Xuất file chi lương theo mẫu ngân hàng — riêng loading vì có thể chạy độc lập.
+  const [exportingBank, setExportingBank] = useState(false);
   const toast = useToast();
 
   const status = statuses.find(s => s.department === department) || null;
@@ -2595,10 +2652,13 @@ export default function AttendanceSheetsPage() {
   // ── Xuất file lương tổng hợp ────────────────────────────────────────────────
   const handleExportSalary = async () => {
     if (!selected) return;
-    const depts = Object.entries(exportDepts).filter(([, v]) => v).map(([k]) => k);
-    if (!depts.length) { toast('Vui lòng chọn ít nhất một phòng ban', 'error'); return; }
     setExporting(true);
     try {
+      // Lương: xuất TẤT CẢ phòng ban trong 1 file
+      // Thưởng: chỉ xuất phòng ban đang chọn
+      const depts = exportType === 'SALARY_ONLY'
+        ? ['MANAGEMENT', 'ACCOUNTING', 'SALES', 'FACTORY', 'WAREHOUSE', 'DRIVER']
+        : [department];
       await factoryPayrollApi.exportSalaryReport(selected.month, selected.year, depts, exportType);
       toast('Đã xuất file lương thành công', 'success');
       setExportModalOpen(false);
@@ -2606,6 +2666,37 @@ export default function AttendanceSheetsPage() {
       toast(e?.response?.data?.message || 'Không xuất được file lương', 'error');
     } finally {
       setExporting(false);
+    }
+  };
+
+  // ── Xuất file chi lương theo mẫu NGÂN HÀNG ───────────────────────────────
+  //
+  // Khác với "Xuất file lương" (bảng chi tiết nhiều cột, dùng nội bộ), file
+  // ngân hàng chỉ có 5 cột và dùng để chuyển khoản hàng loạt. BE tự chọn nhân
+  // viên theo quy tắc (xem BankPaymentExportService) nên FE chỉ cần tháng/năm.
+  const handleExportBankPayment = async () => {
+    if (!selected) return;
+    setExportingBank(true);
+    try {
+      await factoryPayrollApi.exportBankPayment(selected.month, selected.year);
+      toast('Đã xuất file chi lương ngân hàng', 'success');
+    } catch (e) {
+      // Response type là blob nên message error nằm trong blob khi BE lỗi —
+      // đọc lại bằng text() để hiển thị đúng thông báo.
+      let msg = 'Không xuất được file chi lương ngân hàng';
+      const blob = e?.response?.data;
+      if (blob instanceof Blob) {
+        try {
+          const text = await blob.text();
+          const json = JSON.parse(text);
+          if (json?.message) msg = json.message;
+        } catch { /* giữ msg mặc định */ }
+      } else if (e?.response?.data?.message) {
+        msg = e.response.data.message;
+      }
+      toast(msg, 'error');
+    } finally {
+      setExportingBank(false);
     }
   };
 
@@ -2637,13 +2728,20 @@ export default function AttendanceSheetsPage() {
 
   useEffect(() => { loadAdjustments(selected, department); }, [selected, department, loadAdjustments]);
   useEffect(() => { loadKpi(selected, department); }, [selected, department, loadKpi]);
+  // useEffect cho loadBonusSummary nằm bên dưới, sau khi useCallback định nghĩa xong
 
-  // ── Nạp 2 bảng lương khi đã HOÀN TẤT ──────────────────────────────────────
-  const loadPayroll = useCallback(async (p, dept, finalized) => {
+  // ── Nạp 2 bảng lương — BAO GỒM CẢ CHẾ ĐỘ XEM TRƯỚC ────────────────────────
+  //
+  // Trước đây chỉ nạp khi đã Hoàn tất. Nay OWNER cần xem trước lương ngay sau
+  // khi upload chấm công (Xưởng) hoặc cấu hình giá xăng (Tài xế) để cân đối
+  // trước khi công bố. Endpoint `departmentPayroll` vốn không kiểm tra cờ
+  // finalized — chỉ đọc dữ liệu hiện có trong DB — nên chạy được cho cả hai
+  // trạng thái. Cờ preview ở dưới quyết định hiện banner "Xem trước".
+  const loadPayroll = useCallback(async (p, dept) => {
     // Reset ngay khi đổi tháng/tab để không hiển thị nhãn bộ phận CŨ trong lúc
     // chờ fetch (bug: đổi tab Xưởng vẫn thấy "Phiếu lương — Tài xế").
     setPayroll(null);
-    if (!p || !finalized) return;
+    if (!p || !dept) return;
     setLoadingPayroll(true);
     try {
       const res = await factoryPayrollApi.departmentPayroll(p.month, p.year, dept);
@@ -2663,8 +2761,29 @@ export default function AttendanceSheetsPage() {
   }, []); // eslint-disable-line
 
   useEffect(() => {
-    loadPayroll(selected, department, status?.finalized);
-  }, [selected, department, status?.finalized, loadPayroll]);
+    // Chỉ auto-nạp bảng lương khi có thể tính được (đã có file với Xưởng /
+    // Quản lý cấp cao, hoặc bộ phận không cần file) HOẶC đã Hoàn tất. Xưởng
+    // chưa upload thì bảng preview toàn công 0 / lương không có nghĩa —
+    // nạp cũng chỉ gây hiểu lầm.
+    if (status?.canFinalize || status?.finalized) {
+      loadPayroll(selected, department);
+    } else {
+      setPayroll(null);
+    }
+  }, [selected, department, status?.finalized, status?.kpiFinalized, status?.canFinalize, loadPayroll]);
+
+  // Nút "Tính lương" trên Xưởng / Tài xế: bấm tay để refresh sau khi thêm
+  // thưởng, phụ cấp, cập nhật đơn giá thưởng, v.v. — không phải chờ đổi tab.
+  const computePreview = async () => {
+    if (!selected) return;
+    setComputingPreview(true);
+    try {
+      await loadPayroll(selected, department);
+      toast('Đã tính lại lương xem trước', 'success');
+    } finally {
+      setComputingPreview(false);
+    }
+  };
 
   // ── Hành động ─────────────────────────────────────────────────────────────
   const upload = async (kind, file) => {
@@ -2815,6 +2934,76 @@ export default function AttendanceSheetsPage() {
     }
   };
 
+  const [finalizingBonus, setFinalizingBonus] = useState(false);
+  const [bonusSummary, setBonusSummary] = useState(null);
+
+  // Tải kết quả thưởng doanh thu (nếu đã tính)
+  const loadBonusSummary = useCallback(async (p, dept) => {
+    const isSalesOrAccounting = dept === 'SALES' || dept === 'ACCOUNTING';
+    if (!p || !isSalesOrAccounting) { setBonusSummary(null); return; }
+    try {
+      const res = await factoryPayrollApi.officeBonus(p.month, p.year, dept);
+      setBonusSummary(res || null);
+    } catch { setBonusSummary(null); }
+  }, []);
+
+  useEffect(() => { loadBonusSummary(selected, department); }, [selected, department, status?.bonusFinalized, loadBonusSummary]);
+
+  const doFinalizeBonus = async () => {
+    if (!selected) return;
+    setFinalizingBonus(true);
+    try {
+      const res = await factoryPayrollApi.finalizeBonus(selected.month, selected.year, department);
+      toast(`Đã hoàn tất Thưởng ${status?.departmentLabel} tháng ${selected.month}/${selected.year}: ${res?.totalBonusPool?.toLocaleString('vi-VN')}đ`, 'success');
+      setBonusSummary(res);
+      await loadStatus(selected);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi hoàn tất Thưởng', 'error');
+    } finally { setFinalizingBonus(false); }
+  };
+
+  const doReopenBonus = async () => {
+    if (!selected) return;
+    setFinalizingBonus(true);
+    try {
+      await factoryPayrollApi.reopenBonus(selected.month, selected.year, department);
+      toast('Đã mở lại Thưởng — nhân viên sẽ thấy "Đang tính thưởng"', 'success');
+      await loadStatus(selected);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi mở lại Thưởng', 'error');
+    } finally { setFinalizingBonus(false); }
+  };
+
+  const doFinalizeKpi = async () => {
+    if (!selected) return;
+    setFinalizingKpi(true);
+    try {
+      await factoryPayrollApi.finalizeKpi(selected.month, selected.year, department);
+      toast(`Đã hoàn tất KPI/Thưởng ${status?.departmentLabel} tháng ${selected.month}/${selected.year}`, 'success');
+      await loadStatus(selected);
+      // Reload bảng lương để hiện cột KPI
+      await loadPayroll(selected, department, true);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi hoàn tất KPI', 'error');
+    } finally {
+      setFinalizingKpi(false);
+    }
+  };
+
+  const doReopenKpi = async () => {
+    if (!selected) return;
+    setFinalizingKpi(true);
+    try {
+      await factoryPayrollApi.reopenKpi(selected.month, selected.year, department);
+      toast('Đã mở lại KPI — nhân viên sẽ thấy "Đang tính thưởng"', 'success');
+      await loadStatus(selected);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi mở lại KPI', 'error');
+    } finally {
+      setFinalizingKpi(false);
+    }
+  };
+
   const recompute = async () => {
     if (!selected) return;
     const raw = String(securityRate).replace(/[^\d]/g, '');
@@ -2852,6 +3041,17 @@ export default function AttendanceSheetsPage() {
           <PrimaryButton onClick={() => setExportModalOpen(true)} disabled={loading || !selected}>
             <Download size={14} /> Xuất file lương
           </PrimaryButton>
+          {/* File chi lương theo mẫu ngân hàng — 5 cột: STT / Họ tên / Số TK /
+              Ngân hàng / Số tiền. Số TK & Ngân hàng để trống, quản lý tự điền
+              trước khi gửi ngân hàng. Số tiền = lương cơ bản + phụ cấp, KHÔNG
+              thưởng. Xem BankPaymentExportService để biết quy tắc lọc. */}
+          <SecondaryButton
+            onClick={handleExportBankPayment}
+            disabled={exportingBank || loading || !selected}
+            title="Xuất danh sách chi lương theo mẫu ngân hàng (VietinBank CN2) — dùng để chuyển khoản hàng loạt">
+            <Landmark size={14} />
+            {exportingBank ? 'Đang xuất...' : 'Xuất file NH'}
+          </SecondaryButton>
         </div>
       </div>
 
@@ -2894,6 +3094,16 @@ export default function AttendanceSheetsPage() {
                 <SecondaryButton onClick={() => setMembersOpen(true)}>
                   <Users size={14} /> Chi tiết bộ phận
                 </SecondaryButton>
+                {/* Tính lương XEM TRƯỚC — chỉ hiện khi chưa Hoàn tất và có thể
+                    tính được (đã có file với Xưởng, hoặc bộ phận không cần file).
+                    Sau khi Hoàn tất thì bảng lương đã hiển thị sẵn nên không cần
+                    nút này nữa; nếu cần chỉnh thì bấm Mở lại. */}
+                {!status?.finalized && status?.canFinalize && (
+                  <SecondaryButton onClick={computePreview} disabled={computingPreview || loadingPayroll}>
+                    <Calculator size={14} />
+                    {computingPreview || loadingPayroll ? 'Đang tính...' : 'Tính lương'}
+                  </SecondaryButton>
+                )}
                 {status?.finalized ? (
                   <SecondaryButton onClick={doReopen} disabled={finalizing}>
                     <Unlock size={14} /> Mở lại tháng
@@ -2912,7 +3122,223 @@ export default function AttendanceSheetsPage() {
                 Cần tải lên bảng chấm công của bộ phận này trước khi bấm Hoàn tất.
               </p>
             )}
+
+            {/* Kho / Kế toán / Kinh doanh: file chấm công tuỳ chọn. Không upload
+                thì nhân viên nhận full lương cơ bản + phụ cấp cơm đủ công chuẩn.
+                Ghi rõ để OWNER khỏi lo bỏ sót file. */}
+            {!status?.finalized
+              && (department === 'WAREHOUSE'
+                || department === 'ACCOUNTING'
+                || department === 'SALES') && (
+              <p className="px-5 pb-4 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-start gap-1.5">
+                <CheckCircle2 size={13} className="mt-0.5 shrink-0" />
+                <span>
+                  File chấm công <strong>tuỳ chọn</strong> — không tải lên thì
+                  nhân viên nhận <strong>full lương cơ bản</strong> + phụ cấp
+                  cơm đủ công chuẩn của tháng. Có tải lên thì hệ thống tính
+                  theo số công thực tế.
+                </span>
+              </p>
+            )}
           </SectionCard>
+
+          {/* ── TRẠNG THÁI KPI / THƯỞNG ────────────────────────────────────── */}
+          {status?.finalized && (
+            <SectionCard>
+              <div className="flex items-center justify-between gap-4 px-5 py-4 flex-wrap">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                    ${status?.kpiFinalized
+                      ? 'bg-emerald-100 dark:bg-emerald-500/18'
+                      : 'bg-amber-50 dark:bg-amber-500/10'}`}>
+                    <Award size={17} className={status?.kpiFinalized
+                      ? 'text-emerald-600 dark:text-emerald-300'
+                      : 'text-amber-600 dark:text-amber-300'} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-ink">
+                      {status?.kpiFinalized
+                        ? 'Đã hoàn tất KPI / Thưởng — nhân viên thấy thưởng'
+                        : 'KPI / Thưởng đang pending — nhân viên thấy "Đang tính thưởng"'}
+                    </p>
+                    <p className="text-[11px] text-muted mt-0.5">
+                      {status?.kpiFinalized && status?.kpiFinalizedAt
+                        ? `Chốt KPI lúc ${formatDateTime(status.kpiFinalizedAt)}`
+                        : 'Bấm "Hoàn tất KPI" để nhân viên xem được thưởng'}
+                      {status?.kpiFinalizedByName ? ` bởi ${status.kpiFinalizedByName}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {status?.kpiFinalized ? (
+                    <SecondaryButton onClick={doReopenKpi} disabled={finalizingKpi}>
+                      <Unlock size={14} /> Mở lại KPI
+                    </SecondaryButton>
+                  ) : (
+                    <PrimaryButton onClick={doFinalizeKpi} disabled={finalizingKpi}>
+                      <Gift size={14} />
+                      {finalizingKpi ? 'Đang xử lý...' : 'Hoàn tất KPI / Thưởng'}
+                    </PrimaryButton>
+                  )}
+                </div>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── THƯỞNG DOANH THU — chỉ SALES và ACCOUNTING (bước 3) ──────── */}
+          {status?.finalized && status?.hasSalesBonus && (
+            <SectionCard>
+              <div className="flex items-center justify-between gap-4 px-5 py-4 flex-wrap">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                    ${status?.bonusFinalized
+                      ? 'bg-emerald-100 dark:bg-emerald-500/18'
+                      : 'bg-purple-50 dark:bg-purple-500/10'}`}>
+                    <Gift size={17} className={status?.bonusFinalized
+                      ? 'text-emerald-600 dark:text-emerald-300'
+                      : 'text-purple-500 dark:text-purple-300'} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-ink">
+                      {status?.bonusFinalized
+                        ? 'Đã hoàn tất Thưởng doanh thu — nhân viên thấy thưởng'
+                        : 'Thưởng doanh thu đang pending — nhân viên thấy "Đang tính thưởng"'}
+                    </p>
+                    <p className="text-[11px] text-muted mt-0.5">
+                      {status?.bonusFinalized && status?.bonusFinalizedAt
+                        ? `Chốt thưởng lúc ${formatDateTime(status.bonusFinalizedAt)}`
+                        : status?.kpiFinalized
+                          ? 'Bấm "Hoàn tất Thưởng" để tính thưởng từ doanh thu tháng này'
+                          : 'Cần hoàn tất KPI trước'}
+                      {status?.bonusFinalizedByName ? ` bởi ${status.bonusFinalizedByName}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {status?.bonusFinalized ? (
+                    <SecondaryButton onClick={doReopenBonus} disabled={finalizingBonus}>
+                      <Unlock size={14} /> Mở lại Thưởng
+                    </SecondaryButton>
+                  ) : (
+                    <PrimaryButton
+                      onClick={doFinalizeBonus}
+                      disabled={finalizingBonus || !status?.kpiFinalized}
+                      loading={finalizingBonus}>
+                      <Gift size={14} />
+                      {finalizingBonus ? 'Đang tính...' : 'Hoàn tất Thưởng'}
+                    </PrimaryButton>
+                  )}
+                </div>
+              </div>
+
+              {/* Bảng kết quả thưởng */}
+              {status?.bonusFinalized && bonusSummary && (
+                <div className="px-5 pb-5 space-y-3">
+                  {/* Tổng quan */}
+                  <div className="rounded-xl bg-canvas px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div>
+                      <p className="text-[10px] text-muted uppercase tracking-wider">Doanh thu tháng</p>
+                      <p className="text-sm font-bold text-ink mt-0.5">
+                        {Number(bonusSummary.totalRevenue || 0).toLocaleString('vi-VN')}đ
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted uppercase tracking-wider">Tổng thưởng</p>
+                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-300 mt-0.5">
+                        {Number(bonusSummary.totalBonusPool || 0).toLocaleString('vi-VN')}đ
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted uppercase tracking-wider">Số phiếu TT</p>
+                      <p className="text-sm font-bold text-ink mt-0.5">
+                        {bonusSummary.transactionCount || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Chi tiết từng người */}
+                  {bonusSummary.items?.length > 0 && (
+                    <div className="rounded-xl border border-hairline overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-canvas">
+                            <th className="text-left px-3 py-2 text-[10px] font-bold text-muted uppercase">Nhân viên</th>
+                            {department === 'SALES' && (
+                              <th className="text-right px-3 py-2 text-[10px] font-bold text-muted uppercase">Doanh thu</th>
+                            )}
+                            <th className="text-right px-3 py-2 text-[10px] font-bold text-muted uppercase">KPI</th>
+                            <th className="text-right px-3 py-2 text-[10px] font-bold text-muted uppercase">Thưởng</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-hairline">
+                          {bonusSummary.items.map(item => (
+                            <tr key={item.userId} className="hover:bg-canvas/50">
+                              <td className="px-3 py-2">
+                                <p className="font-medium text-ink">{item.userFullName}</p>
+                                <p className="text-[10px] text-muted">{item.roleLabel}</p>
+                              </td>
+                              {department === 'SALES' && (
+                                <td className="px-3 py-2 text-right text-muted">
+                                  {Number(item.revenue || 0).toLocaleString('vi-VN')}đ
+                                  {item.transactionCount > 0 && (
+                                    <span className="block text-[10px]">({item.transactionCount} phiếu)</span>
+                                  )}
+                                </td>
+                              )}
+                              <td className="px-3 py-2 text-right text-muted">{item.kpiPercent ?? 100}%</td>
+                              <td className="px-3 py-2 text-right font-bold text-emerald-600 dark:text-emerald-300">
+                                {Number(item.bonusAmount || 0).toLocaleString('vi-VN')}đ
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-muted">
+                    * Tính theo tiền thực thu ({department === 'SALES' ? 'theo từng seller' : 'tổng phòng'})
+                    qua PaymentTransaction trong tháng. Chỉ đơn PENDING_PAYMENT / COMPLETED.
+                  </p>
+                </div>
+              )}
+            </SectionCard>
+          )}
+
+          {/* ── TÍNH THƯỞNG — KHO (placeholder, chưa triển khai backend) ─── */}
+          {/* Nút chỉ hiển thị ở tab Kho khi đã hoàn tất Lương. Bấm vào chỉ báo
+              "đang phát triển" — cơ chế tính thưởng cho Kho sẽ được bổ sung
+              sau, hiện tại thưởng cho Kho vẫn nhập tay qua file Excel Thưởng. */}
+          {status?.finalized && department === 'WAREHOUSE' && (
+            <SectionCard>
+              <div className="flex items-center justify-between gap-4 px-5 py-4 flex-wrap">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10
+                    flex items-center justify-center shrink-0">
+                    <Gift size={17} className="text-purple-500 dark:text-purple-300" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-ink">Tính thưởng Kho</p>
+                    <p className="text-[11px] text-muted mt-0.5">
+                      Sẽ tính thưởng dựa trên số phiếu xuất/nhập kho trong tháng (đang phát triển).
+                      Hiện tại thưởng cho nhân viên Kho được nhập tay qua file Thưởng bên dưới.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <PrimaryButton
+                    onClick={() => toast(
+                      'Chức năng tính thưởng tự động cho Kho đang được phát triển. Vui lòng nhập thưởng qua file Excel bên dưới.',
+                      'info'
+                    )}>
+                    <Gift size={14} /> Tính thưởng
+                  </PrimaryButton>
+                </div>
+              </div>
+            </SectionCard>
+          )}
 
           {attendanceBased ? (
             <>
@@ -2973,6 +3399,9 @@ export default function AttendanceSheetsPage() {
                 month={selected.month}
                 year={selected.year}
                 onSaved={() => loadStatus(selected)}
+                onComputePreview={computePreview}
+                computingPreview={computingPreview || loadingPayroll}
+                finalizedPeriod={!!status?.finalized}
               />
             )
           )}
@@ -3036,8 +3465,17 @@ export default function AttendanceSheetsPage() {
             />
           )}
 
-          {/* 2 bảng sau khi HOÀN TẤT */}
-          {status?.finalized && <PayrollTables data={payroll} loading={loadingPayroll} />}
+          {/* Phiếu lương + Chi tiết ngày công.
+              - Đã Hoàn tất: bảng chính thức (không banner).
+              - Chưa Hoàn tất mà đã có dữ liệu: bảng XEM TRƯỚC (banner vàng).
+              Ẩn hoàn toàn nếu chưa có dữ liệu (VD Xưởng chưa upload chấm công). */}
+          {(status?.finalized || payroll) && (
+            <PayrollTables
+              data={payroll}
+              loading={loadingPayroll}
+              preview={!status?.finalized}
+            />
+          )}
 
           {/* Ghi chú cách tính + tính lại KPI (chỉ Xưởng) */}
           {attendanceBased && (
@@ -3133,33 +3571,14 @@ export default function AttendanceSheetsPage() {
       <Modal open={exportModalOpen} onClose={() => setExportModalOpen(false)}
         title="Xuất file lương tổng hợp" size="md">
         <div className="px-5 py-4 space-y-5">
-          {/* Chọn phòng ban */}
-          <div>
-            <p className="text-sm font-bold text-ink mb-2.5">Chọn phòng ban</p>
-            <div className="space-y-2">
-              {[
-                { code: 'MANAGEMENT', label: 'Quản lý cấp cao' },
-                { code: 'ACCOUNTING', label: 'Kế toán' },
-                { code: 'FACTORY',    label: 'Xưởng sản xuất' },
-                { code: 'SALES',      label: 'Kinh doanh' },
-                { code: 'WAREHOUSE',  label: 'Kho' },
-                { code: 'DRIVER',     label: 'Tài xế' },
-              ].map(d => (
-                <label key={d.code}
-                  className="flex items-center gap-2.5 cursor-pointer select-none group">
-                  <input type="checkbox"
-                    checked={!!exportDepts[d.code]}
-                    onChange={e => setExportDepts(prev => ({ ...prev, [d.code]: e.target.checked }))}
-                    className="w-4 h-4 rounded border-hairline-2 text-gold focus:ring-gold/30 cursor-pointer" />
-                  <span className="text-sm text-ink group-hover:text-gold transition-colors">{d.label}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-3 mt-2">
-              <button onClick={() => setExportDepts({ MANAGEMENT: true, ACCOUNTING: true, FACTORY: true, SALES: true, WAREHOUSE: true, DRIVER: true })}
-                className="text-xs text-gold hover:underline">Chọn tất cả</button>
-              <button onClick={() => setExportDepts({ MANAGEMENT: false, ACCOUNTING: false, FACTORY: false, SALES: false, WAREHOUSE: false, DRIVER: false })}
-                className="text-xs text-muted hover:underline">Bỏ chọn tất cả</button>
+          {/* Phòng ban đang chọn — tự động theo tab */}
+          <div className="rounded-xl bg-canvas px-4 py-3 flex items-center gap-2.5">
+            <Users size={16} className="text-gold shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-muted">Phòng ban</p>
+              <p className="text-sm font-bold text-ink">
+                {status?.departmentLabel || department}
+              </p>
             </div>
           </div>
 
@@ -3168,9 +3587,8 @@ export default function AttendanceSheetsPage() {
             <p className="text-sm font-bold text-ink mb-2.5">Nội dung xuất</p>
             <div className="space-y-2">
               {[
-                { value: 'SALARY_AND_BONUS', label: 'Lương + Thưởng' },
-                { value: 'SALARY_ONLY',      label: 'Chỉ lương' },
-                { value: 'BONUS_ONLY',       label: 'Chỉ thưởng' },
+                { value: 'SALARY_ONLY',      label: 'Lương (tất cả phòng ban)' },
+                { value: 'BONUS_ONLY',       label: 'Thưởng (phòng ban đang chọn)' },
               ].map(opt => (
                 <label key={opt.value}
                   className="flex items-center gap-2.5 cursor-pointer select-none group">
@@ -3186,10 +3604,17 @@ export default function AttendanceSheetsPage() {
 
           {/* Thông tin tháng */}
           {selected && (
-            <p className="text-xs text-muted bg-canvas rounded-xl px-3 py-2">
-              <CalendarDays size={13} className="inline -mt-0.5 mr-1 text-gold" />
-              Xuất file cho <span className="font-bold text-ink">Tháng {selected.month}/{selected.year}</span>
-            </p>
+            <div className="text-xs text-muted bg-canvas rounded-xl px-3 py-2.5 space-y-1">
+              <p>
+                <CalendarDays size={13} className="inline -mt-0.5 mr-1 text-gold" />
+                Xuất file cho <span className="font-bold text-ink">Tháng {selected.month}/{selected.year}</span>
+              </p>
+              <p className="text-[10px]">
+                {exportType === 'SALARY_ONLY'
+                  ? '📋 File lương sẽ gồm tất cả phòng ban, sắp xếp theo thứ tự.'
+                  : `📊 File thưởng chỉ xuất cho phòng ${status?.departmentLabel || department}.`}
+              </p>
+            </div>
           )}
         </div>
 

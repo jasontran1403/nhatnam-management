@@ -235,41 +235,21 @@ function NewSalaryBreakdownCards({ row }) {
         )}
 
         <Divider />
-        {/* Thưởng đơn hàng của tài xế — nếu có DETAIL thì hiện 3 dòng (xe máy /
-            xe tải / tổng). Nếu chỉ có driverOrderBonus (số tổng cũ), hiện 1 dòng. */}
-        {row.driverOrderBonusDetail ? (
-          <>
-            {(row.driverOrderBonusDetail.motorbikeAmount || 0) > 0 && (
-              <Row label={`Thưởng đơn hàng (xe máy × ${row.driverOrderBonusDetail.motorbikeTrips || 0} lượt)`}
-                val={`+ ${fmt(row.driverOrderBonusDetail.motorbikeAmount)}`} />
-            )}
-            {(row.driverOrderBonusDetail.truckAmount || 0) > 0 && (
-              <Row label={`Thưởng đơn hàng (xe tải × ${row.driverOrderBonusDetail.truckTrips || 0} lượt)`}
-                val={`+ ${fmt(row.driverOrderBonusDetail.truckAmount)}`} />
-            )}
-            {(row.driverOrderBonusDetail.motorbikeAmount || 0) > 0
-              && (row.driverOrderBonusDetail.truckAmount || 0) > 0 && (
-              <Row sub label="Tổng thưởng đơn hàng"
-                val={`+ ${fmt(row.driverOrderBonusDetail.totalAmount)}`} />
-            )}
-          </>
-        ) : row.driverOrderBonus > 0 && (
-          <Row label="Thưởng đơn hàng" val={`+ ${fmt(row.driverOrderBonus)}`} />
-        )}
         {/* Các khoản thưởng import theo tháng (Chuyên cần, Tháng 13…) — MỖI KHOẢN
             1 dòng riêng, không gộp vào Thưởng KPI. */}
         {bonusItems.map((b, i) => (
           <Row key={i} label={b.label || 'Thưởng khác'} val={`+ ${fmt(b.amount)}`} />
         ))}
-        {/* Dòng Thưởng KPI — chỉ tính phần KPI thuần (không cộng imported) */}
+        {/* Dòng Thưởng KPI — với tài xế thì = gas + thưởng đơn hàng (đã gộp ở BE).
+            Với các bộ phận khác, = KPI thuần theo hồ sơ. */}
         <Row label={`Thưởng KPI — đạt ${kpiStr}`} val={`+ ${fmt(effBonusKpi)}`} />
         {kpi !== 100 && (
           <Row sub label={`Thưởng gốc ${fmt(row.bonus)} × ${kpiStr}`} val={fmt(effBonusKpi)} />
         )}
         {/* Tổng thưởng: chỉ hiển thị khi có nhiều hơn 1 nguồn thưởng */}
-        {((bonusItems.length + (row.driverOrderBonus > 0 ? 1 : 0) + (effBonusKpi > 0 ? 1 : 0)) > 1) && (
+        {((bonusItems.length + (effBonusKpi > 0 ? 1 : 0)) > 1) && (
           <Row sub label="Tổng thưởng"
-            val={`+ ${fmt(effBonusTotal + (row.driverOrderBonus || 0))}`} />
+            val={`+ ${fmt(effBonusTotal)}`} />
         )}
 
         <Divider />
@@ -348,6 +328,70 @@ function NewSalaryBreakdownCards({ row }) {
         {' '}Doanh nghiệp chi trả toàn bộ phần bảo hiểm và thuế TNCN, nhân viên nhận
         đủ {fmt(row.netSalary)} không bị khấu trừ.
       </p>
+
+      {/* ── Card CHI TIẾT Thưởng KPI 100% của TÀI XẾ (OWNER xem) ─────────────
+          Bung 3 dòng bên dưới 2 card lương: tiền xăng, thưởng xe máy, thưởng
+          xe tải. Số tổng đã hiện ở dòng "Thưởng KPI — đạt 100%" trong card
+          người lao động. Chỉ hiện khi có driverOrderBonusDetail. */}
+      {row.driverOrderBonusDetail && (row.driverOrderBonusDetail.totalAmount || 0) > 0 && (
+        <DriverKpiDetailCardOwner detail={row.driverOrderBonusDetail} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * CARD CHI TIẾT "Thưởng KPI 100%" cho TÀI XẾ — bản OWNER (SalaryBreakdownCards).
+ * Cấu trúc giống hệt bản của nhân viên (PayslipBreakdownCards) — cố ý copy để
+ * không tạo circular import giữa 2 file card.
+ */
+function DriverKpiDetailCardOwner({ detail }) {
+  const fmt = (n) => formatCurrency(n || 0);
+  const fmtNum = (v, d = 1) =>
+    v == null ? '—' : Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d });
+
+  const gasAmount   = detail.gasAmount || 0;
+  const gasKm       = detail.gasKm || 0;
+  const gasPrice    = detail.gasPrice || 0;
+  const motoAmount  = detail.motorbikeAmount || 0;
+  const motoTrips   = detail.motorbikeTrips || 0;
+  const truckAmount = detail.truckAmount || 0;
+  const truckTrips  = detail.truckTrips || 0;
+  const total       = detail.totalAmount || (gasAmount + motoAmount + truckAmount);
+
+  const rowCount = (gasAmount > 0 ? 1 : 0) + (motoAmount > 0 ? 1 : 0) + (truckAmount > 0 ? 1 : 0);
+
+  return (
+    <div className="bg-canvas rounded-xl p-4 space-y-2">
+      <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+        Chi tiết Thưởng KPI 100%
+      </p>
+
+      {gasAmount > 0 && (
+        <Row
+          label={`Tiền xăng (${fmtNum(gasKm)} km × ${fmt(gasPrice)}/km)`}
+          val={`+ ${fmt(gasAmount)}`}
+        />
+      )}
+      {motoAmount > 0 && (
+        <Row
+          label={`Thưởng đơn hàng xe máy (${motoTrips} lượt)`}
+          val={`+ ${fmt(motoAmount)}`}
+        />
+      )}
+      {truckAmount > 0 && (
+        <Row
+          label={`Thưởng đơn hàng xe tải (${truckTrips} lượt)`}
+          val={`+ ${fmt(truckAmount)}`}
+        />
+      )}
+
+      {rowCount > 1 && (
+        <>
+          <Divider />
+          <Row label="Tổng Thưởng KPI 100%" val={`+ ${fmt(total)}`} bold green />
+        </>
+      )}
     </div>
   );
 }

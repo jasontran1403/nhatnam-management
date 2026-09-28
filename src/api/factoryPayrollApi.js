@@ -7,10 +7,12 @@ const r = (res) => res.data?.data ?? res.data;
 /** 5 bộ phận tính lương — khớp với enum PayrollDepartment bên backend. */
 export const PAYROLL_DEPARTMENTS = [
   { code: 'FACTORY',    label: 'Xưởng sản xuất', attendanceBased: true,  hasKpiBonus: true  },
-  { code: 'SALES',      label: 'Kinh doanh',     attendanceBased: true,  hasKpiBonus: false },
-  { code: 'WAREHOUSE',  label: 'Kho',            attendanceBased: true,  hasKpiBonus: false },
-  { code: 'ACCOUNTING', label: 'Kế toán',        attendanceBased: true,  hasKpiBonus: false },
-  { code: 'DRIVER',     label: 'Tài xế',         attendanceBased: false, hasKpiBonus: false },
+  { code: 'ACCOUNTING', label: 'Kế toán',        attendanceBased: true,  hasKpiBonus: true  },
+  { code: 'WAREHOUSE',  label: 'Kho',            attendanceBased: true,  hasKpiBonus: true  },
+  { code: 'SALES',      label: 'Kinh doanh',     attendanceBased: true,  hasKpiBonus: true  },
+  // attendanceBased: true → file chấm công tuỳ chọn, dùng để đếm mealDays (phụ cấp cơm).
+  // Lương vẫn full bất kể file. Thưởng tính qua finalizeBonus (doanh thu cá nhân).
+  { code: 'DRIVER',     label: 'Tài xế',         attendanceBased: false, hasKpiBonus: true  },
 ];
 
 export const factoryPayrollApi = {
@@ -95,6 +97,45 @@ export const factoryPayrollApi = {
     api.post('/api/factory-payroll/reopen', null, {
       params: { month, year, department },
     }).then(r),
+
+  /**
+   * OWNER bấm "Hoàn tất KPI / Thưởng" — nhân viên thấy KPI và bonus.
+   * Phải gọi SAU khi đã hoàn tất Lương (finalize).
+   */
+  finalizeKpi: (month, year, department = 'FACTORY') =>
+    api.post('/api/factory-payroll/finalize-kpi', null, {
+      params: { month, year, department },
+    }).then(r),
+
+  /** Mở lại KPI/Thưởng đã hoàn tất — nhân viên quay về "Đang tính thưởng" */
+  reopenKpi: (month, year, department = 'FACTORY') =>
+    api.post('/api/factory-payroll/reopen-kpi', null, {
+      params: { month, year, department },
+    }).then(r),
+
+  // ── Thưởng doanh thu (SALES / ACCOUNTING bước 3) ──────────────────────────
+
+  /**
+   * Tính và chốt thưởng doanh thu.
+   * Phải gọi sau khi đã finalizeKpi.
+   */
+  finalizeBonus: (month, year, department = 'SALES') =>
+    api.post('/api/factory-payroll/finalize-bonus', null, {
+      params: { month, year, department },
+    }).then(r),
+
+  /** Mở lại Thưởng — nhân viên quay về "Đang tính thưởng". */
+  reopenBonus: (month, year, department = 'SALES') =>
+    api.post('/api/factory-payroll/reopen-bonus', null, {
+      params: { month, year, department },
+    }).then(r),
+
+  /** Lấy kết quả thưởng doanh thu đã tính. */
+  officeBonus: (month, year, department = 'SALES') =>
+    api.get('/api/factory-payroll/office-bonus', {
+      params: { month, year, department },
+    }).then(r),
+
 
   // ── 2 bảng OWNER xem sau khi Hoàn tất ─────────────────────────────────────
 
@@ -256,6 +297,25 @@ export const factoryPayrollApi = {
       : exportType === 'SALARY_ONLY' ? 'luong' : 'luong-thuong';
     const mm = String(month).padStart(2, '0');
     const name = `bang-${typeSlug}-thang-${mm}-${year}.xlsx`;
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    a.remove(); window.URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Xuất file "DANH SÁCH CHI LƯƠNG" theo mẫu NGÂN HÀNG (1 sheet NHẤT NAM,
+   * 5 cột: STT · Họ tên · Số TK · Ngân hàng · Số tiền). Cột Số tiền = lương
+   * thực nhận không thưởng (base + phụ cấp). Số TK / Ngân hàng để trống, quản
+   * lý điền tay trước khi gửi ngân hàng.
+   */
+  exportBankPayment: async (month, year) => {
+    const res = await api.get('/api/factory-payroll/bank-payment-export', {
+      params: { month, year }, responseType: 'blob',
+    });
+    const mm = String(month).padStart(2, '0');
+    const name = `danh-sach-chi-luong-thang-${mm}-${year}.xlsx`;
     const url = window.URL.createObjectURL(new Blob([res.data]));
     const a = document.createElement('a');
     a.href = url; a.download = name;

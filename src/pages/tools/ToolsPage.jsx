@@ -1,5 +1,5 @@
 // src/pages/tools/ToolsPage.jsx
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileSpreadsheet, Plus, Hash, Upload, Download, Users, ShoppingCart, Database,
@@ -14,6 +14,8 @@ import MisaCatalogTab from './MisaCatalogTab';
 const toolApi = {
   getData: () => api.get('/api/tools/data').then(r => r.data?.data || r.data),
   addInvoice: (d) => api.post('/api/tools/invoice-detail', d).then(r => r.data?.data || r.data),
+  addInvoiceBatch: (list) => api.post('/api/tools/invoice-detail/batch', list).then(r => r.data?.data || r.data),
+  lookupInvoiceBatch: (list) => api.post('/api/tools/invoice-detail/lookup', list).then(r => r.data?.data || r.data),
   checkDuplicate: (orderNumber) => api.get('/api/tools/invoice-detail/exists', { params: { orderNumber } }).then(r => r.data?.data),
   renumber: (d) => api.post('/api/tools/renumber', d),
   updateSoChungTu: (id, soChungTu) => api.post(`/api/tools/receipt/${id}/so-chung-tu`, { soChungTu }),
@@ -39,6 +41,8 @@ const toolApi = {
   clearCustomers: () => api.delete('/api/tools/clear/customers'),
   clearInvoiceDetails: () => api.delete('/api/tools/clear/invoice-details'),
   clearReceipts: () => api.delete('/api/tools/clear/receipts'),
+  /** Xóa cả phiếu đặt hàng đã nhập và phiếu thu — dùng cho nút Xóa tất cả ở tab Phiếu đặt hàng. */
+  clearInvoiceAndReceipts: () => api.delete('/api/tools/clear/invoice-and-receipts'),
 };
 
 /** Excel serial date → dd/MM/yyyy */
@@ -73,9 +77,9 @@ const RECEIPT_HEADERS = [
 function receiptToRow(r) {
   return [
     '', r.ngayHachToan, r.ngayChungTu, r.soChungTu,
-    r.maDoiTuong, r.tenDoiTuong, r.diaChi || '', '', r.dienGiaiLyDoNop || '',
-    '', '', '', r.loaiTien || 'VND', '', r.dienGiai || '',
-    r.tkNo || '1111', r.tkCo || '131', r.soTien || '', '', r.doiTuong || '', '',
+    r.maDoiTuong, r.tenDoiTuong, r.diaChi || '', r.lyDoNop || '', r.dienGiaiLyDoNop || '',
+    '', '', '', r.loaiTien || 'VND', '', '',
+    r.tkNo || '1111', r.tkCo || '131', r.soTien || '', '', '', '',
   ];
 }
 
@@ -169,6 +173,18 @@ function ImportModal({ title, expectedHeaders, dateColumns = [], headerRowIndex 
   );
 }
 
+// ── AUTO FORMAT DATE ──────────────────────────────────────────────────────────
+// Input: "29426" → "29/04/2026", "8826" → "08/08/2026"
+function autoFormatDate(raw) {
+  const digits = raw.replace(/\D/g, '');
+  // Chỉ format khi đúng 8 chữ số: ddmmyyyy
+  if (digits.length !== 8) return raw;
+  const dd = digits.slice(0, 2);
+  const mm = digits.slice(2, 4);
+  const yyyy = digits.slice(4, 8);
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 // ── BATCH ADD INVOICE MODAL ──────────────────────────────────────────────
 function BatchAddInvoiceModal({ onClose, onAdded }) {
   const toast = useToast();
@@ -176,126 +192,387 @@ function BatchAddInvoiceModal({ onClose, onAdded }) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(false);
-  const [batch, setBatch] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const orderRef = useRef();
 
-  const isDupInBatch = (orderNumber) => {
-    return batch.some(b => b.orderNumber === orderNumber);
-  };
+  // ─── Check trùng ─────────────────────────────────────────────────────
+  // Danh sách mã đơn đã có trong batch (lowercase để so sánh ignore-case)
+  const allOrderNumbers = useMemo(
+    () => groups.flatMap(g => g.items.map(i => i.orderNumber.toLowerCase())),
+    [groups]
+  );
 
-  const addToBatch = () => {
-    const trimOrder = order.trim();
-    const trimDate = date.trim();
-    if (!trimOrder || !amount.trim() || !trimDate) {
-      toast('Nhập đủ 3 trường', 'error');
-      return;
-    }
-    if (isDupInBatch(trimOrder)) {
-      toast(`Số phiếu ${trimOrder} đã có trong danh sách nhập lần này`, 'error');
-      return;
-    }
-    setBatch(prev => [...prev, {
-      orderNumber: trimOrder,
-      amount: amount.trim(),
-      amountRaw: amount.replace(/\D/g, ''),
-      date: trimDate,
-    }]);
-    setOrder('');
-    setAmount('');
-    setDate('');
-    orderRef.current?.focus();
-  };
+  // Các token đã "hoàn chỉnh" trong input — chỉ tính các token ĐÃ CÓ dấu phẩy/xuống dòng phía sau.
+  // Token cuối cùng (chưa có dấu phẩy) đang được gõ → bỏ qua, tránh báo lỗi nhầm khi user
+  // đang gõ "NĐ-00453" và chuẩn bị gõ tiếp thành "NĐ-004535".
+  const completedTokens = useMemo(() => {
+    const parts = order.split(/[,\n]/);
+    return parts.slice(0, -1).map(s => s.trim()).filter(Boolean);
+  }, [order]);
 
-  const removeFromBatch = (idx) => {
-    setBatch(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleSubmitBatch = async () => {
-    if (batch.length === 0) { toast('Chưa có phiếu nào trong danh sách', 'error'); return; }
-    setSubmitting(true);
-    const results = [];
-    for (const item of batch) {
-      try {
-        let exists = false;
-        try { exists = await toolApi.checkDuplicate(item.orderNumber); } catch {}
-        if (exists) {
-          results.push({ ...item, status: 'dup', message: 'Đã tồn tại trên hệ thống' });
-          continue;
-        }
-        const res = await toolApi.addInvoice({
-          orderNumber: item.orderNumber,
-          amount: Number(item.amountRaw),
-          invoiceDate: item.date,
-        });
-        results.push({ ...item, status: res.errorNote ? 'warn' : 'ok', message: res.errorNote || 'Tạo phiếu thu OK', data: res });
-      } catch (e) {
-        results.push({ ...item, status: 'error', message: e?.response?.data?.message || e.message });
+  // Tính lỗi trùng trong input + trùng với batch
+  const dupErrors = useMemo(() => {
+    const seen = new Set();
+    const dupsInInput = [];
+    const dupsInBatch = [];
+    for (const token of completedTokens) {
+      const key = token.toLowerCase();
+      if (seen.has(key)) {
+        dupsInInput.push(token);
+      } else if (allOrderNumbers.includes(key)) {
+        dupsInBatch.push(token);
       }
+      seen.add(key);
     }
-    const okCount = results.filter(r => r.status === 'ok' || r.status === 'warn').length;
-    const dupCount = results.filter(r => r.status === 'dup').length;
-    const errCount = results.filter(r => r.status === 'error').length;
-    toast(`Hoàn tất: ${okCount} thành công, ${dupCount} trùng, ${errCount} lỗi`, okCount > 0 ? 'success' : 'error');
-    setBatch([]);
-    onAdded?.();
-    onClose();
+    return {
+      dupsInInput: [...new Set(dupsInInput)],
+      dupsInBatch: [...new Set(dupsInBatch)],
+    };
+  }, [completedTokens, allOrderNumbers]);
+
+  const hasDupError = dupErrors.dupsInInput.length > 0 || dupErrors.dupsInBatch.length > 0;
+
+  // ─── Add to batch: gọi lookup-only, không lưu DB ─────────────────────
+  const addToBatch = async () => {
+    const trimDate = date.trim();
+    const rawAmount = amount.replace(/\D/g, '');
+    if (!order.trim() || !rawAmount || !trimDate) { toast('Nhập đủ 3 trường', 'error'); return; }
+
+    const formattedDate = autoFormatDate(trimDate);
+    // Lấy TẤT CẢ token (kể cả token cuối đang gõ) — vì bấm nút = chốt hết
+    const orderNumbers = order.split(/[,\n]/).map(s => s.trim()).filter(s => s.length > 0);
+    if (orderNumbers.length === 0) { toast('Số phiếu ĐH không hợp lệ', 'error'); return; }
+
+    // ─── Check trùng NGAY TRONG INPUT (kể cả token cuối) ───────────────
+    const seen = new Set();
+    const dupInInput = [];
+    for (const o of orderNumbers) {
+      const key = o.toLowerCase();
+      if (seen.has(key)) dupInInput.push(o);
+      seen.add(key);
+    }
+    if (dupInInput.length > 0) {
+      toast(`Trùng trong lần nhập: ${[...new Set(dupInInput)].join(', ')}`, 'error');
+      return;  // ← return sớm
+    }
+
+    // ─── Check trùng với danh sách chờ (kể cả token cuối) ──────────────
+    const dupInBatch = orderNumbers.filter(o => allOrderNumbers.includes(o.toLowerCase()));
+    if (dupInBatch.length > 0) {
+      toast(`Đã có trong danh sách: ${[...new Set(dupInBatch)].join(', ')}`, 'error');
+      return;  // ← return sớm
+    }
+
+    // ... phần còn lại (tạo group, gọi lookup, v.v.) giữ nguyên
+    const groupId = Math.random().toString(36).slice(2, 8);
+    const newGroup = {
+      groupId,
+      date: formattedDate,
+      amountRaw: rawAmount,
+      amountDisplay: amount,
+      items: orderNumbers.map((o, idx) => ({
+        orderNumber: o,
+        groupLeader: idx === 0,
+        value: null, customerName: null, fInv: null, fInv7: null, errorNote: null, looked: false,
+      })),
+    };
+
+    setOrder(''); setAmount(''); setDate('');
+    orderRef.current?.focus();
+    setGroups(prev => [...prev, newGroup]);
+    setSubmitting(true);
+
+    try {
+      const reqs = newGroup.items.map((item, idx) => ({
+        orderNumber: item.orderNumber,
+        amount: idx === 0 ? Number(rawAmount) : 0,
+        invoiceDate: formattedDate,
+      }));
+      const results = await toolApi.lookupInvoiceBatch(reqs);
+
+      setGroups(prev => prev.map(g => {
+        if (g.groupId !== groupId) return g;
+        return {
+          ...g,
+          items: g.items.map(item => {
+            const res = results.find(r => r.orderNumber === item.orderNumber);
+            if (!res) return item;
+            return {
+              ...item,
+              value: res.value,
+              customerName: res.customerName,
+              tenKhachHangFull: res.tenKhachHangFull,
+              fInv: res.finv,
+              fInv7: res.finv7,
+              errorNote: res.errorNote,
+              looked: true,
+            };
+          }),
+        };
+      }));
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi lookup', 'error');
+      setGroups(prev => prev.filter(g => g.groupId !== groupId));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const removeGroup = (groupId) => setGroups(prev => prev.filter(g => g.groupId !== groupId));
+
+  const totalItems = groups.reduce((s, g) => s + g.items.length, 0);
+
+  const handleSave = async () => {
+    if (groups.length === 0) { toast('Chưa có phiếu nào', 'error'); return; }
+    setSubmitting(true);
+    try {
+      for (const g of groups) {
+        const reqs = g.items.map((item, idx) => ({
+          orderNumber: item.orderNumber,
+          amount: idx === 0 ? Number(g.amountRaw) : 0,
+          invoiceDate: g.date,
+        }));
+        await toolApi.addInvoiceBatch(reqs);
+      }
+      toast(`Đã lưu ${totalItems} đơn vào database`, 'success');
+      onAdded?.();
+      onClose();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi lưu', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const fmtInput = (v) => { const d = v.replace(/\D/g, ''); return d ? new Intl.NumberFormat('vi-VN').format(Number(d)) : ''; };
+  const fmtVnd = (v) => {
+    if (v == null || v === '') return '—';
+    const n = Number(v);
+    if (isNaN(n)) return '—';
+    return n.toLocaleString('vi-VN') + ' đ';
+  };
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface rounded-2xl shadow-2xl flex flex-col"
+        style={{ width: '80dvw', maxHeight: '80dvh', height: '80dvh' }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-line-soft shrink-0">
-          <h3 className="text-sm font-bold text-ink flex items-center gap-2"><Plus size={15} className="text-gold" />Nhập Chi tiết invoice (Batch)</h3>
+          <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+            <Plus size={15} className="text-gold" />Nhập Chi tiết invoice (Batch)
+          </h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted"><X size={16} /></button>
         </div>
-        <div className="p-5 space-y-3 shrink-0">
+
+        {/* Input row */}
+        <div className="p-4 border-b border-line-soft shrink-0 space-y-3">
           <div className="grid grid-cols-3 gap-3">
-            <div><label className="text-xs text-muted mb-1 block">Số phiếu đặt hàng</label>
-              <input ref={orderRef} value={order} onChange={e => setOrder(e.target.value)} placeholder="20094"
-                className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono"
-                onKeyDown={e => e.key === 'Enter' && addToBatch()} /></div>
-            <div><label className="text-xs text-muted mb-1 block">Số tiền</label>
-              <input value={amount} onChange={e => setAmount(fmtInput(e.target.value))} placeholder="1,370,304"
+            <div>
+              <label className="text-xs text-muted mb-1 block">Số phiếu đặt hàng</label>
+              <input ref={orderRef} value={order}
+                onChange={e => setOrder(e.target.value.replace(/[^\p{L}\p{N}\-,\s]/gu, ''))}
+                onKeyDown={e => {
+                  if (e.key === ' ') {
+                    e.preventDefault();
+                    const pos = e.target.selectionStart;
+                    const before = order.slice(0, pos);
+                    const after = order.slice(pos);
+                    if (/[\p{L}\p{N}]$/u.test(before)) {
+                      const next = before + ', ' + after;
+                      setOrder(next);
+                      setTimeout(() => orderRef.current?.setSelectionRange(pos + 2, pos + 2), 0);
+                    }
+                  } else if (e.key === 'Enter' && !hasDupError) addToBatch();
+                }}
+                placeholder="NĐ-00452 hoặc NĐ-00452, NĐ-00453"
+                className={`w-full px-3 py-2 rounded-xl border text-sm bg-canvas focus:outline-none focus:ring-2 font-mono
+                  ${hasDupError ? 'border-red-400 focus:ring-red-300' : 'border-line focus:ring-gold/40'}`} />
+              {dupErrors.dupsInInput.length > 0 && (
+                <p className="text-[10px] text-red-500 mt-1">
+                  Trùng trong lần nhập: {dupErrors.dupsInInput.join(', ')}
+                </p>
+              )}
+              {dupErrors.dupsInBatch.length > 0 && (
+                <p className="text-[10px] text-red-500 mt-1">
+                  Đã có trong danh sách: {dupErrors.dupsInBatch.join(', ')}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="text-xs text-muted mb-1 block">Số tiền (tổng nhóm)</label>
+              <input value={amount} onChange={e => setAmount(fmtInput(e.target.value))}
+                placeholder="8,500,000"
                 className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40"
-                onKeyDown={e => e.key === 'Enter' && addToBatch()} /></div>
-            <div><label className="text-xs text-muted mb-1 block">Ngày (d/m/yy)</label>
-              <input value={date} onChange={e => setDate(e.target.value)} placeholder="3/5/26"
+                onKeyDown={e => e.key === 'Enter' && !hasDupError && addToBatch()} />
+            </div>
+            <div>
+              <label className="text-xs text-muted mb-1 block">Ngày (nhập tắt: 29042026→29/04/2026)</label>
+              <input value={date}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^\d/]/g, '');
+                  const digits = raw.replace(/\D/g, '');
+                  if (digits.length === 8 && !raw.includes('/')) setDate(autoFormatDate(digits));
+                  else if (digits.length < 8 && raw.includes('/')) setDate(digits);
+                  else setDate(raw);
+                }}
+                placeholder="29042026 hoặc 29/04/2026"
                 className="w-full px-3 py-2 rounded-xl border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40"
-                onKeyDown={e => e.key === 'Enter' && addToBatch()} /></div>
+                onKeyDown={e => e.key === 'Enter' && !hasDupError && addToBatch()} />
+            </div>
           </div>
-          <button onClick={addToBatch} disabled={loading}
-            className="w-full py-2 rounded-xl bg-surface border border-gold/50 text-gold text-sm font-semibold hover:bg-gold/5 disabled:opacity-50">
+          <button onClick={addToBatch} disabled={loading || hasDupError}
+            className="w-full py-2 rounded-xl bg-surface border border-gold/50 text-gold text-sm font-semibold hover:bg-gold/5 disabled:opacity-50 disabled:cursor-not-allowed">
             + Thêm vào danh sách
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-2 space-y-1">
-          <p className="text-xs text-muted font-semibold mb-1">Danh sách chờ nhập ({batch.length})</p>
-          {batch.length === 0 ? (
-            <div className="text-center py-6 text-xs text-muted">Thêm phiếu vào danh sách rồi nhấn "Thêm & Lookup" để xử lý tất cả</div>
-          ) : batch.map((b, i) => (
-            <div key={i} className="rounded-lg p-2.5 text-xs border border-line-soft bg-canvas flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-muted font-mono text-[10px] w-5 text-right shrink-0">{i + 1}</span>
-                <span className="font-mono font-semibold text-ink">{b.orderNumber}</span>
-                <span className="text-muted">{b.amount} đ</span>
-                <span className="text-muted">{b.date}</span>
+        {/* Groups table — scrollable */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="px-4 py-2 border-b border-line-soft shrink-0">
+            <p className="text-xs text-muted font-semibold">
+              Danh sách chờ nhập ({totalItems} đơn, {groups.length} nhóm)
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-auto px-4 py-3">
+            {groups.length === 0 ? (
+              <div className="text-center py-8 text-xs text-muted">
+                Thêm phiếu vào danh sách để bắt đầu
               </div>
-              <button onClick={() => removeFromBatch(i)} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400 hover:text-red-500 shrink-0">
-                <X size={12} />
-              </button>
-            </div>
-          ))}
+            ) : (
+              <table className="w-full text-xs border-collapse">
+                <thead className="sticky top-0 bg-canvas z-10">
+                  <tr className="text-muted uppercase text-[10px] tracking-wide">
+                    <th className="px-2 py-1.5 text-left w-8">#</th>
+                    <th className="px-2 py-1.5 text-left">Mã đơn</th>
+                    <th className="px-2 py-1.5 text-left">Tiền đơn (tracking)</th>
+                    <th className="px-2 py-1.5 text-left">Tổng nhóm</th>
+                    <th className="px-2 py-1.5 text-left">Đã nhập</th>
+                    <th className="px-2 py-1.5 text-left">Ngày</th>
+                    <th className="px-2 py-1.5 text-left">Khách hàng</th>
+                    <th className="px-2 py-1.5 text-left">F.INV</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline">
+                  {groups.map((g, groupIdx) => {
+                    const groupValueSum = g.items.reduce((s, i) => {
+                      const v = Number(i.value) || 0;
+                      return s + v;
+                    }, 0);
+
+                    // Delta = Tổng nhóm - Đã nhập
+                    const amountNum = Number(g.amountRaw) || 0;
+                    const delta = groupValueSum - amountNum;
+                    const absDelta = Math.abs(delta);
+                    const allLooked = g.items.every(i => i.looked);
+                    const showRed = allLooked && absDelta >= 10000;
+                    const showGreen = allLooked && absDelta < 10000;
+
+                    const firstCust = g.items[0]?.customerName;
+                    const rowCount = g.items.length;
+                    const stripeClass = groupIdx % 2 === 0
+                      ? 'bg-canvas/40 dark:bg-canvas/40'
+                      : 'bg-surface dark:bg-surface';
+
+                    const itemRows = g.items.map((item, itemIdx) => {
+                      const isDiffCust = firstCust && item.customerName && item.customerName !== firstCust;
+                      const noFInv = item.looked && !item.fInv;
+                      const hasError = item.errorNote || isDiffCust || noFInv;
+                      const isFirst = itemIdx === 0;
+
+                      return (
+                        <tr key={`${g.groupId}-${item.orderNumber}`}>
+                          <td className={`px-2 py-1.5 text-muted font-mono`}>
+                            {isFirst && (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-gold shrink-0" title="Đầu nhóm" />
+                              </span>
+                            )}
+                          </td>
+                          <td className={`px-2 py-1.5 font-mono font-semibold text-ink`}>{item.orderNumber}</td>
+                          <td className={`px-2 py-1.5 text-left text-muted font-mono`}>
+                            {item.looked
+                              ? (item.value ? fmtVnd(item.value) : <span className="text-muted/50">—</span>)
+                              : <span className="text-muted/50">—</span>}
+                          </td>
+
+                          {isFirst && (
+                            <td rowSpan={rowCount}
+                              className={`px-2 py-1.5 text-left font-mono font-semibold align-middle
+                                ${showRed ? 'text-red-600 dark:text-red-400'
+                                  : showGreen ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-ink'}`}>
+                              {item.looked ? fmtVnd(groupValueSum) : ''}
+                            </td>
+                          )}
+
+                          {isFirst && (
+                            <td rowSpan={rowCount}
+                              className={`px-2 py-1.5 text-left font-mono font-semibold align-middle
+                                ${showRed ? 'text-red-600 dark:text-red-400'
+                                  : showGreen ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-gold'}`}>
+                              {fmtVnd(g.amountRaw)}
+                            </td>
+                          )}
+
+                          {isFirst && (
+                            <td rowSpan={rowCount}
+                              className={`px-2 py-1.5 text-left text-muted align-middle`}>
+                              {g.date}
+                            </td>
+                          )}
+
+                          <td className={`px-2 py-1.5`}>
+                            {item.looked && item.customerName ? (
+                              <span className={isDiffCust ? 'text-red-500 italic font-semibold' : 'text-ink'}>
+                                {item.customerName}
+                                {isDiffCust && <span className="ml-1 text-[9px]">(khác nhóm!)</span>}
+                              </span>
+                            ) : <span className="text-muted/50">—</span>}
+                          </td>
+                          <td className={`px-2 py-1.5`}>
+                            {item.looked ? (
+                              item.fInv
+                                ? <span className="font-mono text-emerald-600">{item.fInv}</span>
+                                : <span className="text-red-500 italic">Không có F.INV</span>
+                            ) : <span className="text-muted/50">—</span>}
+                          </td>
+                        </tr>
+                      );
+                    });
+
+                    const sepRow = (
+                      <tr key={`sep-${g.groupId}`} className={stripeClass}>
+                        <td colSpan={8} className="px-2 py-0.5 border-t-2 border-gold/20">
+                          <button onClick={() => removeGroup(g.groupId)}
+                            className="text-[10px] text-red-400 hover:text-red-500 hover:underline float-right">
+                            Xóa nhóm
+                          </button>
+                        </td>
+                      </tr>
+                    );
+
+                    return [...itemRows, sepRow];
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
-        <div className="p-5 border-t border-line-soft flex gap-2 shrink-0">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line-soft text-sm text-muted">Huỷ</button>
-          <button onClick={handleSubmitBatch} disabled={batch.length === 0 || submitting}
-            className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong disabled:opacity-50">
-            {submitting ? 'Đang xử lý...' : `Thêm & Lookup (${batch.length})`}
+        {/* Footer */}
+        <div className="p-4 border-t border-line-soft flex gap-2 shrink-0">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-line-soft text-sm text-muted">
+            Huỷ
+          </button>
+          <button onClick={handleSave}
+            disabled={totalItems === 0 || submitting}
+            className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50">
+            {submitting ? 'Đang lưu...' : `✓ Lưu vào database (${totalItems} đơn · ${groups.length} nhóm)`}
           </button>
         </div>
       </div>
@@ -303,7 +580,271 @@ function BatchAddInvoiceModal({ onClose, onAdded }) {
   );
 }
 
-// ── INLINE EDITABLE CELL ───────────────────────────────────────────────────
+// ── INVOICE DETAILS VIEW MODAL ─────────────────────────────────────────────
+function InvoiceDetailsViewModal({ onClose, onDataChanged }) {
+  const toast = useToast();
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [search, setSearch] = useState('');
+  const [showBatchAdd, setShowBatchAdd] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const searchTimeout = useRef();
+  const scrollRef = useRef();
+  const searchRef = useRef('');
+
+  const fetchPage = useCallback(async (q, p, append) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+    try {
+      const res = await toolApi.listInvoiceDetails(q || '', p, 500);
+      const content = res.content || [];
+      if (append) setRows(prev => [...prev, ...content]);
+      else setRows(content);
+      setTotal(res.total || 0);
+      setHasMore(res.hasMore || false);
+      setPage(p);
+    } catch { toast('Lỗi tải dữ liệu', 'error'); }
+    finally { setLoading(false); setLoadingMore(false); }
+  }, []);
+
+  useEffect(() => { fetchPage('', 0, false); }, [fetchPage, refreshKey]);
+
+  const handleSearch = (v) => {
+    setSearch(v); searchRef.current = v;
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => fetchPage(v, 0, false), 600);
+  };
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current || loadingMore || !hasMore) return;
+    const el = scrollRef.current;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight * 0.7) {
+      fetchPage(searchRef.current, page + 1, true);
+    }
+  }, [loadingMore, hasMore, page, fetchPage]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  const handleDelete = async (id) => {
+    if (!confirm('Xác nhận xóa dòng này?')) return;
+    try {
+      await toolApi.deleteInvoiceDetail(id);
+      toast('Đã xóa', 'success');
+      setRows(prev => prev.filter(r => r.id !== id));
+      setTotal(t => t - 1);
+    } catch { toast('Lỗi xóa', 'error'); }
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm('Xóa toàn bộ phiếu đã nhập + phiếu thu? Không thể hoàn tác.')) return;
+    try {
+      await toolApi.clearInvoiceAndReceipts();
+      toast('Đã xóa tất cả', 'success');
+      fetchPage('', 0, false);
+      onDataChanged?.();
+    } catch { toast('Lỗi', 'error'); }
+  };
+
+  const handleAdded = () => {
+    setRefreshKey(k => k + 1);
+    onDataChanged?.();
+  };
+
+  const fmtVnd = (v) => {
+    if (v == null || v === '') return '—';
+    const n = Number(v);
+    if (isNaN(n)) return '—';
+    return n.toLocaleString('vi-VN') + ' đ';
+  };
+
+  // Nhóm rows theo groupId
+  const groupedRows = useMemo(() => {
+    const groups = new Map();
+    for (const r of rows) {
+      const gid = r.groupId || `_${r.id}`;
+      if (!groups.has(gid)) groups.set(gid, []);
+      groups.get(gid).push(r);
+    }
+    return [...groups.values()];
+  }, [rows]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-surface rounded-2xl shadow-2xl flex flex-col" style={{ width: '85dvw', height: '85dvh' }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-line-soft shrink-0">
+          <h3 className="text-sm font-bold text-ink">
+            Phiếu đặt hàng đã nhập <span className="text-muted font-normal">({total} dòng{rows.length < total ? `, đang hiện ${rows.length}` : ''})</span>
+          </h3>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowBatchAdd(true)}
+              className="px-2.5 py-1 rounded-lg bg-gold/10 text-gold text-[10px] font-semibold hover:bg-gold/20 flex items-center gap-1">
+              <Plus size={11} />Nhập chi tiết invoice
+            </button>
+            <button onClick={handleClearAll}
+              className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 text-[10px] font-semibold hover:bg-red-100">
+              <Trash2 size={11} className="inline mr-1" />Xóa tất cả
+            </button>
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+              <input value={search} onChange={e => handleSearch(e.target.value)} placeholder="Tìm kiếm..."
+                className="pl-8 pr-3 py-1.5 rounded-lg border border-line text-xs bg-canvas focus:outline-none focus:ring-2 focus:ring-gold/40 w-56" />
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted"><X size={16} /></button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div ref={scrollRef} className="flex-1 overflow-auto px-4 py-3">
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <span className="w-6 h-6 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+                <span className="text-xs text-muted">Đang tải...</span>
+              </div>
+            </div>
+          ) : groupedRows.length === 0 ? (
+            <div className="p-12 text-center text-muted text-xs">
+              {search ? `Không tìm thấy "${search}"` : 'Chưa có dữ liệu'}
+            </div>
+          ) : (
+            <table className="w-full text-xs border-collapse">
+              <thead className="sticky top-0 bg-canvas z-10">
+                <tr className="text-muted uppercase text-[10px] tracking-wide">
+                  <th className="px-2 py-1.5 text-left w-8">#</th>
+                  <th className="px-2 py-1.5 text-left">Mã đơn</th>
+                  <th className="px-2 py-1.5 text-left">Tiền đơn (tracking)</th>
+                  <th className="px-2 py-1.5 text-left">Tổng nhóm</th>
+                  <th className="px-2 py-1.5 text-left">Đã nhập</th>
+                  <th className="px-2 py-1.5 text-left">Ngày</th>
+                  <th className="px-2 py-1.5 text-left">Khách hàng</th>
+                  <th className="px-2 py-1.5 text-left">F.INV</th>
+                  <th className="px-2 py-1.5 text-left">Ghi chú lỗi</th>
+                  <th className="px-2 py-1.5 text-center w-16">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline">
+                {groupedRows.map((items, groupIdx) => {
+                  const groupValueSum = items.reduce((s, i) => {
+                    const v = Number(i.value) || 0;
+                    return s + v;
+                  }, 0);
+                  const amountNum = Number(items[0]?.amount) || 0;
+                  const delta = groupValueSum - amountNum;
+                  const absDelta = Math.abs(delta);
+                  const showRed = absDelta >= 10000;
+                  const showGreen = absDelta < 10000;
+                  const firstCust = items[0]?.customerName;
+                  const rowCount = items.length;
+                  const stripeClass = groupIdx % 2 === 0
+                    ? 'bg-canvas/40 dark:bg-canvas/40'
+                    : 'bg-surface dark:bg-surface';
+
+                  const itemRows = items.map((item, itemIdx) => {
+                    const isFirst = itemIdx === 0;
+                    const isDiffCust = firstCust && item.customerName && item.customerName !== firstCust;
+                    const hasError = item.errorNote || isDiffCust;
+                    const bgClass = hasError ? 'bg-red-50 dark:bg-red-500/10' : stripeClass;
+
+                    return (
+                      <tr key={item.id} className={bgClass}>
+                        <td className="px-2 py-1.5 text-muted font-mono">
+                          {isFirst && (
+                            <span className="inline-flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-gold shrink-0" title="Đầu nhóm" />
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 font-mono font-semibold text-ink">{item.orderNumber}</td>
+                        <td className="px-2 py-1.5 text-left text-muted font-mono">
+                          {item.value ? fmtVnd(item.value) : <span className="text-muted/50">—</span>}
+                        </td>
+
+                        {isFirst && (
+                          <td rowSpan={rowCount}
+                            className={`px-2 py-1.5 text-left font-mono font-semibold align-middle
+                              ${showRed ? 'text-red-600 dark:text-red-400'
+                                : showGreen ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-ink'}`}>
+                            {fmtVnd(groupValueSum)}
+                          </td>
+                        )}
+
+                        {isFirst && (
+                          <td rowSpan={rowCount}
+                            className={`px-2 py-1.5 text-left font-mono font-semibold align-middle
+                              ${showRed ? 'text-red-600 dark:text-red-400'
+                                : showGreen ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-gold'}`}>
+                            {fmtVnd(item.amount)}
+                          </td>
+                        )}
+
+                        {isFirst && (
+                          <td rowSpan={rowCount} className="px-2 py-1.5 text-left text-muted align-middle">
+                            {item.invoiceDate}
+                          </td>
+                        )}
+
+                        <td className="px-2 py-1.5">
+                          {item.tenKhachHangFull || item.customerName ? (
+                            <span className={isDiffCust ? 'text-red-500 italic font-semibold' : 'text-ink'}>
+                              {item.tenKhachHangFull || item.customerName}
+                              {isDiffCust && <span className="ml-1 text-[9px]">(khác nhóm!)</span>}
+                            </span>
+                          ) : <span className="text-muted/50">—</span>}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          {item.fInv
+                            ? <span className="font-mono text-emerald-600">{item.fInv}</span>
+                            : <span className="text-red-500 italic">Không có F.INV</span>}
+                        </td>
+                        <td className="px-2 py-1.5 text-red-500 text-[10px] max-w-[300px]">
+                          <span className="line-clamp-2" title={item.errorNote || ''}>{item.errorNote || ''}</span>
+                        </td>
+                        <td className="px-2 py-1.5 text-center">
+                          <button onClick={() => handleDelete(item.id)}
+                            className="px-2 py-1 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 text-[10px] font-semibold hover:bg-red-100">
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  });
+
+                  return itemRows;
+                })}
+              </tbody>
+            </table>
+          )}
+          {loadingMore && <div className="p-4 text-center"><span className="inline-flex items-center gap-2 text-xs text-muted"><span className="w-4 h-4 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />Đang tải thêm...</span></div>}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-2 border-t border-line-soft shrink-0 flex items-center justify-between bg-canvas rounded-b-2xl">
+          <span className="text-[10px] text-muted">Hiển thị {rows.length} / {total.toLocaleString('vi-VN')}</span>
+          {hasMore && <span className="text-[10px] text-gold">↓ Cuộn để tải thêm</span>}
+        </div>
+      </div>
+
+      {showBatchAdd && (
+        <BatchAddInvoiceModal
+          onClose={() => setShowBatchAdd(false)}
+          onAdded={handleAdded}
+        />
+      )}
+    </div>
+  );
+}
+
 function EditableSoChungTu({ value, receiptId, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(value);
@@ -343,7 +884,7 @@ const PAGE_SIZE = 500;
 const SCROLL_THRESHOLD = 0.7;
 
 function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, onClose,
-                          importConfig, extraHeaderButton }) {
+  importConfig, extraHeaderButton }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -364,11 +905,7 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
     try {
       const res = await fetchFn(q || '', p, PAGE_SIZE);
       const content = res.content || [];
-      if (append) {
-        setRows(prev => [...prev, ...content]);
-      } else {
-        setRows(content);
-      }
+      if (append) { setRows(prev => [...prev, ...content]); } else { setRows(content); }
       setTotal(res.total || 0);
       setHasMore(res.hasMore || false);
       setPage(p);
@@ -379,20 +916,15 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
   useEffect(() => { fetchPage('', 0, false); }, [fetchPage]);
 
   const handleSearch = (v) => {
-    setSearch(v);
-    searchRef.current = v;
+    setSearch(v); searchRef.current = v;
     clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      fetchPage(v, 0, false);
-    }, 600);
+    searchTimeout.current = setTimeout(() => { fetchPage(v, 0, false); }, 600);
   };
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || loadingMore || !hasMore) return;
     const el = scrollRef.current;
-    const scrolled = el.scrollTop + el.clientHeight;
-    const threshold = el.scrollHeight * SCROLL_THRESHOLD;
-    if (scrolled >= threshold) {
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight * SCROLL_THRESHOLD) {
       fetchPage(searchRef.current, page + 1, true);
     }
   }, [loadingMore, hasMore, page, fetchPage]);
@@ -466,35 +998,35 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
               {loading ? <tr><td colSpan={columns.length + 2} className="p-12 text-center">
                 <div className="flex flex-col items-center gap-2"><span className="w-6 h-6 border-2 border-gold/30 border-t-gold rounded-full animate-spin" /><span className="text-xs text-muted">Đang tải...</span></div>
               </td></tr>
-              : rows.length === 0 ? <tr><td colSpan={columns.length + 2} className="p-12 text-center text-muted">{search ? `Không tìm thấy "${search}"` : 'Không có dữ liệu'}</td></tr>
-              : rows.map((row, idx) => {
-                const isEditing = editId === row.id;
-                return (
-                <tr key={row.id} className={`border-b border-line-soft/50 transition-colors ${isEditing ? 'bg-gold/5' : idx % 2 === 0 ? 'bg-surface' : 'bg-canvas/50'} hover:bg-gold/5`}>
-                  <td className="px-3 py-2 text-muted font-mono text-[10px]">{idx + 1}</td>
-                  {columns.map(c => (
-                    <td key={c} className="px-3 py-2 max-w-[220px]">
-                      {isEditing
-                        ? <input value={editRow[c] || ''} onChange={e => setEditRow(p => ({ ...p, [c]: e.target.value }))}
-                            className="w-full px-2 py-1 rounded-lg border border-gold/50 text-xs bg-surface focus:outline-none focus:ring-1 focus:ring-gold/40" />
-                        : <span className="truncate block" title={row[c] || ''}>{row[c] || ''}</span>}
-                    </td>
-                  ))}
-                  <td className="px-3 py-2 text-center">
-                    {isEditing ? (
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={saveEdit} className="px-2 py-1 rounded-lg bg-emerald-500 text-white text-[10px] font-semibold hover:bg-emerald-600">Lưu</button>
-                        <button onClick={cancelEdit} className="px-2 py-1 rounded-lg bg-surface border border-line text-[10px] text-muted hover:bg-canvas">Huỷ</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-1">
-                        {updateFn && <button onClick={() => startEdit(row)} className="px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 text-[10px] font-semibold hover:bg-blue-100">Sửa</button>}
-                        <button onClick={() => handleDelete(row.id)} className="px-2 py-1 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 text-[10px] font-semibold hover:bg-red-100">Xóa</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>);
-              })}
+                : rows.length === 0 ? <tr><td colSpan={columns.length + 2} className="p-12 text-center text-muted">{search ? `Không tìm thấy "${search}"` : 'Không có dữ liệu'}</td></tr>
+                  : rows.map((row, idx) => {
+                    const isEditing = editId === row.id;
+                    return (
+                      <tr key={row.id} className={`border-b border-line-soft/50 transition-colors ${isEditing ? 'bg-gold/5' : idx % 2 === 0 ? 'bg-surface' : 'bg-canvas/50'} hover:bg-gold/5`}>
+                        <td className="px-3 py-2 text-muted font-mono text-[10px]">{idx + 1}</td>
+                        {columns.map(c => (
+                          <td key={c} className="px-3 py-2 max-w-[220px]">
+                            {isEditing
+                              ? <input value={editRow[c] || ''} onChange={e => setEditRow(p => ({ ...p, [c]: e.target.value }))}
+                                className="w-full px-2 py-1 rounded-lg border border-gold/50 text-xs bg-surface focus:outline-none focus:ring-1 focus:ring-gold/40" />
+                              : <span className="truncate block" title={row[c] || ''}>{row[c] || ''}</span>}
+                          </td>
+                        ))}
+                        <td className="px-3 py-2 text-center">
+                          {isEditing ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={saveEdit} className="px-2 py-1 rounded-lg bg-emerald-500 text-white text-[10px] font-semibold hover:bg-emerald-600">Lưu</button>
+                              <button onClick={cancelEdit} className="px-2 py-1 rounded-lg bg-surface border border-line text-[10px] text-muted hover:bg-canvas">Huỷ</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1">
+                              {updateFn && <button onClick={() => startEdit(row)} className="px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 text-[10px] font-semibold hover:bg-blue-100">Sửa</button>}
+                              <button onClick={() => handleDelete(row.id)} className="px-2 py-1 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 text-[10px] font-semibold hover:bg-red-100">Xóa</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>);
+                  })}
               {loadingMore && <tr><td colSpan={columns.length + 2} className="p-4 text-center"><span className="inline-flex items-center gap-2 text-xs text-muted"><span className="w-4 h-4 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />Đang tải thêm...</span></td></tr>}
               {!hasMore && rows.length > 0 && !loading && (
                 <tr><td colSpan={columns.length + 2} className="p-2 text-center text-[10px] text-muted">— Hết dữ liệu —</td></tr>
@@ -522,7 +1054,7 @@ function DataViewModal({ title, columns, fetchFn, updateFn, deleteFn, clearFn, o
   );
 }
 
-// ── IMPORT CONFIGS ──────────────────────────────────────────────────────────
+// ── IMPORT CONFIGS + DATA VIEW CONFIG ────────────────────────────────────────
 const IMPORT_CONFIGS = {
   tracking: {
     title: 'Import Theo dõi Invoice',
@@ -557,7 +1089,9 @@ const DATA_VIEW_CONFIG = {
   },
   sales: {
     title: 'Bán hàng',
-    columns: ['Ngày hạch toán', 'Ngày chứng từ', 'Số chứng từ', 'Số hóa đơn', 'Khách hàng', 'Diễn giải', 'Tổng tiền hàng', 'Tiền chiết khấu', 'Tiền thuế GTGT', 'Tổng tiền thanh toán', 'Đã lập hóa đơn', 'Đã xuất hàng', 'Loại chứng từ'],
+    columns: ['Ngày hạch toán', 'Ngày chứng từ', 'Số chứng từ', 'Số hóa đơn', 'Khách hàng',
+      'Diễn giải', 'Tổng tiền hàng', 'Tiền chiết khấu', 'Tiền thuế GTGT',
+      'Tổng tiền thanh toán', 'Đã lập hóa đơn', 'Đã xuất hàng', 'Loại chứng từ'],
     fetchFn: toolApi.listSales, updateFn: toolApi.updateSales, deleteFn: toolApi.deleteSales,
     clearFn: toolApi.clearSales,
     importConfig: IMPORT_CONFIGS.sales,
@@ -571,9 +1105,9 @@ const DATA_VIEW_CONFIG = {
   },
   invoiceDetails: {
     title: 'Phiếu đặt hàng đã nhập',
-    columns: ['STT', 'Số phiếu ĐH', 'Số tiền', 'Ngày', 'Ghi chú lỗi'],
+    columns: ['STT', 'Mã đơn', 'Tiền đơn (tracking)', 'Tổng nhóm', 'Đã nhập', 'Ngày', 'Khách hàng', 'F.INV', 'Ghi chú lỗi'],
     fetchFn: toolApi.listInvoiceDetails, updateFn: null, deleteFn: toolApi.deleteInvoiceDetail,
-    clearFn: toolApi.clearInvoiceDetails,
+    clearFn: toolApi.clearInvoiceAndReceipts,
   },
 };
 
@@ -618,7 +1152,7 @@ export default function ToolsPageWrapper() {
   const navigate = useNavigate();
 
   let user = null;
-  try { user = JSON.parse(localStorage.getItem('user')); } catch {}
+  try { user = JSON.parse(localStorage.getItem('user')); } catch { }
   const role = user?.role ?? 'seller';
   const ROLE_PATHS = {
     OWNER: '/owner/dashboard', ADMIN: '/admin/dashboard', SUPERADMIN: '/admin/dashboard',
@@ -637,8 +1171,8 @@ export default function ToolsPageWrapper() {
         </button>
         <div className="flex gap-1 bg-canvas rounded-xl p-1 border border-line-soft">
           {[{ key: 'receipt', label: 'Phiếu thu', icon: FileSpreadsheet },
-            { key: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
-            { key: 'misa', label: 'Misa', icon: Database }].map(t => {
+          { key: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
+          { key: 'misa', label: 'Misa', icon: Database }].map(t => {
             const Icon = t.icon;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
@@ -669,20 +1203,20 @@ export default function ToolsPageWrapper() {
 
 // ── MISA EXPORT HEADERS ────────────────────────────────────────────────────
 const MISA_HEADERS = [
-  'Hiển thị trên sổ','Hình thức bán hàng','Phương thức thanh toán','Kiêm phiếu xuất kho',
-  'XK vào khu phi thuế quan và các TH được coi như XK','Lập kèm hóa đơn','Đã lập hóa đơn',
-  'Ngày hạch toán','Ngày chứng từ','Số chứng từ','Số phiếu xuất','Lý do xuất',
-  'Mẫu số HĐ','Ký hiệu HĐ','Số hóa đơn','Ngày hóa đơn',
-  'Mã khách hàng','Tên khách hàng','Địa chỉ','Mã số thuế','Diễn giải',
-  'Nộp vào TK','NV bán hàng','Loại tiền','Tỷ giá',
-  'Mã hàng','Tên hàng','Hàng khuyến mại',
-  'TK Tiền/Chi phí/Nợ','TK Doanh thu/Có','ĐVT','Số lượng','Đơn giá sau thuế','Đơn giá',
-  'Thành tiền','Thành tiền quy đổi',
-  'Tỷ lệ CK (%)','Tiền chiết khấu','Tiền chiết khấu quy đổi','TK chiết khấu',
-  'Giá tính thuế XK','% thuế XK','Tiền thuế XK','TK thuế XK',
-  '% thuế GTGT','Tỷ lệ tính thuế (Thuế suất KHAC)','Tiền thuế GTGT','Tiền thuế GTGT quy đổi',
-  'TK thuế GTGT','HH không TH trên tờ khai thuế GTGT',
-  'Kho','TK giá vốn','TK Kho','Đơn giá vốn','Tiền vốn','Hàng hóa giữ hộ/bán hộ',
+  'Hiển thị trên sổ', 'Hình thức bán hàng', 'Phương thức thanh toán', 'Kiêm phiếu xuất kho',
+  'XK vào khu phi thuế quan và các TH được coi như XK', 'Lập kèm hóa đơn', 'Đã lập hóa đơn',
+  'Ngày hạch toán', 'Ngày chứng từ', 'Số chứng từ', 'Số phiếu xuất', 'Lý do xuất',
+  'Mẫu số HĐ', 'Ký hiệu HĐ', 'Số hóa đơn', 'Ngày hóa đơn',
+  'Mã khách hàng', 'Tên khách hàng', 'Địa chỉ', 'Mã số thuế', 'Diễn giải',
+  'Nộp vào TK', 'NV bán hàng', 'Loại tiền', 'Tỷ giá',
+  'Mã hàng', 'Tên hàng', 'Hàng khuyến mại',
+  'TK Tiền/Chi phí/Nợ', 'TK Doanh thu/Có', 'ĐVT', 'Số lượng', 'Đơn giá sau thuế', 'Đơn giá',
+  'Thành tiền', 'Thành tiền quy đổi',
+  'Tỷ lệ CK (%)', 'Tiền chiết khấu', 'Tiền chiết khấu quy đổi', 'TK chiết khấu',
+  'Giá tính thuế XK', '% thuế XK', 'Tiền thuế XK', 'TK thuế XK',
+  '% thuế GTGT', 'Tỷ lệ tính thuế (Thuế suất KHAC)', 'Tiền thuế GTGT', 'Tiền thuế GTGT quy đổi',
+  'TK thuế GTGT', 'HH không TH trên tờ khai thuế GTGT',
+  'Kho', 'TK giá vốn', 'TK Kho', 'Đơn giá vốn', 'Tiền vốn', 'Hàng hóa giữ hộ/bán hộ',
 ];
 
 function misaRowToArray(row) {
@@ -856,7 +1390,7 @@ function ToolsOrdersPage() {
                 <tr key={o.id} onClick={() => toggleSelect(o.id)}
                   className={`border-t border-line-soft cursor-pointer transition-colors ${isSelected ? 'bg-gold/10' : idx % 2 === 0 ? 'bg-surface' : 'bg-canvas/50'} hover:bg-gold/5`}>
                   <td className="px-3 py-2">
-                    <input type="checkbox" checked={isSelected} onChange={() => {}} className="accent-gold" />
+                    <input type="checkbox" checked={isSelected} onChange={() => { }} className="accent-gold" />
                   </td>
                   <td className="px-3 py-2 font-mono font-semibold text-ink">{o.orderCode}</td>
                   <td className="px-3 py-2 text-ink">{o.customerName || 'Khách vãng lai'}</td>
@@ -864,7 +1398,7 @@ function ToolsOrdersPage() {
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold
                       ${o.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300'
                         : o.status === 'CANCELLED' ? 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-300'
-                        : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'}`}>
+                          : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'}`}>
                       {o.status}
                     </span>
                   </td>
@@ -948,10 +1482,10 @@ function MisaDataPreview({ data: initialData, onBack }) {
               <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">Ngày HT</th>
               <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">Ngày CT</th>
               <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap bg-gold/10">Số chứng từ</th>
-              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:140}}>Khách hàng</th>
-              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:180}}>Diễn giải</th>
-              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:140}}>Mã hàng</th>
-              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{minWidth:160}}>Tên hàng</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{ minWidth: 140 }}>Khách hàng</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{ minWidth: 180 }}>Diễn giải</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{ minWidth: 140 }}>Mã hàng</th>
+              <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap" style={{ minWidth: 160 }}>Tên hàng</th>
               <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">TK Nợ</th>
               <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">TK Có</th>
               <th className="px-3 py-2.5 text-left text-[10px] text-muted font-bold whitespace-nowrap">ĐVT</th>
@@ -970,8 +1504,8 @@ function MisaDataPreview({ data: initialData, onBack }) {
                 <td className="px-3 py-2 bg-gold/5">
                   <MisaSoChungTuEditor value={row.soChungTu} idx={idx} onUpdate={updateSoChungTu} />
                 </td>
-                <td className="px-3 py-2 text-ink truncate" style={{maxWidth:200}} title={row.tenKhachHang}>{row.tenKhachHang}</td>
-                <td className="px-3 py-2 text-muted truncate" style={{maxWidth:240}} title={row.dienGiai}>{row.dienGiai}</td>
+                <td className="px-3 py-2 text-ink truncate" style={{ maxWidth: 200 }} title={row.tenKhachHang}>{row.tenKhachHang}</td>
+                <td className="px-3 py-2 text-muted truncate" style={{ maxWidth: 240 }} title={row.dienGiai}>{row.dienGiai}</td>
                 <td className="px-3 py-2 font-mono">{row.maHang}</td>
                 <td className="px-3 py-2">{row.tenHang}</td>
                 <td className="px-3 py-2 font-mono text-center">{row.tkTienNo}</td>
@@ -1036,7 +1570,7 @@ function ToolsReceiptPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleSetDone = async (val) => { setDoneRow(val); try { await toolApi.setConfig('done_up_to_row', val); } catch {} };
+  const handleSetDone = async (val) => { setDoneRow(val); try { await toolApi.setConfig('done_up_to_row', val); } catch { } };
 
   const handleExport = () => {
     if (!data?.receipts?.length) { toast('Chưa có dữ liệu', 'error'); return; }
@@ -1089,30 +1623,30 @@ function ToolsReceiptPage() {
           </tr></thead>
           <tbody>
             {loading ? <tr><td colSpan={22} className="p-8 text-center text-muted">Đang tải...</td></tr>
-            : receipts.length === 0 ? <tr><td colSpan={22} className="p-8 text-center text-muted">Chưa có dữ liệu. Mở "Xem phiếu ĐH đã nhập" → "Nhập chi tiết invoice" để bắt đầu.</td></tr>
-            : receipts.map((r, i) => {
-              const row = receiptToRow(r);
-              const isDone = (i + 1) <= doneRowNum;
-              return (
-                <tr key={r.id} className={`border-t border-line-soft ${isDone ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : 'hover:bg-canvas'}`}>
-                  <td className="px-2 py-1.5 text-muted font-mono">{i + 1}</td>
-                  {row.map((cell, ci) => (
-                    <td key={ci} className={`px-2 py-1.5 whitespace-nowrap ${ci === 17 ? 'font-mono font-semibold text-right' : ''}`}>
-                      {ci === 3
-                        ? <EditableSoChungTu value={cell} receiptId={r.id} onSaved={load} />
-                        : ci === 17 ? fmtMoney(cell) : cell}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+              : receipts.length === 0 ? <tr><td colSpan={22} className="p-8 text-center text-muted">Chưa có dữ liệu. Mở "Xem phiếu ĐH đã nhập" → "Nhập chi tiết invoice" để bắt đầu.</td></tr>
+                : receipts.map((r, i) => {
+                  const row = receiptToRow(r);
+                  const isDone = (i + 1) <= doneRowNum;
+                  return (
+                    <tr key={r.id} className={`border-t border-line-soft ${isDone ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : 'hover:bg-canvas'}`}>
+                      <td className="px-2 py-1.5 text-muted font-mono">{i + 1}</td>
+                      {row.map((cell, ci) => (
+                        <td key={ci} className={`px-2 py-1.5 whitespace-nowrap ${ci === 17 ? 'font-mono font-semibold text-right' : ''}`}>
+                          {ci === 3
+                            ? <EditableSoChungTu value={cell} receiptId={r.id} onSaved={load} />
+                            : ci === 17 ? fmtMoney(cell) : cell}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
           </tbody>
         </table>
       </div>
 
       {/* Modal "Phiếu đặt hàng đã nhập" — có nút "Nhập chi tiết invoice" */}
       {viewModal === 'invoiceDetails' && (
-        <InvoiceDetailsModal
+        <InvoiceDetailsViewModal
           onClose={() => { setViewModal(null); load(); }}
           onDataChanged={load}
         />
