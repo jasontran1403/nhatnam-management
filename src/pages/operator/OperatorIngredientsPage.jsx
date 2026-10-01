@@ -21,7 +21,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 //   trống khi mở form sửa.
 //
 //   'bó' và 'mét' bổ sung 08/2026 — hai trang kia đã có sẵn.
-const UNITS = ['kg', 'gram', 'lít', 'ml', 'cái', 'hộp', 'túi', 'chai', 'bó', 'mét'];
+const UNITS = ['kg', 'gram', 'lít', 'ml', 'cái', 'hộp', 'túi', 'thùng', 'chai', 'bó', 'mét'];
 
 // ── ConfirmDeleteModal ────────────────────────────────────────────────────────
 function ConfirmDeleteModal({ open, onClose, onConfirm, itemName, deleting }) {

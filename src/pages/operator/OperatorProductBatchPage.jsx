@@ -16,7 +16,7 @@ import {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9261';
 const VAT_RATES = [0, 5, 8, 10];
-const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Gói', 'Chai', 'Lon', 'Phần', 'Mét'];
+const UNITS = ['Kg', 'Gr', 'Lít', 'ml', 'Cái', 'Hộp', 'Cây', 'Bó', 'Túi', 'Thùng', 'Gói', 'Chai', 'Lon', 'Phần', 'Mét'];
 const MISA_CATEGORIES = ['', 'Kem', 'Xúc xích bò', 'Xúc xích heo', 'Xúc xích gà'];
 const SPECIFICATIONS = [210, 410, 424, 500, 1000];
 

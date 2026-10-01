@@ -2649,6 +2649,29 @@ export default function AttendanceSheetsPage() {
 
   useEffect(() => { loadStatus(selected); }, [selected, loadStatus]);
 
+  // ── Helper: đọc message lỗi từ response blob của các endpoint export ──────
+  //
+  // Cả 2 endpoint xuất file đều dùng responseType: 'blob' nên khi BE trả về
+  // HTTP 4xx/5xx (VD: "chưa tính lương" → 400), body error là 1 Blob JSON.
+  // Cần .text() rồi JSON.parse mới lấy được `message`. Trả thêm `isWarning` để
+  // chỗ gọi hiển thị toast 'warning' khi tháng chưa tính lương (không phải
+  // lỗi hệ thống mà là nhắc user thao tác thiếu).
+  const parseExportError = async (e, fallbackMsg) => {
+    let msg = fallbackMsg;
+    const blob = e?.response?.data;
+    if (blob instanceof Blob) {
+      try {
+        const text = await blob.text();
+        const json = JSON.parse(text);
+        if (json?.message) msg = json.message;
+      } catch { /* giữ fallback */ }
+    } else if (e?.response?.data?.message) {
+      msg = e.response.data.message;
+    }
+    const isWarning = /chưa tính lương/i.test(msg);
+    return { msg, isWarning };
+  };
+
   // ── Xuất file lương tổng hợp ────────────────────────────────────────────────
   const handleExportSalary = async () => {
     if (!selected) return;
@@ -2663,7 +2686,11 @@ export default function AttendanceSheetsPage() {
       toast('Đã xuất file lương thành công', 'success');
       setExportModalOpen(false);
     } catch (e) {
-      toast(e?.response?.data?.message || 'Không xuất được file lương', 'error');
+      // BE chặn sớm khi tháng chưa tính lương → HTTP 400, message dạng
+      // "Tháng MM/YYYY chưa tính lương…". Toast warning + KHÔNG đóng modal
+      // để user thấy rõ vì sao không xuất được.
+      const { msg, isWarning } = await parseExportError(e, 'Không xuất được file lương');
+      toast(msg, isWarning ? 'warning' : 'error');
     } finally {
       setExporting(false);
     }
@@ -2681,20 +2708,10 @@ export default function AttendanceSheetsPage() {
       await factoryPayrollApi.exportBankPayment(selected.month, selected.year);
       toast('Đã xuất file chi lương ngân hàng', 'success');
     } catch (e) {
-      // Response type là blob nên message error nằm trong blob khi BE lỗi —
-      // đọc lại bằng text() để hiển thị đúng thông báo.
-      let msg = 'Không xuất được file chi lương ngân hàng';
-      const blob = e?.response?.data;
-      if (blob instanceof Blob) {
-        try {
-          const text = await blob.text();
-          const json = JSON.parse(text);
-          if (json?.message) msg = json.message;
-        } catch { /* giữ msg mặc định */ }
-      } else if (e?.response?.data?.message) {
-        msg = e.response.data.message;
-      }
-      toast(msg, 'error');
+      // Cùng cơ chế như handleExportSalary — nếu tháng chưa tính lương thì
+      // BE trả HTTP 400 và FE toast warning.
+      const { msg, isWarning } = await parseExportError(e, 'Không xuất được file chi lương ngân hàng');
+      toast(msg, isWarning ? 'warning' : 'error');
     } finally {
       setExportingBank(false);
     }
