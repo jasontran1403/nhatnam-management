@@ -51,24 +51,25 @@ function misaRowToArray(row) {
   const tenKH = row.tenKhachHang || '';
   const dienGiai = tenKH ? `Bán hàng cho ${tenKH} theo hóa đơn ${soHoaDon}` : '';
 
-  let vatPercent = row.vatPercent || '';
-  if (typeof vatPercent === 'string') {
-    vatPercent = vatPercent.replace(/%/g, '').trim();
+  // ── VAT: số → giữ nguyên; text ("Không chịu thuế"...) → 0 ──
+  let vatPercent = row.vatPercent;
+  if (vatPercent == null || vatPercent === '') {
+    vatPercent = 0;
+  } else {
+    const cleaned = String(vatPercent).replace(/%/g, '').replace(',', '.').trim();
+    const num = parseFloat(cleaned);
+    vatPercent = Number.isFinite(num) ? num : 0;
   }
 
   return [
-    '',             // A: Hiển thị trên sổ
-    0,              // B: Hình thức bán hàng
-    0,              // C: Phương thức thanh toán
-    1,              // D: Kiêm phiếu xuất kho
-    '',             // E: XK vào khu phi thuế quan
-    1,              // F: Lập kèm hóa đơn
-    1,              // G: Đã lập hóa đơn
+    '',             // A
+    0, 0, 1, '',    // B-E
+    1, 1,           // F-G
     row.ngayHachToan || '',   // H
     row.ngayChungTu || '',    // I
     soHoaDon,                 // J
-    soHoaDon,            // K
-    '',             // L
+    soHoaDon,                 // K
+    '',                       // L
     row.mauSoHd || '',        // M
     row.kyHieuHd || '',       // N
     soHoaDon,                 // O
@@ -82,21 +83,21 @@ function misaRowToArray(row) {
     row.maHang || '',         // Z
     row.tenHang || '',        // AA
     '',                       // AB
-    row.tkTienNo || '131',              // AC: TK Tiền/Chi phí/Nợ (vẫn fixed 131 — không có trong danh mục)
-    row.tkDoanhThu || '5111',           // AD: TK Doanh thu/Có ← ĐỘNG
+    row.tkTienNo || '131',              // AC
+    row.tkDoanhThu || '5111',           // AD
     row.dvt || 'Kg',                    // AE
     row.soLuong ?? '',                  // AF
     '',                                 // AG
     row.donGia ?? '',                   // AH
     row.thanhTien ?? '',                // AI
     '',                                 // AJ
-    0, '', '', row.tkChietKhau || '5211',  // AK-AN: TK chiết khấu ← ĐỘNG
+    0, '', '', row.tkChietKhau || '5211',  // AK-AN
     '', '', '', '',                     // AO-AR
-    vatPercent,                         // AS
+    vatPercent,                         // AS ← giờ luôn là number
     '',                                 // AT
     row.tienThue ?? '',                 // AU
     '',                                 // AV
-    row.tkThueGtgt || '33311', '',      // AW, AX: TK thuế GTGT ← ĐỘNG
+    row.tkThueGtgt || '33311', '',      // AW-AX
     row.kho || '',                      // AY
     row.tkGiaVon || '',                 // AZ
     row.tkKho || '',                    // BA
