@@ -26,20 +26,23 @@ function dayRange(date) {
   return { from: start.getTime(), to: end.getTime() };
 }
 
+// Mặc định: từ 01/01/2026 đến ngày hiện tại (vì đã có pagination)
+function getDefaultRange() {
+  const from = new Date(2026, 0, 1, 0, 0, 0, 0); // 01/01/2026
+  const now = new Date();
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  return { from: from.getTime(), to: to.getTime() };
+}
+
 // Lấy ngày đầu tiên và ngày cuối cùng của tháng hiện tại
 function getCurrentMonthRange() {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
-
-  // Ngày đầu tháng
   const firstDay = new Date(year, month, 1);
-  // Ngày cuối tháng
   const lastDay = new Date(year, month + 1, 0);
-
   const from = firstDay.getTime();
   const to = lastDay.getTime();
-
   return { from, to };
 }
 
@@ -65,10 +68,10 @@ export default function IncomeListPage({ adminMode = false }) {
   const searchTextRef = useRef('');
 
   // OWNER/ADMIN (adminMode): mặc định KHÔNG chọn ngày → fetch TẤT CẢ phiếu.
-  // ACCOUNTANT/SUPER_ACCOUNTANT: mặc định lọc theo tháng hiện tại (từ ngày 1 đến cuối tháng)
-  const initialRange = adminMode ? null : getCurrentMonthRange();
+  // ACCOUNTANT/SUPER_ACCOUNTANT: mặc định lọc từ 01/01/2026 đến ngày hiện tại.
+  const initialRange = adminMode ? null : getDefaultRange();
 
-  const [selectedDate, setSelectedDate] = useState(adminMode ? null : todayStr());
+  const [selectedDate, setSelectedDate] = useState(null);
   const [dateRange, setDateRange] = useState(initialRange);
   const [searchText, setSearchText] = useState('');
   const [vouchers, setVouchers] = useState([]);
@@ -97,7 +100,9 @@ export default function IncomeListPage({ adminMode = false }) {
   const [exportPaymentType, setExportPaymentType] = useState('ALL'); // ALL | CASH | BANK_TRANSFER
 
   const handleExport = async () => {
-    const range = dateRange || dayRange(selectedDate || todayStr());
+    const range = dateRange || (adminMode
+      ? dayRange(selectedDate || todayStr())
+      : getDefaultRange());
     setExporting(true);
     try {
       const res = await incomeApi.exportReport(range.from, range.to, exportPaymentType);
@@ -139,18 +144,17 @@ export default function IncomeListPage({ adminMode = false }) {
       const userPickedRange = dateRange !== null;
       const ignoreDateForSearch = !!q && !userPickedRange;
 
-      const range = dateRange || dayRange(selectedDate || todayStr());
+      // Mặc định (accountant): 01/01/2026 → nay
+      const range = dateRange || (adminMode ? dayRange(todayStr()) : getDefaultRange());
 
       // ─── ĐIỀU CHỈNH TIMESTAMP CHO TIMEZONE ───────────────────────────────
       let from = ignoreDateForSearch ? undefined : range.from;
       let to = ignoreDateForSearch ? undefined : range.to;
 
       if (from && to) {
-        // Chuyển từ timestamp sang Date object
         const fromDate = new Date(from);
         const toDate = new Date(to);
 
-        // Set về đầu ngày (00:00:00) và cuối ngày (23:59:59.999)
         fromDate.setHours(0, 0, 0, 0);
         toDate.setHours(23, 59, 59, 999);
 
@@ -198,7 +202,9 @@ export default function IncomeListPage({ adminMode = false }) {
   };
 
   // adminMode chưa chọn ngày → picker để trống (from/to undefined).
-  const currentRange = dateRange || (selectedDate ? dayRange(selectedDate) : { from: undefined, to: undefined });
+  const currentRange = dateRange || (adminMode
+    ? (selectedDate ? dayRange(selectedDate) : { from: undefined, to: undefined })
+    : getDefaultRange());
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
@@ -241,12 +247,16 @@ export default function IncomeListPage({ adminMode = false }) {
             from={currentRange.from}
             to={currentRange.to}
             onChange={handleDateRangeChange}
-            placeholder={adminMode ? "Chọn ngày" : "Tháng hiện tại"}
+            placeholder={adminMode ? "Chọn ngày" : "01/01/2026 → nay"}
             align="right"
           />
         </div>
         {dateRange && (
-          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0" title={adminMode ? 'Xem tất cả' : 'Về tháng hiện tại'}>
+          <button
+            onClick={() => setDateRange(adminMode ? null : getDefaultRange())}
+            className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0"
+            title={adminMode ? 'Xem tất cả' : 'Về mặc định (01/01/2026 → nay)'}
+          >
             <X size={14} />
           </button>
         )}

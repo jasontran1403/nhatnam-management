@@ -4,15 +4,29 @@ import api from './axios';
 
 const r = (res) => res.data?.data ?? res.data;
 
-/** 5 bộ phận tính lương — khớp với enum PayrollDepartment bên backend. */
+/**
+ * 5 bộ phận tính lương — khớp với enum PayrollDepartment bên backend.
+ *
+ * Phase 2 refactor (10/2026):
+ *  - MANAGEMENT đã GỠ khỏi hệ thống lương (OWNER/ADMIN không có phiếu lương).
+ *  - Tất cả 5 bộ phận giờ đều `attendanceBased: true` — dùng CHUNG 1 file
+ *    chấm công cho cả công ty (upload ở CompanyPayrollPanel đầu trang).
+ *
+ * Phase 5 refactor (10/2026):
+ *  - DRIVER: lương theo chấm công (base × ngày công / chuẩn công) đọc từ
+ *    AttendanceEntry CHUNG như xưởng SX / văn phòng.
+ *  - Chấm công ODO giờ CHỈ dùng để tính phụ cấp XĂNG XE và THƯỞNG ĐƠN HÀNG,
+ *    xuất riêng ở file Thưởng tài xế — không ảnh hưởng tới lương theo
+ *    chấm công / phụ cấp cơm nữa.
+ *  - ACCOUNTING / SALES / WAREHOUSE: cũng ngừng mặc định full công —
+ *    phải có trong file chấm công chung để được tính ngày công.
+ */
 export const PAYROLL_DEPARTMENTS = [
   { code: 'FACTORY',    label: 'Xưởng sản xuất', attendanceBased: true,  hasKpiBonus: true  },
   { code: 'ACCOUNTING', label: 'Kế toán',        attendanceBased: true,  hasKpiBonus: true  },
   { code: 'WAREHOUSE',  label: 'Kho',            attendanceBased: true,  hasKpiBonus: true  },
   { code: 'SALES',      label: 'Kinh doanh',     attendanceBased: true,  hasKpiBonus: true  },
-  // attendanceBased: true → file chấm công tuỳ chọn, dùng để đếm mealDays (phụ cấp cơm).
-  // Lương vẫn full bất kể file. Thưởng tính qua finalizeBonus (doanh thu cá nhân).
-  { code: 'DRIVER',     label: 'Tài xế',         attendanceBased: false, hasKpiBonus: true  },
+  { code: 'DRIVER',     label: 'Tài xế',         attendanceBased: true,  hasKpiBonus: true  },
 ];
 
 export const factoryPayrollApi = {
@@ -117,11 +131,20 @@ export const factoryPayrollApi = {
 
   /**
    * Tính và chốt thưởng doanh thu.
-   * Phải gọi sau khi đã finalizeKpi.
+   *
+   * @param {number} month
+   * @param {number} year
+   * @param {'SALES'|'ACCOUNTING'} department
+   * @param {number|null} unitPrice  Đơn giá hoa hồng (VNĐ cho mỗi 100tr doanh thu).
+   *   Flow MỚI (11/2026) luôn truyền số dương. Bỏ trống → BE fallback về tier-based
+   *   cũ (giữ tương thích legacy, yêu cầu finalizeKpi trước).
    */
-  finalizeBonus: (month, year, department = 'SALES') =>
+  finalizeBonus: (month, year, department = 'SALES', unitPrice = null) =>
     api.post('/api/factory-payroll/finalize-bonus', null, {
-      params: { month, year, department },
+      params: {
+        month, year, department,
+        ...(unitPrice != null ? { unitPrice } : {}),
+      },
     }).then(r),
 
   /** Mở lại Thưởng — nhân viên quay về "Đang tính thưởng". */
@@ -135,6 +158,53 @@ export const factoryPayrollApi = {
     api.get('/api/factory-payroll/office-bonus', {
       params: { month, year, department },
     }).then(r),
+
+  /**
+   * Preview hoa hồng — hoạt động cả khi CHƯA tính và SAU khi đã tính.
+   * Response shape:
+   *   {
+   *     month, year, department, departmentLabel,
+   *     totalMonthOrderRevenue, totalCollectedRevenue, totalHoldRevenue,
+   *     transactionCount,
+   *     commissionCalculated, commissionUnitPrice, lastCommissionUnitPrice,
+   *     totalBonusPool, computedAt, computedByName,
+   *     items: [{
+   *       userId, userFullName, roleLabel, roleSortOrder, weight,
+   *       totalMonthOrderRevenue, totalCollectedRevenue, totalHoldRevenue,
+   *       transactionCount, bonusAmount  // null = chưa tính
+   *     }]
+   *   }
+   */
+  officeBonusPreview: (month, year, department = 'SALES') =>
+    api.get('/api/factory-payroll/office-bonus-preview', {
+      params: { month, year, department },
+    }).then(r),
+
+  /** Đơn giá hoa hồng của tháng gần nhất — dùng làm placeholder ô input. */
+  lastCommissionUnitPrice: (month, year, department = 'SALES') =>
+    api.get('/api/factory-payroll/office-bonus/last-unit-price', {
+      params: { month, year, department },
+    }).then(r),
+
+  /**
+   * Backfill PaymentTransaction từ order_log — chạy 1 lần sau deploy.
+   * @param {object} opts
+   * @param {boolean} opts.dryRun  TRUE = chỉ đếm, không ghi (mặc định TRUE)
+   * @param {number} [opts.month]  month+year: chỉ backfill 1 tháng (giờ VN)
+   * @param {number} [opts.year]
+   * @param {number} [opts.fromMs] fromMs+toMs: tùy ý epoch ms
+   * @param {number} [opts.toMs]
+   */
+  backfillPaymentTransactions: (opts = {}) => {
+    const { dryRun = true, month, year, fromMs, toMs } = opts;
+    return api.post('/api/factory-payroll/payment-transactions/backfill', null, {
+      params: {
+        dryRun,
+        ...(month != null && year != null ? { month, year } : {}),
+        ...(fromMs != null && toMs != null ? { fromMs, toMs } : {}),
+      },
+    }).then(r);
+  },
 
 
   // ── 2 bảng OWNER xem sau khi Hoàn tất ─────────────────────────────────────

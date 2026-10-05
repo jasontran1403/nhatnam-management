@@ -63,6 +63,8 @@ import OwnerBatchReviewPage from '../pages/owner/OwnerBatchReviewPage';
 import HrPage from '../pages/hr/HrPage';
 import HrSalaryStatusPage from '../pages/hr/HrSalaryStatusPage';
 import PayrollPasscodeAdminPage from '../pages/hr/PayrollPasscodeAdminPage';
+import HolidayManagementPage from '../pages/hr/HolidayManagementPage';   // Phase 3
+import ChuyenCanPage from '../pages/owner/ChuyenCanPage';                 // Phase 6
 
 // Seller
 import SellerDashboardPage from '../pages/seller/SellerDashboardPage';
@@ -247,6 +249,8 @@ export default function AppRoutes() {
         <Route path="salaries" element={<HrSalaryStatusPage />} />
         {/* Mở khoá cho nhân viên nhập sai mật khẩu xem lương 3 lần */}
         <Route path="payroll-passcode" element={<PayrollPasscodeAdminPage />} />
+        {/* Phase 3 — Ngày lễ công ty */}
+        <Route path="holidays" element={<HolidayManagementPage />} />
       </Route>
 
       {/* ── SELLER */}
@@ -353,6 +357,8 @@ export default function AppRoutes() {
         <Route path="cameras" element={<CameraManagementPage />} />
         {/* Bảng chấm công — upload file Excel theo tháng */}
         <Route path="attendance" element={<AttendanceSheetsPage />} />
+        {/* Phase 6: Chuyên cần — matrix đi trễ/về sớm */}
+        <Route path="chuyen-can" element={<ChuyenCanPage />} />
         {/* Mở khoá xem lương */}
         <Route path="payroll-passcode" element={<PayrollPasscodeAdminPage />} />
 

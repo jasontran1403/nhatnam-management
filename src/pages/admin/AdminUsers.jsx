@@ -447,7 +447,14 @@ export default function AdminUsers() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium text-ink truncate">{u.fullName || u.username}</p>
-                            <p className="text-xs text-muted truncate">@{u.username}</p>
+                            <p className="text-xs text-muted truncate">
+                              @{u.username}
+                              {u.employeeCode && (
+                                <span className="ml-1.5 px-1.5 py-0.5 rounded-md bg-canvas text-ink font-semibold text-[10px]">
+                                  {u.employeeCode}
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -713,6 +720,8 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
     username: editing?.username || '',
     password: '',
     fullName: editing?.fullName || '',
+    // Phase 1 refactor: Mã nhân viên dùng để match file chấm công chung.
+    employeeCode: editing?.employeeCode || '',
     email: editing?.email || '',
     phoneNumber: editing?.phoneNumber || '',
     dateOfBirth: editing?.dateOfBirth ?? null,
@@ -818,9 +827,17 @@ function UserFormModal({ open, editing, onClose, onSaved, currentUserRole, t }) 
           </>
         )}
 
-        <Field label="Họ tên" required={!editing}>
-          <input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} className={inputCls} />
-        </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Họ tên" required={!editing}>
+            <input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} className={inputCls} />
+          </Field>
+          <Field label="Mã nhân viên"
+            hint="Dùng để khớp file chấm công chung của công ty. Nên dùng mã khớp với máy chấm công.">
+            <input value={form.employeeCode}
+              onChange={e => setForm({ ...form, employeeCode: e.target.value.trim() })}
+              placeholder="VD: NV001" className={inputCls} />
+          </Field>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Email">

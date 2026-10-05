@@ -1,10 +1,13 @@
 // src/pages/owner/OwnerEmployeesPage.jsx
-// Owner xem nhân sự: tab Nhân viên, Phiếu nghỉ, Phiếu OT, Duyệt lương, Duyệt phiếu lương
+// Owner xem nhân sự: tab Nhân viên, Phiếu nghỉ, Phiếu làm ở nhà (WFH),
+// Duyệt lương, Duyệt phiếu lương.
+// Phase 6b (10/2026): "Phiếu OT" đổi thành "Phiếu làm ở nhà" — xem TABS array.
 import { useLang } from '../../context/LangContext';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users, Calendar, Clock, DollarSign, Check, X, FileText,
   Search, ChevronDown, Calculator, Download, Eye, ListChecks,
+  Home,  // Phase 6b: icon tab "Phiếu làm ở nhà"
 } from 'lucide-react';
 import { adminUserApi } from '../../api/adminApi';
 import { hrSalaryApi, hrLeaveApi, hrOtApi, payrollApi } from '../../api/hrApi';
@@ -223,6 +226,10 @@ function LeavesTab() {
 }
 
 // ── OT Tab (read-only for owner) ──────────────────────────────────────────────
+// PHASE 6b (10/2026): tab "Phiếu OT" đã được thay bằng "Phiếu làm ở nhà" (WFH).
+// Component dưới đây không còn được render — giữ lại tạm để tiện so sánh/revert
+// nếu cần, có thể xoá hẳn ở phase sau.
+// eslint-disable-next-line no-unused-vars
 function OtTab() {
   const toast = useToast();
   const [rows, setRows] = useState([]);
@@ -863,7 +870,8 @@ const TABS = [
   { id: 'salary', label: 'Duyệt lương', icon: DollarSign },
   // { id: 'employees', label: 'Nhân viên', icon: Users },
   { id: 'leaves', label: 'Phiếu nghỉ', icon: Calendar },
-  { id: 'ot', label: 'Phiếu OT', icon: Clock },
+  // Phase 6b: thay "Phiếu OT" → "Phiếu làm ở nhà" (WFH). OT bị gỡ.
+  { id: 'wfh', label: 'Phiếu làm ở nhà', icon: Home },
   // { id: 'payroll', label: 'Duyệt phiếu lương', icon: Calculator },
 ];
 
@@ -881,8 +889,9 @@ export default function OwnerEmployeesPage() {
       <PageHeader icon={Users} title="Duyệt lương" subtitle="Quản lý & duyệt lương nhân viên" />
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {/* {tab === 'employees' && <EmployeesTab />} */}
-      {tab === 'leaves' && <EmployeeRequestsPanel />}
-      {tab === 'ot' && <OtTab />}
+      {/* Phase 6b: Phiếu nghỉ chỉ hiển thị LEAVE/BUSINESS_TRIP; WFH tách tab riêng. */}
+      {tab === 'leaves' && <EmployeeRequestsPanel typeFilter="LEAVE" />}
+      {tab === 'wfh' && <EmployeeRequestsPanel typeFilter="WORK_FROM_HOME" />}
       {tab === 'salary' && <SalaryApprovalTab />}
       {tab === 'breakdown' && <SalaryBreakdownTab />}
       {/* {tab === 'payroll' && <PayrollApprovalTab />} */}

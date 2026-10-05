@@ -85,13 +85,25 @@ export function PrimaryButton({ children, loading, className = '', ...rest }) {
   );
 }
 
-export function SecondaryButton({ children, className = '', ...rest }) {
+export function SecondaryButton({ children, className = '',
+                                   loading, size, ...rest }) {
+  // FIX (10/2026): swallow `loading` và `size` để không lọt xuống <button>
+  //   • React 19 cảnh báo "Received `false` for a non-boolean attribute
+  //     `loading`" khi loading={false} được truyền thẳng.
+  //   • `size="sm"` không hợp lệ với <button> (chỉ hợp lệ với <input>).
+  // Nhiều call-site cũ vẫn truyền 2 prop này; giờ render spinner khi
+  // loading=true (giống DangerButton) để chúng có hiệu ứng đúng kỳ vọng.
+  const sizeCls = size === 'sm'
+    ? 'px-3 py-1.5 text-xs'
+    : 'px-4 py-2.5 text-sm';
   return (
-    <button {...rest}
-      className={`inline-flex items-center justify-center gap-2 px-4 py-2.5
-        bg-surface text-ink text-sm font-semibold rounded-xl
+    <button {...rest} disabled={loading || rest.disabled}
+      className={`inline-flex items-center justify-center gap-2
+        bg-surface text-ink font-semibold rounded-xl
         border border-hairline-2 hover:bg-canvas active:bg-surface-2
-        transition-colors ${className}`}>
+        disabled:opacity-60 disabled:cursor-not-allowed
+        transition-colors ${sizeCls} ${className}`}>
+      {loading && <Loader2 size={size === 'sm' ? 12 : 14} className="animate-spin" />}
       {children}
     </button>
   );

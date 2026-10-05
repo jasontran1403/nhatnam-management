@@ -9,6 +9,7 @@ import {
   FileSpreadsheet, ClipboardCheck, Truck, Gauge,
   Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Wallet, Calculator, Building2,
   Boxes, Video, ShieldAlert, Gift,
+  CalendarDays,  // Phase 3 — nav Ngày lễ
 } from 'lucide-react';
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
@@ -54,6 +55,8 @@ export const ownerNavRaw = [
 export const hrNavRaw = [
   { to: '/hr/manage', labelKey: 'hr_manage', icon: UserCog },
   { to: '/hr/salaries', labelKey: 'salaries', icon: Receipt },
+  // Phase 3 — Ngày lễ công ty, ảnh hưởng tới chuẩn công và OT
+  { to: '/hr/holidays', labelKey: 'holidays', icon: CalendarDays },
   // Mở khoá cho nhân viên nhập sai mật khẩu xem lương 3 lần
   { to: '/hr/payroll-passcode', labelKey: 'payroll_passcode', icon: ShieldAlert },
   // Yêu cầu văn phòng phẩm — dùng chung route top-level cho mọi nhân viên

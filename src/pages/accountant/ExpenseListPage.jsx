@@ -10,7 +10,7 @@ import {
   Building2, Eye, TrendingDown, TrendingUp, Wallet,
   Landmark, ShieldCheck, Filter,
   Download, Upload, Loader2, AlertTriangle, FileSpreadsheet, ListChecks,
-  ArrowLeft, // Thêm icon ArrowLeft
+  ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ExpenseBulkActionModal, { canApproveVoucher } from '../../components/expense/ExpenseBulkActionModal';
@@ -34,6 +34,14 @@ function dayRange(date) {
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Mặc định: từ 01/01/2026 đến ngày hiện tại (vì đã có pagination)
+function getDefaultRange() {
+  const from = new Date(2026, 0, 1, 0, 0, 0, 0);
+  const now = new Date();
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  return { from: from.getTime(), to: to.getTime() };
 }
 
 function getStartOfMonth() {
@@ -77,7 +85,7 @@ const STATUS_CFG = {
   APPROVED: { label: 'Đã duyệt', cls: 'bg-green-100 dark:bg-green-500/18 text-green-700 dark:text-green-300', icon: CheckCircle },
   REJECTED: { label: 'Từ chối', cls: 'bg-red-100 dark:bg-red-500/18 text-red-600 dark:text-red-300', icon: XCircle },
 };
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 200;
 
 export default function ExpenseListPage() {
   const toast = useToast();
@@ -88,10 +96,11 @@ export default function ExpenseListPage() {
   const searchTextRef = useRef('');
   const fileInputRef = useRef(null);
 
-  const initialMonthRange = getCurrentMonthRange();
+  // Mặc định: 01/01/2026 → ngày hiện tại
+  const initialRange = getDefaultRange();
 
-  const [selectedDate, setSelectedDate] = useState(todayStr());
-  const [dateRange, setDateRange] = useState(initialMonthRange);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [dateRange, setDateRange] = useState(initialRange);
   const [searchText, setSearchText] = useState('');
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -140,7 +149,8 @@ export default function ExpenseListPage() {
       const userPickedRange = dateRange !== null;
       const ignoreDateForSearch = !!q && !userPickedRange;
 
-      const range = dateRange || getCurrentMonthRange();
+      // Mặc định: 01/01/2026 → nay
+      const range = dateRange || getDefaultRange();
 
       // ─── ĐIỀU CHỈNH TIMESTAMP CHO TIMEZONE ───────────────────────────────
       let from = ignoreDateForSearch ? undefined : range.from;
@@ -241,7 +251,7 @@ export default function ExpenseListPage() {
   };
 
   const handleExportReport = async () => {
-    const range = dateRange || getCurrentMonthRange();
+    const range = dateRange || getDefaultRange();
     setExporting(true);
     try {
       const res = await expenseApi.exportReport(range.from, range.to, exportPaymentType);
@@ -258,7 +268,7 @@ export default function ExpenseListPage() {
     }
   };
 
-  const currentRange = dateRange || getCurrentMonthRange();
+  const currentRange = dateRange || getDefaultRange();
 
   function formatExpenseDate(v) {
     if (!v) return '';
@@ -293,16 +303,13 @@ export default function ExpenseListPage() {
 
   // ─── Xử lý nút Back ──────────────────────────────────────────────────────
   const handleBack = () => {
-    // Nếu có state từ trang trước (ví dụ OwnerCashflowPage), quay lại đó
     if (location.state?.from) {
       navigate(location.state.from);
     } else {
-      // Nếu không, quay lại trang trước đó trong lịch sử
       navigate(-1);
     }
   };
 
-  // Hàm render pagination
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -325,7 +332,6 @@ export default function ExpenseListPage() {
       }
     }
 
-    // Nút Previous
     pages.push(
       <button
         key="prev"
@@ -337,7 +343,6 @@ export default function ExpenseListPage() {
       </button>
     );
 
-    // Nếu startPage > 0, hiển thị trang đầu và dấu ...
     if (startPage > 0) {
       pages.push(
         <button
@@ -357,7 +362,6 @@ export default function ExpenseListPage() {
       }
     }
 
-    // Các trang trong khoảng visible
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <button
@@ -371,7 +375,6 @@ export default function ExpenseListPage() {
       );
     }
 
-    // Nếu endPage < totalPages - 1, hiển thị dấu ... và trang cuối
     if (endPage < totalPages - 1) {
       if (endPage < totalPages - 2) {
         pages.push(
@@ -391,7 +394,6 @@ export default function ExpenseListPage() {
       );
     }
 
-    // Nút Next
     pages.push(
       <button
         key="next"
@@ -491,12 +493,16 @@ export default function ExpenseListPage() {
             from={currentRange.from}
             to={currentRange.to}
             onChange={handleDateRangeChange}
-            placeholder="Chọn ngày"
+            placeholder="01/01/2026 → nay"
             align="right"
           />
         </div>
         {dateRange && (
-          <button onClick={() => setDateRange(null)} className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0" title="Về hôm nay">
+          <button
+            onClick={() => setDateRange(getDefaultRange())}
+            className="p-2 rounded-xl border border-line text-muted hover:bg-canvas transition flex-shrink-0"
+            title="Về mặc định (01/01/2026 → nay)"
+          >
             <X size={14} />
           </button>
         )}
@@ -692,7 +698,7 @@ export default function ExpenseListPage() {
                   {' — '}
                   {formatDate(currentRange.to).split(' ').slice(1).join(' ')}
                 </p>
-                <p className="text-[10px] text-gold mt-1 italic">Theo bộ lọc ngày đang chọn (mặc định hôm nay)</p>
+                <p className="text-[10px] text-gold mt-1 italic">Theo bộ lọc ngày đang chọn</p>
               </div>
 
               <div>

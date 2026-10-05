@@ -7,4 +7,4 @@
 // Mọi màn hình danh sách phiếu thu/phiếu chi phải dùng chung hằng số này.
 
 /** Số phiếu thu / phiếu chi hiển thị trên 1 trang — DÙNG CHUNG cho MỌI role. */
-export const VOUCHER_PAGE_SIZE = 20;
+export const VOUCHER_PAGE_SIZE = 200;

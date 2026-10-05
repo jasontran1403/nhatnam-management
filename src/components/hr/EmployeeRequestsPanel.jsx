@@ -350,7 +350,12 @@ function DecideModal({ item, onClose, onDone }) {
  * @param userId  chỉ xét phiếu của MỘT nhân viên (mở từ nút "Duyệt nghỉ/OT"
  *                trên trang Nhân viên). Bỏ trống = toàn công ty như trước.
  */
-export default function EmployeeRequestsPanel({ userId = null }) {
+/**
+ * Phase 6b (10/2026): thêm prop {@code typeFilter} để tab "Phiếu nghỉ" và tab
+ * "Phiếu làm ở nhà" dùng chung component này nhưng lọc 2 loại khác nhau.
+ * Giá trị hợp lệ: 'LEAVE' | 'BUSINESS_TRIP' | 'WORK_FROM_HOME'. Null = tất cả.
+ */
+export default function EmployeeRequestsPanel({ userId = null, typeFilter = null }) {
   const toast = useToast();
 
   const [department, setDepartment] = useState('');
@@ -374,6 +379,7 @@ export default function EmployeeRequestsPanel({ userId = null }) {
         department: userId ? undefined : (department || undefined),
         status: status || undefined,
         userId: userId || undefined,
+        type: typeFilter || undefined,     // Phase 6b
         page, size: 20,
       });
       setItems(data?.content ?? []);
@@ -383,7 +389,7 @@ export default function EmployeeRequestsPanel({ userId = null }) {
     } finally {
       setLoading(false);
     }
-  }, [department, status, page, userId, toast]);
+  }, [department, status, page, userId, typeFilter, toast]);
 
   const loadSummary = useCallback(async () => {
     // Khi lọc theo một nhân viên, số liệu tổng của cả bộ phận gây hiểu nhầm —
@@ -399,7 +405,7 @@ export default function EmployeeRequestsPanel({ userId = null }) {
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
   // Đổi bộ lọc thì phải về trang 1, nếu không sẽ rơi vào trang trống.
-  useEffect(() => { setPage(0); }, [department, status, userId]);
+  useEffect(() => { setPage(0); }, [department, status, userId, typeFilter]);
 
   // Chế độ một nhân viên: badge đếm ngay trên danh sách đang có.
   useEffect(() => {
