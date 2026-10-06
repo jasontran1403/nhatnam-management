@@ -375,20 +375,32 @@ export default function MisaCatalogTab() {
     } catch { toast('Lỗi xoá', 'error'); }
   };
 
-  // ── Inline edit kg_per_unit ──
+  // ── Inline edit kg_per_unit / quy_cach ──
+  // editingId: { id, field } — field = "kg" hoặc "qc"
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
 
-  const startEdit = (item) => {
-    setEditingId(item.id);
-    setEditValue(item.kgPerUnit != null ? String(item.kgPerUnit) : '');
+  const startEdit = (item, field) => {
+    setEditingId({ id: item.id, field });
+    const cur = field === 'kg' ? item.kgPerUnit : item.quyCach;
+    setEditValue(cur != null ? String(cur) : '');
   };
   const saveEdit = async (item) => {
     try {
       const val = editValue.trim() === '' ? null : parseFloat(editValue);
-      await misaCatalogApi.update(item.id, { kgPerUnit: val, parseNote: val != null ? null : item.parseNote });
+      const field = editingId?.field;
+      const patch = field === 'kg'
+        ? { kgPerUnit: val, parseNote: val != null ? null : item.parseNote }
+        : { quyCach: val };
+      await misaCatalogApi.update(item.id, patch);
       setCatalog(prev => prev.map(c => c.id === item.id
-        ? { ...c, kgPerUnit: val, parseNote: val != null ? null : c.parseNote } : c));
+        ? {
+            ...c,
+            ...(field === 'kg'
+              ? { kgPerUnit: val, parseNote: val != null ? null : c.parseNote }
+              : { quyCach: val }),
+          }
+        : c));
       toast('Đã cập nhật', 'success');
     } catch { toast('Lỗi', 'error'); }
     setEditingId(null);
@@ -629,7 +641,8 @@ export default function MisaCatalogTab() {
                     <th className="px-3 py-2 text-left font-semibold text-muted border-b border-line">Mã hàng</th>
                     <th className="px-3 py-2 text-left font-semibold text-muted border-b border-line">Tên sản phẩm</th>
                     <th className="px-3 py-2 text-left font-semibold text-muted border-b border-line">ĐVT gốc</th>
-                    <th className="px-3 py-2 text-right font-semibold text-muted border-b border-line">Quy cách (kg)</th>
+                    <th className="px-3 py-2 text-right font-semibold text-muted border-b border-line" title="KG của 1 đơn vị nhỏ (hộp/túi/chai/kg...)">kg / đơn vị</th>
+                    <th className="px-3 py-2 text-right font-semibold text-muted border-b border-line" title="Số đơn vị nhỏ trong 1 thùng">Quy cách (/thùng)</th>
                     <th className="px-3 py-2 text-left font-semibold text-muted border-b border-line">Mã hàng MISA</th>
                     <th className="px-3 py-2 text-left font-semibold text-muted border-b border-line">Tên hàng MISA</th>
                     <th className="px-3 py-2 text-left font-semibold text-muted border-b border-line">Ghi chú</th>
@@ -644,7 +657,7 @@ export default function MisaCatalogTab() {
                       <td className="px-3 py-2 max-w-[220px] truncate font-medium">{c.productName}</td>
                       <td className="px-3 py-2">{c.originalUnit}</td>
                       <td className="px-3 py-2 text-right">
-                        {editingId === c.id ? (
+                        {editingId?.id === c.id && editingId?.field === 'kg' ? (
                           <span className="inline-flex items-center gap-1">
                             <input value={editValue} onChange={e => setEditValue(e.target.value)}
                               className="w-20 px-2 py-1 text-xs text-right border border-gold rounded-lg outline-none"
@@ -657,9 +670,31 @@ export default function MisaCatalogTab() {
                             </button>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 cursor-pointer group" onClick={() => startEdit(c)}>
+                          <span className="inline-flex items-center gap-1 cursor-pointer group" onClick={() => startEdit(c, 'kg')}>
                             <span className={`tabular-nums font-medium ${c.kgPerUnit != null ? 'text-ink' : 'text-amber-600'}`}>
                               {c.kgPerUnit != null ? fmt(c.kgPerUnit) : '—'}
+                            </span>
+                            <Edit2 size={10} className="opacity-0 group-hover:opacity-60 text-muted" />
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {editingId?.id === c.id && editingId?.field === 'qc' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <input value={editValue} onChange={e => setEditValue(e.target.value)}
+                              className="w-20 px-2 py-1 text-xs text-right border border-gold rounded-lg outline-none"
+                              autoFocus onKeyDown={e => e.key === 'Enter' && saveEdit(c)} />
+                            <button onClick={() => saveEdit(c)} className="p-0.5 text-green-600 hover:bg-green-50 rounded">
+                              <Check size={12} />
+                            </button>
+                            <button onClick={() => setEditingId(null)} className="p-0.5 text-muted hover:bg-surface-2 rounded">
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 cursor-pointer group" onClick={() => startEdit(c, 'qc')}>
+                            <span className={`tabular-nums font-medium ${c.quyCach != null ? 'text-ink' : 'text-muted'}`}>
+                              {c.quyCach != null ? fmt(c.quyCach) : '—'}
                             </span>
                             <Edit2 size={10} className="opacity-0 group-hover:opacity-60 text-muted" />
                           </span>
