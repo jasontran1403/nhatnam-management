@@ -457,13 +457,8 @@ export default function ExpenseListPage() {
           {importing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
           {importing ? 'Đang nhập...' : 'Tạo từ file Excel'}
         </button>
-        <button
-          onClick={() => setShowExport(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line bg-surface text-sm font-semibold text-ink hover:bg-canvas transition"
-        >
-          <FileSpreadsheet size={15} className="text-gold" />
-          Export báo cáo
-        </button>
+        {/* Nút "Export báo cáo" của phiếu chi đã được gỡ — báo cáo gộp Thu/Chi
+            nằm tại trang Dòng tiền (OwnerCashflowPage). */}
         <input
           ref={fileInputRef}
           type="file"

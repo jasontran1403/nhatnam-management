@@ -103,7 +103,10 @@ export default function OwnerOfficeSupplyManagePage() {
                 {rows.map(row => {
                   const days = daysSince(row.lastOrderedAt);
                   return (
-                    <tr key={row.supplyItemId} className="hover:bg-canvas/50">
+                    <tr key={row.supplyItemId}
+                        onClick={() => navigate(`/owner/office-supply/items/${row.supplyItemId}/price-history`)}
+                        className="hover:bg-canvas cursor-pointer"
+                        title="Click để xem biến động giá">
                       <td className="px-4 py-2.5 font-medium text-ink">
                         {row.name}
                         {row.specification && (

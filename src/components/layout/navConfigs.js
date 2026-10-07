@@ -297,6 +297,14 @@ export const driverNav = driverNavRaw.map(({ to, labelKey, icon }) => ({ to, lab
 export const securityNav = securityNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 export const factoryPayrollNav = factoryPayrollNavRaw.map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
 
+// Nav của role Thu mua — CHỈ 1 entry duy nhất là trang Danh sách yêu cầu VPP.
+// Không thấy menu nào khác trong hệ thống.
+export const purchasingNavRaw = [
+  { to: '/purchasing/office-supply/requests', labelKey: 'office_supply_requests', icon: Archive },
+];
+export const purchasingNav = purchasingNavRaw
+  .map(({ to, labelKey, icon }) => ({ to, label: labelKey, icon }));
+
 // Default path cho từng role
 export const ROLE_DEFAULT_PATH = {
   ADMIN: '/admin/dashboard',
@@ -319,4 +327,5 @@ export const ROLE_DEFAULT_PATH = {
   FACTORY_SECURITY:          '/my-payroll',
   FACTORY_PRODUCTION_WORKER: '/my-payroll',
   FACTORY_MANAGER:           '/my-payroll',
+  PURCHASING:                '/purchasing/office-supply/requests',
 };

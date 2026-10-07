@@ -417,6 +417,13 @@ export const cashflowApi = {
   confirm: (data) => api.post('/api/cashflow/confirm', data),
   report: (from, to) =>
     api.get('/api/cashflow/report', { params: { from, to }, responseType: 'blob' }),
+  /**
+   * Báo cáo GỘP phiếu thu + phiếu chi (Excel) — sắp xếp theo thời gian tạo.
+   * paymentType: 'ALL' | 'CASH' | 'BANK_TRANSFER' (undefined → ALL).
+   */
+  reportExcel: (from, to, paymentType) =>
+    api.get('/api/cashflow/report-excel',
+      { params: { from, to, paymentType }, responseType: 'blob' }),
 };
 
 // ─── KPI ─────────────────────────────────────────────────────────────────────

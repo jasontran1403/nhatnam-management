@@ -8,8 +8,8 @@
 // Các nút hành động:
 //   - Quản lý          → OwnerOfficeSupplyManagePage (thống kê + Danh sách VPP)
 //   - In phiếu đặt hàng → tải PDF (BE render bằng iText7, dùng font DejaVu)
-//   - Đặt hàng         → ConfirmModal xác nhận, sau đó clear toàn bộ phiếu +
-//                        tạo OfficeSupplyOrder snapshot
+//   - Đặt hàng         → OfficeSupplyPricingModal (nhập giá + phí) rồi mới
+//                        tạo OfficeSupplyOrder snapshot + clear toàn bộ phiếu
 //
 // KHÔNG có warehouse selector: sau refactor chỉ còn "Kho Trung tâm".
 import { useState, useEffect, useCallback } from 'react';
@@ -24,13 +24,18 @@ import {
 import { downloadBlob } from '../../api/services';
 import { useToast } from '../../components/common/Toast';
 import { BackButton } from '../../components/common/SubPageNav';
-import ConfirmModal from '../../components/common/ConfirmModal';
+import OfficeSupplyPricingModal from './OfficeSupplyPricingModal';
 import {
   PageHeader, SectionCard, PrimaryButton, SecondaryButton,
   LoadingSpinner, EmptyState,
 } from '../../components/ui';
 
-export default function OwnerOfficeSupplyRequestListPage() {
+/**
+ * @param {object} props
+ * @param {boolean} [props.compact] - true cho role PURCHASING: ẩn nút "Quản lý",
+ *   phần "Chi tiết theo nhân viên", chỉ còn Tổng hợp + In phiếu + Đặt hàng.
+ */
+export default function OwnerOfficeSupplyRequestListPage({ compact = false }) {
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -40,7 +45,7 @@ export default function OwnerOfficeSupplyRequestListPage() {
   const [placing, setPlacing] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
-  const [confirmPlace, setConfirmPlace] = useState(false); // modal xác nhận đặt
+  const [confirmPlace, setConfirmPlace] = useState(false); // modal nhập giá & xác nhận đặt
 
   // Resolve kho Trung tâm 1 lần
   useEffect(() => {
@@ -61,15 +66,15 @@ export default function OwnerOfficeSupplyRequestListPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const placeOrder = async () => {
+  const placeOrder = async (payload) => {
     setPlacing(true);
     try {
-      await officeSupplyApi.placeOrder(warehouseId);
+      await officeSupplyApi.placeOrder(warehouseId, payload);
       toast('Đã đặt hàng. Phiếu yêu cầu đã reset về 0.', 'success');
+      setConfirmPlace(false);
       await load();
     } catch (e) {
       toast(e?.response?.data?.message || 'Không đặt được', 'error');
-      throw e; // ConfirmModal đóng, toast lỗi đã hiện xong
     } finally { setPlacing(false); }
   };
 
@@ -131,9 +136,11 @@ export default function OwnerOfficeSupplyRequestListPage() {
           : 'Chưa có phiếu yêu cầu nào'}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <SecondaryButton onClick={() => navigate('/owner/office-supply/manage')}>
-              <Settings2 size={15} /> Quản lý
-            </SecondaryButton>
+            {!compact && (
+              <SecondaryButton onClick={() => navigate('/owner/office-supply/manage')}>
+                <Settings2 size={15} /> Quản lý
+              </SecondaryButton>
+            )}
             <SecondaryButton onClick={downloadPdf}
               disabled={empCount === 0 || printing}>
               <Printer size={15} />
@@ -198,7 +205,8 @@ export default function OwnerOfficeSupplyRequestListPage() {
             </div>
           </SectionCard>
 
-          {/* Chi tiết theo nhân viên — thu gọn mặc định */}
+          {/* Chi tiết theo nhân viên — ẩn hoàn toàn với role PURCHASING */}
+          {!compact && (
           <SectionCard>
             <button
               onClick={() => setDetailOpen(o => !o)}
@@ -275,21 +283,19 @@ export default function OwnerOfficeSupplyRequestListPage() {
               </div>
             )}
           </SectionCard>
+          )}
         </>
       )}
 
-      {/* Modal xác nhận đặt hàng — thay window.confirm() */}
+      {/* Modal nhập giá + xác nhận đặt hàng. Sau khi lưu, toàn bộ phiếu yêu
+          cầu sẽ reset về 0. Giá nhập ở đây được BE phân bổ phí theo tỉ trọng
+          và lưu đơn giá theo đơn vị tính nhỏ nhất. */}
       {confirmPlace && (
-        <ConfirmModal
-          title="Xác nhận đặt hàng?"
-          message={
-            "Sau khi đặt, toàn bộ phiếu yêu cầu của nhân viên sẽ bị RESET về 0.\n"
-            + "Bạn nên bấm \"In phiếu đặt hàng\" trước để có bản PDF lưu lại."
-          }
-          confirmLabel="Đặt hàng"
-          variant="primary"
+        <OfficeSupplyPricingModal
+          summaryRows={summaryRows}
+          submitting={placing}
+          onCancel={() => setConfirmPlace(false)}
           onConfirm={placeOrder}
-          onClose={() => setConfirmPlace(false)}
         />
       )}
     </div>

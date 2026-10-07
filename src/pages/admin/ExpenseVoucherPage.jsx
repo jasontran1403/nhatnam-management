@@ -597,16 +597,16 @@ export default function ExpenseVoucherPage() {
           from={dateRange.from} to={dateRange.to}
           onChange={r => { setDateRange(r); setPage(0); }}
           placeholder="Lọc theo ngày" />
-        <select value={statusFilter}
+        {/* <select value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(0); }}
           className="border border-line rounded-xl px-3 py-2 text-xs bg-surface focus:outline-none focus:border-gold">
           <option value="">Tất cả trạng thái</option>
           <option value="PENDING">Chờ duyệt</option>
           <option value="APPROVED">Đã duyệt</option>
           <option value="REJECTED">Từ chối</option>
-        </select>
+        </select> */}
         {/* FIX #3: Import / Export Phiếu chi */}
-        <div className="flex items-center gap-2 ml-auto">
+        {/* <div className="flex items-center gap-2 ml-auto">
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold cursor-pointer transition-all">
             <Upload size={13} /> Import
             <input type="file" accept=".xlsx,.csv" className="hidden" onChange={e => {
@@ -617,7 +617,7 @@ export default function ExpenseVoucherPage() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs text-ink-2 hover:border-gold transition-all">
             <Download size={13} /> Export
           </button>
-        </div>
+        </div> */}
       </div>
 
       {loading ? (

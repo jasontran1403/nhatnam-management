@@ -31,9 +31,19 @@ export const officeSupplyApi = {
   summary: (warehouseId) =>
     api.get('/api/office-supply/admin/summary', { params: { warehouseId } }).then(r),
 
-  /** OWNER bấm "Đặt hàng" — tạo đơn + clear toàn bộ request của văn phòng đó. */
-  placeOrder: (warehouseId) =>
-    api.post('/api/office-supply/admin/place-order', null, { params: { warehouseId } }).then(r),
+  /**
+   * OWNER bấm "Đặt hàng" — tạo đơn + clear toàn bộ request của văn phòng đó.
+   *
+   * body = { items: [{ supplyItemId, lineAmount }], fees: [{ name, amount }] }
+   * BE sẽ phân bổ phí theo tỉ trọng và lưu đơn giá theo đơn vị tính nhỏ nhất.
+   */
+  placeOrder: (warehouseId, body) =>
+    api.post('/api/office-supply/admin/place-order', body, { params: { warehouseId } }).then(r),
+
+  /** Lịch sử giá của 1 vật dụng ở 1 văn phòng — dữ liệu cho chart biến động giá. */
+  priceHistory: (itemId, warehouseId) =>
+    api.get(`/api/office-supply/admin/items/${itemId}/price-history`,
+      { params: { warehouseId } }).then(r),
 
   // ── Lịch sử đặt hàng ─────────────────────────────────────────────────────
   /** Lịch sử đặt hàng của 1 văn phòng — mới nhất trước. */

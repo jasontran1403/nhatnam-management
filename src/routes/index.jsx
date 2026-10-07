@@ -10,6 +10,7 @@ import {
   superWarehouseNavRaw, accountantNavRaw, superAccountantNavRaw,
   operatorNavRaw, factoryWorkerNavRaw, superFactoryWorkerNavRaw, factoryAccountantNavRaw,
   driverNavRaw, securityNavRaw, factoryPayrollNavRaw, factoryStaffNavRaw,
+  purchasingNavRaw,
   buildNav, ROLE_DEFAULT_PATH,
 } from '../components/layout/navConfigs';
 
@@ -126,6 +127,7 @@ import OwnerOfficeSupplyRequestListPage from '../pages/owner/OwnerOfficeSupplyRe
 import OwnerOfficeSupplyManagePage from '../pages/owner/OwnerOfficeSupplyManagePage';
 import OwnerOfficeSupplyItemsPage from '../pages/owner/OwnerOfficeSupplyItemsPage';
 import OwnerOfficeSupplyPrintPage from '../pages/owner/OwnerOfficeSupplyPrintPage';
+import OwnerSupplyPriceHistoryPage from '../pages/owner/OwnerSupplyPriceHistoryPage';
 // ── Feature 2: Quản lý phép (Owner) — thay cho nút "Xuất ngày phép" cũ ────
 import OwnerLeaveManagementPage from '../pages/owner/OwnerLeaveManagementPage';
 import PricingCalculatorPage from '../pages/super_accountant/PricingCalculatorPage';
@@ -213,6 +215,7 @@ const ROLE_NAV_MAP = {
   FACTORY_SECURITY:          factoryPayrollNavRaw,
   FACTORY_PRODUCTION_WORKER: factoryPayrollNavRaw,
   FACTORY_MANAGER:           factoryPayrollNavRaw,
+  PURCHASING:                purchasingNavRaw,
 };
 
 function DynamicNavLayout({ allowedRoles, children, ...rest }) {
@@ -385,6 +388,9 @@ export default function AppRoutes() {
         <Route path="office-supply/manage"   element={<OwnerOfficeSupplyManagePage />} />
         <Route path="office-supply/items"    element={<OwnerOfficeSupplyItemsPage />} />
         <Route path="office-supply/print"    element={<OwnerOfficeSupplyPrintPage />} />
+        {/* Trang biến động giá — mở từ bảng Quản lý VPP khi click vào 1 vật dụng. */}
+        <Route path="office-supply/items/:itemId/price-history"
+               element={<OwnerSupplyPriceHistoryPage />} />
 
         {/* ── Feature 2: Quản lý phép ─────────────────────────────────── */}
         <Route path="leave-management" element={<OwnerLeaveManagementPage />} />
@@ -652,6 +658,19 @@ export default function AppRoutes() {
         <Route path="semi-finished-goods" element={<FactorySemiFinishedGoodsPage />} />
         <Route path="my-payroll" element={<MyPayrollPage />} />
         <Route path="my-requests" element={<MyRequestsPage />} />
+      </Route>
+
+      {/* ── THU MUA (PURCHASING) ──
+          Role duy nhất chỉ có 1 trang: "Danh sách yêu cầu VPP" bản rút gọn.
+          Reuse OwnerOfficeSupplyRequestListPage với prop compact=true để ẩn
+          nút "Quản lý" và phần "Chi tiết theo nhân viên". */}
+      <Route path="/purchasing"
+        element={<TranslatedLayout
+          rawNav={purchasingNavRaw}
+          allowedRoles={['PURCHASING']} />}>
+        <Route index element={<Navigate to="/purchasing/office-supply/requests" replace />} />
+        <Route path="office-supply/requests"
+               element={<OwnerOfficeSupplyRequestListPage compact />} />
       </Route>
 
       {/* ── QUẢN LÝ LƯƠNG — bảo vệ + các role xưởng MỚI ──

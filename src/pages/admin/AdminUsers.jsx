@@ -56,6 +56,7 @@ const getRoleConfig = (t) => [
   { value: 'FACTORY_PRODUCTION_WORKER', label: 'Nhân viên sản xuất' },
   { value: 'FACTORY_STAFF', label: 'Trợ lý kho (xưởng)' },
   { value: 'FACTORY_SECURITY', label: 'Bảo vệ xưởng' },
+  { value: 'PURCHASING', label: 'Thu mua' },
 ];
 
 const CONFLICT_GROUPS = [

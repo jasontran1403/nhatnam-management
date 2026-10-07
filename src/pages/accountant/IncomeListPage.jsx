@@ -260,13 +260,8 @@ export default function IncomeListPage({ adminMode = false }) {
             <X size={14} />
           </button>
         )}
-        <button
-          onClick={() => setShowExport(true)}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-line text-xs font-medium text-ink-2 hover:border-gold hover:text-gold transition-all"
-          title="Xuất báo cáo"
-        >
-          <Download size={13} /> Export
-        </button>
+        {/* Nút Export của phiếu thu đã được gỡ — báo cáo gộp Thu/Chi nằm tại
+            trang Dòng tiền (OwnerCashflowPage). */}
       </div>
 
       {loading ? (

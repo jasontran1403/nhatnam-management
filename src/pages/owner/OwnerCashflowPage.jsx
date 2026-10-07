@@ -7,7 +7,7 @@ import { presetToRange } from '../../components/ui/DateRangePicker';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import {
   Activity, Wallet, Landmark, TrendingUp, TrendingDown, ChevronDown, ChevronUp,
-  CheckCircle, AlertTriangle, FileDown, ShieldCheck, X, Plus, RefreshCw
+  CheckCircle, AlertTriangle, FileDown, FileSpreadsheet, ShieldCheck, X, Plus, RefreshCw
 } from 'lucide-react';
 import { BackButton, SubPageButtons } from '../../components/common/SubPageNav';
 import { useLang } from '../../context/LangContext';
@@ -52,6 +52,9 @@ export default function OwnerCashflowPage() {
   const [showCloseBanks, setShowCloseBanks] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Excel GỘP (phiếu thu + phiếu chi, sort theo thời gian tạo, có đầu/cuối kỳ).
+  const [downloadingXlsx, setDownloadingXlsx] = useState(false);
+  const [showXlsxModal, setShowXlsxModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +83,29 @@ export default function OwnerCashflowPage() {
     finally { setDownloading(false); }
   };
 
+  // Excel GỘP phiếu thu + phiếu chi — sort theo thời gian tạo phiếu, có dòng
+  // "Số dư đầu kỳ" (0 nếu chưa chốt) và "Số dư cuối kỳ" (= đầu kỳ + tổng thu −
+  // tổng chi). Cột "Số phiếu" gắn tiền tố "Phiếu Thu - …" / "Phiếu chi - …".
+  // paymentType: 'ALL' | 'CASH' | 'BANK_TRANSFER'.
+  const downloadReportExcel = async (paymentType = 'ALL') => {
+    setDownloadingXlsx(true);
+    try {
+      const res = await cashflowApi.reportExcel(range.from, range.to, paymentType);
+      const url = window.URL.createObjectURL(new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }));
+      const suffix = paymentType === 'CASH' ? '-tien-mat'
+        : paymentType === 'BANK_TRANSFER' ? '-chuyen-khoan' : '';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bao-cao-dong-tien${suffix}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+      setShowXlsxModal(false);
+    } catch { toast(t('production', 'cash_toast_report_failed'), 'error'); }
+    finally { setDownloadingXlsx(false); }
+  };
+
   const opening = data?.opening;
   const closing = data?.closing;
   const incomeTotal = (Number(data?.incomeCashTotal) || 0) + (Number(data?.incomeBankTotal) || 0);
@@ -98,6 +124,14 @@ export default function OwnerCashflowPage() {
             title={t('production', 'cash_btn_report')}>
             <FileDown size={16} className="text-gold" />
             <span className="hidden sm:inline">{downloading ? t('production', 'cash_generating') : t('production', 'cash_btn_report')}</span>
+          </button>
+          {/* Báo cáo GỘP (Excel) — phiếu thu + phiếu chi trong 1 file,
+              sắp xếp theo thời gian tạo, có dòng đầu/cuối kỳ. */}
+          <button onClick={() => setShowXlsxModal(true)} disabled={downloadingXlsx}
+            className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-surface border border-line text-ink text-sm font-semibold hover:border-gold transition disabled:opacity-50"
+            title="Xuất Excel gộp phiếu thu + phiếu chi">
+            <FileSpreadsheet size={16} className="text-emerald-600 dark:text-emerald-300" />
+            <span className="hidden sm:inline">{downloadingXlsx ? 'Đang xuất...' : 'Export Thu/Chi'}</span>
           </button>
           <button onClick={() => setShowConfirm(true)}
             className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong transition"
@@ -202,6 +236,77 @@ export default function OwnerCashflowPage() {
       )}
 
       {showConfirm && <ConfirmModal onClose={() => setShowConfirm(false)} onDone={() => { setShowConfirm(false); load(); }} />}
+
+      {showXlsxModal && (
+        <ExportXlsxModal
+          downloading={downloadingXlsx}
+          onClose={() => setShowXlsxModal(false)}
+          onConfirm={downloadReportExcel}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Modal chọn hình thức thanh toán cho báo cáo Excel gộp Thu/Chi ──────────────
+function ExportXlsxModal({ downloading, onClose, onConfirm }) {
+  const [paymentType, setPaymentType] = useState('ALL');
+  const OPTIONS = [
+    { key: 'CASH',          label: 'Tiền mặt',    desc: 'Chỉ các phiếu TM' },
+    { key: 'BANK_TRANSFER', label: 'Chuyển khoản', desc: 'Chỉ các phiếu CK' },
+    { key: 'ALL',           label: 'Cả 2',        desc: 'Tiền mặt + chuyển khoản' },
+  ];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+              <FileSpreadsheet size={16} className="text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-sm">Xuất báo cáo dòng tiền</h3>
+              <p className="text-white/70 text-[10px]">Excel · gộp phiếu thu + phiếu chi</p>
+            </div>
+          </div>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Phương thức thanh toán</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {OPTIONS.map(opt => (
+              <button key={opt.key} onClick={() => setPaymentType(opt.key)}
+                className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                  paymentType === opt.key
+                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-surface text-ink-2 border-line hover:bg-surface-2'
+                }`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted italic">
+            {OPTIONS.find(o => o.key === paymentType)?.desc}
+          </p>
+        </div>
+
+        <div className="flex gap-2 px-5 pb-5">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-line text-sm text-ink-2 hover:bg-surface-2 font-medium">
+            Hủy
+          </button>
+          <button onClick={() => onConfirm(paymentType)} disabled={downloading}
+            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 flex items-center justify-center gap-2">
+            {downloading
+              ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
+              : <><FileSpreadsheet size={14} /> Xuất Excel</>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

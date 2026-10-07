@@ -25,6 +25,7 @@ function getRoleLabel(role, t) {
     SUPER_FACTORY_WORKER: 'bg-cyan-200 dark:bg-cyan-500/28 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-500/35',
     FACTORY_ACCOUNTANT: 'bg-teal-100 dark:bg-teal-500/18 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-500/28',
     HR:               'bg-pink-100 dark:bg-pink-500/18 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-500/28',
+    PURCHASING:       'bg-amber-100 dark:bg-amber-500/18 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/28',
   };
   return {
     label: t('roles', role.toLowerCase()) || role,
@@ -46,6 +47,7 @@ function getRedirectPath(role) {
     case 'SUPER_FACTORY_WORKER': return '/super-factory/production';
     case 'FACTORY_ACCOUNTANT': return '/factory-accountant/transfers';
     case 'HR':               return '/hr/manage';
+    case 'PURCHASING':       return '/purchasing/office-supply/requests';
     default:                 return '/seller/dashboard';
   }
 }
