@@ -405,6 +405,10 @@ export default function IncomeListPage({ adminMode = false }) {
 function IncomeCard({ v, onClick }) {
   const isBankTransfer = v.paymentType === 'BANK_TRANSFER';
   const hasOverpay = v.overpay && v.overpay.amount > 0 && !v.overpay.refundVoucherCode;
+  // Số doanh thu thực (đã trừ phần đã cấn trừ sang phiếu con). Fallback về
+  // totalAmount cho phiếu cũ chưa có field.
+  const effective = v.effectiveTotalAmount != null ? v.effectiveTotalAmount : v.totalAmount;
+  const offsetUsed = Number(v.offsetUsedAmount) || 0;
   return (
     <div onClick={onClick} className={`bg-surface rounded-2xl border shadow-sm p-4 hover:shadow-md transition cursor-pointer ${hasOverpay ? 'border-orange-300 dark:border-orange-500/40 hover:border-orange-400' : 'border-hairline hover:border-gold/40'}`}>
       {/* Row 1: mã + badge + tiền */}
@@ -419,8 +423,20 @@ function IncomeCard({ v, onClick }) {
               Thu dư {new Intl.NumberFormat('vi-VN').format(v.overpay.amount)} đ
             </span>
           )}
+          {offsetUsed > 0 && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/28">
+              Đã cấn trừ {new Intl.NumberFormat('vi-VN').format(offsetUsed)} đ
+            </span>
+          )}
         </div>
-        <p className="font-bold text-ink text-sm">{new Intl.NumberFormat('vi-VN').format(v.totalAmount || 0)} đ</p>
+        <div className="text-right">
+          <p className="font-bold text-ink text-sm">{new Intl.NumberFormat('vi-VN').format(effective || 0)} đ</p>
+          {offsetUsed > 0 && (
+            <p className="text-[10px] text-muted line-through">
+              {new Intl.NumberFormat('vi-VN').format(v.totalAmount || 0)} đ
+            </p>
+          )}
+        </div>
       </div>
       {/* Row 2: lý do */}
       <p className="text-sm font-semibold text-ink truncate mb-1.5">{v.reason}</p>

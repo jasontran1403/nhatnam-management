@@ -377,6 +377,11 @@ export const incomeApi = {
     api.get('/api/income-vouchers/employee-suggestions', { params: { q } }),
   create: (data) => api.post('/api/income-vouchers', data),
   update: (id, data) => api.put(`/api/income-vouchers/${id}`, data),
+  /**
+   * Cấn trừ phần dư của phiếu thu nguồn sang 1 đơn CÙNG KHÁCH.
+   * body: { targetOrderCode, handling: 'FULL'|'PARTIAL', amount, receiptNumber }
+   */
+  offset: (id, data) => api.post(`/api/income-vouchers/${id}/offset`, data),
   getLogs: (id) => api.get(`/api/income-vouchers/${id}/logs`),
   listMy: (params) => api.get('/api/income-vouchers/my', { params }),
   listAll: (params) => api.get('/api/income-vouchers', { params }),

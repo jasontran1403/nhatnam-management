@@ -5,12 +5,13 @@ import { useState, useEffect } from 'react';
 import {
   X, TrendingUp, User, Clock, CheckCircle, XCircle,
   Wallet, Landmark, Pencil, ShieldCheck, AlertCircle, FileDown,
-  Building2,
+  Building2, RefreshCw, Link2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/Toast';
 import { incomeApi, expenseApi } from '../../api/services';
 import { formatVND } from '../../utils/format.js';
+import OffsetOverpayModal from './OffsetOverpayModal';
 
 function formatDate(ms) {
   if (!ms) return '';
@@ -73,6 +74,7 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
   const [refundBankName, setRefundBankName] = useState('');
   const [refundBankAccount, setRefundBankAccount] = useState('');
   const [refundBankHolder, setRefundBankHolder] = useState('');
+  const [offsetOpen, setOffsetOpen] = useState(false);
 
   const downloadPdf = async () => {
     setDownloading(true);
@@ -213,10 +215,27 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
             </div>
           )}
 
-          {/* Tổng cộng */}
-          <div className="flex justify-between items-center bg-canvas rounded-xl px-4 py-3">
-            <span className="text-sm font-semibold text-muted">Tổng cộng</span>
-            <span className="text-base font-bold text-gold">{formatVND(v.totalAmount)}</span>
+          {/* Tổng cộng — hiển thị effective (đã trừ phần cấn trừ). Nếu có cấn
+              trừ, show thêm 1 dòng chi tiết. */}
+          <div className="bg-canvas rounded-xl px-4 py-3 space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted">Tổng khoản thu</span>
+              <span className="text-sm font-semibold text-ink">{formatVND(v.totalAmount)}</span>
+            </div>
+            {Number(v.offsetUsedAmount) > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted">− Đã cấn trừ</span>
+                <span className="text-sm font-semibold text-sky-700 dark:text-sky-300">
+                  − {formatVND(v.offsetUsedAmount)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-1 border-t border-hairline">
+              <span className="text-sm font-semibold text-muted">Doanh thu thực</span>
+              <span className="text-base font-bold text-gold">
+                {formatVND(v.effectiveTotalAmount != null ? v.effectiveTotalAmount : v.totalAmount)}
+              </span>
+            </div>
           </div>
 
           {/* Lần sửa gần nhất */}
@@ -240,7 +259,48 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
             </div>
           )}
 
-          {/* ── Khối THU DƯ — tạo phiếu chi hoàn ──
+          {/* ── Khối THU DƯ: hiển thị thông tin + nút CẤN TRỪ ──
+              Chỉ hiện khi phiếu còn phần dư. Owner cấn trừ phần dư này sang 1
+              đơn khác CÙNG KHÁCH, BE tạo 1 phiếu thu mới gắn vào đơn đó. */}
+          {hasOverpay && (
+            <div className="border rounded-xl p-4 bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/28">
+              <p className="text-xs font-semibold uppercase mb-1 text-orange-700 dark:text-orange-300">
+                Phần dư của phiếu thu
+              </p>
+              <p className="text-sm text-ink">
+                Còn lại <span className="font-bold text-orange-700 dark:text-orange-300">{formatVND(v.overpay.amount)}</span>
+                {v.overpay.customerName ? <> của <span className="font-semibold">{v.overpay.customerName}</span></> : null}
+                . Có thể cấn trừ sang 1 đơn khác cùng khách.
+              </p>
+              {v.offsetUsedAmount > 0 && (
+                <p className="text-xs text-muted mt-1">
+                  Đã cấn trừ: <span className="font-semibold text-ink">{formatVND(v.offsetUsedAmount)}</span>
+                </p>
+              )}
+              {canEdit && (
+                <button
+                  onClick={() => setOffsetOpen(true)}
+                  className="mt-3 w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2">
+                  <RefreshCw size={14} /> Cấn trừ sang đơn khác
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Phiếu NÀY được tạo từ cấn trừ phiếu khác → hiện link về nguồn. */}
+          {v.offsetSourceVoucherId && (
+            <div className="rounded-xl p-3 bg-sky-50 dark:bg-sky-500/10 border border-sky-100 dark:border-sky-500/28 flex items-start gap-2">
+              <Link2 size={14} className="text-sky-600 dark:text-sky-300 mt-0.5" />
+              <p className="text-xs text-sky-700 dark:text-sky-300">
+                Phiếu thu này được <b>cấn trừ</b> từ phần dư của phiếu
+                {v.offsetSourceReceiptNumber
+                  ? <> số <span className="font-mono font-bold">{v.offsetSourceReceiptNumber}</span></>
+                  : <> #{v.offsetSourceVoucherId}</>}.
+              </p>
+            </div>
+          )}
+
+          {/* ── (ĐÃ GỠ) Khối tạo phiếu chi hoàn phần dư — không còn dùng ──
           {hasOverpay && (
             <div className={`border rounded-xl p-4 ${overpayRefunded
               ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/28'
@@ -337,6 +397,14 @@ export default function IncomeDetailModal({ voucher, onClose, onEdit, onChanged 
           </button>
         </div>
       </div>
+
+      {offsetOpen && (
+        <OffsetOverpayModal
+          voucher={v}
+          onClose={() => setOffsetOpen(false)}
+          onCreated={async () => { setOffsetOpen(false); await refresh(); }}
+        />
+      )}
     </div>
   );
 }
