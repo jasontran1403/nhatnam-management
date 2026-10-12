@@ -1266,24 +1266,36 @@ function DriverReportModal({ onClose }) {
             />
           </div>
 
-          {/* Salary rates */}
+          {/* Đơn giá — có placeholder = default, để trống sẽ dùng default khi export */}
           <div>
-            <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Lương theo km</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Đơn giá tính lương</p>
+            <div className="grid grid-cols-3 gap-2">
+              {/* Giá xăng — Tiền xăng = km xe máy × đơn giá này */}
+              <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 p-3">
+                <label className="block text-[11px] font-bold text-amber-700 dark:text-amber-300 mb-1.5">⛽ Giá xăng (đ/km)</label>
+                <input type="number" min="0" value={gasRate} onChange={e => setGasRate(e.target.value)}
+                  placeholder={String(DEFAULT_GAS_RATE_PER_KM)}
+                  className="w-full h-8 px-2 rounded-lg border border-amber-200 dark:border-amber-500/28 text-sm focus:outline-none focus:border-amber-400 bg-surface" />
+              </div>
+              {/* Thưởng đơn XM = số đơn xe máy × đơn giá này */}
               <div className="rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/28 p-3">
-                <label className="block text-[11px] font-bold text-sky-700 dark:text-sky-300 mb-1.5">🏍️ Xe máy (đ/km)</label>
-                <input type="number" min="0" value={bikeRate} onChange={e => setBikeRate(e.target.value)}
-                  placeholder="VD: 2000"
+                <label className="block text-[11px] font-bold text-sky-700 dark:text-sky-300 mb-1.5">🏍️ Đơn XM (đ/đơn)</label>
+                <input type="number" min="0" value={bikeBonus} onChange={e => setBikeBonus(e.target.value)}
+                  placeholder={String(DEFAULT_BIKE_ORDER_BONUS)}
                   className="w-full h-8 px-2 rounded-lg border border-sky-200 dark:border-sky-500/28 text-sm focus:outline-none focus:border-sky-400 bg-surface" />
               </div>
+              {/* Thưởng đơn XT = số đơn xe tải × đơn giá này */}
               <div className="rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/28 p-3">
-                <label className="block text-[11px] font-bold text-orange-700 dark:text-orange-300 mb-1.5">🚛 Xe tải (đ/km)</label>
-                <input type="number" min="0" value={truckRate} onChange={e => setTruckRate(e.target.value)}
-                  placeholder="VD: 5000"
+                <label className="block text-[11px] font-bold text-orange-700 dark:text-orange-300 mb-1.5">🚛 Đơn XT (đ/đơn)</label>
+                <input type="number" min="0" value={truckBonus} onChange={e => setTruckBonus(e.target.value)}
+                  placeholder={String(DEFAULT_TRUCK_ORDER_BONUS)}
                   className="w-full h-8 px-2 rounded-lg border border-orange-200 dark:border-orange-500/28 text-sm focus:outline-none focus:border-orange-400 bg-surface" />
               </div>
             </div>
-            <p className="text-[10px] text-muted mt-1.5 italic">Để trống = không tính lương km (chỉ thống kê)</p>
+            <p className="text-[10px] text-muted mt-1.5 italic">
+              Để trống = dùng mặc định ({DEFAULT_GAS_RATE_PER_KM.toLocaleString('vi-VN')} / {DEFAULT_BIKE_ORDER_BONUS.toLocaleString('vi-VN')} / {DEFAULT_TRUCK_ORDER_BONUS.toLocaleString('vi-VN')} đ).
+              Tổng cộng được làm tròn lên 5.000đ.
+            </p>
           </div>
         </div>
 
