@@ -1184,17 +1184,25 @@ function OtTab() {
 }
 
 // ── Driver Report Export Modal ────────────────────────────────────────────────
+// Giá mặc định dùng làm placeholder VÀ fallback khi user để trống (hoặc nhập <= 0).
+// Hardcode cùng giá trị với backend để báo cáo vẫn ra đúng dù FE gửi "0".
+const DEFAULT_GAS_RATE_PER_KM = 488;    // đ/km
+const DEFAULT_BIKE_ORDER_BONUS = 5000;  // đ/đơn xe máy
+const DEFAULT_TRUCK_ORDER_BONUS = 8000; // đ/đơn xe tải
+
 function DriverReportModal({ onClose }) {
   const toast = useToast();
   const [from, setFrom] = useState(null);
   const [to, setTo] = useState(null);
-  const [bikeRate, setBikeRate] = useState('');
-  const [truckRate, setTruckRate] = useState('');
+  const [gasRate, setGasRate] = useState('');
+  const [bikeBonus, setBikeBonus] = useState('');
+  const [truckBonus, setTruckBonus] = useState('');
   const [exporting, setExporting] = useState(false);
 
-  const fmt = (d) => {
-    if (!d) return '';
-    return new Date(d).toLocaleDateString('vi-VN');
+  // Lấy số đã nhập, nếu rỗng hoặc <= 0 thì rơi về giá mặc định.
+  const resolveRate = (raw, fallback) => {
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
   };
 
   const handleExport = async () => {
@@ -1205,8 +1213,9 @@ function DriverReportModal({ onClose }) {
         from: String(from),
         to: String(to),
         excludeWarehouse: 'true',
-        bikeRatePerKm: bikeRate || '0',
-        truckRatePerKm: truckRate || '0',
+        gasRatePerKm:   String(resolveRate(gasRate,    DEFAULT_GAS_RATE_PER_KM)),
+        bikeOrderBonus: String(resolveRate(bikeBonus,  DEFAULT_BIKE_ORDER_BONUS)),
+        truckOrderBonus:String(resolveRate(truckBonus, DEFAULT_TRUCK_ORDER_BONUS)),
       });
       const res = await api.get(`/api/admin/users/reports?${params}`, { responseType: 'blob' });
       // Tên file dạng dd-MM-yyyy đến dd-MM-yyyy cho dễ đọc; dấu "/" không hợp lệ
