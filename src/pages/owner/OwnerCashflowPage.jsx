@@ -87,18 +87,18 @@ export default function OwnerCashflowPage() {
   // "Số dư đầu kỳ" (0 nếu chưa chốt) và "Số dư cuối kỳ" (= đầu kỳ + tổng thu −
   // tổng chi). Cột "Số phiếu" gắn tiền tố "Phiếu Thu - …" / "Phiếu chi - …".
   // paymentType: 'ALL' | 'CASH' | 'BANK_TRANSFER'.
-  const downloadReportExcel = async (paymentType = 'ALL') => {
+  const downloadReportExcel = async (paymentType = 'CASH') => {
     setDownloadingXlsx(true);
     try {
       const res = await cashflowApi.reportExcel(range.from, range.to, paymentType);
       const url = window.URL.createObjectURL(new Blob([res.data], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       }));
-      const suffix = paymentType === 'CASH' ? '-tien-mat'
-        : paymentType === 'BANK_TRANSFER' ? '-chuyen-khoan' : '';
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bao-cao-dong-tien${suffix}.xlsx`;
+      a.download = paymentType === 'BANK_TRANSFER'
+        ? 'so-ngan-hang-112.xlsx'
+        : 'so-quy-111-tien-mat.xlsx';
       document.body.appendChild(a); a.click(); a.remove();
       window.URL.revokeObjectURL(url);
       setShowXlsxModal(false);
@@ -129,9 +129,9 @@ export default function OwnerCashflowPage() {
               sắp xếp theo thời gian tạo, có dòng đầu/cuối kỳ. */}
           <button onClick={() => setShowXlsxModal(true)} disabled={downloadingXlsx}
             className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-surface border border-line text-ink text-sm font-semibold hover:border-gold transition disabled:opacity-50"
-            title="Xuất Excel gộp phiếu thu + phiếu chi">
+            title="Xuất sổ quỹ (Thu + Chi) theo tài khoản">
             <FileSpreadsheet size={16} className="text-emerald-600 dark:text-emerald-300" />
-            <span className="hidden sm:inline">{downloadingXlsx ? 'Đang xuất...' : 'Export Thu/Chi'}</span>
+            <span className="hidden sm:inline">{downloadingXlsx ? 'Đang xuất...' : 'Sổ quỹ'}</span>
           </button>
           <button onClick={() => setShowConfirm(true)}
             className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-gold text-white text-sm font-semibold hover:bg-gold-strong transition"
@@ -250,11 +250,11 @@ export default function OwnerCashflowPage() {
 
 // ── Modal chọn hình thức thanh toán cho báo cáo Excel gộp Thu/Chi ──────────────
 function ExportXlsxModal({ downloading, onClose, onConfirm }) {
-  const [paymentType, setPaymentType] = useState('ALL');
+  // Sổ quỹ phân theo tài khoản — chỉ 1 trong 2: 111-Tiền mặt hoặc 112-Chuyển khoản.
+  const [paymentType, setPaymentType] = useState('CASH');
   const OPTIONS = [
-    { key: 'CASH',          label: 'Tiền mặt',    desc: 'Chỉ các phiếu TM' },
-    { key: 'BANK_TRANSFER', label: 'Chuyển khoản', desc: 'Chỉ các phiếu CK' },
-    { key: 'ALL',           label: 'Cả 2',        desc: 'Tiền mặt + chuyển khoản' },
+    { key: 'CASH',          label: 'Tiền mặt',  desc: 'Sổ quỹ · Tài khoản 111 - Tiền Mặt' },
+    { key: 'BANK_TRANSFER', label: 'Ngân hàng', desc: 'Sổ ngân hàng · Tài khoản 112 - Ngân hàng' },
   ];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -265,8 +265,8 @@ function ExportXlsxModal({ downloading, onClose, onConfirm }) {
               <FileSpreadsheet size={16} className="text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-sm">Xuất báo cáo dòng tiền</h3>
-              <p className="text-white/70 text-[10px]">Excel · gộp phiếu thu + phiếu chi</p>
+              <h3 className="font-bold text-white text-sm">Xuất Sổ quỹ / Sổ ngân hàng</h3>
+              <p className="text-white/70 text-[10px]">Excel · định dạng sổ quỹ truyền thống</p>
             </div>
           </div>
           <button onClick={onClose}
@@ -276,8 +276,8 @@ function ExportXlsxModal({ downloading, onClose, onConfirm }) {
         </div>
 
         <div className="p-5 space-y-3">
-          <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Phương thức thanh toán</p>
-          <div className="grid grid-cols-3 gap-1.5">
+          <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Tài khoản</p>
+          <div className="grid grid-cols-2 gap-1.5">
             {OPTIONS.map(opt => (
               <button key={opt.key} onClick={() => setPaymentType(opt.key)}
                 className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${

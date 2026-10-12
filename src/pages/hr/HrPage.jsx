@@ -1209,7 +1209,14 @@ function DriverReportModal({ onClose }) {
         truckRatePerKm: truckRate || '0',
       });
       const res = await api.get(`/api/admin/users/reports?${params}`, { responseType: 'blob' });
-      downloadBlob(res.data, `bao-cao-tai-xe-${from}_${to}.xlsx`);
+      // Tên file dạng dd-MM-yyyy đến dd-MM-yyyy cho dễ đọc; dấu "/" không hợp lệ
+      // trong tên file nên dùng "-" thay thế (vẫn giữ nguyên thứ tự ngày/tháng/năm).
+      const toDdMmYyyy = (ms) => {
+        const d = new Date(Number(ms));
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+      };
+      downloadBlob(res.data, `bao-cao-tai-xe-${toDdMmYyyy(from)}_${toDdMmYyyy(to)}.xlsx`);
       toast('Xuất báo cáo thành công', 'success');
       onClose();
     } catch { toast('Lỗi xuất báo cáo', 'error'); }
