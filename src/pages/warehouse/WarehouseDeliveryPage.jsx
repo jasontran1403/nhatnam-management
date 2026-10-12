@@ -92,6 +92,14 @@ const DELIVERY_TYPES = [
     { value: 'MOTORBIKE', label: '🛵 Xe máy' },
 ];
 
+// Vai trò trong một chuyến đi: tài xế Chính (lái chính, chịu trách nhiệm chuyến)
+// hoặc tài xế Phụ (đi cùng hỗ trợ). Mặc định PRIMARY. Lưu vào trường role trong
+// mỗi item của deliveryInfo để xử lý/báo cáo sau.
+const DELIVERY_ROLES = [
+    { value: 'PRIMARY',   label: 'Chính' },
+    { value: 'SECONDARY', label: 'Phụ' },
+];
+
 function StatusBadge({ status }) {
     const cfg = STATUS_MAP[status] || STATUS_MAP.PENDING;
     const { Icon } = cfg;
@@ -133,6 +141,9 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
     }, [query, open, selectedType]);
 
     const addDriver = (name) => {
+        // Mỗi lần thêm, tài xế mặc định là vai trò CHÍNH (PRIMARY). Dedup theo
+        // (name + type) — cùng loại xe & cùng tên thì cộng lượt; role được giữ
+        // nguyên của dòng cũ. User tự bấm vào badge CHÍNH/PHỤ trên dòng để toggle.
         const existing = deliveryInfo.find(d => d.name === name && d.type === selectedType);
         if (existing) {
             onChange(deliveryInfo.map(d =>
@@ -141,10 +152,19 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
                     : d
             ));
         } else {
-            onChange([...deliveryInfo, { name, type: selectedType, trips: 1 }]);
+            onChange([...deliveryInfo, { name, type: selectedType, trips: 1, role: 'PRIMARY' }]);
         }
         setQuery('');
         setOpen(false);
+    };
+
+    // Toggle vai trò của 1 dòng tài xế đã thêm — click badge để đổi Chính ↔ Phụ.
+    const toggleRole = (idx) => {
+        onChange(deliveryInfo.map((d, i) =>
+            i === idx
+                ? { ...d, role: (d.role || 'PRIMARY') === 'PRIMARY' ? 'SECONDARY' : 'PRIMARY' }
+                : d
+        ));
     };
 
     const decreaseTrips = (idx) => {
@@ -191,7 +211,7 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
                 Tài xế giao hàng
             </p>
 
-            {/* Loại phương tiện */}
+            {/* Loại phương tiện — có thể trộn: 1 đơn có thể có xe tải + xe máy cùng lúc */}
             <div className="flex gap-2">
                 {DELIVERY_TYPES.map(dt => (
                     <button key={dt.value}
@@ -205,14 +225,25 @@ function DriverPicker({ deliveryInfo = [], onChange }) {
                 ))}
             </div>
 
-            {/* Danh sách đã chọn */}
+            {/* Danh sách đã chọn — badge Chính/Phụ click để toggle */}
             {deliveryInfo.length > 0 && (
                 <div className="space-y-1.5">
                     {deliveryInfo.map((d, idx) => (
                         <div key={idx}
                             className="flex items-center gap-2 bg-surface rounded-xl border border-line px-3 py-2">
                             <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
-                            <span className="flex-1 text-xs font-medium text-ink">{d.name}</span>
+                            <span className="flex-1 text-xs font-medium text-ink flex items-center gap-1.5">
+                                <span>{d.name}</span>
+                                <button type="button"
+                                    onClick={() => toggleRole(idx)}
+                                    title="Bấm để đổi Chính ↔ Phụ"
+                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase cursor-pointer transition-colors
+                                        ${(d.role || 'PRIMARY') === 'PRIMARY'
+                                            ? 'bg-gold/15 text-gold hover:bg-gold/25'
+                                            : 'bg-surface-2 text-muted border border-line hover:bg-surface-3'}`}>
+                                    {(d.role || 'PRIMARY') === 'PRIMARY' ? 'Chính' : 'Phụ'}
+                                </button>
+                            </span>
                             <div className="flex items-center gap-1">
                                 <button onClick={() => decreaseTrips(idx)}
                                     className="w-5 h-5 rounded-full bg-surface-2 text-muted text-xs font-bold hover:bg-surface-3 flex items-center justify-center">
@@ -328,21 +359,34 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
         }
         setErr('');
 
-        // Nếu tài xế đã có sẵn trong đơn (existingInfo) cùng loại xe → chỉ +1 lượt ở phần "added"
+        // Dedup trong "added" theo (name + type) — thêm mới mặc định role = PRIMARY.
+        // User tự bấm badge Chính/Phụ trên dòng để đổi vai trò.
         const inExisting = existingInfo.some(d => d.name === name && d.type === selectedType);
         const inAdded = addedInfo.some(d => d.name === name && d.type === selectedType);
 
         if (inAdded) {
             onAddedChange(addedInfo.map(d =>
-                d.name === name && d.type === selectedType ? { ...d, trips: d.trips + 1 } : d
+                d.name === name && d.type === selectedType
+                    ? { ...d, trips: d.trips + 1 } : d
             ));
         } else {
             // Dòng mới trong "added" — dù tài xế đã có sẵn trong đơn hay là tài xế hoàn toàn mới,
             // số lượt thêm luôn được cộng riêng rồi merge vào tổng khi submit.
-            onAddedChange([...addedInfo, { name, type: selectedType, trips: 1, isExisting: inExisting }]);
+            onAddedChange([...addedInfo, {
+                name, type: selectedType, trips: 1, role: 'PRIMARY', isExisting: inExisting,
+            }]);
         }
         setQuery('');
         setOpen(false);
+    };
+
+    // Toggle vai trò của dòng mới thêm — click badge để đổi Chính ↔ Phụ.
+    const toggleAddedRole = (idx) => {
+        onAddedChange(addedInfo.map((d, i) =>
+            i === idx
+                ? { ...d, role: (d.role || 'PRIMARY') === 'PRIMARY' ? 'SECONDARY' : 'PRIMARY' }
+                : d
+        ));
     };
 
     const increaseAddedTrips = (idx) => {
@@ -394,7 +438,15 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
                         <div key={`existing-${idx}`}
                             className="flex items-center gap-2 bg-canvas rounded-xl border border-line px-3 py-2">
                             <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
-                            <span className="flex-1 text-xs font-medium text-ink">{d.name}</span>
+                            <span className="flex-1 text-xs font-medium text-ink">
+                                {d.name}
+                                <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase
+                                    ${(d.role || 'PRIMARY') === 'PRIMARY'
+                                        ? 'bg-gold/15 text-gold'
+                                        : 'bg-surface-2 text-muted border border-line'}`}>
+                                    {(d.role || 'PRIMARY') === 'PRIMARY' ? 'Chính' : 'Phụ'}
+                                </span>
+                            </span>
                             <span className="text-xs font-bold text-muted">{d.trips} lượt</span>
                             <span className="text-[9px] text-faint italic ml-1">đã gán</span>
                         </div>
@@ -402,15 +454,25 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
                 </div>
             )}
 
-            {/* Tài xế / lượt mới thêm trong lần xác nhận này */}
+            {/* Tài xế / lượt mới thêm trong lần xác nhận này — badge Chính/Phụ click toggle */}
             {addedInfo.length > 0 && (
                 <div className="space-y-1.5">
                     {addedInfo.map((d, idx) => (
                         <div key={`added-${idx}`}
                             className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl border border-emerald-200 dark:border-emerald-500/28 px-3 py-2">
                             <span className="text-[10px]">{d.type === 'TRUCK' ? '🚛' : '🛵'}</span>
-                            <span className="flex-1 text-xs font-medium text-ink">
-                                {d.name} <span className="text-[9px] text-emerald-600 dark:text-emerald-300 font-normal">{d.isExisting ? '(+lượt)' : '(mới)'}</span>
+                            <span className="flex-1 text-xs font-medium text-ink flex items-center gap-1.5">
+                                <span>{d.name}</span>
+                                <button type="button"
+                                    onClick={() => toggleAddedRole(idx)}
+                                    title="Bấm để đổi Chính ↔ Phụ"
+                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase cursor-pointer transition-colors
+                                        ${(d.role || 'PRIMARY') === 'PRIMARY'
+                                            ? 'bg-gold/15 text-gold hover:bg-gold/25'
+                                            : 'bg-surface-2 text-muted border border-line hover:bg-surface-3'}`}>
+                                    {(d.role || 'PRIMARY') === 'PRIMARY' ? 'Chính' : 'Phụ'}
+                                </button>
+                                <span className="text-[9px] text-emerald-600 dark:text-emerald-300 font-normal">{d.isExisting ? '(+lượt)' : '(mới)'}</span>
                             </span>
                             <div className="flex items-center gap-1">
                                 <button onClick={() => decreaseAddedTrips(idx)}
@@ -435,7 +497,7 @@ function AddDriverSection({ existingInfo = [], addedInfo = [], onAddedChange }) 
 
             {err && <p className="text-[10px] text-red-500 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/28 rounded-lg px-2.5 py-1.5">{err}</p>}
 
-            {/* Loại phương tiện */}
+            {/* Loại phương tiện — có thể trộn: 1 đơn có thể có xe tải + xe máy cùng lúc */}
             <div className="flex gap-2">
                 {DELIVERY_TYPES.map(dt => (
                     <button key={dt.value}
@@ -918,11 +980,19 @@ export default function WarehouseDeliveryPage() {
                 try { existing = JSON.parse(deliverTarget.deliveryInfoJson || '[]'); } catch { existing = []; }
                 mergedDriverInfo = [...existing];
                 for (const added of addedDriverInfo) {
-                    const idx = mergedDriverInfo.findIndex(d => d.name === added.name && d.type === added.type);
+                    // Khớp theo (name + type + role) — role khác => coi là dòng mới
+                    // (vd. cùng tài xế đi Chính rồi lại đi Phụ ở loại xe khác).
+                    const addedRole = added.role || 'PRIMARY';
+                    const idx = mergedDriverInfo.findIndex(d =>
+                        d.name === added.name
+                        && d.type === added.type
+                        && (d.role || 'PRIMARY') === addedRole);
                     if (idx >= 0) {
                         mergedDriverInfo[idx] = { ...mergedDriverInfo[idx], trips: mergedDriverInfo[idx].trips + added.trips };
                     } else {
-                        mergedDriverInfo.push({ name: added.name, type: added.type, trips: added.trips });
+                        mergedDriverInfo.push({
+                            name: added.name, type: added.type, trips: added.trips, role: addedRole,
+                        });
                     }
                 }
                 try {
