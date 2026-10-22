@@ -29,9 +29,10 @@ const DAY_TYPE = {
   HALF:      { cls: 'bg-amber-400 text-white border-amber-400', label: 'Nửa công (0.5)', icon: Minus },
   MISSING:   { cls: 'bg-red-400 text-white border-red-400', label: 'Thiếu chấm công (0 công)', icon: AlertTriangle },
   EXCEPTION: { cls: 'bg-violet-500 text-white border-violet-500', label: 'Nghỉ có phép (đủ công)', icon: Plane },
-  HOLIDAY:   { cls: 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300 border-gray-400 dark:border-gray-500', label: 'Lễ / Tết / Nghỉ', icon: Sun },
-  LEAVE:     { cls: 'bg-sky-400 text-white border-sky-400', label: 'Nghỉ có phép', icon: Plane },
-  UNPAID:    { cls: 'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/35', label: 'Nghỉ không lương', icon: AlertCircle },
+  HOLIDAY:   { cls: 'bg-blue-500 text-white border-blue-500', label: 'Lễ / Tết / Nghỉ', icon: Sun },
+  SUNDAY:    { cls: 'bg-red-500 text-white border-red-500', label: 'Chủ Nhật', icon: Sun },
+  LEAVE:     { cls: 'bg-pink-200 dark:bg-pink-500/25 text-pink-800 dark:text-pink-200 border-pink-300 dark:border-pink-500/40', label: 'Nghỉ có phép', icon: Plane },
+  UNPAID:    { cls: 'bg-gray-400 dark:bg-gray-500 text-white border-gray-400 dark:border-gray-500', label: 'Nghỉ không lương', icon: AlertCircle },
   BUSINESS:  { cls: 'bg-indigo-500 text-white border-indigo-500', label: 'Công tác', icon: Plane },
   OFF:       { cls: 'bg-canvas text-faint border-hairline', label: 'Không chấm công', icon: Coffee },
 };
@@ -90,10 +91,24 @@ function DayDetail({ day, month, year, onClose }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {/* (10/2026) Nghỉ lễ / Nghỉ có phép: hiển thị NOTE thay vì "Không có dữ liệu" */}
+        {day.exception && (
+          <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200
+            dark:border-blue-500/28 rounded-xl px-3.5 py-3">
+            <p className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-300 font-bold">
+              Ghi chú
+            </p>
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mt-1 leading-relaxed">
+              {day.exception}
+            </p>
+          </div>
+        )}
         {sessions.length === 0 ? (
-          <p className="text-sm text-muted text-center py-3">
-            Không có dữ liệu chấm công trong ngày này.
-          </p>
+          !day.exception && (
+            <p className="text-sm text-muted text-center py-3">
+              Không có dữ liệu chấm công trong ngày này.
+            </p>
+          )
         ) : (
           <div className="space-y-2">
             {sessions.map((s, i) => (
@@ -279,7 +294,18 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
                   cellType = 'HALF';
                 if (d.type === 'WORK' && d.value != null && d.value <= 0)
                   cellType = 'MISSING';
-                const cfg = DAY_TYPE[cellType] || DAY_TYPE.OFF;
+                // (10/2026) Overlay color theo yêu cầu nghiệp vụ:
+                //   CN  → đỏ      (ưu tiên cao nhất, trừ khi NV vẫn đi làm → giữ xanh)
+                //   Lễ  → xanh dương
+                //   Đủ công (WORK, value >= 1) → xanh lá (đã có cfg.cls)
+                //   Thiếu công (0 < value < 1) → vàng (HALF đã có)
+                //   0 công → giữ nguyên (MISSING/OFF)
+                let cfg = DAY_TYPE[cellType] || DAY_TYPE.OFF;
+                if (cellType === 'HOLIDAY') cfg = DAY_TYPE.HOLIDAY;
+                // Chủ nhật: chỉ override khi KHÔNG đi làm (giữ xanh nếu đi làm T7/CN)
+                if (d.weekday === 8 && !(cellType === 'WORK' && (d.value || 0) > 0)) {
+                  cfg = DAY_TYPE.SUNDAY;
+                }
                 const isSelected = selected?.day === d.day;
                 const clickable = !!(d.checkIn || d.checkOut || d.sessions?.length || d.value > 0);
 
@@ -287,13 +313,19 @@ export default function AttendanceDayCalendar({ attendance, month, year, showHea
                   <button key={d.day}
                     onClick={() => setSelected(isSelected ? null : d)}
                     title={`Ngày ${d.day} · ${cfg.label}`
+                      + (d.value != null && d.value > 0 ? ` · ${d.value} công` : '')
                       + (d.checkIn ? ` · ${d.checkIn}–${d.checkOut || '--:--'}` : '')}
-                    className={`h-11 rounded-lg border flex items-center justify-center
-                      text-[12px] font-bold leading-none transition-all ${cfg.cls}
+                    className={`h-11 rounded-lg border flex flex-col items-center justify-center
+                      leading-none transition-all ${cfg.cls}
                       ${clickable ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
                       ${isSelected ? 'ring-2 ring-gold ring-offset-1 scale-110' : ''}`}
                   >
-                    {d.day}
+                    <span className="text-[12px] font-bold">{d.day}</span>
+                    {d.value != null && d.value > 0 && (
+                      <span className="text-[8px] font-semibold opacity-85 mt-0.5">
+                        {Number(d.value).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
+                      </span>
+                    )}
                   </button>
                 );
               })}

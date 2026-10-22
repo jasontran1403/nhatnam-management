@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Wallet, ChevronDown, Calendar, Award, Factory, AlertCircle, Loader2, X,
-  Truck, Route, Package, MapPin, Lock,
+  Truck, Route, Package, MapPin, Lock, Gift,
 } from 'lucide-react';import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader, SectionCard, LoadingSpinner, formatCurrency } from '../../components/ui';
@@ -50,8 +50,19 @@ const DAY_COLOR = {
   GREEN: { cls: 'bg-emerald-500 text-white border-emerald-500', dot: 'bg-emerald-500', label: 'Có chạy' },
   YELLOW: { cls: 'bg-amber-400 text-amber-950 border-amber-400', dot: 'bg-amber-400', label: 'ODO đầu = cuối' },
   GRAY: { cls: 'bg-canvas text-faint border-hairline', dot: 'bg-hairline-2', label: 'Không chạy' },
+  // (10/2026) Thêm 2 màu riêng — ưu tiên khi NV không chạy (nếu chạy giữ xanh)
+  SUNDAY: { cls: 'bg-red-500 text-white border-red-500', dot: 'bg-red-500', label: 'Chủ Nhật' },
+  HOLIDAY: { cls: 'bg-blue-500 text-white border-blue-500', dot: 'bg-blue-500', label: 'Lễ / Tết' },
 };
-const dayColorCfg = (d) => DAY_COLOR[d?.dayColor] || DAY_COLOR.GRAY;
+const dayColorCfg = (d) => {
+  // Có chạy xe → giữ GREEN/YELLOW (NV đi làm bất kể lễ hay CN)
+  if (d?.dayColor === 'GREEN' || d?.dayColor === 'YELLOW') return DAY_COLOR[d.dayColor];
+  // CN mà không chạy → đỏ
+  if (d?.weekday === 8) return DAY_COLOR.SUNDAY;
+  // Lễ (type HOLIDAY nếu BE trả) → xanh dương
+  if (d?.type === 'HOLIDAY' || d?.isHoliday) return DAY_COLOR.HOLIDAY;
+  return DAY_COLOR[d?.dayColor] || DAY_COLOR.GRAY;
+};
 
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -127,14 +138,29 @@ function PeriodPicker({ periods, value, onChange, loading }) {
                     >
                       <span>Tháng {p.month}</span>
 
-                      {/* Chưa HOÀN TẤT thì báo "Đang xử lý" */}
-                      {!p.finalized && (
+                      {/* (10/2026) 3 trạng thái:
+                        * chưa tính lương       → "Đang xử lý" (vàng)
+                        * đã tính lương         → "Đã có lương" (xanh)
+                        * đã tính lương+thưởng  → "Đã có lương/thưởng" (xanh đậm)
+                        */}
+                      {!p.finalized ? (
                         <span className={`
                           shrink-0 whitespace-nowrap text-[10px] font-semibold
                           px-1.5 py-0.5 rounded-md
                           ${active ? 'bg-white/20 text-white' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'}
                         `}>
                           Đang xử lý
+                        </span>
+                      ) : (
+                        <span className={`
+                          shrink-0 whitespace-nowrap text-[10px] font-semibold
+                          px-1.5 py-0.5 rounded-md
+                          ${active ? 'bg-white/20 text-white'
+                            : p.bonusReady
+                              ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'}
+                        `}>
+                          {p.bonusReady ? 'Đã có lương/thưởng' : 'Đã có lương'}
                         </span>
                       )}
                     </button>
@@ -366,7 +392,12 @@ function DriverCalendar({ driver, month, year }) {
               Bấm vào một ngày để xem số km và các đơn đã giao trong ngày đó.
             </p>
 
-            <div className="grid grid-cols-[repeat(7,44px)] gap-1.5 mb-1.5">
+            {/* (10/2026) Tăng cell từ 44px → 64px để chứa đủ 3 dòng:
+              *   1. Số ngày (bold)
+              *   2. Số km (nhỏ)
+              *   3. Số đơn (nhỏ)
+              */}
+            <div className="grid grid-cols-[repeat(7,64px)] gap-1.5 mb-1.5">
               {[2, 3, 4, 5, 6, 7, 8].map(w => (
                 <div key={w} className="text-center text-[10px] font-bold text-muted">
                   {WEEKDAY_LABEL[w]}
@@ -374,27 +405,34 @@ function DriverCalendar({ driver, month, year }) {
               ))}
             </div>
 
-            <div className="grid grid-cols-[repeat(7,44px)] gap-1.5">
+            <div className="grid grid-cols-[repeat(7,64px)] gap-1.5">
               {cells.map((d, i) => {
                 if (!d) return <div key={`empty-${i}`} />;
                 const cfg = dayColorCfg(d);
                 const isSelected = selected?.day === d.day;
                 const clickable = (d.totalKm || 0) > 0 || (d.orderCount || 0) > 0
                   || (d.odo && d.odo.length > 0);
+                const km = d.totalKm || 0;
+                const orderCnt = d.orderCount || 0;
 
                 return (
                   <button key={d.day}
                     onClick={() => setSelected(isSelected ? null : d)}
-                    title={`Ngày ${d.day} · ${fmtNum(d.totalKm, 1)} km · ${d.orderCount || 0} đơn`}
-                    className={`h-11 rounded-lg border flex flex-col items-center justify-center
-                      leading-none transition-all ${cfg.cls}
-                      ${clickable ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
-                      ${isSelected ? 'ring-2 ring-gold ring-offset-1 scale-110' : ''}`}
+                    title={`Ngày ${d.day} · ${fmtNum(km, 1)} km · ${orderCnt} đơn`}
+                    className={`h-16 rounded-lg border flex flex-col items-center justify-center
+                      leading-tight transition-all ${cfg.cls}
+                      ${clickable ? 'hover:scale-105 cursor-pointer' : 'cursor-default'}
+                      ${isSelected ? 'ring-2 ring-gold ring-offset-1 scale-105' : ''}`}
                   >
-                    <span className="text-[12px] font-bold">{d.day}</span>
-                    {(d.totalKm || 0) > 0 && (
-                      <span className="text-[8px] font-semibold opacity-80 mt-0.5">
-                        {Math.round(d.totalKm)}
+                    <span className="text-[13px] font-bold">{d.day}</span>
+                    {km > 0 && (
+                      <span className="text-[9px] font-semibold opacity-85 mt-0.5">
+                        {Math.round(km)} km
+                      </span>
+                    )}
+                    {orderCnt > 0 && (
+                      <span className="text-[9px] font-semibold opacity-75">
+                        {orderCnt} đơn
                       </span>
                     )}
                   </button>
@@ -485,17 +523,17 @@ function KpiBreakdown({ kpi, amount }) {
   // CỐ Ý KHÔNG hiển thị "Tổng hệ số toàn xưởng" và "Hệ số chia": đó là số liệu
   // nội bộ của cả xưởng, nhân viên chỉ cần biết quỹ hình thành thế nào và mình
   // nhận bao nhiêu. Hiện hệ số còn dễ gây so bì lương giữa các vị trí.
+  // (10/2026) BỎ dòng "Đơn giá thưởng" + bỏ sub công thức đơn giá —
+  // yêu cầu nghiệp vụ: nhân viên không cần thấy đơn giá/tấn.
   const steps = [
     {
       label: 'Tổng sản lượng xưởng trong tháng',
       value: `${fmtNum(kpi.totalOutputKg)} kg`,
       sub: `= ${fmtNum(kpi.totalOutputTon, 4)} tấn`,
     },
-    { label: 'Đơn giá thưởng', value: `${fmtVnd(kpi.ratePerTon)} / tấn` },
     {
       label: 'Tổng tiền thưởng cả xưởng',
       value: fmtVnd(kpi.bonusPool),
-      sub: `${fmtNum(kpi.totalOutputTon, 4)} tấn × ${fmtVnd(kpi.ratePerTon)}, làm tròn hàng nghìn`,
       highlight: true,
     },
   ];
@@ -577,6 +615,191 @@ function KpiBreakdown({ kpi, amount }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// (10/2026) THƯỞNG DOANH THU — KT/KD/Driver
+//
+// FACTORY đã có KpiBreakdown (card chi tiết công thức xưởng SX). KT/KD/Driver
+// trước đây không có card nào → chỉ hiển thị dòng "+X đ" nhỏ trên dark header
+// phiếu lương, user kêu "ko thấy chi tiết". Component này bổ sung card tương
+// đương: hiển thị số thưởng + chi tiết công thức (nếu có).
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * (10/2026) Card "Thưởng hỗ trợ bán hàng" — cho NV ko thuộc SALES
+ * nhưng có tạo đơn trong tháng (NV kho, trưởng xưởng kiêm bán, …).
+ * Hiển thị tổng thưởng + doanh thu chia hoa hồng cá nhân.
+ */
+function SalesSupportBonusCard({ deptLabel, amount, revenue, month, year }) {
+  const monthStr = String(month).padStart(2, '0');
+  return (
+    <SectionCard>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
+        <div className="flex items-center gap-2">
+          <Gift size={16} className="text-emerald-500" />
+          <h3 className="text-sm font-bold text-ink">
+            Thưởng hỗ trợ bán hàng tháng {monthStr}/{year}
+          </h3>
+        </div>
+        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          {deptLabel}
+        </span>
+      </div>
+      <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-hairline bg-canvas/40 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+            Doanh thu chia hoa hồng
+          </p>
+          <p className="text-lg font-bold tabular-nums mt-1 text-ink">
+            {Number(revenue || 0).toLocaleString('vi-VN')}đ
+          </p>
+          <p className="text-[11px] text-muted mt-0.5">
+            Σ thực thu EX-VAT từ đơn bạn tạo trong tháng
+          </p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+            Tiền thưởng hỗ trợ bán hàng
+          </p>
+          <p className="text-lg font-bold tabular-nums mt-1 text-emerald-700 dark:text-emerald-200">
+            {Number(amount || 0).toLocaleString('vi-VN')}đ
+          </p>
+          <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 mt-0.5">
+            Chi riêng, không cộng vào phiếu lương
+          </p>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+function OfficeOrDriverBonusCard({ dept, deptLabel, amount, driver, salaryDetail, slip }) {
+  const isDriver  = dept === 'DRIVER';
+  const isSales   = dept === 'SALES';
+  const isAcc     = dept === 'ACCOUNTING';
+  const isSupport = dept === 'SUPPORT'; // NV ko thuộc DRIVER mà có km/trips
+
+  // Driver: lấy chi tiết tiền xăng + bonus đơn từ salaryDetail (BE đã dựng sẵn).
+  // Dùng cho CẢ nhân viên tài xế LẪN nhân viên hỗ trợ giao hàng (dept khác
+  // nhưng vẫn có driverOrderBonusDetail nếu tháng có lượt giao).
+  const dKpi = salaryDetail?.driverOrderBonusDetail;
+  const showDriverBreakdown = (isDriver || isSupport)
+      && dKpi
+      && (dKpi.totalAmount || 0) > 0;
+
+  // Tiêu đề + icon tuỳ loại
+  // (10/2026) Driver / NV hỗ trợ giao hàng: label "Thưởng giao hàng tháng N"
+  const monthStr = slip?.month ? String(slip.month).padStart(2, '0') : '';
+  const title = isDriver  ? `Thưởng giao hàng tháng ${monthStr}`
+              : isAcc     ? `Thưởng doanh thu — ${deptLabel || 'Kế toán'}`
+              : isSales   ? `Thưởng doanh thu — ${deptLabel || 'Kinh doanh'}`
+              : isSupport ? `Thưởng hỗ trợ giao hàng tháng ${monthStr}`
+              :             `Thưởng tháng ${monthStr}`;
+
+  return (
+    <SectionCard>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
+        <div className="flex items-center gap-2">
+          <Award size={16} className="text-gold" />
+          <h3 className="text-sm font-bold text-ink">{title}</h3>
+        </div>
+        <span className="text-base font-bold text-gold">{fmtVnd(amount)}</span>
+      </div>
+
+      <div className="p-5 space-y-3">
+        {/* ── KẾ TOÁN: chỉ pool phòng (không % tỷ lệ cá nhân) ── */}
+        {isAcc && slip?.officeBonusPoolTotal != null && (
+          <Row label="Pool thưởng (số tiền chia hoa hồng cả phòng)"
+               value={fmtVnd(slip.officeBonusPoolTotal)} />
+        )}
+
+        {/* ── KINH DOANH: pool CÁ NHÂN — doanh thu, hold, chia hoa hồng ── */}
+        {/* (10/2026) 3 chỉ số KHÁC NHAU:
+          *   Doanh thu thực thu = Σ (final − vat) đơn tạo trong tháng (EX-VAT)
+          *   Hold               = (final − paid) × netRatio của đơn chưa chốt
+          *   Chia hoa hồng      = Σ thực thu EX-VAT từ payment_transaction
+          * Trước đây 3 dòng dùng chung field officeBonusPersonalRevenue → sai.
+          */}
+        {isSales && (
+          <div className="space-y-2">
+            {slip?.officeBonusPersonalRevenue != null && (
+              <Row label="Doanh thu thực thu của bạn trong tháng (EX-VAT)"
+                   value={fmtVnd(slip.officeBonusPersonalRevenue)} />
+            )}
+            {slip?.officeBonusPersonalHold != null && (
+              <Row label="Doanh thu đang hold của bạn trong tháng (EX-VAT)"
+                   value={fmtVnd(slip.officeBonusPersonalHold)} />
+            )}
+            {slip?.officeBonusPersonalChiaHoaHong != null && (
+              <Row label="Doanh thu chia hoa hồng tháng này"
+                   value={fmtVnd(slip.officeBonusPersonalChiaHoaHong)} />
+            )}
+            {/* (10/2026) Chỉ hiển thị cho SELLER có target cá nhân */}
+            {slip?.salesPersonalTarget > 0 && (
+              <>
+                <Row label="Target doanh thu cá nhân"
+                     value={fmtVnd(slip.salesPersonalTarget)} />
+                {slip?.salesAchievedPercent != null && (
+                  <Row label="Tỷ lệ đạt target"
+                       value={<span className={
+                         slip.salesAchievedPercent >= 90 ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                         : slip.salesAchievedPercent >= 50 ? 'text-blue-600 dark:text-blue-400 font-bold'
+                         : 'text-amber-600 dark:text-amber-400 font-bold'
+                       }>
+                         {(Math.floor(slip.salesAchievedPercent * 100) / 100).toFixed(2)}%
+                       </span>} />
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── DRIVER + NV HỖ TRỢ GIAO HÀNG: km/tiền xăng, lượt/tiền (KHÔNG hiện đơn giá) ── */}
+        {showDriverBreakdown && (
+          <div className="space-y-2">
+            {(dKpi.gasKm || 0) > 0 && (
+              <Row label={`Tiền xăng xe máy — ${fmtNum(dKpi.gasKm, 1)} km`}
+                   value={fmtVnd(dKpi.gasAmount)} />
+            )}
+            {(dKpi.motorbikeTrips || 0) > 0 && (
+              <Row label={`Thưởng đơn xe máy — ${dKpi.motorbikeTrips} lượt`}
+                   value={fmtVnd(dKpi.motorbikeAmount)} />
+            )}
+            {(dKpi.truckTrips || 0) > 0 && (
+              <Row label={`Thưởng đơn xe tải — ${dKpi.truckTrips} lượt`}
+                   value={fmtVnd(dKpi.truckAmount)} />
+            )}
+          </div>
+        )}
+
+        {/* Tổng thưởng — highlight */}
+        <div className="rounded-2xl bg-gradient-to-br from-gold/15 to-gold/5
+          border border-gold/30 px-4 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] text-ink-2">Tổng thưởng tháng này</p>
+            <p className="text-[10px] text-muted mt-0.5">
+              (Chi riêng ngoài bảng lương chính)
+            </p>
+          </div>
+          <p className="text-2xl font-bold text-gold leading-none">{fmtVnd(amount)}</p>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+/** Row item 2 cột: label trái + value phải, có hàng phụ (sub) nhỏ dưới label. */
+function Row({ label, sub, value }) {
+  return (
+    <div className="flex items-start justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-canvas">
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium text-ink leading-snug">{label}</p>
+        {sub && <p className="text-[11px] text-muted mt-0.5 leading-snug">{sub}</p>}
+      </div>
+      <span className="text-sm font-bold text-ink shrink-0 whitespace-nowrap">{value}</span>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // CARD PHIẾU LƯƠNG — header tối + CHI TIẾT LƯƠNG như OWNER xem
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -609,21 +832,10 @@ function PayslipCard({ slip }) {
           </span>
         </div>
 
-        {slip.kpiBonus > 0 && slip.kpiStatus === 'READY' && (
-          <div className="mt-2.5 flex items-center justify-between gap-4">
-            <span className="text-[11px] text-white/50">
-              Thưởng KPI / Bonus (chi riêng ngoài bảng lương)
-            </span>
-            <span className="text-sm font-bold text-gold">+ {fmtVnd(slip.kpiBonus)}</span>
-          </div>
-        )}
-
-        {slip.hasKpiBonus && slip.kpiStatus === 'PENDING' && (
-          <div className="mt-2.5 flex items-center gap-2">
-            <Award size={13} className="text-amber-400 animate-pulse shrink-0" />
-            <span className="text-[11px] text-amber-300">Thưởng đang được tính...</span>
-          </div>
-        )}
+        {/* (10/2026) BỎ dòng "Thưởng KPI / Bonus (chi riêng ngoài bảng lương)"
+           + dòng "Thưởng đang được tính..." — thông tin thưởng giờ đã có card
+           riêng dưới (OfficeOrDriverBonusCard / KpiBreakdown). Yêu cầu nghiệp vụ:
+           dark header chỉ hiển thị Lương NET, không phô thêm. */}
       </div>
 
       {/* Chi tiết lương — GIỐNG màn hình OWNER xem, chỉ 2 khối đầu */}
@@ -675,16 +887,11 @@ function MyPayrollContent({ onNeedPasscode }) {
         setPeriods(arr);
 
         if (arr.length) {
-          // Ưu tiên chọn tháng hiện tại (nếu có)
-          const now = new Date();
-          const currentMonth = now.getMonth() + 1;
-          const currentYear = now.getFullYear();
-
-          const currentPeriod = arr.find(
-            p => p.month === currentMonth && p.year === currentYear
-          );
-
-          setSelected(currentPeriod || arr[0]);
+          // (10/2026) Mặc định chọn THÁNG GẦN NHẤT ĐÃ TÍNH XONG LƯƠNG (finalized),
+          // KHÔNG phải tháng hiện tại. Tháng đang xử lý thì xem cũng chỉ thấy
+          // "Đang xử lý lương" — vô ích. periods trả theo thứ tự mới-nhất-trước.
+          const latestFinalized = arr.find(p => p.finalized);
+          setSelected(latestFinalized || arr[0]);
         }
       } catch (e) {
         setError(e?.response?.data?.message || 'Không tải được danh sách tháng');
@@ -824,13 +1031,14 @@ function MyPayrollContent({ onNeedPasscode }) {
             {/* PHIẾU LƯƠNG — chi tiết lương giống OWNER xem */}
             <PayslipCard slip={slip} />
 
-            {/* Ngày công (mọi bộ phận trừ tài xế) HOẶC số km (tài xế) */}
-            {isDriver
-              ? <DriverCalendar driver={slip.driver} month={slip.month} year={slip.year} />
-              : <AttendanceCalendar attendance={slip.attendance}
-                month={slip.month} year={slip.year} />}
+            {/* (10/2026) THỨ TỰ MỚI theo yêu cầu nghiệp vụ:
+              *   3. Thưởng chính (KPI xưởng / doanh thu KT-KD / giao hàng tài xế)
+              *   4. Thưởng hỗ trợ giao hàng (nếu NV không thuộc DRIVER mà có km/trips)
+              *   5. Chi tiết ngày công (ẩn với tài xế — tài xế chỉ dùng DriverCalendar)
+              *   6. Chi tiết số km theo ngày (tài xế LẪN NV hỗ trợ giao hàng)
+              */}
 
-            {/* THƯỞNG KPI — hiển thị theo kpiStatus */}
+            {/* 3a — THƯỞNG KPI xưởng SX (chỉ FACTORY, kpiStatus=PENDING hiện placeholder) */}
             {slip.hasKpiBonus && slip.kpiStatus === 'PENDING' && (
               <SectionCard>
                 <div className="flex items-center gap-3 px-5 py-6">
@@ -848,9 +1056,65 @@ function MyPayrollContent({ onNeedPasscode }) {
                 </div>
               </SectionCard>
             )}
-
             {slip.hasKpiBonus && slip.kpiStatus === 'READY' && (
               <KpiBreakdown kpi={slip.kpi} amount={slip.kpiBonus} />
+            )}
+
+            {/* 3b — THƯỞNG DOANH THU KT/KD / THƯỞNG GIAO HÀNG TÀI XẾ
+              * Chỉ render cho KT/KD/DRIVER chính thức (dept-match), không bao
+              * gồm NV hỗ trợ giao hàng (họ có card riêng ở 3c). */}
+            {!slip.hasKpiBonus
+             && (slip.payrollDepartment === 'SALES'
+                 || slip.payrollDepartment === 'ACCOUNTING'
+                 || slip.payrollDepartment === 'DRIVER')
+             && (slip.kpiBonus > 0 && slip.kpiStatus === 'READY') && (
+              <OfficeOrDriverBonusCard
+                dept={slip.payrollDepartment}
+                deptLabel={slip.payrollDepartmentLabel}
+                amount={slip.kpiBonus}
+                driver={slip.driver}
+                salaryDetail={slip.salaryDetail}
+                slip={slip}
+              />
+            )}
+
+            {/* 4 — THƯỞNG HỖ TRỢ GIAO HÀNG (NV không phải DRIVER có km/trips) */}
+            {!isDriver
+             && slip.payrollDepartment !== 'DRIVER'
+             && (slip.salaryDetail?.driverOrderBonusDetail?.totalAmount > 0) && (
+              <OfficeOrDriverBonusCard
+                dept={'SUPPORT'}
+                deptLabel={slip.payrollDepartmentLabel}
+                amount={slip.salaryDetail.driverOrderBonusDetail.totalAmount}
+                driver={slip.driver}
+                salaryDetail={slip.salaryDetail}
+                slip={slip}
+              />
+            )}
+
+            {/* 4b — THƯỞNG HỖ TRỢ BÁN HÀNG (NV không phải SALES có tạo đơn) */}
+            {slip.payrollDepartment !== 'SALES'
+             && (slip.salesSupportBonus > 0) && (
+              <SalesSupportBonusCard
+                deptLabel={slip.payrollDepartmentLabel}
+                amount={slip.salesSupportBonus}
+                revenue={slip.salesSupportRevenue}
+                month={slip.month}
+                year={slip.year}
+              />
+            )}
+
+            {/* 5 — CHI TIẾT NGÀY CÔNG (tất cả role TRỪ tài xế) */}
+            {!isDriver && <AttendanceCalendar attendance={slip.attendance}
+              month={slip.month} year={slip.year} />}
+
+            {/* 6 — CHI TIẾT SỐ KM THEO NGÀY
+              * - Tài xế: luôn hiện (thay cho bảng chấm công ở trên)
+              * - NV hỗ trợ giao hàng: hiện khi có km/trips > 0 (dưới bảng chấm công)
+              */}
+            {(isDriver
+              || (slip.salaryDetail?.driverOrderBonusDetail?.totalAmount > 0)) && (
+              <DriverCalendar driver={slip.driver} month={slip.month} year={slip.year} />
             )}
 
           </div>

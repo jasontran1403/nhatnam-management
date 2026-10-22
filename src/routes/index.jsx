@@ -167,6 +167,9 @@ import MyRequestsPage from '../pages/shared/MyRequestsPage';
 
 // Bảng chấm công (OWNER upload)
 import AttendanceSheetsPage from '../pages/owner/AttendanceSheetsPage';
+import BonusTrendPage from '../pages/owner/BonusTrendPage';
+import BonusSummaryPage from '../pages/owner/BonusSummaryPage';
+import AccountantBonusViewPage from '../pages/accountant/AccountantBonusViewPage';
 
 import QuotationPage from '../pages/seller/QuotationPage';
 import SuperAccountantCustomers from '../pages/accountant/SuperAccountantCustomers';
@@ -360,6 +363,8 @@ export default function AppRoutes() {
         <Route path="cameras" element={<CameraManagementPage />} />
         {/* Bảng chấm công — upload file Excel theo tháng */}
         <Route path="attendance" element={<AttendanceSheetsPage />} />
+        <Route path="bonus-summary" element={<BonusSummaryPage />} />
+        <Route path="bonus-trend" element={<BonusTrendPage />} />
         {/* Phase 6: Chuyên cần — matrix đi trễ/về sớm */}
         <Route path="chuyen-can" element={<ChuyenCanPage />} />
         {/* Mở khoá xem lương */}
@@ -555,6 +560,8 @@ export default function AppRoutes() {
         {/* Quản lý lương — phiếu lương theo tháng */}
         <Route path="my-payroll" element={<MyPayrollPage />} />
         <Route path="my-requests" element={<MyRequestsPage />} />
+        {/* 10/2026 — Kế Toán Trưởng xem thưởng tháng (read-only). */}
+        <Route path="monthly-bonus" element={<AccountantBonusViewPage />} />
       </Route>
 
       {/* ── OPERATOR */}
@@ -569,13 +576,27 @@ export default function AppRoutes() {
         <Route path="landingpage" element={<OperatorLandingpagePage />} />
       </Route>
 
-      {/* ── FACTORY WORKER (đã thu gọn: không còn kế hoạch / tạo lệnh SX / biến thể) */}
+      {/* ── FACTORY WORKER (mở rộng: thêm kế hoạch SX, biến thể SX, tạo đơn NVL,
+            tạo nguyên liệu — tất cả mượn component sẵn có từ Trưởng xưởng / Owner) */}
       <Route path="/factory"
         element={<TranslatedLayout rawNav={factoryWorkerNavRaw} allowedRoles={['FACTORY_WORKER']} />}>
-        <Route index element={<Navigate to="/factory/orders" replace />} />
-        <Route path="orders" element={<FactoryOrdersPage />} />
+        <Route index element={<Navigate to="/factory/production" replace />} />
+        {/* Dashboard SX (kế hoạch + lệnh SX) — mượn component Trưởng xưởng */}
+        <Route path="production" element={<SuperFactoryWorkerDashboard />} />
+        <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
+        <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
+        {/* (10/2026) Trang "Lệnh sản xuất" đã bị gỡ cho FACTORY_WORKER:
+            click vào lệnh SX giờ mở modal (WorkOrderPanel) trực tiếp ở
+            SuperFactoryWorkerDashboard. */}
+        {/* Biến thể sản xuất — mượn component Trưởng xưởng */}
+        <Route path="recipes" element={<FactoryRecipesPage />} />
+        {/* (10/2026) Quản lý sản phẩm sản xuất — reuse page Owner */}
+        <Route path="factory-products" element={<OwnerProductionPage />} />
         <Route path="machines" element={<FactoryMachinePage />} />
         <Route path="material-requests" element={<FactoryMaterialRequestPage />} />
+        {/* Quản lý nguyên liệu sản xuất — mượn component Owner để tạo/sửa NVL
+            (dùng cùng trang với "Tồn kho NVL" của Owner — có nút tạo mới). */}
+        <Route path="material-stock" element={<OwnerMaterialStockPage />} />
         {/* Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm */}
         <Route path="semi-finished-goods" element={<FactorySemiFinishedGoodsPage />} />
         <Route path="finished-goods" element={<FactoryFinishedGoodsPage />} />
@@ -649,12 +670,26 @@ export default function AppRoutes() {
           Dùng CHUNG các trang của Nhân viên xưởng (cùng component), chỉ khác
           nhãn trang đầu. BE đã cho FACTORY_STAFF gọi /api/factory/** và
           /api/owner/production/**. */}
+      {/* ── TRỢ LÝ XƯỞNG (10/2026) ──
+          Có FULL quyền giống Nhân viên xưởng — DÙNG CHUNG components (SuperFactoryWorkerDashboard,
+          FactoryRecipesPage, FactoryMaterialRequestPage, OwnerMaterialStockPage...). BE cần
+          cho FACTORY_STAFF gọi /api/factory/** + /api/owner/production/**. */}
       <Route path="/factory-staff"
         element={<TranslatedLayout rawNav={factoryStaffNavRaw} allowedRoles={['FACTORY_STAFF']} />}>
-        <Route index element={<Navigate to="/factory-staff/history" replace />} />
-        <Route path="history" element={<FactoryOrdersPage />} />
+        <Route index element={<Navigate to="/factory-staff/production" replace />} />
+        {/* Dashboard SX (kế hoạch + lệnh SX) — click lệnh SX ra modal */}
+        <Route path="production" element={<SuperFactoryWorkerDashboard />} />
+        <Route path="production/work-orders/:id" element={<OwnerWorkOrderDetailPage />} />
+        <Route path="production/plans/:id" element={<OwnerPlanDetailPage />} />
+        {/* Biến thể SX — mượn Trưởng xưởng */}
+        <Route path="recipes" element={<FactoryRecipesPage />} />
+        {/* Quản lý sản phẩm sản xuất — mượn page Owner */}
+        <Route path="factory-products" element={<OwnerProductionPage />} />
         <Route path="machines" element={<FactoryMachinePage />} />
+        {/* Phiếu đặt hàng NVL — tạo + nhận hàng */}
         <Route path="material-requests" element={<FactoryMaterialRequestPage />} />
+        {/* Quản lý NVL — mượn trang Owner */}
+        <Route path="material-stock" element={<OwnerMaterialStockPage />} />
         <Route path="semi-finished-goods" element={<FactorySemiFinishedGoodsPage />} />
         <Route path="my-payroll" element={<MyPayrollPage />} />
         <Route path="my-requests" element={<MyRequestsPage />} />

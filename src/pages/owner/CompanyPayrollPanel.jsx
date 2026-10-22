@@ -21,7 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Upload, FileSpreadsheet, Trash2, Calculator, Send, Lock, Unlock,
   AlertCircle, CheckCircle2, RefreshCw, Clock, CalendarClock,
-  Clock3, Gift, Wallet, CalendarCheck, Download, Search, X,
+  Clock3, Gift, Wallet, CalendarCheck, Download, Search, X, ChevronDown
 } from 'lucide-react';
 import { companyPayrollApi, CALC_STATUS_LABEL, CALC_STATUS_COLOR } from '../../api/companyPayrollApi';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
@@ -58,7 +58,7 @@ function CompactSlot({
       <div className="flex items-start gap-2 mb-2">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0
           ${hasFile ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                    : 'bg-canvas text-muted'}`}>
+            : 'bg-canvas text-muted'}`}>
           <Icon size={15} />
         </div>
         <div className="flex-1 min-w-0">
@@ -110,8 +110,8 @@ function CompactSlot({
           size="sm"
           title={!canUpload ? (lockedReason || 'Đã khoá — Mở lại để chỉnh sửa') : undefined}
           className={`flex-1 text-[11px] ${!canUpload
-              ? 'opacity-50 cursor-not-allowed bg-canvas/50 text-muted border-hairline-1'
-              : ''}`}>
+            ? 'opacity-50 cursor-not-allowed bg-canvas/50 text-muted border-hairline-1'
+            : ''}`}>
           <Upload size={11} /> {hasFile ? 'Thay' : 'Tải lên'}
         </SecondaryButton>
         {hasFile && (
@@ -152,11 +152,11 @@ function LargeSlot({
   return (
     <div className={`rounded-2xl border p-4 transition-colors h-full flex flex-col
       ${hasFile ? 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-500/5 dark:border-emerald-500/20'
-                : 'border-hairline-2 bg-canvas'}`}>
+        : 'border-hairline-2 bg-canvas'}`}>
       <div className="flex items-start gap-3 mb-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
           ${hasFile ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                    : 'bg-surface text-muted'}`}>
+            : 'bg-surface text-muted'}`}>
           <Icon size={18} />
         </div>
         <div className="flex-1 min-w-0">
@@ -267,17 +267,17 @@ export default function CompanyPayrollPanel({ month, year, onStatusChanged }) {
     try {
       const apiCall = {
         ATTENDANCE: companyPayrollApi.uploadAttendance,
-        EXCEPTION:  companyPayrollApi.uploadException,
-        BONUS:      companyPayrollApi.uploadBonus,
-        ALLOWANCE:  companyPayrollApi.uploadAllowance,
+        EXCEPTION: companyPayrollApi.uploadException,
+        BONUS: companyPayrollApi.uploadBonus,
+        ALLOWANCE: companyPayrollApi.uploadAllowance,
       }[kind];
       const res = await apiCall(file, month, year);
       setStatus(res.status);
       const msg =
         kind === 'ATTENDANCE' ? `Đã tải lên bảng chấm công (${res.matchedUsers}/${res.parsedRows} nhân viên khớp)`
-        : kind === 'BONUS'     ? `Đã import ${res.matchedUsers}/${res.parsedRows} dòng thưởng`
-        : kind === 'ALLOWANCE' ? `Đã import ${res.matchedUsers}/${res.parsedRows} dòng phụ cấp`
-        : 'Đã tải lên file';
+          : kind === 'BONUS' ? `Đã import ${res.matchedUsers}/${res.parsedRows} dòng thưởng`
+            : kind === 'ALLOWANCE' ? `Đã import ${res.matchedUsers}/${res.parsedRows} dòng phụ cấp`
+              : 'Đã tải lên file';
       toast(msg, 'success');
       if (res.warnings?.length) {
         // HOTFIX: lưu warnings vào state để render ra UI thay vì log console.
@@ -552,7 +552,7 @@ export default function CompanyPayrollPanel({ month, year, onStatusChanged }) {
                 uploading={uploadingKind === 'BONUS'}
                 deleting={false}
                 onUpload={(f) => handleUpload('BONUS', f)}
-                onDelete={() => {}}
+                onDelete={() => { }}
                 onTemplate={() => handleTemplate('BONUS')}
                 lockedReason={lockReason}
               />
@@ -575,7 +575,7 @@ export default function CompanyPayrollPanel({ month, year, onStatusChanged }) {
                 uploading={uploadingKind === 'ALLOWANCE'}
                 deleting={false}
                 onUpload={(f) => handleUpload('ALLOWANCE', f)}
-                onDelete={() => {}}
+                onDelete={() => { }}
                 onTemplate={() => handleTemplate('ALLOWANCE')}
                 lockedReason={lockReason}
               />
@@ -598,8 +598,8 @@ export default function CompanyPayrollPanel({ month, year, onStatusChanged }) {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <OtStat label="Ngày thường" minutes={s.otTotalWeekdayMinutes} multiplier="×1.5" />
-            <OtStat label="Chủ nhật"   minutes={s.otTotalSundayMinutes}   multiplier="×2.0" />
-            <OtStat label="Ngày lễ"     minutes={s.otTotalHolidayMinutes}  multiplier="×3.0" />
+            <OtStat label="Chủ nhật" minutes={s.otTotalSundayMinutes} multiplier="×2.0" />
+            <OtStat label="Ngày lễ" minutes={s.otTotalHolidayMinutes} multiplier="×3.0" />
             <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 p-3 border border-emerald-200 dark:border-emerald-500/20">
               <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold uppercase tracking-wider">
                 Tổng tiền OT
@@ -626,7 +626,7 @@ export default function CompanyPayrollPanel({ month, year, onStatusChanged }) {
           hoặc sửa tên trong hồ sơ. */}
       {uploadWarnings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-             onClick={() => setUploadWarnings(null)}>
+          onClick={() => setUploadWarnings(null)}>
           <div className="bg-surface rounded-2xl border border-hairline-2 max-w-2xl w-full
             max-h-[80vh] flex flex-col shadow-xl"
             onClick={e => e.stopPropagation()}>
@@ -637,8 +637,8 @@ export default function CompanyPayrollPanel({ month, year, onStatusChanged }) {
                   Có {uploadWarnings.warnings.length} cảnh báo khi upload{' '}
                   {uploadWarnings.kind === 'ATTENDANCE' ? 'bảng chấm công'
                     : uploadWarnings.kind === 'BONUS' ? 'thưởng'
-                    : uploadWarnings.kind === 'ALLOWANCE' ? 'phụ cấp'
-                    : 'file'}
+                      : uploadWarnings.kind === 'ALLOWANCE' ? 'phụ cấp'
+                        : 'file'}
                 </h3>
               </div>
               <button onClick={() => setUploadWarnings(null)}
@@ -696,7 +696,7 @@ export default function CompanyPayrollPanel({ month, year, onStatusChanged }) {
  * Click ngoài hoặc Esc = cancel. Nút Confirm có loading state khi `busy`.
  */
 function ConfirmModal({ title, message, confirmLabel = 'Xác nhận',
-                       tone = 'danger', onConfirm, onCancel, busy }) {
+  tone = 'danger', onConfirm, onCancel, busy }) {
   // Esc để huỷ — convenient cho user bấm nhầm.
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onCancel?.(); };
@@ -724,9 +724,9 @@ function ConfirmModal({ title, message, confirmLabel = 'Xác nhận',
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-         onClick={() => !busy && onCancel?.()}>
+      onClick={() => !busy && onCancel?.()}>
       <div className="bg-surface rounded-2xl border border-hairline-2 max-w-md w-full shadow-xl"
-           onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+        onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="px-5 pt-5 pb-3 flex items-start gap-3">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${toneClasses.iconBg}`}>
             <AlertCircle size={20} className={toneClasses.icon} />
@@ -770,11 +770,22 @@ function ConfirmModal({ title, message, confirmLabel = 'Xác nhận',
 // nghiệp vụ Kế toán → Kinh doanh → Xưởng sản xuất → Kho → Tài xế.
 const COMPANY_DEPARTMENTS = [
   { key: 'ACCOUNTING', label: 'Kế toán' },
-  { key: 'SALES',      label: 'Kinh doanh' },
-  { key: 'FACTORY',    label: 'Xưởng sản xuất' },
-  { key: 'WAREHOUSE',  label: 'Kho' },
-  { key: 'DRIVER',     label: 'Tài xế' },
+  { key: 'SALES', label: 'Kinh doanh' },
+  { key: 'FACTORY', label: 'Xưởng sản xuất' },
+  { key: 'WAREHOUSE', label: 'Kho' },
+  { key: 'DRIVER', label: 'Tài xế' },
 ];
+
+function CollapsibleSection({ open, children, className = '' }) {
+  return (
+    <div
+      className={`grid transition-[grid-template-rows] duration-300 ease-out
+        ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'} ${className}`}
+    >
+      <div className="overflow-hidden min-h-0">{children}</div>
+    </div>
+  );
+}
 
 /**
  * Phiếu lương toàn công ty: GỘP 5 bộ phận thành 1 bảng duy nhất.
@@ -790,8 +801,10 @@ const COMPANY_DEPARTMENTS = [
  */
 function CompanyPayrollSection({ month, year, statusKey }) {
   const [sections, setSections] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [query, setQuery]       = useState('');   // 1 ô tìm chung, áp cho cả 5 bộ phận
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');   // 1 ô tìm chung, áp cho cả 5 bộ phận
+  // Trạng thái mở/đóng của cả khối Phiếu lương. Mặc định ĐÓNG (collapse).
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -802,8 +815,10 @@ function CompanyPayrollSection({ month, year, statusKey }) {
           const res = await factoryPayrollApi.departmentPayroll(month, year, d.key);
           return { dept: d.key, label: d.label, data: res?.data || res, error: null };
         } catch (e) {
-          return { dept: d.key, label: d.label, data: null,
-            error: e?.response?.data?.message || e.message || 'Không tải được' };
+          return {
+            dept: d.key, label: d.label, data: null,
+            error: e?.response?.data?.message || e.message || 'Không tải được'
+          };
         }
       })
     ).then((results) => {
@@ -821,7 +836,7 @@ function CompanyPayrollSection({ month, year, statusKey }) {
   const q = normalize(query);
   const totalMatches = q
     ? sections.reduce((s, sec) => s + (sec.data?.rows || [])
-        .filter(r => normalize(r.userFullName).includes(q)).length, 0)
+      .filter(r => normalize(r.userFullName).includes(q)).length, 0)
     : 0;
 
   const isPublished = statusKey === 'PUBLISHED';
@@ -858,6 +873,13 @@ function CompanyPayrollSection({ month, year, statusKey }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, sections]);
 
+  // Khi user gõ tìm kiếm → tự mở khối để họ thấy kết quả, khỏi phải click
+  // thêm 1 bước. (Chỉ auto-open, không auto-close khi xoá query — tránh
+  // giật màn hình khi user đang xoá ký tự.)
+  useEffect(() => {
+    if (q) setOpen(true);
+  }, [q]);
+
   // Early returns NẰM SAU mọi hook — đáp ứng Rules of Hooks.
   if (loading) {
     return (
@@ -876,10 +898,22 @@ function CompanyPayrollSection({ month, year, statusKey }) {
 
   return (
     <div className="mt-4 rounded-2xl border border-hairline-2 bg-canvas overflow-hidden">
-      {/* ── HEADER CHUNG ──────────────────────────────────────────────── */}
-      <div className="px-5 py-4 border-b border-hairline-2 bg-surface/60">
+      {/* ── HEADER CHUNG — CLICK ĐỂ MỞ/ĐÓNG ──────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        className="w-full px-5 py-4 text-left border-b border-hairline-2 bg-surface/60
+                   hover:bg-surface transition-colors"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
+            {/* Chevron xoay 180° khi mở */}
+            <ChevronDown
+              size={16}
+              className={`text-muted shrink-0 transition-transform duration-300
+                ${open ? 'rotate-180' : ''}`}
+            />
             <h3 className="font-bold text-sm text-ink">
               Phiếu lương{' '}
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase
@@ -895,8 +929,11 @@ function CompanyPayrollSection({ month, year, statusKey }) {
             </span>
           </div>
 
-          {/* 1 ô tìm chung */}
-          <div className="relative shrink-0 w-full sm:w-auto">
+          {/* Ô tìm chung — bấm vào input KHÔNG toggle (stopPropagation) */}
+          <div
+            className="relative shrink-0 w-full sm:w-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
             <input
               type="text"
@@ -923,37 +960,39 @@ function CompanyPayrollSection({ month, year, statusKey }) {
               : `Không có nhân viên nào khớp "${query}"`}
           </p>
         )}
-      </div>
+      </button>
 
-      {/* ── DANH SÁCH BỘ PHẬN, ngăn cách chỉ bằng header con ──────────── */}
-      {sections.map((sec, i) => (
-        <div key={sec.dept}
-             className={i > 0 ? 'border-t-4 border-hairline' : ''}>
-          <div className="px-5 py-2.5 bg-canvas/80 border-b border-hairline flex items-center justify-between gap-3 sticky top-0 z-10">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-muted">
-              {sec.label}
-            </h4>
-            <span className="text-[10px] text-faint font-semibold">
-              {sec.data?.rows?.length ?? 0} nhân viên
-            </span>
-          </div>
-          {sec.error ? (
-            <div className="px-4 py-6 text-center text-xs text-red-600">
-              Lỗi: {sec.error}
+      {/* ── PHẦN NỘI DUNG — COLLAPSE/EXPAND ──────────────────────────── */}
+      <CollapsibleSection open={open}>
+        {sections.map((sec, i) => (
+          <div key={sec.dept}
+            className={i > 0 ? 'border-t-4 border-hairline' : ''}>
+            <div className="px-5 py-2.5 bg-canvas/80 border-b border-hairline flex items-center justify-between gap-3 sticky top-0 z-10">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-muted">
+                {sec.label}
+              </h4>
+              <span className="text-[10px] text-faint font-semibold">
+                {sec.data?.rows?.length ?? 0} nhân viên
+              </span>
             </div>
-          ) : (
-            <PayrollTables
-              data={sec.data}
-              loading={false}
-              preview={false}
-              embedded
-              externalQuery={query}
-              hideHeader={i > 0}
-              suppressScroll
-            />
-          )}
-        </div>
-      ))}
+            {sec.error ? (
+              <div className="px-4 py-6 text-center text-xs text-red-600">
+                Lỗi: {sec.error}
+              </div>
+            ) : (
+              <PayrollTables
+                data={sec.data}
+                loading={false}
+                preview={false}
+                embedded
+                externalQuery={query}
+                hideHeader={i > 0}
+                suppressScroll
+              />
+            )}
+          </div>
+        ))}
+      </CollapsibleSection>
     </div>
   );
 }

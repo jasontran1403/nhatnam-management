@@ -229,24 +229,38 @@ function NewPayslipBreakdownCards({ row, className = '' }) {
         )}
 
         {/* ── Thưởng KPI ── */}
-        <Divider />
-        <Row label={`Thưởng KPI — đạt ${kpiStr}`} val={`+ ${fmt(effBonus)}`} />
-        {kpi !== 100 && (
-          <Row sub label={`Thưởng gốc ${fmt(row.bonus)} × ${kpiStr}`} val={fmt(effBonus)} />
-        )}
+        {/* (10/2026) Khi có driverOrderBonusDetail (tài xế hoặc NV hỗ trợ giao
+          * hàng): phần "Thưởng KPI — đạt 100%" thực chất là Thưởng giao hàng
+          * (xăng + bonus xe máy + bonus xe tải) → ĐÃ hiển thị ở card riêng
+          * "Thưởng giao hàng tháng N". Trừ phần driverKpi100 ra khỏi effBonus
+          * để không đếm 2 lần; chỉ còn hiện phần Thưởng từ hồ sơ nếu > 0. */}
+        {(() => {
+          const driverTotal = (driverKpi && driverKpi.totalAmount) || 0;
+          const otherBonus = Math.max(0, (effBonus || 0) - driverTotal);
+          if (otherBonus > 0) {
+            return (
+              <>
+                <Divider />
+                <Row label={`Thưởng KPI — đạt ${kpiStr}`} val={`+ ${fmt(otherBonus)}`} />
+                {kpi !== 100 && (
+                  <Row sub label={`Thưởng gốc ${fmt(row.bonus)} × ${kpiStr}`}
+                       val={fmt(otherBonus)} />
+                )}
+              </>
+            );
+          }
+          return null;
+        })()}
 
         {/* ── Thực nhận ── */}
         <Divider />
         <Row label="LƯƠNG THỰC NHẬN" val={fmt(row.netSalary)} bold green />
       </div>
 
-      {/* ── Card CHI TIẾT Thưởng KPI 100% của TÀI XẾ ─────────────────────────
-          Hiện tổng ở card lương trên (dòng "Thưởng KPI — đạt 100%"), còn card
-          này bung chi tiết: tiền xăng + thưởng xe máy + thưởng xe tải. Chỉ
-          render khi có driverOrderBonusDetail (tài xế đã được tính KPI). */}
-      {driverKpi && (driverKpi.totalAmount || 0) > 0 && (
-        <DriverKpiDetailCard detail={driverKpi} />
-      )}
+      {/* (10/2026) BỎ Card "Chi tiết Thưởng KPI 100%" cho tài xế — đã có card
+         "Thưởng giao hàng tháng N" bên ngoài (OfficeOrDriverBonusCard) với
+         breakdown rõ hơn. Giữ DriverKpiDetailCard component để không gãy
+         import nếu nơi khác còn gọi, nhưng không render ở đây. */}
 
       <p className="text-[11px] text-muted leading-relaxed">
         {flat ? (

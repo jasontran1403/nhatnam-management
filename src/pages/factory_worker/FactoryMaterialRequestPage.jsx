@@ -1,8 +1,8 @@
 // src/pages/factory_worker/FactoryMaterialRequestPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
-import { Plus, X, Package, Search, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Plus, X, Package, Search, ChevronDown, ChevronUp, CheckCircle2, Archive } from 'lucide-react';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { Field, inputCls, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx';
@@ -790,8 +790,16 @@ function CreateModal({ onClose, onDone, allMaterials }) {
 export default function FactoryMaterialRequestPage() {
   const { t } = useLang();
   const { role } = useAuth();
-  // FACTORY_WORKER chỉ được xác nhận nhận hàng, không được tạo phiếu đặt hàng mới.
-  const canCreate = role !== 'FACTORY_WORKER';
+  // (10/2026) Cho CẢ FACTORY_WORKER + FACTORY_STAFF + SUPER_FACTORY_WORKER
+  // tạo phiếu đặt hàng NVL (giống Trưởng xưởng). Trước đây chỉ Super được tạo.
+  const canCreate = true;
+  // Dùng để điều hướng về trang "Quản lý NVL sản xuất" đúng theo role.
+  const nav = useNavigate();
+  const basePath = typeof window !== 'undefined' && window.location.pathname.startsWith('/factory-staff')
+    ? '/factory-staff'
+    : window.location.pathname.startsWith('/super-factory')
+      ? '/super-factory'
+      : '/factory';
   const [data, setData] = useState(null);
   const [allMaterials, setAllMaterials] = useState([]); // từ factory_material
   const [loading, setLoading] = useMinLoading();
@@ -839,14 +847,21 @@ export default function FactoryMaterialRequestPage() {
 
   return (
     <div className="p-4 space-y-4 bg-surface-2 min-h-full">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-xl font-bold text-ink">{t('production', 'mr_page_title')}</h1>
-        {canCreate && (
-          <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-forest-deep text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-forest-mid transition-colors">
-            <Plus size={16} /> {t('production', 'mr_create_btn')}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* (10/2026) Nút tắt sang trang "Quản lý NVL sản xuất" (reuse OwnerMaterialStockPage) */}
+          <button onClick={() => nav(`${basePath}/material-stock`)}
+            className="flex items-center gap-2 bg-canvas border border-line text-ink text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-surface-2 transition-colors">
+            <Archive size={16} /> Quản lý nguyên liệu sản xuất
           </button>
-        )}
+          {canCreate && (
+            <button onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 bg-forest-deep text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-forest-mid transition-colors">
+              <Plus size={16} /> {t('production', 'mr_create_btn')}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-surface rounded-2xl border border-hairline shadow-sm p-4 space-y-3">

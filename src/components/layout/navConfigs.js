@@ -10,6 +10,7 @@ import {
   Wrench, Settings2, ShoppingBag, Archive, CalendarRange, Wallet, Calculator, Building2,
   Boxes, Video, ShieldAlert, Gift,
   CalendarDays,  // Phase 3 — nav Ngày lễ
+  Award,         // 10/2026 — nav Thưởng tháng cho Kế Toán Trưởng
 } from 'lucide-react';
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
@@ -157,8 +158,10 @@ export const superAccountantNavRaw = [
   { to: '/super-accountant/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
   { to: '/super-accountant/pricing', labelKey: 'pricing', icon: Calculator },
   // ── Quản lý nhân sự (SUPER_ACCOUNTANT được xem HR) ───────────────────────
-  { to: '/super-accountant/manage', labelKey: 'hr_manage', icon: UserCog },
-  { to: '/super-accountant/salaries', labelKey: 'salaries', icon: Receipt },
+  // { to: '/super-accountant/manage', labelKey: 'hr_manage', icon: UserCog },
+  // { to: '/super-accountant/salaries', labelKey: 'salaries', icon: Receipt },
+  // 10/2026 — Kế Toán Trưởng xem thưởng tháng (read-only, 5 phòng).
+  { to: '/super-accountant/monthly-bonus', labelKey: 'monthly_bonus_view', icon: Award },
   // Yêu cầu văn phòng phẩm — top-level, dùng chung cho mọi nhân viên
   { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
   // ── Quản lý lương — phiếu lương theo tháng ──────────────────────────────
@@ -180,10 +183,17 @@ export const operatorNavRaw = [
 // phiếu đặt hàng (chỉ xác nhận nhận hàng), kho bán thành phẩm (chuyển kho TP),
 // kho thành phẩm xưởng. ────────────────────────────────────────────────────────
 export const factoryWorkerNavRaw = [
-  { to: '/factory/orders', labelKey: 'work_orders', icon: ClipboardList },
+  // ── Dashboard sản xuất: kế hoạch SX + lệnh SX (mượn component của Trưởng xưởng) ──
+  { to: '/factory/production', labelKey: 'production', icon: Factory },
+  // (10/2026) Bỏ "/factory/orders" — click lệnh SX mở modal trực tiếp ở
+  // SuperFactoryWorkerDashboard, không còn trang danh sách lệnh riêng.
+  // ── Biến thể sản xuất (recipes) — mượn component của Trưởng xưởng ─────────
+  { to: '/factory/recipes', labelKey: 'production_variants', icon: FlaskConical },
   { to: '/factory/machines', labelKey: 'machine_manage', icon: Wrench },
-  // ── Phiếu đặt hàng nguyên liệu (chỉ xác nhận nhận hàng) ──────────────────
+  // ── Phiếu đặt hàng nguyên liệu — tạo + xác nhận nhận hàng ─────────────────
   { to: '/factory/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
+  // ── Tồn kho / Tạo nguyên liệu SX (mượn trang Owner) ──────────────────────
+  { to: '/factory/material-stock', labelKey: 'material_stock', icon: Archive },
   // ── Kho bán thành phẩm (chưa đóng gói) — lập phiếu chuyển kho thành phẩm ──
   { to: '/factory/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
   // Yêu cầu văn phòng phẩm — top-level, dùng chung cho mọi nhân viên
@@ -254,14 +264,16 @@ export const factoryPayrollNavRaw = [
   { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
 ];
 
-// ── FACTORY_STAFF (Trợ lý xưởng): DÙNG CHUNG các trang của FACTORY_WORKER —
-// lịch sử lệnh SX, máy móc & bảo trì, phiếu đặt hàng NVL, kho bán thành phẩm —
-// cộng lương & phiếu của tôi. Các trang là cùng component với Nhân viên xưởng,
-// chỉ khác nhãn trang đầu ("Lịch sử lệnh sản xuất" theo yêu cầu). ─────────────
+// ── FACTORY_STAFF (Trợ lý xưởng): có FULL quyền giống Nhân viên xưởng
+// (10/2026 cập nhật). Dùng chung component với FACTORY_WORKER, chỉ URL khác
+// prefix "/factory-staff/*". Trang Dashboard sản xuất (click lệnh SX ra modal),
+// Biến thể, Phiếu đặt hàng (tạo + nhận hàng), Kho NVL, Kho BTP, VPP, Lương. ───
 export const factoryStaffNavRaw = [
-  { to: '/factory-staff/history', labelKey: 'work_order_history', icon: ClipboardList },
+  { to: '/factory-staff/production', labelKey: 'production', icon: Factory },
+  { to: '/factory-staff/recipes', labelKey: 'production_variants', icon: FlaskConical },
   { to: '/factory-staff/machines', labelKey: 'machine_manage', icon: Wrench },
   { to: '/factory-staff/material-requests', labelKey: 'material_requests', icon: ShoppingBag },
+  { to: '/factory-staff/material-stock', labelKey: 'material_stock', icon: Archive },
   { to: '/factory-staff/semi-finished-goods', labelKey: 'semi_finished_goods', icon: Layers },
   // Yêu cầu văn phòng phẩm — top-level
   { to: '/office-supply', labelKey: 'office_supply_requests', icon: Archive },
@@ -315,8 +327,8 @@ export const ROLE_DEFAULT_PATH = {
   SUPER_ACCOUNTANT: '/super-accountant/dashboard',
   OPERATOR: '/operator/products',
   SHIPPER: '/shipper/dashboard',
-  FACTORY_WORKER: '/factory/orders',
-  FACTORY_STAFF: '/factory-staff/history',
+  FACTORY_WORKER: '/factory/production',
+  FACTORY_STAFF: '/factory-staff/production',
   SUPER_FACTORY_WORKER: '/super-factory/production',
   FACTORY_ACCOUNTANT: '/factory-accountant/warehouse',
   SELLER: '/seller/dashboard',

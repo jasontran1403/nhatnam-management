@@ -144,6 +144,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "orders": "Đơn hàng",
+    "monthly_bonus_view": "Báo cáo thưởng",
     "customers": "Khách hàng",
     "employees": "Nhân viên",
     "staff": "Nhân sự / Lương",

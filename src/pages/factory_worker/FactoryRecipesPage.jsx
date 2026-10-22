@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLang } from '../../context/LangContext';
 import { TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
@@ -125,6 +126,13 @@ function ControlTypeIcon({ controlType, requiresQc }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FactoryRecipesPage() {
   const { t } = useLang();
+  // (10/2026) Nút điều hướng sang trang "Quản lý sản phẩm sản xuất" theo role
+  const nav = useNavigate();
+  const basePath = typeof window !== 'undefined' && window.location.pathname.startsWith('/factory-staff')
+    ? '/factory-staff'
+    : window.location.pathname.startsWith('/super-factory')
+      ? '/super-factory'
+      : '/factory';
   const [recipes, setRecipes] = useState([]);
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -175,9 +183,15 @@ export default function FactoryRecipesPage() {
         title={t('production', 'recipe_title')}
         subtitle={t('production', 'recipe_subtitle')}
         action={
-          <PrimaryButton onClick={openCreate}>
-            <Plus size={15} /> {t('production', 'recipe_create_new')}
-          </PrimaryButton>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* (10/2026) Nút điều hướng sang trang Quản lý sản phẩm sản xuất */}
+            <SecondaryButton onClick={() => nav(`${basePath}/factory-products?tab=products`)}>
+              <Package size={14} /> Quản lý sản phẩm sản xuất
+            </SecondaryButton>
+            <PrimaryButton onClick={openCreate}>
+              <Plus size={15} /> {t('production', 'recipe_create_new')}
+            </PrimaryButton>
+          </div>
         }
       />
 

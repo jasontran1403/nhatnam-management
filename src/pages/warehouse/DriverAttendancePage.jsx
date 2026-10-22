@@ -323,22 +323,34 @@ function KmSummaryModal({ driver, onClose }) {
     return () => { alive = false; };
   }, [range, driver.driverId]);
 
-  const grandTotal = monthData.reduce((s, d) => s + (d.totalKm || 0), 0);
+  // (10/2026) Modal tổng hợp KM — chỉ hiện xe máy, bỏ xe tải (ODO xe tải đã
+  // bỏ khỏi điểm danh). Lọc tại source để totalKm per day và grand total cũng
+  // chỉ cộng xe máy, tránh sai lệch với bảng ngoài.
+  const monthDataMoto = useMemo(() => monthData.map(d => {
+    const motos = (d.vehicles || []).filter(v => v.vehicleType === 'MOTORBIKE');
+    return {
+      ...d,
+      vehicles: motos,
+      totalKm: motos.reduce((s, v) => s + (v.km || 0), 0),
+    };
+  }), [monthData]);
+
+  const grandTotal = monthDataMoto.reduce((s, d) => s + (d.totalKm || 0), 0);
 
   const allVehicleTypes = useMemo(() => {
     const set = new Set();
-    monthData.forEach(d => d.vehicles.forEach(v => set.add(v.vehicleType)));
+    monthDataMoto.forEach(d => d.vehicles.forEach(v => set.add(v.vehicleType)));
     return [...set].sort();
-  }, [monthData]);
+  }, [monthDataMoto]);
 
   const totalByVehicle = useMemo(() => {
     const map = {};
     allVehicleTypes.forEach(vt => { map[vt] = 0; });
-    monthData.forEach(d => d.vehicles.forEach(v => {
+    monthDataMoto.forEach(d => d.vehicles.forEach(v => {
       map[v.vehicleType] = (map[v.vehicleType] || 0) + (v.km || 0);
     }));
     return map;
-  }, [monthData, allVehicleTypes]);
+  }, [monthDataMoto, allVehicleTypes]);
 
   const VtIcon = (vt) => vt === 'TRUCK' ? Truck : Bike;
   const vtLabel = (vt) => vt === 'TRUCK' ? 'Xe tải' : 'Xe máy';
@@ -373,7 +385,7 @@ function KmSummaryModal({ driver, onClose }) {
               <Loader2 size={18} className="animate-spin text-gold" />
               <span className="text-sm">Đang tải...</span>
             </div>
-          ) : monthData.length === 0 ? (
+          ) : monthDataMoto.length === 0 ? (
             <p className="text-sm text-muted text-center py-10">Không có dữ liệu</p>
           ) : (
             <table className="w-full text-sm">
@@ -394,7 +406,7 @@ function KmSummaryModal({ driver, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                {monthData.map(d => (
+                {monthDataMoto.map(d => (
                   <tr key={`${d.year}-${d.month}`} className="border-b border-line-soft hover:bg-canvas/50">
                     <td className="py-2.5 pr-3 font-medium text-ink">{d.label}</td>
                     {allVehicleTypes.map(vt => {
@@ -411,7 +423,7 @@ function KmSummaryModal({ driver, onClose }) {
                   </tr>
                 ))}
               </tbody>
-              {monthData.length > 1 && (
+              {monthDataMoto.length > 1 && (
                 <tfoot>
                   <tr className="border-t-2 border-line-soft">
                     <td className="py-2.5 pr-3 font-bold text-ink">Tổng cộng</td>
@@ -445,12 +457,15 @@ function KmSummaryModal({ driver, onClose }) {
 // ── Driver Card ───────────────────────────────────────────────────────────────
 function DriverCard({ driver, date, onUpdate, onNameClick }) {
   const { driverId, driverName, vehicles } = driver;
-  const allDone = vehicles.every(v => v.startOdometer != null && v.endOdometer != null);
-  const anyDone = vehicles.some(v => v.startOdometer != null || v.endOdometer != null);
-  const hasBoth = vehicles.length > 1;
+  // (10/2026) Bỏ điểm danh ODO xe tải — chỉ giữ xe máy. Tài xế xe tải nhận
+  // thưởng cố định tháng (nhập ở Bảng chấm công), không cần tracking ODO.
+  const motoVehicles = (vehicles || []).filter(v => v.vehicleType === 'MOTORBIKE');
+  const allDone = motoVehicles.length > 0
+    && motoVehicles.every(v => v.startOdometer != null && v.endOdometer != null);
+  const anyDone = motoVehicles.some(v => v.startOdometer != null || v.endOdometer != null);
+  const hasBoth = false;   // không còn 2 loại xe sau khi lọc
 
-  const sorted = [...vehicles].sort((a, b) =>
-    (a.vehicleType === 'MOTORBIKE' ? 0 : 1) - (b.vehicleType === 'MOTORBIKE' ? 0 : 1));
+  const sorted = motoVehicles;
 
   return (
     <div className={`bg-surface rounded-2xl border-2 overflow-hidden
@@ -533,8 +548,17 @@ export default function DriverAttendancePage() {
     }));
   };
 
+  // (10/2026) Chỉ giữ xe máy — bỏ điểm danh ODO xe tải. Tài xế xe tải chỉ
+  // nhận thưởng cố định tháng, không track ODO. Lọc tại đây để counter trên
+  // header + DriverCard đều thấy chung một tập xe máy, và tài xế nào không
+  // còn xe máy nào (chỉ có xe tải) sẽ bị ẩn khỏi list.
+  const motoOnlyRows = rows.map(r => ({
+    ...r,
+    vehicles: (r.vehicles || []).filter(v => v.vehicleType === 'MOTORBIKE'),
+  })).filter(r => (r.vehicles || []).length > 0);
+
   // Filter: bỏ kho + search debounce
-  const grouped = rows
+  const grouped = motoOnlyRows
     .filter(r => !EXCLUDE_NAMES.includes(r.driverName?.toLowerCase().trim()))
     .filter(r => !searchQuery || r.driverName?.toLowerCase().includes(searchQuery));
 

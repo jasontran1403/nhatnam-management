@@ -19,29 +19,44 @@ import {
   FileSpreadsheet, Calculator, Download, CalendarDays, ChevronDown, Gift, Wallet,
   CalendarClock, UserCheck, Clock, Lock, Unlock, Users, Receipt, Truck, Route, ShieldCheck,
   PiggyBank, Plus, X, Search, CornerDownRight, MapPin, User as UserIcon, Package, Eye, Award,
-  Landmark, Hash,
+  Landmark, Hash, Percent, TrendingUp, Settings, Check,
 } from 'lucide-react';
 import { factoryPayrollApi } from '../../api/factoryPayrollApi';
 import { companyPayrollApi } from '../../api/companyPayrollApi';
 import CompanyPayrollPanel from './CompanyPayrollPanel';   // Phase 3 — panel chung
 import { BackButton } from '../../components/common/SubPageNav';
+import { useNavigate } from 'react-router-dom';
 import {
   PageHeader, SectionCard, LoadingSpinner, SecondaryButton, PrimaryButton,
   Table, Thead, Th, Td, Tr, EmptyState, formatDateTime, formatCurrency,
 } from '../../components/ui';
 import Modal from '../../components/ui/Modal';
+import { SalesBonusV2ConfigModal, SalesBonusV2ReviewModal } from './SalesBonusV2Modals';
 import AttendanceDayCalendar from '../../components/hr/AttendanceDayCalendar';
 import { useToast } from '../../components/common/Toast';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
 
 const fmtNum = (v, d = 2) =>
   v == null ? '—' : Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d });
 
+// (10/2026) Phân loại nhân viên "chính" của phòng vs "hỗ trợ" (NV phòng khác
+// có doanh thu / tham gia tính hoa hồng). Dùng chung với AccountantBonusViewPage.
+const _normNoAccent = (s) => (s || '').toString().toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+function isSupportForDept(dept, roleLabel) {
+  const r = _normNoAccent(roleLabel);
+  if (!r) return false;
+  if (dept === 'SALES')      return !r.includes('kinh doanh');
+  if (dept === 'ACCOUNTING') return !r.includes('ke toan');
+  return false;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // CHỌN THÁNG — tháng hiện tại + quá khứ, KHÔNG có tương lai
 // ══════════════════════════════════════════════════════════════════════════════
 
-function MonthPicker({ periods, value, onChange, disabled }) {
+export function MonthPicker({ periods, value, onChange, disabled }) {
   const [open, setOpen] = useState(false);
   const current = periods.find(p => p.month === value?.month && p.year === value?.year);
 
@@ -725,7 +740,7 @@ function AdjustmentSlot({ icon: Icon, title, description, hint, count, rowLabel,
 // TỔNG HỢP QUỸ THƯỞNG KPI — hiện sau khi đã tính
 // ══════════════════════════════════════════════════════════════════════════════
 
-function KpiSummary({ kpi }) {
+export function KpiSummary({ kpi }) {
   if (!kpi) return null;
 
   const pool = kpi.bonusPool ?? 0;
@@ -758,6 +773,20 @@ function KpiSummary({ kpi }) {
     },
   ];
 
+  // (10/2026) Danh sách CHI TIẾT NV được chia — hiện cho OWNER và Kế Toán
+  // Trưởng. Bảo vệ (fixedAmountRole = true) hiển thị "Thưởng cố định".
+  //   • Nhóm thường: sort theo weight DESC rồi amount DESC
+  //   • Nhóm bảo vệ (cố định): hiện cuối, có badge
+  const items = Array.isArray(kpi.items) ? kpi.items : [];
+  const regular = items
+    .filter(i => !i.fixedAmountRole)
+    .slice()
+    .sort((a, b) => (b.amount || 0) - (a.amount || 0));
+  const fixed = items
+    .filter(i => i.fixedAmountRole)
+    .slice()
+    .sort((a, b) => (b.amount || 0) - (a.amount || 0));
+
   return (
     <SectionCard>
       <div className="flex items-center gap-2 px-5 py-4 border-b border-hairline">
@@ -776,6 +805,55 @@ function KpiSummary({ kpi }) {
           </div>
         ))}
       </div>
+
+      {/* ── Chi tiết NV được chia (10/2026) ─────────────────────────────── */}
+      {items.length > 0 && (
+        <div className="border-t border-hairline">
+          <div className="flex items-center justify-between px-5 py-3">
+            <h4 className="text-xs font-bold text-ink uppercase tracking-wider">
+              Chi tiết nhân viên được chia ({items.length} người)
+            </h4>
+          </div>
+          <div className="px-5 pb-4">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-muted border-b border-hairline">
+                  <th className="py-1.5 font-semibold">Nhân viên</th>
+                  <th className="py-1.5 font-semibold">Chức vụ</th>
+                  <th className="py-1.5 text-right font-semibold">Thưởng sản xuất</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regular.map(i => (
+                  <tr key={i.userId || i.userFullName} className="border-b border-hairline/40 last:border-0">
+                    <td className="py-1.5 text-ink">{i.userFullName}</td>
+                    <td className="py-1.5 text-muted">{i.roleLabel || '—'}</td>
+                    <td className="py-1.5 text-right font-semibold text-ink">
+                      {formatCurrency(i.amount || 0)}
+                    </td>
+                  </tr>
+                ))}
+                {fixed.map(i => (
+                  <tr key={i.userId || i.userFullName} className="border-b border-hairline/40 last:border-0 bg-amber-50/40 dark:bg-amber-900/10">
+                    <td className="py-1.5 text-ink">{i.userFullName}</td>
+                    <td className="py-1.5 text-muted">
+                      {i.roleLabel || '—'}
+                      <span className="ml-1.5 inline-block text-[10px] px-1.5 py-0.5 rounded
+                                       bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-200
+                                       font-semibold">
+                        Thưởng cố định
+                      </span>
+                    </td>
+                    <td className="py-1.5 text-right font-semibold text-ink">
+                      {formatCurrency(i.amount || 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </SectionCard>
   );
 }
@@ -1744,7 +1822,9 @@ const parseVN = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** Ô nhập số kiểu VN: gõ ký tự → format ngay, gợi ý "vnđ" phía sau. */
+/** Ô nhập số kiểu VN: gõ ký tự → format ngay, gợi ý "vnđ" phía sau.
+ *  (10/2026) Focus: bỏ ring vàng dày (ring-2), chỉ đổi màu viền nhẹ cho tinh tế;
+ *  đồng thời select hết text để user gõ đè số mới ngay. */
 function VNMoneyInput({ value, onChange, placeholder, disabled }) {
   return (
     <div className={`relative ${disabled ? 'opacity-60' : ''}`}>
@@ -1752,10 +1832,11 @@ function VNMoneyInput({ value, onChange, placeholder, disabled }) {
         inputMode="numeric" disabled={disabled}
         value={fmtVN(value)}
         onChange={e => onChange(String(e.target.value).replace(/[^\d]/g, ''))}
+        onFocus={e => e.target.select()}
         placeholder={placeholder}
         className="w-full pl-4 pr-14 py-2.5 rounded-xl border border-hairline-2 text-sm text-right
-          focus:outline-none focus:ring-2 focus:ring-gold bg-surface disabled:cursor-not-allowed
-          disabled:bg-canvas"
+          focus:outline-none focus:border-gold bg-surface disabled:cursor-not-allowed
+          disabled:bg-canvas transition-colors"
       />
       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted pointer-events-none">
         vnđ
@@ -1765,7 +1846,8 @@ function VNMoneyInput({ value, onChange, placeholder, disabled }) {
 }
 
 function DriverPayrollPanel({ month, year, onSaved,
-  onComputePreview, computingPreview, finalizedPeriod }) {
+  onComputePreview, computingPreview, finalizedPeriod,
+  bonusCalcStatus, bonusFinalized, publishingBonus, onPublish, onUnpublish }) {
   const toast = useToast();
   const [cfg, setCfg] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1774,8 +1856,82 @@ function DriverPayrollPanel({ month, year, onSaved,
   const [bonusMoto, setBonusMoto] = useState('');
   const [bonusTruck, setBonusTruck] = useState('');
   const [modalDriver, setModalDriver] = useState(null); // { userId, name, vehicleType }
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [calculating, setCalculating] = useState(false);
+  // (10/2026) Thưởng cố định tài xế xe tải — mỗi NV 1 số, state key = userId.
+  const [truckFixedBonuses, setTruckFixedBonuses] = useState({});
 
   const finalized = cfg?.finalized === true;
+
+  // (10/2026) 3-state cho Thưởng Tài xế (giống KT/KD).
+  //   NONE       = chưa tính           → "Tính tiền thưởng"
+  //   CALCULATED = đã tính, chưa Public → "Tính lại" + "Hoàn tất tính thưởng"
+  //   PUBLISHED  = đã Public            → "Mở lại"
+  const bonusState = bonusCalcStatus || (bonusFinalized ? 'PUBLISHED' : 'NONE');
+  const isNone      = bonusState === 'NONE';
+  const isCalc      = bonusState === 'CALCULATED';
+  const isPublished = bonusState === 'PUBLISHED';
+
+  // 3 giá trị đã lưu + default placeholder nếu chưa có (yêu cầu 10/2026)
+  const displayGas       = cfg?.gasPrice ?? null;
+  const displayBonusMoto = cfg?.bonusUnitPrice ?? null;
+  const displayBonusTruck = cfg?.truckBonusUnitPrice ?? null;
+
+  // (10/2026) Mặc định thưởng cố định tài xế xe tải nếu tháng này chưa nhập.
+  // Nếu user không đổi gì → BE lưu 900.000; nếu đổi → lưu số user nhập.
+  const TRUCK_DRIVER_DEFAULT_BONUS = 900_000;
+
+  const openConfigModal = () => {
+    // Pre-fill với giá trị hiện tại; nếu null, để input show placeholder (488/5000/8000)
+    setGasPrice(displayGas != null ? String(displayGas) : '');
+    setBonusMoto(displayBonusMoto != null ? String(displayBonusMoto) : '');
+    setBonusTruck(displayBonusTruck != null ? String(displayBonusTruck) : '');
+    // (10/2026) Pre-fill thưởng cố định tài xế xe tải:
+    //   • Có số đã lưu tháng này → dùng số đó.
+    //   • Chưa lưu (0 hoặc null) → điền sẵn 900.000 làm default.
+    const prefill = {};
+    (cfg?.truckDriverRows || []).forEach(r => {
+      prefill[r.userId] = r.fixedTruckBonus != null && r.fixedTruckBonus > 0
+        ? String(r.fixedTruckBonus)
+        : String(TRUCK_DRIVER_DEFAULT_BONUS);
+    });
+    setTruckFixedBonuses(prefill);
+    setConfigModalOpen(true);
+  };
+
+  const handleCalculate = async () => {
+    // Default: 488 / 5000 / 8000 nếu user để trống
+    const gas   = parseVN(gasPrice)   ?? 488;
+    const bMoto = parseVN(bonusMoto)  ?? 5000;
+    const bTruck = parseVN(bonusTruck) ?? 8000;
+    if (gas < 0 || bMoto < 0 || bTruck < 0) {
+      return toast('Giá trị không hợp lệ', 'error');
+    }
+    // (10/2026) Build map thưởng cố định tài xế xe tải. Entry rỗng → bỏ qua
+    // (giữ nguyên số đã lưu); entry = 0 → set về 0 (hợp lệ, chủ ý).
+    const truckFixedPayload = {};
+    Object.entries(truckFixedBonuses).forEach(([uid, raw]) => {
+      if (raw === '' || raw == null) return;
+      const n = parseVN(raw);
+      if (n != null && n >= 0) truckFixedPayload[uid] = n;
+    });
+
+    setCalculating(true);
+    try {
+      await factoryPayrollApi.calculateDriverBonus(month, year, {
+        gasPrice: gas,
+        bonusUnitPrice: bMoto,
+        truckBonusUnitPrice: bTruck,
+        truckDriverFixedBonuses: truckFixedPayload,
+      });
+      toast('Đã tính thưởng tài xế. Bấm "Hoàn tất tính thưởng" để Public.', 'success');
+      setConfigModalOpen(false);
+      await load();
+      onSaved && onSaved();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi tính thưởng tài xế', 'error');
+    } finally { setCalculating(false); }
+  };
   // Đủ giá xăng + 2 đơn giá thưởng mới cho tính lương xem trước — tránh
   // hiển thị bảng với các cột đều 0đ vì thiếu cấu hình.
   const canPreview = cfg?.gasPrice != null
@@ -1840,51 +1996,172 @@ function DriverPayrollPanel({ month, year, onSaved,
           </div>
         </div>
 
-        {/* Nhập giá xăng + 2 đơn giá thưởng */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="block text-xs font-semibold text-muted mb-1">
-              Giá xăng <span className="font-normal">(đồng / km, cho xe máy)</span>
-            </label>
-            <VNMoneyInput value={gasPrice} onChange={setGasPrice}
-              placeholder="VD: 3.000" disabled={finalized || loading} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted mb-1">
-              Đơn giá thưởng xe máy <span className="font-normal">(đồng / lượt)</span>
-            </label>
-            <VNMoneyInput value={bonusMoto} onChange={setBonusMoto}
-              placeholder="VD: 20.000" disabled={finalized || loading} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted mb-1">
-              Đơn giá thưởng xe tải <span className="font-normal">(đồng / lượt)</span>
-            </label>
-            <VNMoneyInput value={bonusTruck} onChange={setBonusTruck}
-              placeholder="VD: 30.000" disabled={finalized || loading} />
+        {/* (10/2026) 3-state card thay cho 3-input + 2-button cũ.
+          *   NONE       → "Tính tiền thưởng" (mở modal nhập 3 thông số)
+          *   CALCULATED → hiển thị 3 giá trị readonly + "Tính lại" + "Hoàn tất"
+          *   PUBLISHED  → hiển thị 3 giá trị readonly + "Mở lại"
+          */}
+        <div className="rounded-xl bg-canvas border border-hairline px-4 py-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+                {isPublished ? 'Thưởng tài xế — ĐÃ HOÀN TẤT'
+                 : isCalc    ? 'Thưởng tài xế — ĐÃ TÍNH, CHƯA Public'
+                 :             'Thưởng tài xế — CHƯA TÍNH'}
+              </p>
+              {(isCalc || isPublished) && (
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-[10px] text-muted">Giá xăng (/km)</p>
+                    <p className="font-bold text-ink mt-0.5">
+                      {displayGas != null ? Number(displayGas).toLocaleString('vi-VN') : '—'}đ
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted">Thưởng xe máy (/lượt)</p>
+                    <p className="font-bold text-ink mt-0.5">
+                      {displayBonusMoto != null ? Number(displayBonusMoto).toLocaleString('vi-VN') : '—'}đ
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted">Thưởng xe tải (/lượt)</p>
+                    <p className="font-bold text-ink mt-0.5">
+                      {displayBonusTruck != null ? Number(displayBonusTruck).toLocaleString('vi-VN') : '—'}đ
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {isNone && (
+                <PrimaryButton onClick={openConfigModal} disabled={loading || calculating}>
+                  <Calculator size={14} /> Tính tiền thưởng
+                </PrimaryButton>
+              )}
+              {isCalc && (
+                <>
+                  <SecondaryButton onClick={openConfigModal} disabled={calculating || publishingBonus}>
+                    <RefreshCw size={14} /> Tính lại
+                  </SecondaryButton>
+                  <PrimaryButton
+                    onClick={() => onPublish && onPublish()}
+                    disabled={publishingBonus || !onPublish}>
+                    <Gift size={14} />
+                    {publishingBonus ? 'Đang hoàn tất...' : 'Hoàn tất tính thưởng'}
+                  </PrimaryButton>
+                </>
+              )}
+              {isPublished && (
+                <SecondaryButton
+                  onClick={() => onUnpublish && onUnpublish()}
+                  disabled={publishingBonus || !onUnpublish}
+                  title="Nhân viên tài xế sẽ không còn thấy phiếu thưởng. Data đã tính vẫn giữ.">
+                  <Unlock size={13} />
+                  {publishingBonus ? 'Đang mở lại...' : 'Mở lại'}
+                </SecondaryButton>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          {/* Tính lương XEM TRƯỚC — hiển thị "Phiếu lương — Tài xế" bên dưới
-              (chỉ tính cho bộ phận Tài xế, KHÔNG tính cho nhân viên hỗ trợ
-              giao hàng vì họ nằm ở bộ phận khác — phụ cấp xăng/giao hàng của
-              họ đã được cộng vào lương của bộ phận gốc). Ẩn sau khi đã Hoàn
-              tất vì lúc đó bảng đã là bản chính thức. */}
-          {!finalizedPeriod && (
-            <SecondaryButton
-              onClick={onComputePreview}
-              disabled={!canPreview || computingPreview || loading || !onComputePreview}
-              title={canPreview
-                ? 'Tính lương tài xế theo điểm danh ODO & lượt giao'
-                : 'Cần nhập đủ giá xăng + 2 đơn giá thưởng trước khi tính'}>
-              <Calculator size={14} />
-              {computingPreview ? 'Đang tính...' : 'Tính lương'}
-            </SecondaryButton>
-          )}
-          <PrimaryButton onClick={save} disabled={saving || loading || finalized}>
-            {saving ? 'Đang lưu...' : 'Lưu giá xăng & đơn giá thưởng'}
-          </PrimaryButton>
-        </div>
+
+        {/* Modal nhập 3 thông số — mở khi bấm Tính thưởng hoặc Tính lại.
+            Placeholder: 488 / 5000 / 8000 (giá trị default nếu user để trống).
+            Lưu ý: Modal component cần prop `open` (xem /components/ui/Modal.jsx)
+            — nếu chỉ wrap trong {configModalOpen && <Modal>} mà không truyền
+            open={true} thì Modal.jsx trả null → modal không bao giờ hiện. */}
+        <Modal
+          open={configModalOpen}
+          onClose={() => !calculating && setConfigModalOpen(false)}
+          size="lg"
+          title={isNone ? 'Tính tiền thưởng tài xế' : 'Tính lại thưởng tài xế'}>
+          <div className="p-5 space-y-5">
+              <div>
+                <p className="text-xs text-muted">
+                  Nhập giá xăng + 2 đơn giá thưởng. Để trống sẽ dùng giá mặc định.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Giá xăng <span className="font-normal">(đồng/km xe máy)</span>
+                  </label>
+                  <VNMoneyInput value={gasPrice} onChange={setGasPrice}
+                    placeholder="488 (mặc định)" disabled={calculating} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Đơn giá thưởng xe máy <span className="font-normal">(đồng/lượt)</span>
+                  </label>
+                  <VNMoneyInput value={bonusMoto} onChange={setBonusMoto}
+                    placeholder="5.000 (mặc định)" disabled={calculating} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Đơn giá thưởng xe tải <span className="font-normal">(đồng/lượt)</span>
+                  </label>
+                  <VNMoneyInput value={bonusTruck} onChange={setBonusTruck}
+                    placeholder="8.000 (mặc định)" disabled={calculating} />
+                </div>
+              </div>
+
+              {/* (10/2026) Thưởng CỐ ĐỊNH cho tài xế XE TẢI — mỗi NV 1 ô input.
+                  LUÔN hiện section để OWNER thấy phần này tồn tại; nếu danh
+                  sách trống → hướng dẫn vào Nhân sự set chức vụ. */}
+              <div className="rounded-xl border border-hairline-2 bg-canvas/40 p-3 space-y-2">
+                <div>
+                  <p className="text-xs font-bold text-ink uppercase tracking-wider">
+                    Thưởng cố định — Tài xế xe tải{' '}
+                    ({(cfg?.truckDriverRows || []).length})
+                  </p>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    Nhập số tiền thưởng tháng cho từng tài xế xe tải. Không tính theo lượt /
+                    km. Để trống = giữ số đã lưu trước đó; nhập 0 = không thưởng tháng này.
+                  </p>
+                </div>
+                {(cfg?.truckDriverRows || []).length === 0 ? (
+                  <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10
+                                  border border-amber-200 dark:border-amber-500/28
+                                  rounded-lg px-3 py-2.5">
+                    <AlertCircle size={14} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-snug">
+                      Chưa có NV nào có chức vụ <b>"Tài xế xe tải"</b>. Vào trang
+                      <b> Nhân sự → Thông tin NV</b>, mục Chức vụ chọn "Tài xế xe tải"
+                      rồi quay lại tính thưởng.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {cfg.truckDriverRows.map(r => (
+                      <div key={r.userId} className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-ink truncate">{r.driverName}</p>
+                          <p className="text-[10px] text-muted">Tài xế xe tải</p>
+                        </div>
+                        <div className="w-44 py-1 shrink-0">
+                          <VNMoneyInput
+                            value={truckFixedBonuses[r.userId] ?? ''}
+                            onChange={(v) => setTruckFixedBonuses(prev => ({ ...prev, [r.userId]: v }))}
+                            placeholder="VD 3.000.000"
+                            disabled={calculating} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <SecondaryButton onClick={() => setConfigModalOpen(false)} disabled={calculating}>
+                  Huỷ
+                </SecondaryButton>
+                <PrimaryButton onClick={handleCalculate} disabled={calculating}>
+                  <Calculator size={14} />
+                  {calculating ? 'Đang tính...' : (isNone ? 'Tính thưởng' : 'Tính lại')}
+                </PrimaryButton>
+              </div>
+          </div>
+        </Modal>
 
         {loading ? (
           <LoadingSpinner />
@@ -1899,12 +2176,10 @@ function DriverPayrollPanel({ month, year, onSaved,
                   <tr className="text-left text-muted">
                     <th className="px-3 py-2 font-semibold">Tài xế</th>
                     <th className="px-3 py-2 font-semibold text-right">Tổng km</th>
-                    <th className="px-3 py-2 font-semibold text-right">Số đơn</th>
                     <th className="px-3 py-2 font-semibold text-right">Số lượt</th>
                     <th className="px-3 py-2 font-semibold text-right">Tiền xăng</th>
                     <th className="px-3 py-2 font-semibold text-right">Thưởng</th>
-                    <th className="px-3 py-2 font-semibold text-right">Tổng theo loại</th>
-                    <th className="px-3 py-2 font-semibold text-right">Tổng lương tài xế</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tổng thưởng</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1921,7 +2196,7 @@ function DriverPayrollPanel({ month, year, onSaved,
             <div className="md:hidden space-y-3">
               {rows.map(r => <DriverSalaryCard key={r.userId} row={r} onOpen={setModalDriver} />)}
               <div className="rounded-xl bg-canvas p-3 flex items-center justify-between text-sm">
-                <span className="text-muted font-semibold">Tổng chi lương tài xế</span>
+                <span className="text-muted font-semibold">Tổng chi thưởng tài xế</span>
                 <span className="font-bold text-gold">{formatCurrency(cfg?.grandTotalSalary || 0)}</span>
               </div>
             </div>
@@ -1932,6 +2207,73 @@ function DriverPayrollPanel({ month, year, onSaved,
               </p>
             )}
           </>
+        )}
+
+        {/* ── (10/2026) BẢNG 2: Tài xế XE TẢI — thưởng cố định ───────────── */}
+        {(cfg?.truckDriverRows || []).length > 0 && (
+          <div className="mt-6 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Truck size={14} className="text-amber-600 dark:text-amber-300" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-ink">Tài xế xe tải — thưởng cố định tháng</p>
+                <p className="text-xs text-muted mt-1 leading-relaxed max-w-2xl">
+                  Không tính theo lượt / km. Số tiền do OWNER nhập trong modal "Tính thưởng";
+                  mỗi tài xế có 1 số riêng, không chịu ảnh hưởng của giá xăng hay đơn giá lượt.
+                </p>
+              </div>
+            </div>
+            {/* DESKTOP — (10/2026) Bỏ 5 cột tính theo lượt (Số km → Số lượt xe
+                tải). Cột cuối đổi label "Thưởng xe tải (cố định)" → "Thưởng
+                trách nhiệm" cho đúng ngữ nghĩa. Table giờ chỉ còn 2 cột. */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-hairline">
+              <table className="w-full text-xs">
+                <thead className="bg-canvas">
+                  <tr className="text-left text-muted">
+                    <th className="px-3 py-2 font-semibold">Tài xế xe tải</th>
+                    <th className="px-3 py-2 font-semibold text-right">Thưởng trách nhiệm</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cfg.truckDriverRows.map(r => (
+                    <tr key={r.userId} className="border-t border-hairline hover:bg-canvas/50">
+                      <td className="px-3 py-2 font-semibold text-ink">{r.driverName}</td>
+                      <td className="px-3 py-2 text-right font-bold text-gold">
+                        {r.fixedTruckBonus != null && r.fixedTruckBonus > 0
+                          ? formatCurrency(r.fixedTruckBonus)
+                          : <span className="text-faint">Chưa nhập</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex justify-end p-3 text-sm bg-canvas border-t border-hairline">
+                <span className="text-muted mr-2">Tổng thưởng trách nhiệm:</span>
+                <span className="font-bold text-gold">
+                  {formatCurrency(
+                    cfg.truckDriverRows.reduce((s, r) => s + (r.fixedTruckBonus || 0), 0),
+                  )}
+                </span>
+              </div>
+            </div>
+            {/* MOBILE */}
+            <div className="md:hidden space-y-2">
+              {cfg.truckDriverRows.map(r => (
+                <div key={r.userId} className="rounded-xl border border-hairline p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm text-ink">{r.driverName}</p>
+                    <p className="text-xs text-muted">Tài xế xe tải · thưởng trách nhiệm</p>
+                  </div>
+                  <span className="text-sm font-bold text-gold">
+                    {r.fixedTruckBonus != null && r.fixedTruckBonus > 0
+                      ? formatCurrency(r.fixedTruckBonus)
+                      : <span className="text-faint italic">Chưa nhập</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* ── Nhân viên ngoài bộ phận Tài xế có hỗ trợ giao hàng ── */}
@@ -1957,10 +2299,10 @@ function DriverPayrollPanel({ month, year, onSaved,
                     <th className="px-3 py-2 font-semibold">Nhân viên</th>
                     <th className="px-3 py-2 font-semibold">Bộ phận / Chức vụ</th>
                     <th className="px-3 py-2 font-semibold text-right">Tổng km</th>
-                    <th className="px-3 py-2 font-semibold text-right">Phụ cấp xăng xe</th>
+                    <th className="px-3 py-2 font-semibold text-right">Tiền xăng xe</th>
                     <th className="px-3 py-2 font-semibold text-right">Lượt xe máy</th>
                     <th className="px-3 py-2 font-semibold text-right">Lượt xe tải</th>
-                    <th className="px-3 py-2 font-semibold text-right">Phụ cấp giao hàng</th>
+                    <th className="px-3 py-2 font-semibold text-right">Thưởng giao hàng (/đơn)</th>
                     <th className="px-3 py-2 font-semibold text-right">Tổng cộng</th>
                   </tr>
                 </thead>
@@ -1985,6 +2327,15 @@ function DriverPayrollPanel({ month, year, onSaved,
                   })}
                 </tbody>
               </table>
+              {/* (10/2026) Dòng tổng cho nhóm NV hỗ trợ */}
+              <div className="flex justify-end p-3 text-sm bg-canvas border-t border-hairline">
+                <span className="text-muted mr-2">Tổng chi phụ cấp NV hỗ trợ:</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(
+                    (cfg.nonDriverRows || []).reduce((s, r) => s + (r.grandTotalSalary || 0), 0),
+                  )}
+                </span>
+              </div>
             </div>
             {/* MOBILE */}
             <div className="md:hidden space-y-2">
@@ -2011,9 +2362,54 @@ function DriverPayrollPanel({ month, year, onSaved,
                   </div>
                 );
               })}
+              {/* (10/2026) Dòng tổng mobile cho NV hỗ trợ */}
+              <div className="rounded-xl bg-canvas p-3 flex items-center justify-between text-sm">
+                <span className="text-muted font-semibold">Tổng chi phụ cấp NV hỗ trợ</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(
+                    (cfg.nonDriverRows || []).reduce((s, r) => s + (r.grandTotalSalary || 0), 0),
+                  )}
+                </span>
+              </div>
             </div>
           </div>
         )}
+
+        {/* (10/2026) Dòng tổng chung cho cả 3 phần: Tài xế xe máy + Tài xế xe tải (cố định) + NV hỗ trợ */}
+        {((rows.length > 0) || ((cfg?.truckDriverRows || []).length > 0)
+          || ((cfg?.nonDriverRows || []).length > 0)) && (() => {
+          const motoSum  = (rows || []).reduce((s, r) => s + (r.grandTotalSalary || 0), 0);
+          const truckSum = (cfg?.truckDriverRows || []).reduce(
+            (s, r) => s + (r.fixedTruckBonus || 0), 0);
+          const supportSum = (cfg?.nonDriverRows || []).reduce(
+            (s, r) => s + (r.grandTotalSalary || 0), 0);
+          const grand = motoSum + truckSum + supportSum;
+          return (
+            <div className="mt-5 rounded-xl border border-gold/30 bg-gold/10
+                            px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Gift size={14} className="text-gold" />
+                <span className="font-bold text-ink uppercase tracking-wider text-xs">
+                  Tổng chi lương + phụ cấp tài xế
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-xs flex-wrap">
+                <span className="text-muted">
+                  Xe máy: <strong className="text-ink tabular-nums">{formatCurrency(motoSum)}</strong>
+                </span>
+                <span className="text-muted">
+                  + Xe tải: <strong className="text-ink tabular-nums">{formatCurrency(truckSum)}</strong>
+                </span>
+                <span className="text-muted">
+                  + Hỗ trợ: <strong className="text-ink tabular-nums">{formatCurrency(supportSum)}</strong>
+                </span>
+                <span className="text-base font-bold text-gold tabular-nums">
+                  = {formatCurrency(grand)}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {modalDriver && (
@@ -2097,16 +2493,16 @@ function SalaryCells({ s, kind, subRow }) {
           {!isTruck && <span className="text-ink font-medium ml-1">{fmtNum(s?.totalKm, 1)}</span>}
         </div>
       </td>
-      <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>{s?.totalOrders ?? 0}</td>
       <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>{s?.totalTrips ?? 0}</td>
       <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>
         {isTruck ? '—' : (s?.fuelPay != null ? formatCurrency(s.fuelPay) : '—')}
       </td>
-      <td className={`px-3 py-2 text-right ${subRow ? '' : 'border-t border-hairline'}`}>
-        {s?.bonusPay != null ? formatCurrency(s.bonusPay) : '—'}
-      </td>
+      {/* (10/2026) FIX: cột "Thưởng" phải là CHỈ số lượt × đơn giá theo loại
+          (bonusPay). Trước đây lấy totalSalary = fuelPay + bonusPay nên bị cộng
+          thêm tiền xăng vào — lệch với ý nghĩa cột "Thưởng" ở header + lệch với
+          cách bảng Nhân viên hỗ trợ đang hiển thị. */}
       <td className={`px-3 py-2 text-right font-semibold ${subRow ? '' : 'border-t border-hairline'}`}>
-        {s?.totalSalary != null ? formatCurrency(s.totalSalary) : '—'}
+        {s?.bonusPay != null ? formatCurrency(s.bonusPay) : '—'}
       </td>
     </>
   );
@@ -2151,7 +2547,8 @@ function VehicleSubCard({ s, kind }) {
           {label}
         </span>
         <span className="text-sm font-bold text-ink">
-          {s?.totalSalary != null ? formatCurrency(s.totalSalary) : '—'}
+          {/* (10/2026) Giống desktop: chỉ hiện BONUS (số lượt × đơn giá), bỏ phần fuel. */}
+          {s?.bonusPay != null ? formatCurrency(s.bonusPay) : '—'}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
@@ -2602,12 +2999,32 @@ function DriverEmployeeCard({ salary }) {
  */
 function OfficeBonusDetailTable({
   department, departmentLabel, month, year,
-  bonusFinalized, onComputed,
+  bonusFinalized, bonusCalcStatus, onComputed, onReopen, onPublish, onUnpublish,
+  publishingBonus,
 }) {
+  // (10/2026) 3-state cho Thưởng KT/KD:
+  //   NONE       = chưa tính           → nút "Tính hoa hồng"
+  //   CALCULATED = đã tính, chưa Public → "Tính lại hoa hồng" + "Hoàn tất"
+  //   PUBLISHED  = đã tính, đã Public   → "Mở lại" (= Unpublic, GIỮ data)
+  // Fallback: bonusCalcStatus null thì suy từ bonusFinalized để tương thích
+  // phiên bản BE cũ chưa trả bonusCalcStatus.
+  const bonusState = bonusCalcStatus
+    || (bonusFinalized ? 'PUBLISHED' : 'NONE');
+  const isNone      = bonusState === 'NONE';
+  const isCalc      = bonusState === 'CALCULATED';
+  const isPublished = bonusState === 'PUBLISHED';
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [unitPriceInput, setUnitPriceInput] = useState('');
   const [computing, setComputing] = useState(false);
+  // Modal cấu hình (SALES: tiers / ACCOUNTING: %+ratios). TASK 2 (10/2026).
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  // (10/2026) SALES v2: review-modal state sau khi preview
+  const [salesV2Preview, setSalesV2Preview] = useState(null);
+  const [salesV2Publishing, setSalesV2Publishing] = useState(false);
+  const [salesV2ConfirmPublish, setSalesV2ConfirmPublish] = useState(false);
+  // (10/2026) Config v2 hiện tại (hiển thị target + multiplier trên card)
+  const [salesV2Config, setSalesV2Config] = useState(null);
   const toast = useToast();
 
   // ── Load preview ────────────────────────────────────────────────────────
@@ -2624,10 +3041,17 @@ function OfficeBonusDetailTable({
       setUnitPriceInput(data?.commissionUnitPrice != null
         ? Number(data.commissionUnitPrice).toLocaleString('vi-VN')
         : '');
+      // (10/2026) Nếu là SALES → load luôn config v2 để hiện target/multiplier
+      if (department === 'SALES') {
+        try {
+          const cur = await factoryPayrollApi.getCurrentSalesBonusV2(month, year);
+          setSalesV2Config(cur || null);
+        } catch { setSalesV2Config(null); }
+      } else {
+        setSalesV2Config(null);
+      }
     } catch (e) {
       toast(e?.response?.data?.message || 'Không tải được preview hoa hồng', 'error');
-      // KHÔNG set preview = null khi lỗi refresh — giữ dữ liệu cũ để không flicker.
-      // Chỉ clear khi đây là lần load đầu (preview đang là null thì cứ null tiếp).
     } finally {
       setLoading(false);
     }
@@ -2655,6 +3079,24 @@ function OfficeBonusDetailTable({
     try {
       await factoryPayrollApi.finalizeBonus(month, year, department, price);
       toast(`Đã tính hoa hồng ${departmentLabel} tháng ${month}/${year}`, 'success');
+      await load();
+      onComputed?.();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi tính hoa hồng', 'error');
+    } finally {
+      setComputing(false);
+    }
+  };
+
+  // Flow MỚI 2026: nhận cấu hình từ modal, gửi body JSON.
+  //   SALES:      { salesTiers: [{threshold, unitPrice}] }
+  //   ACCOUNTING: { accountingPercent, accountingRatios: [{userId, ratio}] }
+  const handleComputeWithConfig = async (configBody) => {
+    setComputing(true);
+    try {
+      await factoryPayrollApi.finalizeBonus(month, year, department, configBody);
+      toast(`Đã tính hoa hồng ${departmentLabel} tháng ${month}/${year}`, 'success');
+      setConfigModalOpen(false);
       await load();
       onComputed?.();
     } catch (e) {
@@ -2693,8 +3135,8 @@ function OfficeBonusDetailTable({
             </h3>
             <p className="text-[11px] text-muted mt-0.5">
               {isSales
-                ? 'Mỗi seller tính riêng theo doanh thu thực thu của mình. Làm tròn LÊN bước 5.000đ.'
-                : 'Pool chung của phòng chia theo trọng số (Kế toán trưởng ×2, Chuyên viên ×1). Phần dư không chia được sẽ bỏ.'}
+                ? 'Mỗi seller tính riêng theo doanh thu thực thu EX-VAT của mình, theo nhiều mốc. Làm tròn LÊN 5.000đ.'
+                : 'Pool phòng = doanh thu thực thu EX-VAT × % phòng, chia cho từng người theo tỉ lệ. Phần dư không chia cho ai (bỏ).'}
             </p>
           </div>
         </div>
@@ -2716,85 +3158,269 @@ function OfficeBonusDetailTable({
           <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <BonusStatBox
               label={`Tổng doanh thu tháng ${monthLabel}`}
-              hint="Σ finalAmount các đơn tạo trong tháng (loại HỦY)"
+              hint="Σ (finalAmount − vatAmount) các đơn tạo trong tháng — EX-VAT (loại HỦY)"
               value={fmtMoney(preview.totalMonthOrderRevenue)}
-              footer={
-                preview.totalWaivedRevenue != null && Number(preview.totalWaivedRevenue) > 0
-                  ? <>Bỏ qua không thu (COMPLETED còn chênh): <strong className="tabular-nums">{fmtMoney(preview.totalWaivedRevenue)}</strong></>
-                  : null
-              }
+              // footer={
+              //   preview.totalWaivedRevenue != null && Number(preview.totalWaivedRevenue) > 0
+              //     ? <>Bỏ qua không thu (COMPLETED còn chênh): <strong className="tabular-nums">{fmtMoney(preview.totalWaivedRevenue)}</strong></>
+              //     : null
+              // }
+              footer={''}
             />
             <BonusStatBox
               label={`Doanh thu đang hold tháng ${monthLabel}`}
-              hint="Σ (finalAmount − paidAmount), status ≠ COMPLETED/CANCELLED"
+              hint="Σ (final − paid) × netRatio — EX-VAT, status ≠ COMPLETED/CANCELLED"
               value={fmtMoney(preview.totalHoldRevenue)}
               tone="amber"
             />
             <BonusStatBox
               label="Doanh thu được chia hoa hồng"
-              hint="Σ tiền thực thu trong tháng (mọi phiếu thu, bất kể đơn nào)"
+              hint="= Σ thực thu EX-VAT + Σ waived EX-VAT (COMPLETED còn chênh). Chính là số pool được tính trên đó."
               value={fmtMoney(preview.totalCollectedRevenue)}
               tone="emerald"
             />
           </div>
 
-          {/* ── Ô NHẬP ĐƠN GIÁ + NÚT TÍNH ──────────────────────────────── */}
+          {/* ── NÚT MỞ MODAL CẤU HÌNH + HIỂN THỊ CẤU HÌNH ĐÃ DÙNG (TASK 2 10/2026) ── */}
           <div className="px-5 pb-4">
-            {/*
-              FIX (11/2026): dùng items-center để nút căn giữa với toàn khối
-              input (label + input + hint), không bị lệch về bottom.
-            */}
             <div className="rounded-xl border border-hairline-2 bg-canvas p-4
               flex items-center justify-between gap-4 flex-wrap">
               <div className="flex-1 min-w-[260px]">
                 <label className="text-[11px] font-bold text-muted uppercase tracking-wider
                   flex items-center gap-1">
-                  <Hash size={11} /> Đơn giá hoa hồng (đ / 100.000.000đ doanh thu)
+                  <Settings size={11} />
+                  Cấu hình {isSales ? 'mốc thưởng' : 'tỉ lệ chia hoa hồng'}
                 </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={unitPriceInput}
-                  onChange={handlePriceChange}
-                  disabled={bonusFinalized || computing}
-                  placeholder={placeholderPrice}
-                  className="mt-1.5 w-full px-3 py-2 rounded-xl border border-hairline-2
-                    bg-surface text-ink text-sm focus:outline-none focus:border-gold
-                    disabled:opacity-50 tabular-nums"
-                />
-                <p className="text-[11px] text-muted mt-1">
-                  {preview.commissionUnitPrice != null
-                    ? <>Đơn giá đã tính cho tháng này: <strong className="text-ink">{Number(preview.commissionUnitPrice).toLocaleString('vi-VN')}đ</strong></>
-                    : preview.lastCommissionUnitPrice != null
-                      ? <>Tháng gần nhất đã dùng: <strong className="text-ink">{Number(preview.lastCommissionUnitPrice).toLocaleString('vi-VN')}đ</strong> (chỉ gợi ý — nhập đơn giá mới cho tháng này)</>
-                      : 'Chưa từng tính hoa hồng — nhập đơn giá cho tháng này'}
-                </p>
+                <div className="mt-1.5 text-sm">
+                  {isSales ? (
+                    // (10/2026) SALES v2: hiển thị target + step + unit + multiplier
+                    salesV2Config ? (
+                      <div className="text-[12px] text-ink-2 space-y-0.5">
+                        {(() => {
+                          const target = Number(salesV2Config.target || 0);
+                          const dept = Number(salesV2Config.deptRevenue || 0);
+                          const pct = target > 0 ? Math.floor(dept / target * 10000) / 100 : 0;
+                          // (10/2026) % mốc đạt được = multiplier × 100
+                          const matchedPct = Math.round((salesV2Config.multiplier ?? 1) * 100);
+                          const achievedColor = pct >= 90
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : pct >= 50 ? 'text-sky-600 dark:text-sky-400'
+                            : 'text-amber-600 dark:text-amber-400';
+                          return (
+                            <>
+                              <div>
+                                <span className="text-muted">Target doanh thu:</span>{' '}
+                                <strong className="text-ink tabular-nums">
+                                  {target.toLocaleString('vi-VN')}đ
+                                </strong>
+                                {target > 0 && (
+                                  <> · <span className="text-ink-2">Đạt{' '}
+                                    <strong className={achievedColor}>{pct.toFixed(2)}%</strong>
+                                  </span></>
+                                )}
+                              </div>
+                              <div>
+                                <span className="text-muted">Mỗi</span>{' '}
+                                <strong className="text-ink tabular-nums">
+                                  {Number(salesV2Config.stepAmount || 0).toLocaleString('vi-VN')}đ
+                                </strong>{' '}
+                                <span className="text-muted">=</span>{' '}
+                                <strong className="text-ink tabular-nums">
+                                  {Number(salesV2Config.stepUnitPrice || 0).toLocaleString('vi-VN')}đ
+                                </strong>{' '}
+                                <span className="text-muted">/ bước</span>
+                                {' · '}
+                                <span className="text-muted">áp dụng</span>{' '}
+                                <strong className={achievedColor}>{matchedPct}%</strong>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <span className="text-muted">Chưa cấu hình — bấm "Tính hoa hồng" để nhập các mốc.</span>
+                    )
+                  ) : (
+                    preview.accountingPercent != null && preview.accountingRatios?.length > 0
+                      ? <>Phòng: <strong className="text-ink">{Number(preview.accountingPercent)}%</strong> doanh thu — chia theo tỉ lệ từng người (xem bảng dưới).</>
+                      : <span className="text-muted">Chưa cấu hình — bấm "Tính hoa hồng" để nhập % phòng và tỉ lệ từng người.</span>
+                  )}
+                </div>
               </div>
 
-              {bonusFinalized ? (
-                <span className="shrink-0 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold
-                  bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border
-                  border-emerald-200 dark:border-emerald-500/20">
-                  Đã khoá — Mở lại Thưởng để tính lại
-                </span>
-              ) : (
-                /*
-                  FIX (11/2026): BỎ `!canCompute` khỏi disabled — BE sẽ tự
-                  validate (vd: yêu cầu hoàn tất Lương). Nếu BE từ chối thì
-                  message hiện qua toast, UX rõ hơn là nút cứ xám mãi không
-                  click được mà không biết tại sao.
-                */
-                <PrimaryButton
-                  onClick={handleCompute}
-                  disabled={computing || !unitPriceInput}
-                  loading={computing}
-                  className="shrink-0">
-                  <Calculator size={14} />
-                  {anyComputed ? 'Tính lại hoa hồng' : 'Tính hoa hồng'}
-                </PrimaryButton>
-              )}
+              {/* (10/2026) 3-state buttons — thay thế flow 2-button cũ.
+                * NONE       → "Tính hoa hồng"
+                * CALCULATED → "Tính lại hoa hồng" + "Hoàn tất" (bật Public)
+                * PUBLISHED  → "Mở lại" (= Unpublic, GIỮ data đã tính)
+                */}
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {isNone && (
+                  <PrimaryButton
+                    onClick={() => setConfigModalOpen(true)}
+                    disabled={computing}
+                    loading={computing}>
+                    <Calculator size={14} />
+                    Tính hoa hồng
+                  </PrimaryButton>
+                )}
+                {isCalc && isSales && (
+                  <>
+                    {/* (10/2026) SALES v2 — CALCULATED state:
+                        "Tính hoa hồng" (reopen config để tính lại từ đầu) + "Hoàn tất" (publish) */}
+                    <SecondaryButton
+                      onClick={() => setConfigModalOpen(true)}
+                      disabled={computing || publishingBonus}>
+                      <Calculator size={14} />
+                      Tính hoa hồng
+                    </SecondaryButton>
+                    <PrimaryButton
+                      onClick={() => setSalesV2ConfirmPublish(true)}
+                      disabled={publishingBonus || computing}>
+                      <Gift size={14} />
+                      Hoàn tất
+                    </PrimaryButton>
+                  </>
+                )}
+                {isCalc && !isSales && (
+                  <>
+                    <SecondaryButton
+                      onClick={() => setConfigModalOpen(true)}
+                      disabled={computing || publishingBonus}>
+                      <Calculator size={14} />
+                      Tính lại hoa hồng
+                    </SecondaryButton>
+                    <PrimaryButton
+                      onClick={onPublish}
+                      disabled={!onPublish || publishingBonus || computing}>
+                      <Gift size={14} />
+                      {publishingBonus ? 'Đang hoàn tất...' : 'Hoàn tất'}
+                    </PrimaryButton>
+                  </>
+                )}
+                {isPublished && (
+                  <SecondaryButton
+                    onClick={onUnpublish}
+                    disabled={!onUnpublish || publishingBonus}
+                    title="Nhân viên sẽ không còn thấy phiếu thưởng. Data đã tính vẫn giữ.">
+                    <Unlock size={13} />
+                    {publishingBonus ? 'Đang mở lại...' : (isSales ? 'Mở tính lại' : 'Mở lại')}
+                  </SecondaryButton>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Modal cấu hình: SALES v2 → target+step+unit, ACCOUNTING → %+ratios */}
+          {configModalOpen && isSales && (
+            <SalesBonusV2ConfigModal
+              month={month} year={year}
+              initialTarget={salesV2Preview?.target ?? salesV2Config?.target ?? 0}
+              initialStepAmount={salesV2Preview?.stepAmount ?? salesV2Config?.stepAmount ?? 100_000_000}
+              initialStepUnitPrice={salesV2Preview?.stepUnitPrice ?? salesV2Config?.stepUnitPrice ?? 400_000}
+              computing={computing}
+              onCancel={() => setConfigModalOpen(false)}
+              initialTiers={salesV2Preview?.tiers ?? salesV2Config?.tiers}
+              onConfirm={async ({ target, stepAmount, stepUnitPrice, tiers }) => {
+                setComputing(true);
+                try {
+                  const res = await factoryPayrollApi.previewSalesBonusV2(month, year,
+                    { target, stepAmount, stepUnitPrice, tiers });
+                  setSalesV2Preview(res);
+                  setConfigModalOpen(false);
+                } catch (e) {
+                  toast(e?.response?.data?.message || 'Không tính được thưởng Sales', 'error');
+                } finally {
+                  setComputing(false);
+                }
+              }}
+            />
+          )}
+          {salesV2ConfirmPublish && isSales && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                   onClick={() => !salesV2Publishing && setSalesV2ConfirmPublish(false)} />
+              <div className="relative bg-surface w-full max-w-md rounded-2xl shadow-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gift size={20} className="text-emerald-500" />
+                  <h4 className="text-base font-bold text-ink">Public thưởng Sales?</h4>
+                </div>
+                <p className="text-sm text-ink-2 mb-4">
+                  Sau khi Public, nhân viên sẽ thấy phiếu thưởng tháng {month}/{year}.
+                  Vẫn có thể "Mở tính lại" để điều chỉnh sau nếu cần.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setSalesV2ConfirmPublish(false)}
+                    disabled={salesV2Publishing}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-hairline-2 hover:bg-canvas">
+                    Hủy
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setSalesV2Publishing(true);
+                      try {
+                        await factoryPayrollApi.publishSalesBonusV2(month, year);
+                        toast('Đã Public thưởng Sales', 'success');
+                        setSalesV2ConfirmPublish(false);
+                        await load();
+                        onComputed?.();  // parent reload status → nút đổi sang "Mở tính lại"
+                      } catch (e) {
+                        toast(e?.response?.data?.message || 'Không Public được', 'error');
+                      } finally {
+                        setSalesV2Publishing(false);
+                      }
+                    }}
+                    disabled={salesV2Publishing}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 inline-flex items-center gap-1.5">
+                    <Gift size={14} />
+                    {salesV2Publishing ? 'Đang Public...' : 'Xác nhận'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {salesV2Preview && isSales && (
+            <SalesBonusV2ReviewModal
+              preview={salesV2Preview}
+              publishing={salesV2Publishing}
+              onCancel={() => setSalesV2Preview(null)}
+              onBack={() => {
+                // Quay lại ConfigModal (giữ nguyên salesV2Preview để prefill)
+                setSalesV2Preview(null);
+                setConfigModalOpen(true);
+              }}
+              onPublish={async (overrides) => {
+                setSalesV2Publishing(true);
+                try {
+                  await factoryPayrollApi.saveSalesBonusV2(month, year, overrides);
+                  toast('Đã lưu thưởng Sales (chưa Public). Bấm "Hoàn tất" để Public cho NV.', 'success');
+                  setSalesV2Preview(null);
+                  await load();
+                  onComputed?.();  // báo parent reload status (bonusCalcStatus → CALCULATED)
+                } catch (e) {
+                  toast(e?.response?.data?.message || 'Không lưu được', 'error');
+                } finally {
+                  setSalesV2Publishing(false);
+                }
+              }}
+            />
+          )}
+          {configModalOpen && !isSales && (
+            <AccountingRatioModal
+              month={month} year={year}
+              items={items}
+              initialPercent={preview.accountingPercent}
+              initialRatios={preview.accountingRatios}
+              collectedRevenue={preview.totalCollectedRevenue}
+              waivedRevenue={preview.totalWaivedRevenue}
+              computing={computing}
+              onCancel={() => setConfigModalOpen(false)}
+              onConfirm={(percent, ratios) =>
+                handleComputeWithConfig({ accountingPercent: percent, accountingRatios: ratios })
+              }
+            />
+          )}
 
           {/* ── BẢNG NHÂN VIÊN ─────────────────────────────────────────── */}
           <div className="px-5 pb-5">
@@ -2808,92 +3434,211 @@ function OfficeBonusDetailTable({
                   <Thead>
                     <Tr className="bg-canvas text-muted">
                       <Th>Nhân viên</Th>
-                      <Th>Chức vụ</Th>
-                      {/*
-                        Kế toán: 3 cột (Nhân viên / Chức vụ / Hoa hồng).
-                        Các cột doanh thu lặp lại giữa mọi dòng (vì ACCOUNTING
-                        dùng chung tổng phòng) nên bỏ, 3 stat trên đã có.
-
-                        Kinh doanh: 6 cột, thứ tự:
-                          Nhân viên / Chức vụ / Tổng DT tháng MM/YYYY /
-                          Tổng DT đang hold tháng MM/YYYY / Doanh thu tính HH /
-                          Hoa hồng
-                      */}
-                      {isSales && <Th right>Tổng doanh thu tháng {monthLabel}</Th>}
-                      {isSales && <Th right>Tổng DT đang hold tháng {monthLabel}</Th>}
+                      {/* (10/2026) SALES: bỏ Chức vụ, thêm Tỷ lệ KPI + Tỷ lệ doanh thu */}
+                      {!isSales && <Th>Chức vụ</Th>}
+                      {isSales && <Th>Tỷ lệ KPI</Th>}
+                      {isSales && <Th>Tỷ lệ doanh thu</Th>}
+                      {/* (10/2026) Gộp 2 cột DT thường + Hold thành 1 cột, 2 dòng per row */}
+                      {isSales && (
+                        <Th right>
+                          <div>Doanh thu cá nhân</div>
+                          <div className="font-normal opacity-80">tháng {monthLabel}</div>
+                        </Th>
+                      )}
                       {isSales && <Th right>Doanh thu tính HH</Th>}
-                      <Th right>Hoa hồng</Th>
+                      <Th right>Thưởng doanh thu</Th>
                     </Tr>
                   </Thead>
                   <tbody>
-                    {items.map(it => (
-                      <Tr
-                        key={it.userId}
-                        className="hover:!bg-gold/12 hover:[&_*]:font-bold transition-colors">
-                        <Td>
-                          <div className="font-medium text-ink">{it.userFullName}</div>
-                          {!isSales && it.weight != null && (
-                            <div className="text-[10px] text-muted">
-                              Hệ số × {it.weight}
-                            </div>
-                          )}
-                        </Td>
-                        <Td className="text-muted">
-                          {it.roleLabel || '—'}
-                        </Td>
-                        {isSales && (
-                          <Td right className="text-ink tabular-nums">
-                            {fmtMoney(it.totalMonthOrderRevenue)}
-                          </Td>
-                        )}
-                        {isSales && (
-                          <Td right className="tabular-nums">
-                            <span className={Number(it.totalHoldRevenue || 0) > 0
-                              ? 'text-amber-700 dark:text-amber-300 font-semibold' : 'text-muted'}>
-                              {fmtMoney(it.totalHoldRevenue)}
-                            </span>
-                          </Td>
-                        )}
-                        {isSales && (
-                          <Td right className="text-ink tabular-nums">
-                            {fmtMoney(it.totalCollectedRevenue)}
-                            {it.transactionCount > 0 && (
-                              <div className="text-[10px] text-muted">
-                                ({it.transactionCount} phiếu)
-                              </div>
+                    {(() => {
+                      // Tính tổng doanh thu tháng của phòng để làm mẫu số cho "Tỷ lệ doanh thu"
+                      const deptTotal = isSales
+                        ? items.reduce((s, it) => s + Number(it.totalMonthOrderRevenue || 0), 0)
+                        : 0;
+                      const colCount = isSales ? 6 : 3;
+
+                      // (10/2026) Chia nhân viên chính (phòng) vs hỗ trợ (phòng khác)
+                      //   • SALES: NV phòng Kinh doanh = main, các NV ngoài phòng có đơn = support
+                      //   • ACCOUNTING: 1 nhóm duy nhất (không có hỗ trợ)
+                      const mains    = items.filter(it => !isSupportForDept(department, it.roleLabel));
+                      const supports = items.filter(it =>  isSupportForDept(department, it.roleLabel));
+
+                      const sumBonus = (list) => list.reduce(
+                        (s, it) => s + Number(it.bonusAmount || 0), 0);
+
+                      const renderRow = (it) => {
+                        const v2row = (salesV2Config?.rows || []).find(r => r.userId === it.userId);
+                        const revRatio = deptTotal > 0
+                          ? Math.min(100, Math.max(0, Number(it.totalMonthOrderRevenue || 0) / deptTotal * 100))
+                          : 0;
+                        return (
+                          <Tr
+                            key={it.userId}
+                            className="hover:!bg-gold/12 hover:[&_*]:font-bold transition-colors">
+                            <Td>
+                              <div className="font-medium text-ink">{it.userFullName}</div>
+                              <div className="text-[10px] text-muted">{it.roleLabel || '—'}</div>
+                              {!isSales && it.ratioPercent != null && (
+                                <div className="text-[10px] text-muted">
+                                  Tỉ lệ: {Number(it.ratioPercent)}%
+                                </div>
+                              )}
+                            </Td>
+                            {!isSales && (
+                              <Td className="text-muted">
+                                {it.roleLabel || '—'}
+                              </Td>
                             )}
-                          </Td>
-                        )}
-                        <Td right className="tabular-nums">
-                          {it.bonusAmount == null ? (
-                            <span className="text-faint">—</span>
-                          ) : (
-                            <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                              {fmtMoney(it.bonusAmount)}
-                            </span>
+                            {isSales && (
+                              <Td>
+                                <KpiProgress row={v2row} />
+                              </Td>
+                            )}
+                            {isSales && (
+                              <Td>
+                                <RevenueRatioProgress pct={revRatio} />
+                              </Td>
+                            )}
+                            {isSales && (
+                              <Td right className="tabular-nums">
+                                <div className="text-ink">{fmtMoney(it.totalMonthOrderRevenue)}</div>
+                                <div className={Number(it.totalHoldRevenue || 0) > 0
+                                  ? 'text-amber-700 dark:text-amber-300 font-semibold text-[11px] mt-0.5'
+                                  : 'text-muted text-[11px] mt-0.5'}>
+                                  Hold: {fmtMoney(it.totalHoldRevenue)}
+                                </div>
+                              </Td>
+                            )}
+                            {isSales && (
+                              <Td right className="text-ink tabular-nums">
+                                {fmtMoney(it.totalCollectedRevenue)}
+                                {it.transactionCount > 0 && (
+                                  <div className="text-[10px] text-muted">
+                                    ({it.transactionCount} phiếu)
+                                  </div>
+                                )}
+                              </Td>
+                            )}
+                            <Td right className="tabular-nums">
+                              {it.bonusAmount == null ? (
+                                <span className="text-faint">—</span>
+                              ) : (
+                                <>
+                                  <div className="font-bold text-emerald-700 dark:text-emerald-300">
+                                    {fmtMoney(it.bonusAmount)}
+                                  </div>
+                                  {isSales && v2row && (
+                                    <div className="text-[10px] text-muted mt-0.5">
+                                      {Number(v2row.stepUnitPrice || 0).toLocaleString('vi-VN')}
+                                      <span className="opacity-50">/</span>
+                                      {Number(v2row.remainderBonus || 0).toLocaleString('vi-VN')}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </Td>
+                          </Tr>
+                        );
+                      };
+
+                      // Dòng tổng cho 1 nhóm (main hoặc support). Dùng cùng class
+                      // bg-emerald để nhất quán với màu Thưởng doanh thu.
+                      const sectionDivider = (label) => (
+                        <tr className="bg-canvas/60 border-t-2 border-hairline-2">
+                          <td colSpan={colCount}
+                              className="px-4 py-1.5 text-[10px] font-bold uppercase
+                                         tracking-wider text-muted">
+                            {label}
+                          </td>
+                        </tr>
+                      );
+                      const subtotalRow = (key, label, list) => (
+                        <tr key={key} className="bg-emerald-50/40 dark:bg-emerald-500/5">
+                          <td colSpan={colCount - 1}
+                              className="px-4 py-2 text-right text-[11px] font-bold
+                                         uppercase tracking-wider text-emerald-700
+                                         dark:text-emerald-300">
+                            {label} ({list.length} người):
+                          </td>
+                          <td className="px-4 py-2 text-right tabular-nums
+                                         font-bold text-emerald-700 dark:text-emerald-300">
+                            {fmtMoney(sumBonus(list))}
+                          </td>
+                        </tr>
+                      );
+
+                      if (!isSales) {
+                        // ACCOUNTING: 1 bảng, 1 footer tổng (bỏ card "Tổng pool đã chia" ngoài)
+                        return (
+                          <>
+                            {mains.map(renderRow)}
+                            {subtotalRow('acct-total', 'Tổng tiền thưởng', mains)}
+                          </>
+                        );
+                      }
+
+                      // SALES: Nhân viên phòng → divider → Nhân viên hỗ trợ → tổng
+                      return (
+                        <>
+                          {mains.length > 0 && sectionDivider(
+                            `Nhân viên phòng Kinh doanh (${mains.length})`,
                           )}
-                        </Td>
-                      </Tr>
-                    ))}
+                          {mains.map(renderRow)}
+                          {mains.length > 0 && subtotalRow(
+                            'main-total', 'Tổng thưởng NV Kinh doanh', mains,
+                          )}
+
+                          {supports.length > 0 && (
+                            <>
+                              {sectionDivider(
+                                `Nhân viên hỗ trợ bán hàng (${supports.length})`,
+                              )}
+                              {supports.map(renderRow)}
+                              {subtotalRow(
+                                'support-total', 'Tổng thưởng NV hỗ trợ', supports,
+                              )}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </tbody>
                 </Table>
               </div>
             )}
 
-            {anyComputed && preview.totalBonusPool != null && (
-              <div className="mt-3 flex items-center justify-between gap-3 flex-wrap
-                px-4 py-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-500/5
-                border border-emerald-200 dark:border-emerald-500/20">
-                <div className="flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-200">
-                  <Gift size={13} />
-                  <span>Tổng pool đã chia:</span>
-                  <strong className="tabular-nums">{fmtMoney(preview.totalBonusPool)}</strong>
+            {/* (10/2026) ACCOUNTING: bỏ card "Tổng pool" bên ngoài — đã có
+                dòng tổng ngay trong footer bảng. SALES: giữ card nhưng đổi
+                label thành "Tổng thưởng:" (số này gồm cả NV phòng + NV hỗ trợ). */}
+            {anyComputed && preview.totalBonusPool != null && isSales && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap
+                  px-4 py-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-500/5
+                  border border-emerald-200 dark:border-emerald-500/20">
+                  <div className="flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-200">
+                    <Gift size={13} />
+                    <span>Tổng thưởng:</span>
+                    <strong className="tabular-nums">{fmtMoney(preview.totalBonusPool)}</strong>
+                  </div>
+                  {preview.computedAt && (
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                      Tính lúc {formatDateTime(preview.computedAt)}
+                      {preview.computedByName ? ` · ${preview.computedByName}` : ''}
+                    </span>
+                  )}
                 </div>
-                {preview.computedAt && (
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                    Tính lúc {formatDateTime(preview.computedAt)}
-                    {preview.computedByName ? ` · ${preview.computedByName}` : ''}
-                  </span>
+                {Number(preview.undistributedAmount || 0) > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200
+                    px-4 py-2 rounded-xl bg-amber-50/60 dark:bg-amber-500/5
+                    border border-amber-200 dark:border-amber-500/20">
+                    <AlertCircle size={13} />
+                    <span>
+                      {isSales
+                        ? 'Doanh thu không đủ mốc nào (bỏ):'
+                        : 'Pool còn dư (không chia cho ai):'}
+                    </span>
+                    <strong className="tabular-nums">{fmtMoney(preview.undistributedAmount)}</strong>
+                  </div>
                 )}
               </div>
             )}
@@ -2901,6 +3646,542 @@ function OfficeBonusDetailTable({
         </div>
       )}
     </SectionCard>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TASK 2 (10/2026) — MODAL CẤU HÌNH HOA HỒNG
+// ══════════════════════════════════════════════════════════════════════════════
+
+/** Hiển thị compact các mốc đã dùng (SALES). */
+function SalesTiersPreview({ tiers }) {
+  const sorted = [...tiers].sort((a,b) => Number(b.threshold) - Number(a.threshold));
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {sorted.map((t,i) => (
+        <span key={i} className="inline-flex items-center gap-1 text-[11px] font-semibold
+          px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-500/10
+          text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/20
+          tabular-nums">
+          Mốc {Number(t.threshold).toLocaleString('vi-VN')}đ → {Number(t.unitPrice).toLocaleString('vi-VN')}đ
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Debounced numeric input (400ms format). */
+function NumericInput({ value, onChange, placeholder, disabled, className = '', suffix }) {
+  const [disp, setDisp] = useState(
+    value == null || value === '' ? '' : Number(value).toLocaleString('vi-VN'));
+
+  // Khi value từ parent đổi (vd reset) đồng bộ lại disp.
+  useEffect(() => {
+    const next = value == null || value === '' ? '' : Number(value).toLocaleString('vi-VN');
+    setDisp(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  // Debounce format 400ms sau khi gõ xong (chỉ khi disp khác format(value))
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!disp) return;
+      const digits = disp.replace(/[^\d]/g, '');
+      const formatted = digits ? Number(digits).toLocaleString('vi-VN') : '';
+      if (formatted !== disp) setDisp(formatted);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [disp]);
+
+  const handle = (e) => {
+    const digits = String(e.target.value).replace(/[^\d]/g, '');
+    setDisp(digits);                          // show raw ngay
+    onChange?.(digits ? Number(digits) : null);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        type="text" inputMode="numeric"
+        value={disp} onChange={handle}
+        placeholder={placeholder} disabled={disabled}
+        className={`w-full px-3 py-2 rounded-lg border border-hairline-2 bg-surface
+          text-ink text-sm focus:outline-none focus:border-gold disabled:opacity-50
+          tabular-nums ${suffix ? 'pr-8' : ''} ${className}`}
+      />
+      {suffix && (
+        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted pointer-events-none">
+          {suffix}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Debounced % input (0..100, hỗ trợ số thập phân). */
+function PercentInput({ value, onChange, disabled, placeholder = '0', className = '' }) {
+  const [disp, setDisp] = useState(value == null || value === '' ? '' : String(value));
+  useEffect(() => {
+    setDisp(value == null || value === '' ? '' : String(value));
+  }, [value]);
+  const handle = (e) => {
+    // Chấp nhận "15" / "15.5" / "15,5" — bỏ ký tự khác số và dấu .
+    let s = String(e.target.value).replace(/,/g, '.').replace(/[^\d.]/g, '');
+    // Chỉ giữ 1 dấu .
+    const parts = s.split('.');
+    if (parts.length > 2) s = parts[0] + '.' + parts.slice(1).join('');
+    setDisp(s);
+    const n = s === '' || s === '.' ? null : Number(s);
+    onChange?.(Number.isFinite(n) ? n : null);
+  };
+  return (
+    <div className="relative">
+      <input
+        type="text" inputMode="decimal"
+        value={disp} onChange={handle}
+        placeholder={placeholder} disabled={disabled}
+        className={`w-full px-3 py-2 pr-7 rounded-lg border border-hairline-2 bg-surface
+          text-ink text-sm focus:outline-none focus:border-gold disabled:opacity-50
+          tabular-nums ${className}`}
+      />
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted pointer-events-none">%</span>
+    </div>
+  );
+}
+
+/**
+ * Modal nhập các MỐC THƯỞNG cho KINH DOANH.
+ *
+ * Flow:
+ *   - Preload tiers lần tính gần nhất (nếu có) hoặc 1 dòng trống.
+ *   - User thêm/xoá/sửa mốc (threshold + unitPrice).
+ *   - Preview: nếu nhập đủ cả 2 → hiển thị bên dưới cách tính 1 ví dụ bằng
+ *     tổng doanh thu thực thu + waived (để OWNER đối chiếu).
+ *   - Submit: gửi list cho BE (BE tự sort DESC).
+ */
+function SalesTierModal({
+  month, year, initialTiers, collectedRevenue, waivedRevenue,
+  computing, onCancel, onConfirm,
+}) {
+  const monthLabel = `${String(month).padStart(2,'0')}/${year}`;
+  const [tiers, setTiers] = useState(() => {
+    if (initialTiers && initialTiers.length > 0) {
+      return initialTiers.map(t => ({ threshold: Number(t.threshold), unitPrice: Number(t.unitPrice) }));
+    }
+    return [{ threshold: null, unitPrice: null }];
+  });
+
+  const addTier    = () => setTiers(t => [...t, { threshold: null, unitPrice: null }]);
+  const removeTier = (i) => setTiers(t => t.filter((_, idx) => idx !== i));
+  const updateTier = (i, k, v) => setTiers(t => t.map((row, idx) =>
+    idx === i ? { ...row, [k]: v } : row));
+
+  const validTiers = tiers.filter(t => Number(t.threshold) > 0 && Number(t.unitPrice) > 0);
+  const invalidCount = tiers.length - validTiers.length;
+
+  // Tính preview trên 1 seller với tổng doanh thu phòng (chỉ để minh hoạ công thức)
+  const previewRevenue = Number(collectedRevenue || 0) + Number(waivedRevenue || 0);
+  const previewCalc = (() => {
+    if (previewRevenue <= 0 || validTiers.length === 0) return null;
+    const sorted = [...validTiers].sort((a,b) => Number(b.threshold) - Number(a.threshold));
+    let remaining = previewRevenue;
+    let raw = 0;
+    const breakdown = [];
+    for (const t of sorted) {
+      const k = Math.floor(remaining / Number(t.threshold));
+      if (k > 0) {
+        const sub = k * Number(t.unitPrice);
+        raw += sub;
+        remaining -= k * Number(t.threshold);
+        breakdown.push({ ...t, count: k, subtotal: sub });
+      }
+    }
+    const rounded = raw === 0 ? 0 : Math.ceil(raw / 5000) * 5000;
+    return { raw, rounded, remaining, breakdown };
+  })();
+
+  const canSubmit = validTiers.length > 0 && !computing;
+
+  return (
+    <ModalShell onCancel={onCancel} widthClass="max-w-2xl">
+      <div className="p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10
+            flex items-center justify-center">
+            <TrendingUp size={18} className="text-purple-500" />
+          </span>
+          <div>
+            <h3 className="text-base font-bold text-ink">
+              Cấu hình mốc thưởng Kinh doanh — {monthLabel}
+            </h3>
+            <p className="text-[11px] text-muted">
+              Mỗi seller: mốc cao tính trước, phần dư xuống mốc thấp hơn.
+              Phần không đủ mốc nào → bỏ. Số cuối cùng làm tròn LÊN 5.000đ.
+              Doanh thu dùng để tính là <strong>EX-VAT</strong> (đã trừ VAT theo tỷ trọng).
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-hairline-2 bg-canvas p-4 space-y-2.5">
+          <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-muted uppercase tracking-wider">
+            <div className="col-span-6">Mốc doanh thu (≥)</div>
+            <div className="col-span-5">Đơn giá thưởng mỗi mốc</div>
+            <div className="col-span-1"></div>
+          </div>
+          {tiers.map((t, i) => (
+            <div key={i} className="grid grid-cols-12 gap-2 items-center">
+              <div className="col-span-6">
+                <NumericInput value={t.threshold}
+                  onChange={(v) => updateTier(i, 'threshold', v)}
+                  placeholder="VD: 200.000.000"
+                  disabled={computing}
+                  suffix="đ" />
+              </div>
+              <div className="col-span-5">
+                <NumericInput value={t.unitPrice}
+                  onChange={(v) => updateTier(i, 'unitPrice', v)}
+                  placeholder="VD: 400.000"
+                  disabled={computing}
+                  suffix="đ" />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <button onClick={() => removeTier(i)} disabled={computing || tiers.length === 1}
+                  className="w-8 h-8 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10
+                    text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+          <SecondaryButton onClick={addTier} disabled={computing} size="sm" className="w-full">
+            <Plus size={13} /> Thêm mốc
+          </SecondaryButton>
+          {invalidCount > 0 && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              Có {invalidCount} mốc chưa đủ dữ liệu — sẽ bỏ qua khi tính.
+            </p>
+          )}
+        </div>
+
+        {/* Preview tính 1 ví dụ với tổng doanh thu phòng */}
+        {previewCalc && (
+          <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-500/5
+            border border-emerald-200 dark:border-emerald-500/20 p-3 text-[12px] space-y-1">
+            <div className="font-semibold text-emerald-800 dark:text-emerald-200">
+              Preview áp lên tổng doanh thu tháng ({Number(previewRevenue).toLocaleString('vi-VN')}đ):
+            </div>
+            {previewCalc.breakdown.map((b, i) => (
+              <div key={i} className="text-emerald-700 dark:text-emerald-300 tabular-nums pl-3">
+                • {b.count} × mốc {Number(b.threshold).toLocaleString('vi-VN')}đ
+                  × {Number(b.unitPrice).toLocaleString('vi-VN')}đ
+                  = {b.subtotal.toLocaleString('vi-VN')}đ
+              </div>
+            ))}
+            <div className="pl-3 text-emerald-700 dark:text-emerald-300 tabular-nums">
+              → Raw: <strong>{previewCalc.raw.toLocaleString('vi-VN')}đ</strong>
+              {' '}· Làm tròn LÊN 5.000: <strong>{previewCalc.rounded.toLocaleString('vi-VN')}đ</strong>
+              {previewCalc.remaining > 0 && (
+                <> · Còn dư (bỏ): <strong className="text-amber-700 dark:text-amber-300">{previewCalc.remaining.toLocaleString('vi-VN')}đ</strong></>
+              )}
+            </div>
+            <p className="text-[10px] text-emerald-700/70 dark:text-emerald-300/70 italic pt-1">
+              * Chỉ là ví dụ áp lên tổng doanh thu phòng. Khi tính thật, mỗi seller
+              được áp riêng theo doanh thu của chính họ.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-hairline">
+        <SecondaryButton onClick={onCancel} disabled={computing} className="flex-1">
+          Hủy
+        </SecondaryButton>
+        <PrimaryButton
+          disabled={!canSubmit}
+          loading={computing}
+          onClick={() => onConfirm(validTiers)}
+          className="flex-1">
+          <Calculator size={14} /> Xác nhận tính
+        </PrimaryButton>
+      </div>
+    </ModalShell>
+  );
+}
+
+/**
+ * Modal nhập % phòng + tỉ lệ từng nhân viên kế toán.
+ *
+ * Chốt:
+ *   - Pool = (collected + waived) × accountingPercent / 100
+ *   - Mỗi NV: pool × ratio_i / 100 → ceil 5.000
+ *   - Σ ratio = 100 → confirm bình thường.
+ *   - Σ ratio < 100 → warning (phần dư bỏ) nhưng vẫn cho confirm.
+ *   - Σ ratio > 100 → chặn confirm.
+ */
+function AccountingRatioModal({
+  month, year, items, initialPercent, initialRatios,
+  collectedRevenue, waivedRevenue,
+  computing, onCancel, onConfirm,
+}) {
+  const monthLabel = `${String(month).padStart(2,'0')}/${year}`;
+  const [percent, setPercent] = useState(
+    initialPercent != null ? Number(initialPercent) : null);
+  const [ratios, setRatios] = useState(() => {
+    const byUser = {};
+    (initialRatios || []).forEach(r => { byUser[r.userId] = Number(r.ratio); });
+    return items.map(it => ({
+      userId: it.userId,
+      userFullName: it.userFullName,
+      roleLabel: it.roleLabel,
+      ratio: byUser[it.userId] != null ? byUser[it.userId] : null,
+    }));
+  });
+
+  const updateRatio = (userId, v) =>
+    setRatios(rs => rs.map(r => r.userId === userId ? { ...r, ratio: v } : r));
+
+  const totalRatio = ratios.reduce((s, r) => s + (Number(r.ratio) || 0), 0);
+  const totalRatioRounded = Math.round(totalRatio * 100) / 100;
+  const over100 = totalRatioRounded > 100 + 1e-9;
+  const under100 = totalRatioRounded < 100 - 1e-9;
+  const [confirmWarn, setConfirmWarn] = useState(false);
+
+  const previewRevenue = Number(collectedRevenue || 0) + Number(waivedRevenue || 0);
+  const poolRaw = (previewRevenue > 0 && Number(percent) > 0)
+    ? previewRevenue * Number(percent) / 100
+    : 0;
+  const undistributed = poolRaw * Math.max(0, 100 - totalRatioRounded) / 100;
+
+  const canSubmit = !computing && Number(percent) > 0 && !over100
+    && ratios.some(r => Number(r.ratio) > 0);
+
+  const handleConfirm = () => {
+    if (over100) return;
+    if (under100 && !confirmWarn) {
+      setConfirmWarn(true);
+      return;
+    }
+    const payload = ratios
+      .filter(r => Number(r.ratio) > 0)
+      .map(r => ({ userId: r.userId, ratio: Number(r.ratio) }));
+    onConfirm(Number(percent), payload);
+  };
+
+  return (
+    <ModalShell onCancel={onCancel} widthClass="max-w-2xl">
+      <div className="p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10
+            flex items-center justify-center">
+            <Percent size={18} className="text-purple-500" />
+          </span>
+          <div>
+            <h3 className="text-base font-bold text-ink">
+              Cấu hình hoa hồng Kế toán — {monthLabel}
+            </h3>
+            <p className="text-[11px] text-muted">
+              Pool = doanh thu thực thu <strong>EX-VAT</strong> × % phòng. Mỗi người nhận:
+              pool × tỉ lệ ÷ 100, làm tròn LÊN 5.000đ. Σ tỉ lệ phải ≤ 100%; phần dư không chia cho ai.
+            </p>
+          </div>
+        </div>
+
+        {/* % phòng */}
+        <div className="rounded-xl border border-hairline-2 bg-canvas p-4">
+          <label className="text-[11px] font-bold text-muted uppercase tracking-wider
+            flex items-center gap-1 mb-1.5">
+            <Percent size={11} /> % hoa hồng của cả phòng (tính trên doanh thu thực thu)
+          </label>
+          <div className="w-40">
+            <PercentInput value={percent} onChange={setPercent} disabled={computing}
+              placeholder="VD: 15" />
+          </div>
+          {previewRevenue > 0 && Number(percent) > 0 && (
+            <p className="text-[11px] text-muted mt-2 tabular-nums">
+              Pool phòng = {Number(previewRevenue).toLocaleString('vi-VN')}đ × {Number(percent)}% ={' '}
+              <strong className="text-ink">{Math.round(poolRaw).toLocaleString('vi-VN')}đ</strong>
+            </p>
+          )}
+        </div>
+
+        {/* Ratios per employee */}
+        <div className="rounded-xl border border-hairline-2 bg-canvas overflow-hidden">
+          <div className="px-4 py-2.5 bg-canvas border-b border-hairline flex items-center justify-between">
+            <span className="text-[11px] font-bold text-muted uppercase tracking-wider">
+              Tỉ lệ chia cho từng kế toán viên
+            </span>
+            <span className={`text-xs font-bold tabular-nums ${
+              over100 ? 'text-red-600 dark:text-red-400'
+                : under100 ? 'text-amber-600 dark:text-amber-400'
+                : 'text-emerald-600 dark:text-emerald-400'
+            }`}>
+              Σ = {totalRatioRounded}%
+            </span>
+          </div>
+          <div className="divide-y divide-hairline">
+            {ratios.map(r => {
+              const share = poolRaw * (Number(r.ratio) || 0) / 100;
+              const shareRounded = share === 0 ? 0 : Math.ceil(share / 5000) * 5000;
+              return (
+                <div key={r.userId} className="px-4 py-2.5 grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-6 min-w-0">
+                    <div className="font-medium text-ink text-sm truncate">{r.userFullName}</div>
+                    <div className="text-[11px] text-muted truncate">{r.roleLabel || '—'}</div>
+                  </div>
+                  <div className="col-span-3">
+                    <PercentInput value={r.ratio}
+                      onChange={(v) => updateRatio(r.userId, v)}
+                      disabled={computing} />
+                  </div>
+                  <div className="col-span-3 text-right tabular-nums text-xs">
+                    {share > 0 ? (
+                      <>
+                        <div className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                          {shareRounded.toLocaleString('vi-VN')}đ
+                        </div>
+                        <div className="text-[10px] text-muted">
+                          raw {Math.round(share).toLocaleString('vi-VN')}đ
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-faint">—</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {over100 && (
+          <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-300
+            px-3 py-2 rounded-lg bg-red-50/60 dark:bg-red-500/5
+            border border-red-200 dark:border-red-500/20">
+            <AlertCircle size={13} />
+            Tổng tỉ lệ vượt 100% — vui lòng chỉnh lại trước khi tính.
+          </div>
+        )}
+        {!over100 && under100 && (
+          <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+            confirmWarn
+              ? 'text-red-700 dark:text-red-300 bg-red-50/60 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20'
+              : 'text-amber-700 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20'
+          }`}>
+            <AlertCircle size={13} />
+            {confirmWarn
+              ? <>Số dư <strong className="tabular-nums">{Math.round(undistributed).toLocaleString('vi-VN')}đ</strong> sẽ KHÔNG chia cho ai. Bấm "Xác nhận tính" lần nữa để tiếp tục.</>
+              : <>Tổng tỉ lệ chỉ {totalRatioRounded}% — phần dư ({Math.round(undistributed).toLocaleString('vi-VN')}đ) sẽ bỏ. Bấm "Xác nhận tính" để tiếp tục.</>}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-hairline">
+        <SecondaryButton onClick={onCancel} disabled={computing} className="flex-1">
+          Hủy
+        </SecondaryButton>
+        <PrimaryButton
+          disabled={!canSubmit}
+          loading={computing}
+          onClick={handleConfirm}
+          className="flex-1">
+          <Calculator size={14} /> Xác nhận tính
+        </PrimaryButton>
+      </div>
+    </ModalShell>
+  );
+}
+
+/**
+ * Overlay shell dùng chung cho SalesTierModal / AccountingRatioModal.
+ * Lý do viết riêng (thay vì component Modal có sẵn trong /ui): 2 modal này
+ * đã có header + footer custom bên trong children → component Modal với props
+ * title + footer sẽ chồng chéo.
+ */
+/**
+ * (10/2026) Progress bar % đạt target cá nhân cho cột Tỷ lệ KPI (admin SALES).
+ *   • SELLER / SUPER_SELLER có personalTarget > 0 → progress bar + %
+ *       ≥ 90% xanh lá · 50-90% xanh dương · < 50% vàng cam
+ *       Width tối đa 100% (ngay cả khi >100%). Số % lấy phần nguyên.
+ *   • Khác → label "Không tính Target cá nhân"
+ */
+function KpiProgress({ row }) {
+  if (!row) {
+    return <span className="text-[11px] text-muted italic">—</span>;
+  }
+  if (!row.personalTarget || row.personalTarget <= 0) {
+    return <span className="text-[11px] text-amber-600 dark:text-amber-400">Chưa set target</span>;
+  }
+  const raw = Math.max(0, row.achievedPercent ?? 0);
+  // Truncate 2 decimals (không làm tròn lên)
+  const pct = Math.floor(raw * 100) / 100;
+  const widthPct = Math.min(100, pct);
+  const color = pct >= 90
+    ? 'bg-lime-500'
+    : pct >= 50 ? 'bg-sky-500' : 'bg-orange-400';
+  const textColor = pct >= 90
+    ? 'text-lime-700 dark:text-lime-200'
+    : pct >= 50 ? 'text-sky-700 dark:text-sky-200' : 'text-orange-700 dark:text-orange-200';
+  return (
+    <div className="min-w-[130px]">
+      <div className="w-full h-4 rounded-full bg-canvas border border-hairline overflow-hidden relative">
+        <div className={`h-full ${color} transition-all`} style={{ width: `${widthPct}%` }} />
+        <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${textColor}`}>
+          {pct.toFixed(2)}%
+        </span>
+      </div>
+      <div className="text-[10px] text-muted mt-0.5 tabular-nums">
+        Target: {Number(row.personalTarget).toLocaleString('vi-VN')}đ
+      </div>
+    </div>
+  );
+}
+
+/**
+ * (10/2026) Tỷ lệ doanh thu cá nhân / tổng doanh thu phòng (0-100, 2 chữ số sau dấu phẩy).
+ *   0-20% cam · 20-40% vàng · 40-60% xanh dương · >60% xanh lá
+ */
+function RevenueRatioProgress({ pct }) {
+  const raw = Math.max(0, Math.min(100, Number(pct ?? 0)));
+  // Truncate 2 decimals (không làm tròn lên)
+  const p = Math.floor(raw * 100) / 100;
+  const color = p > 60
+    ? 'bg-lime-500'
+    : p >= 40 ? 'bg-sky-500'
+    : p >= 20 ? 'bg-yellow-400'
+    : 'bg-orange-400';
+  const textColor = p > 60
+    ? 'text-lime-700 dark:text-lime-200'
+    : p >= 40 ? 'text-sky-700 dark:text-sky-200'
+    : p >= 20 ? 'text-yellow-700 dark:text-yellow-200'
+    : 'text-orange-700 dark:text-orange-200';
+  return (
+    <div className="min-w-[110px]">
+      <div className="w-full h-4 rounded-full bg-canvas border border-hairline overflow-hidden relative">
+        <div className={`h-full ${color} transition-all`} style={{ width: `${p}%` }} />
+        <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${textColor}`}>
+          {p.toFixed(2)}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ModalShell({ onCancel, widthClass = 'max-w-2xl', children }) {
+  useEffect(() => {
+    const fn = (e) => { if (e.key === 'Escape') onCancel?.(); };
+    document.addEventListener('keydown', fn);
+    return () => document.removeEventListener('keydown', fn);
+  }, [onCancel]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className={`relative bg-surface w-full ${widthClass}
+        rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[92vh] sm:max-h-[88vh]
+        flex flex-col overflow-y-auto animate-[slideUp_.18s_ease-out]`}>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -2925,6 +4206,7 @@ function BonusStatBox({ label, hint, value, footer, tone = 'default' }) {
 }
 
 export default function AttendanceSheetsPage() {
+  const navigate = useNavigate();
   const [periods, setPeriods] = useState([]);
   const [selected, setSelected] = useState(null);
   const [department, setDepartment] = useState('FACTORY');
@@ -3046,7 +4328,10 @@ export default function AttendanceSheetsPage() {
     } else if (e?.response?.data?.message) {
       msg = e.response.data.message;
     }
-    const isWarning = /chưa tính lương/i.test(msg);
+    // "chưa tính lương" (thiếu batch) + "chưa hỗ trợ xuất thưởng riêng" (phòng
+    // không có quỹ thưởng cố định, VD Kho) đều là nhắc thao tác, không phải lỗi
+    // hệ thống → toast warning (vàng) thay vì error (đỏ).
+    const isWarning = /chưa tính lương|chưa hỗ trợ xuất thưởng/i.test(msg);
     return { msg, isWarning };
   };
 
@@ -3331,6 +4616,9 @@ export default function AttendanceSheetsPage() {
   };
 
   const [finalizingBonus, setFinalizingBonus] = useState(false);
+  // (10/2026) State riêng cho Public/Unpublic Thưởng — tránh share spinner với
+  // "Tính thưởng" vì OWNER có thể bấm Tính lại trong khi đang Public từ trước.
+  const [publishingBonus, setPublishingBonus] = useState(false);
   const [bonusSummary, setBonusSummary] = useState(null);
 
   // Tải kết quả thưởng doanh thu (nếu đã tính)
@@ -3358,16 +4646,46 @@ export default function AttendanceSheetsPage() {
     } finally { setFinalizingBonus(false); }
   };
 
+  // (10/2026) "Mở lại" từ state PUBLISHED → gọi unpublish (GIỮ data đã tính,
+  // chỉ ẩn khỏi NV). KHÔNG xoá, KHÔNG popup xác nhận — user bấm là làm luôn.
+  // (Phiên bản cũ gọi reopenBonus endpoint xoá sạch về NONE, đã bỏ.)
   const doReopenBonus = async () => {
     if (!selected) return;
-    setFinalizingBonus(true);
+    setPublishingBonus(true);
     try {
-      await factoryPayrollApi.reopenBonus(selected.month, selected.year, department);
-      toast('Đã mở lại Thưởng — nhân viên sẽ thấy "Đang tính thưởng"', 'success');
+      await factoryPayrollApi.unpublishBonus(selected.month, selected.year, department);
+      toast('Đã mở lại — nhân viên không còn thấy phiếu thưởng', 'success');
       await loadStatus(selected);
     } catch (e) {
       toast(e?.response?.data?.message || 'Lỗi mở lại Thưởng', 'error');
-    } finally { setFinalizingBonus(false); }
+    } finally { setPublishingBonus(false); }
+  };
+
+  // (10/2026) Public thưởng — chuyển state CALCULATED → PUBLISHED, nhân viên
+  // bắt đầu thấy phiếu thưởng trên app.
+  const doPublishBonus = async () => {
+    if (!selected) return;
+    setPublishingBonus(true);
+    try {
+      await factoryPayrollApi.publishBonus(selected.month, selected.year, department);
+      toast('Đã Public Thưởng — nhân viên đã thấy phiếu thưởng', 'success');
+      await loadStatus(selected);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi Public Thưởng', 'error');
+    } finally { setPublishingBonus(false); }
+  };
+
+  // (10/2026) Unpublic thưởng — ẩn khỏi nhân viên, giữ kết quả đã tính.
+  const doUnpublishBonus = async () => {
+    if (!selected) return;
+    setPublishingBonus(true);
+    try {
+      await factoryPayrollApi.unpublishBonus(selected.month, selected.year, department);
+      toast('Đã Unpublic Thưởng — nhân viên không còn thấy phiếu nữa', 'success');
+      await loadStatus(selected);
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Lỗi Unpublic Thưởng', 'error');
+    } finally { setPublishingBonus(false); }
   };
 
   const doFinalizeKpi = async () => {
@@ -3433,6 +4751,9 @@ export default function AttendanceSheetsPage() {
           <MonthPicker periods={periods} value={selected} onChange={setSelected} disabled={loading} />
           <SecondaryButton onClick={() => loadStatus(selected)} disabled={loading}>
             <RefreshCw size={14} /> Làm mới
+          </SecondaryButton>
+          <SecondaryButton onClick={() => navigate('/owner/bonus-summary')}>
+            <TrendingUp size={14} /> Biến động thưởng
           </SecondaryButton>
           <PrimaryButton onClick={() => setExportModalOpen(true)} disabled={loading || !selected}>
             <Download size={14} /> Xuất file lương
@@ -3523,10 +4844,27 @@ export default function AttendanceSheetsPage() {
                       <Unlock size={14} /> Mở lại KPI
                     </SecondaryButton>
                   ) : (
-                    <PrimaryButton onClick={doFinalizeKpi} disabled={finalizingKpi}>
-                      <Gift size={14} />
-                      {finalizingKpi ? 'Đang xử lý...' : 'Hoàn tất KPI / Thưởng'}
-                    </PrimaryButton>
+                    <>
+                      {/* ── NÚT "TÍNH LẠI THƯỞNG KPI" ────────────────────────
+                        * Chỉ hiển thị cho FACTORY và khi KPI đang pending (chưa
+                        * Hoàn tất, hoặc đã mở lại). Dùng để recompute quỹ sau khi:
+                        *   · work order mới chuyển sang COMPLETED trong tháng
+                        *   · thêm/xoá quỹ dư khai báo tay
+                        *   · cập nhật mức thưởng bảo vệ
+                        * BE: POST /api/factory-payroll/kpi/recompute — xoá record cũ
+                        * rồi tính lại từ dữ liệu live (sản lượng + seed + chấm công).
+                        */}
+                      {department === 'FACTORY' && (
+                        <SecondaryButton onClick={recompute} disabled={recomputing || finalizingKpi}>
+                          <RefreshCw size={14} />
+                          {recomputing ? 'Đang tính...' : 'Tính lại thưởng KPI'}
+                        </SecondaryButton>
+                      )}
+                      <PrimaryButton onClick={doFinalizeKpi} disabled={finalizingKpi || recomputing}>
+                        <Gift size={14} />
+                        {finalizingKpi ? 'Đang xử lý...' : 'Hoàn tất KPI / Thưởng'}
+                      </PrimaryButton>
+                    </>
                   )}
                 </div>
               </div>
@@ -3534,53 +4872,98 @@ export default function AttendanceSheetsPage() {
           )}
 
           {/* ── THƯỞNG DOANH THU — chỉ SALES và ACCOUNTING (bước 3) ──────── */}
-          {status?.finalized && status?.hasSalesBonus && (
+          {/* (10/2026) State card này đã BỎ — toàn bộ 3-state logic + action
+             buttons giờ nằm trong OfficeBonusDetailTable ngay bên dưới. Giữ
+             comment để nếu cần restore vẫn thấy context cũ. */}
+          {false && status?.finalized && status?.hasSalesBonus && (() => {
+            // (10/2026) 3-state flow cho Thưởng DT:
+            //   NONE       = chưa tính           → nút "Tính thưởng"
+            //   CALCULATED = đã tính, chưa Public → nút "Public" + "Tính lại" + "Mở lại"
+            //   PUBLISHED  = đã tính, đã Public   → nút "Unpublic"
+            // bonusFinalized giữ nguyên = true chỉ khi PUBLISHED (BE backward compat).
+            const bonusState = status?.bonusCalcStatus || (status?.bonusFinalized ? 'PUBLISHED' : 'NONE');
+            const isNone      = bonusState === 'NONE';
+            const isCalc      = bonusState === 'CALCULATED';
+            const isPublished = bonusState === 'PUBLISHED';
+            // Mốc thời gian + người thực hiện ưu tiên theo state hiện tại
+            const stateAt = isPublished ? status?.bonusPublishedAt
+                           : isCalc     ? status?.bonusCalculatedAt
+                           : null;
+            const stateBy = isPublished ? status?.bonusPublishedByName
+                           : isCalc     ? status?.bonusCalculatedByName
+                           : null;
+            return (
             <SectionCard>
               <div className="flex items-center justify-between gap-4 px-5 py-4 flex-wrap">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-                    ${status?.bonusFinalized
+                    ${isPublished
                       ? 'bg-emerald-100 dark:bg-emerald-500/18'
-                      : 'bg-purple-50 dark:bg-purple-500/10'}`}>
-                    <Gift size={17} className={status?.bonusFinalized
+                      : isCalc
+                        ? 'bg-amber-50 dark:bg-amber-500/10'
+                        : 'bg-purple-50 dark:bg-purple-500/10'}`}>
+                    <Gift size={17} className={isPublished
                       ? 'text-emerald-600 dark:text-emerald-300'
-                      : 'text-purple-500 dark:text-purple-300'} />
+                      : isCalc
+                        ? 'text-amber-600 dark:text-amber-300'
+                        : 'text-purple-500 dark:text-purple-300'} />
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-ink">
-                      {status?.bonusFinalized
-                        ? 'Đã hoàn tất Thưởng doanh thu — nhân viên thấy thưởng'
-                        : 'Thưởng doanh thu đang pending — nhân viên thấy "Đang tính thưởng"'}
+                      {isPublished && 'Thưởng doanh thu đã Public — nhân viên thấy thưởng'}
+                      {isCalc      && 'Đã tính Thưởng — CHƯA Public (nhân viên chưa thấy)'}
+                      {isNone      && 'Chưa tính Thưởng doanh thu — nhân viên thấy "Đang tính thưởng"'}
                     </p>
                     <p className="text-[11px] text-muted mt-0.5">
-                      {status?.bonusFinalized && status?.bonusFinalizedAt
-                        ? `Chốt thưởng lúc ${formatDateTime(status.bonusFinalizedAt)}`
-                        : status?.kpiFinalized
-                          ? 'Bấm "Hoàn tất Thưởng" để tính thưởng từ doanh thu tháng này'
-                          : 'Cần hoàn tất KPI trước'}
-                      {status?.bonusFinalizedByName ? ` bởi ${status.bonusFinalizedByName}` : ''}
+                      {stateAt ? (
+                        <>
+                          {isPublished ? 'Public lúc' : 'Tính lúc'} {formatDateTime(stateAt)}
+                          {stateBy ? ` bởi ${stateBy}` : ''}
+                        </>
+                      ) : status?.kpiFinalized
+                        ? 'Bấm "Tính thưởng" để tính thưởng từ doanh thu tháng này'
+                        : 'Cần hoàn tất KPI trước'}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {status?.bonusFinalized ? (
-                    <SecondaryButton onClick={doReopenBonus} disabled={finalizingBonus}>
-                      <Unlock size={14} /> Mở lại Thưởng
-                    </SecondaryButton>
-                  ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isNone && (
                     <PrimaryButton
                       onClick={doFinalizeBonus}
                       disabled={finalizingBonus || !status?.kpiFinalized}
                       loading={finalizingBonus}>
                       <Gift size={14} />
-                      {finalizingBonus ? 'Đang tính...' : 'Hoàn tất Thưởng'}
+                      {finalizingBonus ? 'Đang tính...' : 'Tính thưởng'}
                     </PrimaryButton>
+                  )}
+                  {isCalc && (
+                    <>
+                      {/* "Tính lại" chỉ ghi đè kết quả (service đã delete rồi
+                          tính lại trong 1 transaction) — KHÔNG xoá sạch về
+                          state NONE. Chỉ cần nếu OWNER muốn đổi config. */}
+                      <SecondaryButton
+                        onClick={doFinalizeBonus}
+                        disabled={finalizingBonus}>
+                        <RefreshCw size={14} />
+                        {finalizingBonus ? 'Đang tính...' : 'Tính lại'}
+                      </SecondaryButton>
+                      <PrimaryButton onClick={doPublishBonus} disabled={publishingBonus}>
+                        <Gift size={14} />
+                        {publishingBonus ? 'Đang hoàn tất...' : 'Hoàn tất'}
+                      </PrimaryButton>
+                    </>
+                  )}
+                  {isPublished && (
+                    <SecondaryButton onClick={doUnpublishBonus} disabled={publishingBonus}>
+                      <Lock size={14} /> Unpublic
+                    </SecondaryButton>
                   )}
                 </div>
               </div>
 
-              {/* Bảng kết quả thưởng */}
-              {status?.bonusFinalized && bonusSummary && (
+              {/* Bảng kết quả thưởng — hiện ngay khi đã Tính (CALCULATED/PUBLISHED),
+                 không chờ Public. OWNER cần thấy để quyết định Public hay Tính lại. */}
+              {(isCalc || isPublished) && bonusSummary && (
                 <div className="px-5 pb-5 space-y-3">
                   {/* Tổng quan */}
                   <div className="rounded-xl bg-canvas px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -3651,7 +5034,8 @@ export default function AttendanceSheetsPage() {
                 </div>
               )}
             </SectionCard>
-          )}
+            );
+          })()}
 
           {/* ── TASK 2 (11/2026): BẢNG HOA HỒNG chi tiết — SALES / ACCOUNTING ─
               Hoạt động cả khi CHƯA tính (bonusAmount = "—") và sau khi đã tính.
@@ -3665,42 +5049,22 @@ export default function AttendanceSheetsPage() {
               month={selected.month}
               year={selected.year}
               bonusFinalized={!!status?.bonusFinalized}
+              bonusCalcStatus={status?.bonusCalcStatus}
+              publishingBonus={publishingBonus}
               onComputed={() => loadStatus(selected)}
+              onReopen={doReopenBonus}
+              onPublish={doPublishBonus}
+              onUnpublish={doUnpublishBonus}
             />
           )}
 
           {/* ── TÍNH THƯỞNG — KHO (placeholder, chưa triển khai backend) ─── */}
-          {/* Nút chỉ hiển thị ở tab Kho khi đã hoàn tất Lương. Bấm vào chỉ báo
-              "đang phát triển" — cơ chế tính thưởng cho Kho sẽ được bổ sung
-              sau, hiện tại thưởng cho Kho vẫn nhập tay qua file Excel Thưởng. */}
-          {status?.finalized && department === 'WAREHOUSE' && (
-            <SectionCard>
-              <div className="flex items-center justify-between gap-4 px-5 py-4 flex-wrap">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10
-                    flex items-center justify-center shrink-0">
-                    <Gift size={17} className="text-purple-500 dark:text-purple-300" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-ink">Tính thưởng Kho</p>
-                    <p className="text-[11px] text-muted mt-0.5">
-                      Sẽ tính thưởng dựa trên số phiếu xuất/nhập kho trong tháng (đang phát triển).
-                      Hiện tại thưởng cho nhân viên Kho được nhập tay qua file Thưởng bên dưới.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <PrimaryButton
-                    onClick={() => toast(
-                      'Chức năng tính thưởng tự động cho Kho đang được phát triển. Vui lòng nhập thưởng qua file Excel bên dưới.',
-                      'info'
-                    )}>
-                    <Gift size={14} /> Tính thưởng
-                  </PrimaryButton>
-                </div>
-              </div>
-            </SectionCard>
+          {/* (10/2026) Thưởng CỨNG cho NV phòng Kho — nhập tay per-user. */}
+          {department === 'WAREHOUSE' && selected && (
+            <WarehouseBonusEditor
+              month={selected.month}
+              year={selected.year}
+              toast={toast} />
           )}
 
           {/*
@@ -3774,6 +5138,11 @@ export default function AttendanceSheetsPage() {
                 onComputePreview={computePreview}
                 computingPreview={computingPreview || loadingPayroll}
                 finalizedPeriod={!!status?.finalized}
+                bonusCalcStatus={status?.bonusCalcStatus}
+                bonusFinalized={!!status?.bonusFinalized}
+                publishingBonus={publishingBonus}
+                onPublish={doPublishBonus}
+                onUnpublish={doUnpublishBonus}
               />
             )
           )}
@@ -4034,5 +5403,233 @@ function AdjustmentPreviewModal({ preview, loading, departmentLabel, onClose }) 
         </div>
       </div>
     </div>
+  );
+}
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║ WAREHOUSE BONUS EDITOR (10/2026)                                     ║
+   ║ Nhập thưởng cứng cho NV phòng Kho — Lưu (draft) + Hoàn tất (public). ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+/** Placeholder cứng theo tên NV (nếu chưa có bản ghi). */
+const WAREHOUSE_DEFAULT = {
+  'Phạm Thị Thanh An': 1_200_000,
+};
+const defaultForWarehouse = (fullName) => {
+  for (const [name, v] of Object.entries(WAREHOUSE_DEFAULT)) {
+    if (fullName && fullName.includes(name)) return v;
+  }
+  return 0;
+};
+
+function WarehouseBonusEditor({ month, year, toast }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [bonusStatus, setBonusStatus] = useState(null);     // NONE | CALCULATED | PUBLISHED
+  const [edits, setEdits] = useState({});                    // userId → string value
+  // (10/2026) Thay window.confirm bằng ConfirmModal — thẩm mỹ nhất quán toàn app
+  const [confirming, setConfirming] = useState(null);
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      factoryPayrollApi.getBonusTrend('WAREHOUSE'),
+      factoryPayrollApi.monthStatus(month, year, 'WAREHOUSE').catch(() => null),
+    ])
+      .then(([trend, status]) => {
+        const list = trend.users || [];
+        setUsers(list);
+        // Pre-fill: existing amount OR placeholder
+        const e = {};
+        list.forEach(u => {
+          const existing = u.amountsByMonth?.[monthKey];
+          const val = existing != null && existing > 0 ? existing : defaultForWarehouse(u.fullName);
+          e[u.userId] = String(val || 0);
+        });
+        setEdits(e);
+        setBonusStatus(status?.bonusCalcStatus || (status?.bonusFinalized ? 'PUBLISHED' : 'NONE'));
+      })
+      .catch(err => toast(err?.response?.data?.message || 'Lỗi load NV kho', 'error'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, [month, year]);  // eslint-disable-line
+
+  const published = bonusStatus === 'PUBLISHED';
+  const readOnly = published;
+
+  const setVal = (userId, raw) => {
+    setEdits(prev => ({ ...prev, [userId]: raw.replace(/[^\d]/g, '') }));
+  };
+
+  /** Lưu tất cả rows → sheet thành CALCULATED (chưa Public). */
+  const saveDraft = async () => {
+    setSaving(true);
+    try {
+      for (const u of users) {
+        const amt = Number(edits[u.userId] || 0) || 0;
+        await factoryPayrollApi.upsertWarehouseBonus({ userId: u.userId, month, year, amount: amt });
+      }
+      toast('Đã lưu nháp thưởng Kho. Bấm "Hoàn tất" để Public.', 'success');
+      load();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không lưu được', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Lưu + Public → NV thấy phiếu. (10/2026) Dùng ConfirmModal thay window.confirm. */
+  const doPublish = async () => {
+    setSaving(true);
+    try {
+      for (const u of users) {
+        const amt = Number(edits[u.userId] || 0) || 0;
+        await factoryPayrollApi.upsertWarehouseBonus({ userId: u.userId, month, year, amount: amt });
+      }
+      await factoryPayrollApi.publishWarehouseBonus(month, year);
+      toast('Đã Public thưởng Kho', 'success');
+      load();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không Public được', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const publish = () => setConfirming({
+    title: 'Hoàn tất thưởng Kho?',
+    message: 'Sau khi hoàn tất, nhân viên Kho sẽ thấy phiếu thưởng tháng '
+      + `${String(month).padStart(2, '0')}/${year}. Bạn vẫn có thể "Mở tính lại" để điều chỉnh sau.`,
+    confirmLabel: 'Hoàn tất',
+    variant: 'primary',
+    onConfirm: doPublish,
+  });
+
+  const doUnpublish = async () => {
+    setSaving(true);
+    try {
+      await factoryPayrollApi.unpublishWarehouseBonus(month, year);
+      toast('Đã mở lại', 'success');
+      load();
+    } catch (e) {
+      toast(e?.response?.data?.message || 'Không mở lại được', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const unpublish = () => setConfirming({
+    title: 'Mở lại thưởng Kho?',
+    message: 'Nhân viên sẽ không còn thấy phiếu thưởng cho đến khi bạn Hoàn tất lại. Dữ liệu đã nhập được giữ nguyên.',
+    confirmLabel: 'Mở lại',
+    variant: 'danger',
+    onConfirm: doUnpublish,
+  });
+
+  return (
+    <SectionCard>
+      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-hairline flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10
+            flex items-center justify-center shrink-0">
+            <Gift size={17} className="text-purple-500 dark:text-purple-300" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-ink">
+              Thưởng Kho — Tháng {String(month).padStart(2, '0')}/{year}
+              {published && (
+                <span className="ml-2 text-[10px] px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/20
+                                 text-emerald-700 dark:text-emerald-300 rounded font-bold">
+                  ĐÃ PUBLIC
+                </span>
+              )}
+              {bonusStatus === 'CALCULATED' && (
+                <span className="ml-2 text-[10px] px-2 py-0.5 bg-amber-100 dark:bg-amber-500/20
+                                 text-amber-700 dark:text-amber-300 rounded font-bold">
+                  ĐANG LƯU NHÁP
+                </span>
+              )}
+            </p>
+            <p className="text-[11px] text-muted mt-0.5">
+              {published
+                ? 'NV đã thấy phiếu thưởng. Bấm "Mở tính lại" để điều chỉnh.'
+                : 'Nhập số tiền thưởng. "Lưu" = lưu nháp. "Hoàn tất" = Public cho NV.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {published ? (
+            <SecondaryButton onClick={unpublish} disabled={saving}>
+              <Unlock size={13} /> Mở tính lại
+            </SecondaryButton>
+          ) : (
+            <>
+              <SecondaryButton onClick={saveDraft} disabled={saving || loading}>
+                <Check size={13} /> {saving ? 'Đang lưu...' : 'Lưu'}
+              </SecondaryButton>
+              <PrimaryButton onClick={publish} disabled={saving || loading}>
+                <Gift size={13} /> Hoàn tất
+              </PrimaryButton>
+            </>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="p-10 flex justify-center"><LoadingSpinner /></div>
+      ) : users.length === 0 ? (
+        <div className="p-6 text-center text-muted italic">Không có NV phòng Kho.</div>
+      ) : (
+        <>
+          <div className="divide-y divide-hairline">
+            {users.map(u => {
+              const curVal = Number(edits[u.userId] || 0) || 0;
+              return (
+                <div key={u.userId}
+                     className={`flex items-center justify-between gap-3 px-5 py-3
+                                 ${u.deleted ? 'opacity-50' : ''}`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-ink">{u.fullName}</div>
+                    <div className="text-[11px] text-muted">{u.roleLabel}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text" inputMode="numeric"
+                      value={curVal.toLocaleString('vi-VN')}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setVal(u.userId, e.target.value)}
+                      disabled={readOnly}
+                      placeholder="0"
+                      className="w-40 text-right px-3 py-2 rounded-lg border border-hairline-2 bg-surface
+                                 tabular-nums font-bold text-sm focus:border-gold outline-none
+                                 disabled:bg-canvas disabled:text-muted" />
+                    <span className="text-xs text-muted">đ</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* (10/2026) Dòng tổng — cộng theo đúng số đang hiển thị trên UI */}
+          <div className="flex items-center justify-between gap-3 px-5 py-3
+                          border-t border-hairline bg-emerald-50/40 dark:bg-emerald-500/5">
+            <span className="text-xs font-bold uppercase tracking-wider
+                             text-emerald-700 dark:text-emerald-300">
+              Tổng thưởng Kho ({users.length} người)
+            </span>
+            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+              {users.reduce((s, u) => s + (Number(edits[u.userId] || 0) || 0), 0)
+                   .toLocaleString('vi-VN')}đ
+            </span>
+          </div>
+        </>
+      )}
+
+      {confirming && (
+        <ConfirmModal
+          {...confirming}
+          onClose={() => setConfirming(null)}
+        />
+      )}
+    </SectionCard>
   );
 }

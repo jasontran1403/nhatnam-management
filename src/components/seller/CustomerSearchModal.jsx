@@ -1092,7 +1092,36 @@ function ReceiverStep({ customer, onSelectReceiver, onSkip, toast }) {
         )}
 
         <div className="flex gap-2">
-          <button onClick={onSkip}
+          {/*
+            FIX (10/2026) BUG "đơn mất địa chỉ + sđt":
+            Trước đây "Bỏ qua" set selectedReceiver = null → payload tạo đơn
+            có receiverAddress / receiverPhone / shippingAddress rỗng → đơn
+            lưu trống địa chỉ dù khách có người nhận mặc định.
+            Mới:
+              • Có receiver trong danh sách → "Bỏ qua" đồng nghĩa với "dùng
+                mặc định" (hoặc người đầu danh sách nếu không ai set default).
+              • Không có receiver nào → chặn: báo lỗi, buộc NV thêm người nhận
+                và set mặc định trước khi tiếp tục tạo đơn.
+          */}
+          <button
+            onClick={() => {
+              if (!receiverInfos || receiverInfos.length === 0) {
+                toast(
+                  'Khách này chưa có thông tin người nhận. Vui lòng thêm mới và đặt làm mặc định trước khi tạo đơn.',
+                  'error',
+                );
+                return;
+              }
+              const def = receiverInfos.find(r => r.isDefault) || receiverInfos[0];
+              if (!def) {
+                toast(
+                  'Chưa có người nhận mặc định. Hãy chọn người nhận và đặt làm mặc định rồi thử lại.',
+                  'error',
+                );
+                return;
+              }
+              onSelectReceiver(def);
+            }}
             className="flex-1 py-2.5 rounded-xl border border-line text-muted text-sm font-medium hover:bg-surface-2 transition-colors">
             Bỏ qua
           </button>

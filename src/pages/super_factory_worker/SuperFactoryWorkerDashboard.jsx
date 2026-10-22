@@ -22,6 +22,9 @@ import { factoryProductApi } from '../../api/productionApi';
 import {
   ProductionGantt, MaintenanceGantt, MaintenanceDetailModal, AddMachineModal, CreateWorkOrderModal,
 } from '../owner/OwnerProductionDashboard';
+// (10/2026) Click lệnh SX → mở modal (WorkOrderPanel) thay vì navigate sang
+// trang chi tiết. Panel đã có phần chọn biến thể + step + control đầy đủ.
+import { WorkOrderPanel } from '../factory_worker/FactoryOrdersPage';
 
 export default function SuperFactoryWorkerDashboard() {
   const { t } = useLang();
@@ -37,6 +40,8 @@ export default function SuperFactoryWorkerDashboard() {
   const [showAddMachine, setShowAddMachine] = useState(false);
   const [showCreateWorkOrder, setShowCreateWorkOrder] = useState(false);
   const [selectedMaint, setSelectedMaint] = useState(null);
+  // (10/2026) Mở panel click-to-start, không navigate đi.
+  const [selectedWO, setSelectedWO] = useState(null);
   // Cho phép quay lại đúng tab đã xem trước đó
   const [activeSection, setActiveSection] = useState(
     searchParams.get('tab') === 'machines' ? 'machines' : 'orders'
@@ -143,7 +148,13 @@ export default function SuperFactoryWorkerDashboard() {
             <ProductionGantt
               plans={d.recentPlans || []} orders={d.calendarItems || []}
               onPlanClick={id => navigate(`/super-factory/production/plans/${id}`)}
-              onOrderClick={id => navigate(`/super-factory/production/work-orders/${id}`)} />
+              onOrderClick={id => {
+                // (10/2026) Thay vì navigate → mở Panel ngay trên dashboard.
+                // Panel tự fetch detail từ wo.id, cần tối thiểu {id, status} ban đầu.
+                const found = (d.calendarItems || []).find(it => it.id === id && it.type !== 'PLAN');
+                setSelectedWO(found ? { id: found.id, status: found.status || 'PENDING' }
+                                    : { id, status: 'PENDING' });
+              }} />
           </div>
         </SectionCard>
       )}
@@ -165,6 +176,12 @@ export default function SuperFactoryWorkerDashboard() {
       {showCreateWorkOrder && (
         <CreateWorkOrderModal plans={plans} products={products} factories={factories}
           onClose={() => setShowCreateWorkOrder(false)} onSaved={onSaved} />
+      )}
+      {/* (10/2026) Panel click-to-start cho lệnh SX — thay cho navigate trang chi tiết */}
+      {selectedWO && (
+        <WorkOrderPanel wo={selectedWO}
+          onClose={() => setSelectedWO(null)}
+          onRefresh={load} />
       )}
     </div>
   );

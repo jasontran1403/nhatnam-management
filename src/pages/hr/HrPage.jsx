@@ -386,7 +386,10 @@ const ORG = {
   'Kế Toán':        ['Kế toán trưởng', 'Chuyên viên kế toán', 'Nhân viên tổng hợp'],
   'Kinh doanh':     ['Trưởng phòng kinh doanh', 'Nhân viên kinh doanh'],
   'Kho':            ['Quản lý kho', 'Nhân viên kho', 'Nhân viên tạp vụ'],
-  'Tài xế':         ['Tài xế giao nhận'],
+  // (10/2026) Tách "Tài xế giao nhận" thành 2 chức vụ con để tách thưởng:
+  //   • Tài xế xe máy — tính theo km × giá xăng + lượt × đơn giá (có thể kiêm xe tải)
+  //   • Tài xế xe tải — nhận thưởng CỐ ĐỊNH tháng, không tính theo lượt
+  'Tài xế':         ['Tài xế xe máy', 'Tài xế xe tải'],
 };
 
 /**
@@ -1194,10 +1197,44 @@ function DriverReportModal({ onClose }) {
   const toast = useToast();
   const [from, setFrom] = useState(null);
   const [to, setTo] = useState(null);
-  const [gasRate, setGasRate] = useState('');
-  const [bikeBonus, setBikeBonus] = useState('');
+  // Số raw (digits only). Format hiển thị debounce 400ms để lúc gõ không bị
+  // chèn dấu "," ngay làm giật caret.
+  const [gasRate, setGasRate]       = useState('');
+  const [bikeBonus, setBikeBonus]   = useState('');
   const [truckBonus, setTruckBonus] = useState('');
+  // Chuỗi hiển thị trong ô input (có dấu , hoặc raw lúc user vừa gõ)
+  const [gasRateDisp, setGasRateDisp]       = useState('');
+  const [bikeBonusDisp, setBikeBonusDisp]   = useState('');
+  const [truckBonusDisp, setTruckBonusDisp] = useState('');
   const [exporting, setExporting] = useState(false);
+
+  // Debounce 400ms: sau khi user ngừng gõ, format lại ô input với dấu nghìn.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setGasRateDisp(gasRate ? Number(gasRate).toLocaleString('vi-VN') : '');
+    }, 400);
+    return () => clearTimeout(t);
+  }, [gasRate]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setBikeBonusDisp(bikeBonus ? Number(bikeBonus).toLocaleString('vi-VN') : '');
+    }, 400);
+    return () => clearTimeout(t);
+  }, [bikeBonus]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setTruckBonusDisp(truckBonus ? Number(truckBonus).toLocaleString('vi-VN') : '');
+    }, 400);
+    return () => clearTimeout(t);
+  }, [truckBonus]);
+
+  // Handler input: giữ raw digits để Number() hoạt động, hiển thị ngay dãy
+  // chữ user vừa gõ (chưa format), chờ 400ms rồi mới format.
+  const makeHandler = (setRaw, setDisp) => (e) => {
+    const digits = String(e.target.value).replace(/[^\d]/g, '');
+    setRaw(digits);
+    setDisp(digits);           // hiển thị raw ngay, debounce sẽ format sau
+  };
 
   // Lấy số đã nhập, nếu rỗng hoặc <= 0 thì rơi về giá mặc định.
   const resolveRate = (raw, fallback) => {
@@ -1225,7 +1262,11 @@ function DriverReportModal({ onClose }) {
         const pad = (n) => String(n).padStart(2, '0');
         return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
       };
-      downloadBlob(res.data, `bao-cao-tai-xe-${toDdMmYyyy(from)}_${toDdMmYyyy(to)}.xlsx`);
+      // (10/2026) BE đã đổi sang PDF — extension .pdf + MIME application/pdf
+      const pdfBlob = res.data instanceof Blob
+        ? new Blob([res.data], { type: 'application/pdf' })
+        : res.data;
+      downloadBlob(pdfBlob, `bao-cao-tai-xe-${toDdMmYyyy(from)}_${toDdMmYyyy(to)}.pdf`);
       toast('Xuất báo cáo thành công', 'success');
       onClose();
     } catch { toast('Lỗi xuất báo cáo', 'error'); }
@@ -1243,7 +1284,7 @@ function DriverReportModal({ onClose }) {
             </div>
             <div>
               <h3 className="font-bold text-white text-sm">Báo cáo & Lương tài xế</h3>
-              <p className="text-white/60 text-[10px]">Xuất file Excel chuyên nghiệp</p>
+              <p className="text-white/60 text-[10px]">Xuất file PDF chuyên nghiệp</p>
             </div>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
@@ -1273,23 +1314,26 @@ function DriverReportModal({ onClose }) {
               {/* Giá xăng — Tiền xăng = km xe máy × đơn giá này */}
               <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/28 p-3">
                 <label className="block text-[11px] font-bold text-amber-700 dark:text-amber-300 mb-1.5">⛽ Giá xăng (đ/km)</label>
-                <input type="number" min="0" value={gasRate} onChange={e => setGasRate(e.target.value)}
-                  placeholder={String(DEFAULT_GAS_RATE_PER_KM)}
-                  className="w-full h-8 px-2 rounded-lg border border-amber-200 dark:border-amber-500/28 text-sm focus:outline-none focus:border-amber-400 bg-surface" />
+                <input type="text" inputMode="numeric" value={gasRateDisp}
+                  onChange={makeHandler(setGasRate, setGasRateDisp)}
+                  placeholder={DEFAULT_GAS_RATE_PER_KM.toLocaleString('vi-VN')}
+                  className="w-full h-8 px-2 rounded-lg border border-amber-200 dark:border-amber-500/28 text-sm focus:outline-none focus:border-amber-400 bg-surface tabular-nums" />
               </div>
               {/* Thưởng đơn XM = số đơn xe máy × đơn giá này */}
               <div className="rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/28 p-3">
                 <label className="block text-[11px] font-bold text-sky-700 dark:text-sky-300 mb-1.5">🏍️ Đơn XM (đ/đơn)</label>
-                <input type="number" min="0" value={bikeBonus} onChange={e => setBikeBonus(e.target.value)}
-                  placeholder={String(DEFAULT_BIKE_ORDER_BONUS)}
-                  className="w-full h-8 px-2 rounded-lg border border-sky-200 dark:border-sky-500/28 text-sm focus:outline-none focus:border-sky-400 bg-surface" />
+                <input type="text" inputMode="numeric" value={bikeBonusDisp}
+                  onChange={makeHandler(setBikeBonus, setBikeBonusDisp)}
+                  placeholder={DEFAULT_BIKE_ORDER_BONUS.toLocaleString('vi-VN')}
+                  className="w-full h-8 px-2 rounded-lg border border-sky-200 dark:border-sky-500/28 text-sm focus:outline-none focus:border-sky-400 bg-surface tabular-nums" />
               </div>
               {/* Thưởng đơn XT = số đơn xe tải × đơn giá này */}
               <div className="rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/28 p-3">
                 <label className="block text-[11px] font-bold text-orange-700 dark:text-orange-300 mb-1.5">🚛 Đơn XT (đ/đơn)</label>
-                <input type="number" min="0" value={truckBonus} onChange={e => setTruckBonus(e.target.value)}
-                  placeholder={String(DEFAULT_TRUCK_ORDER_BONUS)}
-                  className="w-full h-8 px-2 rounded-lg border border-orange-200 dark:border-orange-500/28 text-sm focus:outline-none focus:border-orange-400 bg-surface" />
+                <input type="text" inputMode="numeric" value={truckBonusDisp}
+                  onChange={makeHandler(setTruckBonus, setTruckBonusDisp)}
+                  placeholder={DEFAULT_TRUCK_ORDER_BONUS.toLocaleString('vi-VN')}
+                  className="w-full h-8 px-2 rounded-lg border border-orange-200 dark:border-orange-500/28 text-sm focus:outline-none focus:border-orange-400 bg-surface tabular-nums" />
               </div>
             </div>
             <p className="text-[10px] text-muted mt-1.5 italic">
@@ -1305,7 +1349,7 @@ function DriverReportModal({ onClose }) {
             className="flex-1 py-2.5 rounded-xl bg-chrome text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-chrome disabled:opacity-40 transition-colors">
             {exporting
               ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xuất...</>
-              : <><Download size={14} /> Xuất Excel</>}
+              : <><Download size={14} /> Xuất PDF</>}
           </button>
         </div>
       </div>

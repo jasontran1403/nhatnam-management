@@ -58,7 +58,12 @@ export default function OwnerProductionPage() {
     { id: 'materials', label: t('batch', 'raw_materials'), icon: Factory },
   ];
 
-  const [tab, setTab] = useState('batches');
+  // (10/2026) Hỗ trợ ?tab=products để link từ FactoryRecipesPage mở sẵn tab SP
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 'batches';
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return ['batches', 'products'].includes(t) ? t : 'batches';
+  });
   // Date filter for batches
   const [preset, setPreset] = useState('month');
   const [range, setRange] = useState(() => presetToRange('month'));

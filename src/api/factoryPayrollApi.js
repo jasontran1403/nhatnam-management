@@ -130,26 +130,129 @@ export const factoryPayrollApi = {
   // ── Thưởng doanh thu (SALES / ACCOUNTING bước 3) ──────────────────────────
 
   /**
-   * Tính và chốt thưởng doanh thu.
+   * Tính và chốt thưởng doanh thu — hỗ trợ cả 2 flow:
+   *
+   *  FLOW MỚI 2026 (truyền `config` object):
+   *     SALES:      { salesTiers: [{threshold, unitPrice}, ...] }
+   *     ACCOUNTING: { accountingPercent: 15.0,
+   *                   accountingRatios: [{userId, ratio}, ...] }
+   *     LEGACY:     { unitPrice: 400000 }  // đơn giá / 100tr
+   *
+   *  LEGACY CŨ (truyền `unitPriceOrConfig` = number, giữ tương thích):
+   *     → gói lại thành { unitPrice }
    *
    * @param {number} month
    * @param {number} year
    * @param {'SALES'|'ACCOUNTING'} department
-   * @param {number|null} unitPrice  Đơn giá hoa hồng (VNĐ cho mỗi 100tr doanh thu).
-   *   Flow MỚI (11/2026) luôn truyền số dương. Bỏ trống → BE fallback về tier-based
-   *   cũ (giữ tương thích legacy, yêu cầu finalizeKpi trước).
+   * @param {object|number|null} unitPriceOrConfig  Body config (flow mới) hoặc
+   *   số đơn giá (legacy) hoặc null.
    */
-  finalizeBonus: (month, year, department = 'SALES', unitPrice = null) =>
-    api.post('/api/factory-payroll/finalize-bonus', null, {
-      params: {
-        month, year, department,
-        ...(unitPrice != null ? { unitPrice } : {}),
-      },
-    }).then(r),
+  finalizeBonus: (month, year, department = 'SALES', unitPriceOrConfig = null) => {
+    const body = unitPriceOrConfig == null
+      ? null
+      : typeof unitPriceOrConfig === 'number'
+        ? { unitPrice: unitPriceOrConfig }
+        : unitPriceOrConfig;
+    return api.post('/api/factory-payroll/finalize-bonus', body, {
+      params: { month, year, department },
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+    }).then(r);
+  },
 
-  /** Mở lại Thưởng — nhân viên quay về "Đang tính thưởng". */
+  /**
+   * Mở lại Thưởng — xoá kết quả đã tính + reset state về NONE (chưa tính).
+   * BE sẽ từ chối nếu đang PUBLISHED (phải Unpublic trước).
+   */
   reopenBonus: (month, year, department = 'SALES') =>
     api.post('/api/factory-payroll/reopen-bonus', null, {
+      params: { month, year, department },
+    }).then(r),
+
+  /**
+   * (10/2026) PUBLIC Thưởng — chuyển state CALCULATED → PUBLISHED. Nhân viên
+   * bắt đầu thấy phiếu thưởng. Chỉ chạy được sau khi đã Tính thưởng.
+   * Dùng chung cho SALES / ACCOUNTING / DRIVER.
+   */
+  publishBonus: (month, year, department = 'SALES') =>
+    api.post('/api/factory-payroll/publish-bonus', null, {
+      params: { month, year, department },
+    }).then(r),
+
+  /**
+   * (10/2026) TÍNH THƯỞNG TÀI XẾ — lưu 3 config (gas + 2 unit prices) vào
+   * sheet DRIVER + mark CALCULATED (chưa Public). Tiếp theo gọi publishBonus
+   * với dept=DRIVER để nhân viên tài xế thấy phiếu thưởng.
+   */
+  calculateDriverBonus: (month, year,
+      { gasPrice, bonusUnitPrice, truckBonusUnitPrice, truckDriverFixedBonuses }) =>
+    api.post('/api/factory-payroll/calculate-driver-bonus',
+      // (10/2026) FIX: destructure cũ ignore `truckDriverFixedBonuses` → amounts
+      // tài xế xe tải nhập xong không bay lên BE → bảng vẫn "Chưa nhập". Nay
+      // forward thêm field này; BE sẽ upsert vào truck_driver_fixed_bonus trước
+      // khi compute, PDF sẽ render được section TÀI XẾ XE TẢI với số thực.
+      { gasPrice, bonusUnitPrice, truckBonusUnitPrice, truckDriverFixedBonuses },
+      { params: { month, year }, headers: { 'Content-Type': 'application/json' } },
+    ).then(r),
+
+  // ────── SALES BONUS v2 (10/2026) ──────────────────────────────────────
+  /** Tính thưởng Sales v2: body {target, stepAmount, stepUnitPrice}. */
+  previewSalesBonusV2: (month, year, { target, stepAmount, stepUnitPrice, tiers }) =>
+    api.post('/api/factory-payroll/sales-bonus/preview',
+      { target, stepAmount, stepUnitPrice, tiers },
+      { params: { month, year }, headers: { 'Content-Type': 'application/json' } },
+    ).then(r),
+
+  /** Load preview Sales v2 hiện tại (OWNER mở lại tháng đã tính). */
+  getCurrentSalesBonusV2: (month, year) =>
+    api.get('/api/factory-payroll/sales-bonus/current',
+      { params: { month, year } },
+    ).then(r),
+
+  /** Lưu override (chưa Public) — bấm "Xác nhận" trong ReviewModal. */
+  saveSalesBonusV2: (month, year, overrides) =>
+    api.post('/api/factory-payroll/sales-bonus/save',
+      { overrides },
+      { params: { month, year }, headers: { 'Content-Type': 'application/json' } },
+    ).then(r),
+
+  /** Public thưởng Sales (promote state hiện tại) — bấm "Hoàn tất". */
+  publishSalesBonusV2: (month, year) =>
+    api.post('/api/factory-payroll/sales-bonus/publish', null,
+      { params: { month, year } },
+    ).then(r),
+
+  // ────── BONUS TREND (10/2026) ──────────────────────────────────────────
+  /** Biến động thưởng 12 tháng gần nhất theo phòng. */
+  getBonusTrend: (department = 'SALES') =>
+    api.get('/api/factory-payroll/bonus-trend', { params: { department } }).then(r),
+
+  /** Tổng hợp thưởng 12 tháng — group theo phòng → chức vụ. */
+  getBonusSummary: () =>
+    api.get('/api/factory-payroll/bonus-summary').then(r),
+
+  /** Upsert thưởng cứng NV phòng Kho (draft — CALCULATED). */
+  upsertWarehouseBonus: ({ userId, month, year, amount }) =>
+    api.post('/api/factory-payroll/warehouse-bonus',
+      { userId, month, year, amount },
+      { headers: { 'Content-Type': 'application/json' } }).then(r),
+
+  /** Public thưởng kho — bấm "Hoàn tất". */
+  publishWarehouseBonus: (month, year) =>
+    api.post('/api/factory-payroll/warehouse-bonus/publish', null,
+      { params: { month, year } }).then(r),
+
+  /** Unpublic thưởng kho — bấm "Mở tính lại". */
+  unpublishWarehouseBonus: (month, year) =>
+    api.post('/api/factory-payroll/warehouse-bonus/unpublish', null,
+      { params: { month, year } }).then(r),
+
+  /**
+   * (10/2026) UNPUBLIC Thưởng — chuyển state PUBLISHED → CALCULATED. Ẩn phiếu
+   * khỏi nhân viên, giữ nguyên kết quả đã tính (để điều chỉnh config rồi
+   * tính lại trước khi Public lại).
+   */
+  unpublishBonus: (month, year, department = 'SALES') =>
+    api.post('/api/factory-payroll/unpublish-bonus', null, {
       params: { month, year, department },
     }).then(r),
 
@@ -366,8 +469,21 @@ export const factoryPayrollApi = {
     const typeSlug = exportType === 'BONUS_ONLY' ? 'thuong'
       : exportType === 'SALARY_ONLY' ? 'luong' : 'luong-thuong';
     const mm = String(month).padStart(2, '0');
-    const name = `bang-${typeSlug}-thang-${mm}-${year}.xlsx`;
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    // (10/2026) Nếu xuất THƯỞNG của 1 phòng cụ thể → thêm slug tên phòng (ko dấu)
+    // vào tên file để OWNER biết file nào là phòng nào. Khớp với BE.
+    let deptSlug = '';
+    if (exportType === 'BONUS_ONLY' && Array.isArray(departments) && departments.length === 1) {
+      deptSlug = ({
+        ACCOUNTING: '-ketoan',
+        SALES:      '-kinhdoanh',
+        FACTORY:    '-xuongsx',
+        WAREHOUSE:  '-kho',
+        DRIVER:     '-taixe',
+      })[departments[0]] || '';
+    }
+    // (10/2026) BE đã đổi sang PDF — phải đổi extension + MIME để không open ra file lỗi
+    const name = `bang-${typeSlug}${deptSlug}-thang-${mm}-${year}.pdf`;
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
     const a = document.createElement('a');
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click();
@@ -391,6 +507,31 @@ export const factoryPayrollApi = {
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click();
     a.remove(); window.URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Liệt kê thưởng chuyên cần của tháng (gồm tất cả NV của 5 phòng — kể cả locked).
+   * Mỗi dòng: userId, fullName, roleLabel, department(Label), amount, previousAmount.
+   */
+  listAttendanceBonus: async (month, year) => {
+    const res = await api.get('/api/factory-payroll/attendance-bonus', {
+      params: { month, year },
+    });
+    // FIX (10/2026): trước đây return res.data (= envelope {code,data,message})
+    // → caller làm .forEach trên object envelope → TypeError → toast "Không
+    // tải được" ở tab Tài xế page Thưởng tháng dù data table vẫn render được
+    // (vì driverConfig đã trả đúng mảng). Phải bóc .data.data giống `r` helper.
+    return res.data?.data ?? res.data;
+  },
+
+  /**
+   * Upsert thưởng chuyên cần cho 1 NV của 1 tháng/năm.
+   */
+  upsertAttendanceBonus: async ({ userId, month, year, amount }) => {
+    const res = await api.post('/api/factory-payroll/attendance-bonus', {
+      userId, month, year, amount,
+    });
+    return res.data;
   },
 };
 

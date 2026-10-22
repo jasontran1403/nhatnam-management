@@ -1101,7 +1101,7 @@ function SubmitPlanModal({ workOrder, onClose, onSaved }) {
 }
 
 // ── Work Order Detail Panel ───────────────────────────────────────────────────
-function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
+export function WorkOrderPanel({ wo: woInit, onClose, onRefresh }) {
   const toast = useToast();
   const { t } = useLang();
   const [wo, setWo] = useState(woInit); // local copy — tự refresh sau mỗi action

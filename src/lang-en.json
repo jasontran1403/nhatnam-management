@@ -144,6 +144,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "orders": "Orders",
+    "monthly_bonus_view": "Bonus Report",
     "customers": "Customers",
     "employees": "Employees",
     "staff": "HR / Payroll",
