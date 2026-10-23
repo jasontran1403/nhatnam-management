@@ -297,7 +297,16 @@ export function SalesBonusV2ReviewModal({
                 const sellerTotal = stepTotal + remTotal;
                 const stepsAmount = (r.steps || 0) * (preview?.stepAmount || 0);
                 const defaultUnit = Math.round((preview?.stepUnitPrice || 0) * (r.appliedMultiplier ?? preview?.multiplier ?? 1));
-                const edited = (stepUnit !== defaultUnit) || (remUnit !== 0);
+                // (10/2026) Default remainderBonus theo công thức mới:
+                //   remPercent = floor(remainder / stepAmount * 100) — chỉ phần nguyên
+                //   remBonus   = ceilTo5000(remPercent × defaultUnit / 100)
+                const stepAmt = preview?.stepAmount || 0;
+                const remPct = stepAmt > 0
+                  ? Math.floor((r.remainder || 0) * 100 / stepAmt) : 0;
+                const defaultRemRaw = Math.floor(remPct * defaultUnit / 100);
+                const defaultRem = defaultRemRaw > 0
+                  ? Math.ceil(defaultRemRaw / 5000) * 5000 : 0;
+                const edited = (stepUnit !== defaultUnit) || (remUnit !== defaultRem);
                 const t = r.personalTarget;
                 const achieved = r.achievedPercent;
 

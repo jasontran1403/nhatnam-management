@@ -206,6 +206,16 @@ function CreateForm({ config, onCreated }) {
   const minDate = minMs != null ? new Date(minMs) : undefined;
   const maxDate = maxMs != null ? new Date(maxMs) : undefined;
 
+  // (10/2026) Nghỉ phép có thể chọn tháng này + tháng trước (nếu lương tháng
+  // trước chưa Public). Mở 2 tháng side-by-side, tháng TRƯỚC bên trái, tháng
+  // HIỆN TẠI bên phải (react-date-range hiển thị shownDate ở panel đầu tiên).
+  const isMonthScopedLeave = type?.value === 'LEAVE';
+  const prevMonthShownDate = useMemo(() => {
+    if (!isMonthScopedLeave) return undefined;
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  }, [isMonthScopedLeave]);
+
   const windowHint = useMemo(() => {
     if (!type) return null;
     const f = (iso) => { const [y, m, d] = iso.split('-'); return `${+d}/${+m}/${y}`; };
@@ -309,6 +319,12 @@ function CreateForm({ config, onCreated }) {
                 onChange={setRange}
                 placeholder="Chọn khoảng ngày"
                 minDate={minDate} maxDate={maxDate}
+                // (10/2026) Phiếu nghỉ phép: hiện 2 tháng cạnh nhau — tháng
+                // TRƯỚC bên trái + tháng HIỆN TẠI bên phải — để NV thấy cả cửa
+                // sổ lùi và tiến ngay trên 1 view.
+                months={isMonthScopedLeave ? 2 : 1}
+                direction={isMonthScopedLeave ? 'horizontal' : 'vertical'}
+                shownDate={prevMonthShownDate}
               />
             ) : (
               <DatePicker
@@ -540,7 +556,38 @@ function DetailDrawer({ item, onClose, onCancelled }) {
           <Row label="Trạng thái">
             <StatusBadge status={item.status} label={item.statusLabel} />
           </Row>
-          <Row label="Thời gian">{item.periodText}</Row>
+          <Row label="Thời gian">
+            {/* (10/2026) Tách từng ngày + nhãn có phép / không lương (do hết phép)
+                để NV đọc không bị mơ hồ khi phiếu bị auto-split. */}
+            {Array.isArray(item.daysBreakdown) && item.daysBreakdown.length > 0 ? (
+              <div className="space-y-1">
+                {item.daysBreakdown.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-ink font-medium">
+                      {new Date(d.date).toLocaleDateString('vi-VN')}
+                      {d.dayValue != null && d.dayValue < 1 && (
+                        <span className="text-muted font-normal"> (nửa ngày)</span>
+                      )}
+                    </span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold
+                      ${d.paid
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28'
+                        : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28'}`}>
+                      {d.label}
+                    </span>
+                  </div>
+                ))}
+                <div className="pt-1 text-[11px] text-muted">
+                  Tổng {item.leaveDays ?? item.totalDays} ngày
+                  {(item.paidLeaveDays || 0) > 0 && (item.unpaidLeaveDays || 0) > 0 && (
+                    <> · {item.paidLeaveDays} có lương + {item.unpaidLeaveDays} không lương</>
+                  )}
+                </div>
+              </div>
+            ) : (
+              item.periodText
+            )}
+          </Row>
           <Row label="Lý do"><span className="whitespace-pre-wrap">{item.reason}</span></Row>
 
           {item.status === 'APPROVED_DEDUCTED' && (

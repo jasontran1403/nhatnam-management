@@ -9,6 +9,26 @@ import SplashScreen from '../../components/common/SplashScreen';
 import LangToggle from '../../components/common/LangToggle';
 import { BRAND } from '../../config/brand';
 
+/**
+ * (10/2026) Phân loại lỗi đăng nhập để báo toast chính xác.
+ *   • Không có err.response → axios không nhận được phản hồi HTTP → server
+ *     offline / network die / CORS → "Server đang offline…".
+ *   • err.code = ERR_NETWORK | ECONNABORTED | ETIMEDOUT → cùng dạng.
+ *   • Có err.response → BE trả 4xx/5xx → ưu tiên message BE trả (vd
+ *     "Tài khoản bị khoá"); không có message → dùng fallbackKey (sai mật khẩu).
+ */
+function resolveLoginError(err, t, fallbackKey) {
+  const noResponse = !err?.response;
+  const netCode = err?.code;
+  const isNetwork = noResponse
+    || netCode === 'ERR_NETWORK'
+    || netCode === 'ECONNABORTED'
+    || netCode === 'ETIMEDOUT'
+    || /network error|timeout/i.test(err?.message || '');
+  if (isNetwork) return t('auth', 'server_offline');
+  return err?.response?.data?.message || t('auth', fallbackKey);
+}
+
 function getRoleLabel(role, t) {
   const colorMap = {
     ADMIN:            'bg-red-100 dark:bg-red-500/18 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/28',
@@ -98,7 +118,10 @@ export default function LoginPage() {
         triggerSplash(getRedirectPath(data.role));
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || t('auth', 'wrong_credentials');
+      // (10/2026) Phân biệt server offline vs sai mật khẩu để báo đúng.
+      // Khi BE không phản hồi, axios không có `err.response` → trước đây fallback
+      // sang "Sai mật khẩu" → user tưởng gõ sai, thực ra server đang chết.
+      const msg = resolveLoginError(err, t, 'wrong_credentials');
       toast(msg, 'error');
     } finally {
       setLoading(false);
@@ -114,7 +137,7 @@ export default function LoginPage() {
       setPendingCreds(null);
       triggerSplash(getRedirectPath(data.role));
     } catch (err) {
-      const msg = err?.response?.data?.message || t('auth', 'login_error');
+      const msg = resolveLoginError(err, t, 'login_error');
       toast(msg, 'error');
     } finally {
       setSelectingRole(false);

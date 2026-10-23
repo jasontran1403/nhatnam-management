@@ -529,8 +529,13 @@ export default function OrdersPage() {
   const isSuperSeller = currentUser.role === 'SUPER_SELLER';
   // ── THÊM MỚI: kiểm tra role có quyền Hoàn/Đổi ───────────────────────────────
   const canExchangeOrder = currentUser.role === 'SELLER' || currentUser.role === 'SUPER_SELLER';
-  const canSeeReport = currentId === 12 || currentId === 15
-    || currentUser.role === 'OWNER' || currentUser.role === 'ADMIN';
+  // (10/2026) MỌI SELLER đều thấy nút xuất báo cáo. BE phân quyền DATA:
+  //   • SELLER whitelist (ReportAccessGuard.ALLOWED_USER_IDS) + role khác
+  //     (SUPER_SELLER / ACCOUNTANT / SUPER_ACCOUNTANT / OWNER / ADMIN):
+  //     xuất ALL đơn.
+  //   • SELLER ngoài whitelist: file xuất ra chỉ chứa đơn do chính họ tạo.
+  // → FE không cần kiểm tra ID; không còn risk lệch khi đổi whitelist BE.
+  const canSeeReport = true;
 
   const canActOnOrder = useCallback((o) => {
     if (isSuperSeller) return true;
@@ -593,7 +598,10 @@ export default function OrdersPage() {
         openPdfBlob(res.data, `bao-cao-san-pham-${stamp}.pdf`);
         toast('Xuất báo cáo sản phẩm thành công', 'success');
       } else {
-        const params = { excludeCancelled: true, from, to };
+        // (10/2026) Báo cáo ĐƠN HÀNG = tất cả đơn trong khoảng, bao gồm CANCELLED
+        // (user spec). excludeCancelled để default false; chỉ filter status khi
+        // user chủ động chọn trong UI.
+        const params = { from, to };
         if (statusFilter !== 'ALL') params.status = statusFilter;
         const res = await accountantApi.exportOrders(params);
         downloadBlob(res.data, `don-hang-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
@@ -787,10 +795,15 @@ export default function OrdersPage() {
           <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors shrink-0">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button onClick={() => setShowExportPicker(true)} disabled={exporting} title="Xuất Excel đơn hàng"
-            className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0">
-            {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
-          </button>
+          {/* (10/2026) Chỉ 2 account được xuất bất kỳ báo cáo nào trên trang
+              này — gồm cả Excel đơn hàng + Sản phẩm (modal picker). Trước đây
+              SELLER thường vẫn thấy nút này → gọi API → nhận ALL data → lệch. */}
+          {canSeeReport && (
+            <button onClick={() => setShowExportPicker(true)} disabled={exporting} title="Xuất Excel đơn hàng"
+              className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0">
+              {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
+            </button>
+          )}
           {canSeeReport && (
             <button onClick={() => setShowReportModal(true)} title="Xuất báo cáo"
               className="p-2 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 transition-colors shrink-0">
@@ -830,10 +843,13 @@ export default function OrdersPage() {
             <button onClick={() => fetchOrders(0)} className="p-2 rounded-xl bg-surface-2 text-muted hover:bg-surface-3 transition-colors shrink-0">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
-            <button onClick={() => setShowExportPicker(true)} disabled={exporting} title="Xuất Excel"
-              className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0">
-              {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
-            </button>
+            {/* (10/2026) Mobile — gate luôn nút Xuất Excel như desktop. */}
+            {canSeeReport && (
+              <button onClick={() => setShowExportPicker(true)} disabled={exporting} title="Xuất Excel"
+                className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/18 transition-colors disabled:opacity-60 shrink-0">
+                {exporting ? <BtnSpinner size={14} colorClass="border-emerald-400 !border-t-emerald-600 dark:border-t-emerald-500/40" /> : <Download size={14} />}
+              </button>
+            )}
             {canSeeReport && (
               <button onClick={() => setShowReportModal(true)} title="Xuất báo cáo"
                 className="p-2 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 transition-colors shrink-0">

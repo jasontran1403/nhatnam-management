@@ -182,7 +182,8 @@ function MonthYearDropdown({ value, onSelect, onCancel, t }) {
 
 // ── Calendar dropdown ─────────────────────────────────────────────────────────
 // Lưu ý: bỏ hết class định vị (absolute/top/left/right) — vị trí do AnchoredPortal lo.
-function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, minDate, maxDate }) {
+function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, minDate, maxDate,
+                           months = 1, direction = 'vertical', shownDate }) {
   return (
     <div
       className="bg-surface rounded-2xl shadow-2xl border border-line overflow-hidden"
@@ -192,8 +193,9 @@ function CalendarDropdown({ selection, onSelect, onApply, onCancel, t, minDate, 
         ranges={[selection]}
         onChange={onSelect}
         locale={vi}
-        months={1}
-        direction="vertical"
+        months={months}
+        direction={direction}
+        shownDate={shownDate}
         showMonthAndYearPickers
         showDateDisplay={false}
         rangeColors={['var(--c-gold)']}
@@ -342,7 +344,8 @@ function FullPresetPicker({ preset, onPreset, onRangeChange }) {
 }
 
 // ── SIMPLE MODE ───────────────────────────────────────────────────────────────
-function SimplePicker({ from, to, onChange, placeholder, align = 'left', minDate, maxDate }) {
+function SimplePicker({ from, to, onChange, placeholder, align = 'left', minDate, maxDate,
+                        months = 1, direction = 'vertical', shownDate }) {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState(() => ({
@@ -425,6 +428,9 @@ function SimplePicker({ from, to, onChange, placeholder, align = 'left', minDate
           t={t}
           minDate={minDate}
           maxDate={maxDate}
+          months={months}
+          direction={direction}
+          shownDate={shownDate}
         />
       </AnchoredPortal>
     </div>
@@ -443,6 +449,12 @@ export default function DateRangePicker(props) {
         align={props.align || 'left'}
         minDate={props.minDate}
         maxDate={props.maxDate}
+        // (10/2026) 2-month view cho các form cần nhìn ngược/xuôi 1 tháng (vd
+        // tạo phiếu nghỉ phép tháng này + tháng trước). Hành vi mặc định vẫn
+        // là 1-month vertical như cũ nên các caller cũ không bị ảnh hưởng.
+        months={props.months}
+        direction={props.direction}
+        shownDate={props.shownDate}
       />
     );
   }

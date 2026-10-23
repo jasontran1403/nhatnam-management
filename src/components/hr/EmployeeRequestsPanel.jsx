@@ -191,7 +191,36 @@ function DecideModal({ item, onClose, onDone }) {
           </Row>
           <Row label="Loại phiếu">{item.typeLabel}</Row>
           <Row label="Thời gian xin phép">
-            <span className="font-medium">{item.periodText}</span>
+            {/* (10/2026) Hiện breakdown ngày có phép / không lương khi phiếu
+                nghỉ bị auto-split (hết quỹ phép). */}
+            {Array.isArray(item.daysBreakdown) && item.daysBreakdown.length > 0 ? (
+              <div className="space-y-1">
+                {item.daysBreakdown.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-ink font-medium">
+                      {new Date(d.date).toLocaleDateString('vi-VN')}
+                      {d.dayValue != null && d.dayValue < 1 && (
+                        <span className="text-muted font-normal"> (nửa ngày)</span>
+                      )}
+                    </span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold
+                      ${d.paid
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/28'
+                        : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/28'}`}>
+                      {d.label}
+                    </span>
+                  </div>
+                ))}
+                <div className="pt-1 text-[11px] text-muted">
+                  Tổng {item.leaveDays ?? item.totalDays} ngày
+                  {(item.paidLeaveDays || 0) > 0 && (item.unpaidLeaveDays || 0) > 0 && (
+                    <> · {item.paidLeaveDays} có lương + {item.unpaidLeaveDays} không lương</>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <span className="font-medium">{item.periodText}</span>
+            )}
           </Row>
           <Row label="Lý do"><span className="whitespace-pre-wrap">{item.reason}</span></Row>
           <Row label="Trạng thái"><StatusBadge status={item.status} label={item.statusLabel} /></Row>
