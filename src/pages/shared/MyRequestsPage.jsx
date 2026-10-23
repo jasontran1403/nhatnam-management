@@ -6,7 +6,7 @@
 // theo giờ Việt Nam cho từng loại phiếu (/form-config); trang này chỉ truyền
 // thẳng vào lịch. Nhờ vậy đổi luật chỉ phải sửa một chỗ ở backend, và máy người
 // dùng để lệch ngày cũng không mở rộng được cửa sổ chọn.
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   FileText, Plus, Clock, CalendarDays, Check, X, AlertCircle,
   Loader2, Trash2, ChevronRight, MinusCircle,
@@ -72,6 +72,22 @@ function CreateForm({ config, onCreated }) {
   const [occupied, setOccupied] = useState({});
   const [loadingOccupied, setLoadingOccupied] = useState(false);
 
+  // (10/2026 — Issue 1) Khi chọn khoảng ngày, phần "Buổi nghỉ từng ngày"
+  // bung ra làm layout dài thêm → trình duyệt tự scroll (auto-focus hoặc
+  // scroll-anchor). Lưu vị trí cuộn ngay trước khi `range` cập nhật và khôi
+  // phục lại khi dayList render xong → viewport giữ nguyên.
+  const scrollLockRef = useRef(null);
+  const handleRangeChange = useCallback((next) => {
+    scrollLockRef.current = window.scrollY;
+    setRange(next);
+  }, []);
+
+  // (10/2026 — Issue 2) Sau khi gửi phiếu, không tự nhảy tab "Đã gửi" nữa
+  // — chỉ animate thu gọn phần "Buổi nghỉ từng ngày" rồi reset form để NV
+  // thấy phiếu đã gửi và sẵn sàng tạo tiếp. `collapsing=true` trigger CSS
+  // transition max-height / opacity; sau 300ms mới reset state thật.
+  const [collapsing, setCollapsing] = useState(false);
+
   const type = useMemo(
     () => config?.types?.find(t => t.value === typeValue) || null,
     [config, typeValue]
@@ -96,6 +112,19 @@ function CreateForm({ config, onCreated }) {
     for (let t = a; t <= b; t += 86400000) out.push(msToIsoDate(t));
     return out;
   }, [type, range.from, range.to]);
+
+  // (10/2026 — Issue 1) Sau khi dayList thay đổi do pick date, chạy ngay
+  // 2 lần restore scroll (ngay sau render + 1 frame sau) để chặn mọi auto
+  // scroll do browser/focus/scroll-anchor gây ra. Chỉ áp khi
+  // scrollLockRef.current được set — tức là lần đổi do user pick date,
+  // không phải lần đổi do reset/typeChange.
+  useEffect(() => {
+    if (scrollLockRef.current == null) return;
+    const y = scrollLockRef.current;
+    scrollLockRef.current = null;
+    window.scrollTo({ top: y, behavior: 'instant' });
+    requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }));
+  }, [dayList.join(',')]);
 
   // ── Fetch ngày đã chiếm khi khoảng ngày thay đổi ─────────────────────
   useEffect(() => {
@@ -129,25 +158,31 @@ function CreateForm({ config, onCreated }) {
 
   // Ngày mới xuất hiện thì mặc định nghỉ CẢ NGÀY, TRỪCHI ngày đã bị chiếm
   // → auto bỏ tick. Nhờ vậy phiếu mới tự loại ngày trùng.
+  //
+  // (10/2026) Nhân viên PARTTIME chỉ có ca sáng → mặc định tick Sáng, bỏ
+  // Chiều (và FE ẩn checkbox Chiều ở dưới). Tránh phiếu khai nhầm nghỉ
+  // chiều — buổi họ không có ca → OWNER thấy nhầm 1 ngày phép thay vì 0.5.
+  const isPartTime = !!config?.partTime;
   useEffect(() => {
     setSessions(prev => {
       const next = {};
       dayList.forEach(d => {
         const occ = occupied[d];
         if (occ) {
-          // Ngày đã bị chiếm → bỏ tick hoàn toàn các buổi đã chiếm
           const prevSess = prev[d];
           next[d] = {
             morning: occ.morning ? false : (prevSess?.morning ?? true),
-            afternoon: occ.afternoon ? false : (prevSess?.afternoon ?? true),
+            afternoon: isPartTime
+              ? false
+              : (occ.afternoon ? false : (prevSess?.afternoon ?? true)),
           };
         } else {
-          next[d] = prev[d] ?? { morning: true, afternoon: true };
+          next[d] = prev[d] ?? { morning: true, afternoon: !isPartTime };
         }
       });
       return next;
     });
-  }, [dayList.join(','), JSON.stringify(occupied)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dayList.join(','), JSON.stringify(occupied), isPartTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Bỏ tick một buổi.
@@ -251,6 +286,17 @@ function CreateForm({ config, onCreated }) {
     if (type.minutesBased && (!minutes || Number(minutes) <= 0))
       return toast(`Phiếu ${type.label.toLowerCase()} phải khai số phút`, 'error');
 
+    // (10/2026) Phiếu NGHỈ PHÉP không bắt buộc lý do — bỏ trống thì mặc
+    // định "Nghỉ phép có lương" (gửi lên BE để lưu đúng chuỗi này). Các
+    // loại khác vẫn phải nêu lý do, giữ check cũ.
+    const defaultLeaveReason = 'Nghỉ phép có lương';
+    const trimmedReason = reason.trim();
+    const effectiveReason = type.allowPartialDay
+      ? (trimmedReason || defaultLeaveReason)
+      : trimmedReason;
+    if (!type.allowPartialDay && !effectiveReason)
+      return toast('Nêu rõ lý do để quản lý có căn cứ duyệt', 'error');
+
     // Phiếu nghỉ phép: gom các buổi được tick. Ngày bỏ trắng cả 2 buổi coi như
     // không nghỉ → không gửi lên, đó chính là cách khai nghỉ ngắt quãng.
     let days = null;
@@ -269,11 +315,18 @@ function CreateForm({ config, onCreated }) {
         toDate,
         days,
         minutes: type.minutesBased ? Number(minutes) : null,
-        reason: reason.trim(),
+        reason: effectiveReason,
       });
       toast('Đã gửi phiếu, chờ duyệt.', 'success');
-      reset();
-      onCreated?.();
+      // (10/2026 — Issue 2) Trigger collapse animation TRƯỚC khi reset state
+      // thật — nếu reset ngay, dayList rỗng → section unmount cứng, không có
+      // transition. 300ms khớp với duration-300 ở dưới.
+      setCollapsing(true);
+      setTimeout(() => {
+        reset();
+        setCollapsing(false);
+        onCreated?.();
+      }, 320);
     } catch (e) {
       toast(e?.response?.data?.message || 'Không gửi được phiếu', 'error');
     } finally {
@@ -316,7 +369,7 @@ function CreateForm({ config, onCreated }) {
             {type?.rangeBased ? (
               <DateRangePicker
                 from={range.from} to={range.to}
-                onChange={setRange}
+                onChange={handleRangeChange}
                 placeholder="Chọn khoảng ngày"
                 minDate={minDate} maxDate={maxDate}
                 // (10/2026) Phiếu nghỉ phép: hiện 2 tháng cạnh nhau — tháng
@@ -355,6 +408,11 @@ function CreateForm({ config, onCreated }) {
             ngắt quãng thay vì phải xé thành nhiều phiếu.
             Ngày đã có phiếu cũ (PENDING/duyệt) hiện DISABLED với note trạng thái. */}
         {type?.allowPartialDay && dayList.length > 0 && (
+          <div
+            className={`transition-all duration-300 ease-in-out overflow-hidden
+              ${collapsing ? 'max-h-0 opacity-0 -mt-5' : 'max-h-[3000px] opacity-100'}`}
+            style={{ overflowAnchor: 'none' }}
+          >
           <Field label="Buổi nghỉ từng ngày" required
             hint="Bỏ tick để nghỉ nửa ngày. Bỏ cả hai buổi thì ngày đó không nghỉ.">
             {loadingOccupied && (
@@ -397,7 +455,14 @@ function CreateForm({ config, onCreated }) {
                       {dd}/{mm}/{yy}
                     </span>
 
-                    {[['morning', 'Sáng', morningOccupied], ['afternoon', 'Chiều', afternoonOccupied]].map(([k, label, isBlocked]) => (
+                    {/* (10/2026) Parttime chỉ có ca sáng — ẩn hẳn checkbox
+                        Chiều, hiện nhãn "Chỉ ca sáng" để NV khỏi tưởng form
+                        bị thiếu. Fulltime render cả 2 checkbox như cũ. */}
+                    {(isPartTime
+                      ? [['morning', 'Sáng', morningOccupied]]
+                      : [['morning', 'Sáng', morningOccupied],
+                         ['afternoon', 'Chiều', afternoonOccupied]]
+                    ).map(([k, label, isBlocked]) => (
                       <label key={k} className={`flex items-center gap-1.5 select-none
                         ${isBlocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                         <input type="checkbox" checked={!!ss[k]}
@@ -409,6 +474,9 @@ function CreateForm({ config, onCreated }) {
                         </span>
                       </label>
                     ))}
+                    {isPartTime && (
+                      <span className="text-[11px] text-muted italic">(chỉ ca sáng)</span>
+                    )}
 
                     <span className="ml-auto text-xs flex items-center gap-1.5">
                       {isOccupied ? (
@@ -485,14 +553,25 @@ function CreateForm({ config, onCreated }) {
               </span>
             </div>
           </Field>
+          </div>
         )}
 
         {/* ── Lý do ──────────────────────────────────────────────────────── */}
-        <Field label="Lý do" required>
+        {/* (10/2026) Phiếu NGHỈ PHÉP: không bắt buộc, mặc định "Nghỉ phép có
+            lương" nếu để trống. Các loại khác vẫn bắt buộc. */}
+        <Field
+          label="Lý do"
+          required={!type?.allowPartialDay}
+          hint={type?.allowPartialDay
+            ? 'Để trống sẽ dùng mặc định "Nghỉ phép có lương".'
+            : null}
+        >
           <textarea
             value={reason} onChange={e => setReason(e.target.value)}
             rows={3} maxLength={2000}
-            placeholder="Nêu rõ lý do để quản lý có căn cứ duyệt…"
+            placeholder={type?.allowPartialDay
+              ? 'Nghỉ phép có lương'
+              : 'Nêu rõ lý do để quản lý có căn cứ duyệt…'}
             className={inputCls + ' resize-y min-h-[84px]'}
           />
         </Field>
@@ -678,7 +757,15 @@ export default function MyRequestsPage() {
       />
 
       {tab === 'create' && (
-        <CreateForm config={config} onCreated={() => { loadList(); setTab('list'); }} />
+        <CreateForm
+          config={config}
+          onCreated={() => {
+            // (10/2026 — Issue 2) Chỉ reload list (để badge "chờ duyệt" cập
+            // nhật), KHÔNG nhảy sang tab Đã gửi — animation collapse ở form
+            // đã cho NV cảm giác "đã gửi xong, sẵn sàng tạo tiếp".
+            loadList();
+          }}
+        />
       )}
 
       {tab === 'list' && (

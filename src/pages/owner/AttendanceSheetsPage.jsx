@@ -1283,46 +1283,61 @@ function PayrollMobileCard({ row: r, isDriver, showKpi, highlight = false, onAtt
         </p>
       </div>
 
-      {/* Lương cơ bản | Lương thực tế */}
-      {flat ? (
-        <Cell
-          label="Lương khoán trọn tháng"
-          value={formatCurrency(r.baseSalary)}
-          sub="Hợp đồng thuê ngoài"
-        />
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
+      {/* (10/2026) Nghỉ thai sản → ẩn mọi số công/phụ cấp/thưởng, chỉ
+          hiện Lương cơ bản + nhãn in nghiêng. Khớp với bảng desktop. */}
+      {r.maternityLeave ? (
+        <>
           <Cell label="Lương cơ bản" value={formatCurrency(r.standardBaseSalary ?? r.baseSalary)} />
-          <Cell
-            right
-            label="Lương thực tế"
-            value={formatCurrency(r.baseSalary)}
-            tone={shortfall(r) ? 'text-amber-700 dark:text-amber-300' : ''}
-            sub={r.standardDays != null
-              ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
-              : null}
-          />
-        </div>
-      )}
-
-      {/* PHASE 7: 3 cột phụ cấp (cơm · trách nhiệm · OT). Thưởng/KPI xem trong
-          modal "Chi tiết lương". */}
-      {(() => {
-        const arr = r.salaryDetail?.allowances || [];
-        const pick = (needle) => arr
-          .filter(a => (a.label || '').toLowerCase().includes(needle))
-          .reduce((s, a) => s + (a.amount || 0), 0);
-        const meal = pick('cơm') || pick('com');
-        const resp = pick('trách nhiệm') || pick('trach nhiem');
-        const ot = pick('ot') || pick('tăng ca');
-        return (
-          <div className="grid grid-cols-3 gap-3">
-            <Cell label="Cơm" value={formatCurrency(meal)} />
-            <Cell label="Trách nhiệm" value={formatCurrency(resp)} />
-            <Cell label="OT" value={formatCurrency(ot)} tone="text-gold" />
+          <div className="pt-2 border-t border-hairline">
+            <p className="italic text-amber-700 dark:text-amber-300 font-medium text-center">
+              Đang nghỉ thai sản theo chế độ
+            </p>
           </div>
-        );
-      })()}
+        </>
+      ) : (
+        <>
+          {/* Lương cơ bản | Lương thực tế */}
+          {flat ? (
+            <Cell
+              label="Lương khoán trọn tháng"
+              value={formatCurrency(r.baseSalary)}
+              sub="Hợp đồng thuê ngoài"
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Cell label="Lương cơ bản" value={formatCurrency(r.standardBaseSalary ?? r.baseSalary)} />
+              <Cell
+                right
+                label="Lương thực tế"
+                value={formatCurrency(r.baseSalary)}
+                tone={shortfall(r) ? 'text-amber-700 dark:text-amber-300' : ''}
+                sub={r.standardDays != null
+                  ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
+                  : null}
+              />
+            </div>
+          )}
+
+          {/* PHASE 7: 3 cột phụ cấp (cơm · trách nhiệm · OT). Thưởng/KPI xem trong
+              modal "Chi tiết lương". */}
+          {(() => {
+            const arr = r.salaryDetail?.allowances || [];
+            const pick = (needle) => arr
+              .filter(a => (a.label || '').toLowerCase().includes(needle))
+              .reduce((s, a) => s + (a.amount || 0), 0);
+            const meal = pick('cơm') || pick('com');
+            const resp = pick('trách nhiệm') || pick('trach nhiem');
+            const ot = pick('ot') || pick('tăng ca');
+            return (
+              <div className="grid grid-cols-3 gap-3">
+                <Cell label="Cơm" value={formatCurrency(meal)} />
+                <Cell label="Trách nhiệm" value={formatCurrency(resp)} />
+                <Cell label="OT" value={formatCurrency(ot)} tone="text-gold" />
+              </div>
+            );
+          })()}
+        </>
+      )}
 
       {/* FIX (10/2026): bỏ 2 nút "Chi tiết lương" + "Chi tiết ngày công"
           khỏi thẻ mobile — khớp cột đã gỡ bên desktop. */}
@@ -1522,38 +1537,59 @@ export function PayrollTables({ data, loading, preview = false,
                       </div>
                     </Td>
 
-                    {flatPay(r) ? (
-                      <Td right colSpan={2}>
-                        <div>{formatCurrency(r.baseSalary)}</div>
-                        <div className="text-[11px] text-muted">Khoán trọn tháng</div>
-                      </Td>
-                    ) : (
+                    {/* (10/2026) NGHỈ THAI SẢN THEO CHẾ ĐỘ ──────────────────
+                        Owner yêu cầu: nhân viên đang nghỉ thai sản thì bảng
+                        lương KHÔNG hiển thị số công / phụ cấp / thưởng (kể cả
+                        khi vẫn có khoản nhập tay) — merge TỪ CỘT "Lương theo
+                        chấm công" tới cột "Thực nhận" bằng dòng chữ in nghiêng.
+                        Giữ "Lương cơ bản" để người đọc vẫn thấy mức lương hồ
+                        sơ hiện hành. BE gắn cờ `maternityLeave` cho đúng người
+                        (xem FactoryKpiService.MATERNITY_LEAVE_NAMES). */}
+                    {r.maternityLeave ? (
                       <>
                         <Td right>{formatCurrency(r.standardBaseSalary ?? r.baseSalary)}</Td>
+                        <Td colSpan={5} className="text-center">
+                          <span className="italic text-amber-700 dark:text-amber-300 font-medium">
+                            Đang nghỉ thai sản theo chế độ
+                          </span>
+                        </Td>
+                      </>
+                    ) : (
+                      <>
+                        {flatPay(r) ? (
+                          <Td right colSpan={2}>
+                            <div>{formatCurrency(r.baseSalary)}</div>
+                            <div className="text-[11px] text-muted">Khoán trọn tháng</div>
+                          </Td>
+                        ) : (
+                          <>
+                            <Td right>{formatCurrency(r.standardBaseSalary ?? r.baseSalary)}</Td>
+                            <Td right>
+                              <div className={shortfall(r) ? 'text-amber-700 dark:text-amber-300 font-semibold' : ''}>
+                                {formatCurrency(r.baseSalary)}
+                              </div>
+                              <div className="text-[11px] text-muted">
+                                {r.standardDays != null
+                                  ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
+                                  : '—'}
+                              </div>
+                            </Td>
+                          </>
+                        )}
+
+                        <Td right>{formatCurrency(allowanceByLabel.meal)}</Td>
+                        <Td right>{formatCurrency(allowanceByLabel.resp)}</Td>
+                        <Td right>{formatCurrency(allowanceByLabel.ot)}</Td>
                         <Td right>
-                          <div className={shortfall(r) ? 'text-amber-700 dark:text-amber-300 font-semibold' : ''}>
-                            {formatCurrency(r.baseSalary)}
-                          </div>
-                          <div className="text-[11px] text-muted">
-                            {r.standardDays != null
-                              ? `${fmtDays(r.actualDays)} / ${fmtDays(r.standardDays)} công`
-                              : '—'}
-                          </div>
+                          <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                            {formatCurrency(r.netReceived != null
+                              ? r.netReceived
+                              : (r.baseSalary || 0) + allowanceByLabel.meal
+                              + allowanceByLabel.resp + allowanceByLabel.ot)}
+                          </span>
                         </Td>
                       </>
                     )}
-
-                    <Td right>{formatCurrency(allowanceByLabel.meal)}</Td>
-                    <Td right>{formatCurrency(allowanceByLabel.resp)}</Td>
-                    <Td right>{formatCurrency(allowanceByLabel.ot)}</Td>
-                    <Td right>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                        {formatCurrency(r.netReceived != null
-                          ? r.netReceived
-                          : (r.baseSalary || 0) + allowanceByLabel.meal
-                          + allowanceByLabel.resp + allowanceByLabel.ot)}
-                      </span>
-                    </Td>
                   </Tr>
                 );
               })}
@@ -2138,7 +2174,7 @@ function DriverPayrollPanel({ month, year, onSaved,
                           <p className="text-sm font-semibold text-ink truncate">{r.driverName}</p>
                           <p className="text-[10px] text-muted">Tài xế xe tải</p>
                         </div>
-                        <div className="w-44 py-1 shrink-0">
+                        <div className="w-44 shrink-0">
                           <VNMoneyInput
                             value={truckFixedBonuses[r.userId] ?? ''}
                             onChange={(v) => setTruckFixedBonuses(prev => ({ ...prev, [r.userId]: v }))}
