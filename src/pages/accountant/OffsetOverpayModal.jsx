@@ -1,13 +1,13 @@
 // src/pages/accountant/OffsetOverpayModal.jsx
 //
-// Modal "Cấn trừ phần dư": owner chọn 1 đơn CÙNG KHÁCH với phiếu nguồn, chọn
-// cách thu (đủ / 1 phần + nhập số tiền), BE sẽ:
+// Modal "Cấn trừ phần dư": owner chọn 1 đơn (có thể KHÁC KHÁCH với phiếu nguồn),
+// chọn cách thu (đủ / 1 phần + nhập số tiền), BE sẽ:
 //   · Tạo 1 phiếu thu mới gắn vào đơn đó (status CONFIRMED, allocation đầy đủ).
 //   · Tăng offsetUsedAmount của phiếu nguồn → phần dư giảm tương ứng.
 //
 // Danh sách đơn lấy từ /api/accountant/orders/pending-payment (đã có sẵn ở
-// IncomeCreateModal). Modal này tự lọc theo tên khách của phiếu nguồn — ưu
-// tiên linkedCustomerNames[0], fallback về customerName/payerName.
+// IncomeCreateModal). Mặc định search theo tên khách của phiếu nguồn cho tiện,
+// nhưng owner có thể xoá/đổi từ khoá để tìm đơn của khách bất kỳ.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Search, RefreshCw, Package, CheckCircle2,
@@ -23,18 +23,17 @@ const nf = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 
 export default function OffsetOverpayModal({ voucher, onClose, onCreated }) {
   const toast = useToast();
 
-  // Tên khách để lọc — phiếu thu có thể gắn nhiều khách ở linkedCustomerNames,
-  // nhưng cấn trừ phải đúng 1 khách; mặc định lấy khách đầu, có thể đổi.
-  const customerCandidates = useMemo(() => {
-    const set = new Set();
-    (voucher.linkedCustomerNames || []).forEach(n => n && set.add(n.trim()));
-    if (voucher.overpay?.customerName) set.add(voucher.overpay.customerName.trim());
-    if (voucher.customerName) set.add(voucher.customerName.trim());
-    return [...set].filter(Boolean);
+  // Tên khách gợi ý ban đầu — chỉ dùng làm từ khoá search mặc định, KHÔNG ép buộc
+  // phải cấn trừ cùng khách. Owner có thể xoá/đổi để tìm đơn của khách khác.
+  const defaultKeyword = useMemo(() => {
+    const list = [];
+    (voucher.linkedCustomerNames || []).forEach(n => n && list.push(n.trim()));
+    if (voucher.overpay?.customerName) list.push(voucher.overpay.customerName.trim());
+    if (voucher.customerName) list.push(voucher.customerName.trim());
+    return (list.find(Boolean) || '');
   }, [voucher]);
-  const [customer, setCustomer] = useState(customerCandidates[0] || '');
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(defaultKeyword);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const searchDebounce = useRef(null);
@@ -59,22 +58,19 @@ export default function OffsetOverpayModal({ voucher, onClose, onCreated }) {
   const loadOrders = async (q) => {
     setLoading(true);
     try {
-      // Dùng chung endpoint tìm đơn chờ thanh toán. Dùng tên khách làm từ khoá
-      // để lọc server-side, FE chỉ filter theo customerName chính xác.
-      const kw = (q || '').trim() || customer || '';
+      // Dùng chung endpoint tìm đơn chờ thanh toán. Để BE lọc tự do theo từ khoá;
+      // FE chỉ bỏ các đơn đã có trong phiếu nguồn + đơn đã thu đủ.
+      const kw = (q ?? '').trim();
       const res = await api.get('/api/accountant/orders/pending-payment', {
         params: { search: kw, page: 0, size: 50 },
       });
       let content = res.data?.data?.content || [];
-      // Chỉ giữ đơn CÙNG khách + CHƯA thu đủ + không trùng với các đơn đã có
-      // trong phiếu nguồn (tránh cấn trừ lại chính đơn vừa thu).
+      // Bỏ: (a) đơn đã nằm trong phiếu nguồn (tránh cấn trừ lại chính nó),
+      //     (b) đơn đã thu đủ.
       const srcCodes = new Set((voucher.linkedOrderCodes || []).map(c => c.trim()));
-      const nameNorm = (customer || '').trim().toLowerCase();
       content = content.filter(o => {
-        const cName = (o.customerName || '').trim().toLowerCase();
         const remain = Number(o.remainingAmount ?? ((o.finalAmount || 0) - (o.paidAmount || 0)));
-        return (!nameNorm || cName === nameNorm)
-          && remain > 0
+        return remain > 0
           && !srcCodes.has((o.orderCode || '').trim());
       });
       setOrders(content);
@@ -84,8 +80,8 @@ export default function OffsetOverpayModal({ voucher, onClose, onCreated }) {
     } finally { setLoading(false); }
   };
 
-  // Load lần đầu + mỗi khi đổi khách
-  useEffect(() => { loadOrders(''); /* eslint-disable-next-line */ }, [customer]);
+  // Load lần đầu với từ khoá mặc định (tên khách của phiếu nguồn)
+  useEffect(() => { loadOrders(defaultKeyword); /* eslint-disable-next-line */ }, []);
 
   const onSearchChange = (v) => {
     setSearch(v);
@@ -145,36 +141,21 @@ export default function OffsetOverpayModal({ voucher, onClose, onCreated }) {
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          {/* Chọn khách — nếu phiếu nguồn có nhiều khách */}
-          {customerCandidates.length > 1 && (
-            <div>
-              <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Khách hàng</p>
-              <div className="flex flex-wrap gap-1.5">
-                {customerCandidates.map(c => (
-                  <button key={c} onClick={() => { setCustomer(c); setSelected(null); }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
-                      customer === c
-                        ? 'bg-gold text-white border-gold'
-                        : 'bg-surface text-ink-2 border-line hover:bg-canvas'
-                    }`}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tìm đơn */}
+          {/* Tìm đơn — không giới hạn theo khách */}
           <div>
             <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">
-              Đơn hàng của {customer || '—'} ({orders.length})
+              Đơn hàng chờ thanh toán ({orders.length})
             </p>
             <div className="relative mb-2">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input value={search} onChange={e => onSearchChange(e.target.value)}
-                placeholder="Tìm mã đơn / tên sản phẩm..."
+                placeholder="Tìm mã đơn / tên khách / tên sản phẩm..."
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-line text-sm bg-surface focus:outline-none focus:border-gold" />
             </div>
+            <p className="text-[11px] text-muted mb-2">
+              Có thể cấn trừ cho đơn của <span className="font-semibold text-ink-2">bất kỳ khách hàng nào</span>.
+              Xoá ô tìm kiếm để xem toàn bộ đơn còn nợ.
+            </p>
 
             <div className="rounded-xl border border-line divide-y divide-hairline max-h-64 overflow-y-auto">
               {loading ? (
@@ -194,7 +175,7 @@ export default function OffsetOverpayModal({ voucher, onClose, onCreated }) {
                         <div className="flex items-center gap-2">
                           {chosen && <CheckCircle2 size={14} className="text-gold" />}
                           <span className="font-mono text-xs font-bold text-gold">{o.orderCode}</span>
-                          <span className="text-xs text-muted truncate">{o.customerName}</span>
+                          <span className="text-xs text-ink-2 font-semibold truncate">{o.customerName || 'Khách lẻ'}</span>
                         </div>
                         <p className="text-[11px] text-muted mt-0.5 truncate">
                           Tổng {formatVND(o.finalAmount)} · Đã thu {formatVND(o.paidAmount || 0)}
@@ -218,6 +199,9 @@ export default function OffsetOverpayModal({ voucher, onClose, onCreated }) {
                 <div>
                   <p className="text-xs text-muted">Đơn đã chọn</p>
                   <p className="font-mono font-bold text-gold">{selected.orderCode}</p>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    Khách: <span className="font-semibold text-ink-2">{selected.customerName || 'Khách lẻ'}</span>
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-muted">Có thể cấn trừ tối đa</p>

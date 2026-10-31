@@ -407,8 +407,16 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
             return { ...o, remainingAmount: restored, _realRemaining: curRem };
           });
           setSelectedOrders(orders);
-          setCollectedAmount(String(Math.round(editVoucher.collectedAmount ?? orders.reduce(
-            (s, o) => s + (o.remainingAmount || 0), 0))));
+          // BE trả về field `totalAmount` (gross — bao gồm cả overpay); FE chỉ gửi
+          // `collectedAmount` khi tạo/sửa. Ưu tiên totalAmount để giữ đúng số tiền
+          // gốc của phiếu thu (vd. 1.134.000), KHÔNG dùng sum remainingAmount của
+          // đơn (vd. 826.200 — chỉ là phần cấn vào đơn, không gồm phần dư).
+          const originalAmount =
+            editVoucher.totalAmount ??
+            editVoucher.effectiveTotalAmount ??
+            editVoucher.collectedAmount ??
+            orders.reduce((s, o) => s + (o.remainingAmount || 0), 0);
+          setCollectedAmount(String(Math.round(Number(originalAmount) || 0)));
         });
     }
   }, [editVoucher]);
@@ -423,16 +431,17 @@ export default function IncomeCreateModal({ onClose, onCreated, editVoucher = nu
       .catch(() => {});
   }, []);
 
-  // Reset collected khi thay đổi danh sách đơn
-  const prefillDone = useRef(!isEdit);
+  // Reset collected khi thay đổi danh sách đơn — chỉ ở chế độ TẠO MỚI.
+  // Ở chế độ SỬA: giữ nguyên số tiền thực thu đã load từ phiếu thu cũ;
+  // khi user thêm/bớt đơn hàng mới, user tự chỉnh lại số tiền (không auto-sửa).
   useEffect(() => {
-    if (isEdit && !prefillDone.current) { prefillDone.current = true; return; }
+    if (isEdit) return;
     setCollectedAmount('');
     setCollectedError('');
     setPartialInfo(null);
     setOverpayInfo(null);
     setPendingHandling(null);
-  }, [selectedOrders.length]);
+  }, [selectedOrders.length, isEdit]);
 
   // Danh mục ngân hàng
   useEffect(() => {
