@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import SalaryBreakdownCards from '../../components/hr/SalaryBreakdownCards';
 import EmployeeRequestsPanel from '../../components/hr/EmployeeRequestsPanel';
+import LeaveManagementTab from '../../components/hr/LeaveManagementTab';
 
 // ── Helper: format số kiểu Việt Nam khi gõ (chỉ số nguyên, có dấu chấm ngăn cách) ──
 const digitsOnly = (s) => String(s ?? '').replace(/[^\d]/g, '');
@@ -381,7 +382,7 @@ function BatchSalaryModal({ userIds, onClose, onSaved }) {
 const ORG = {
   // Ban lãnh đạo — lương tính tách riêng, không gộp với bộ phận nào khác.
   'Quản lý cấp cao': ['Chủ Tịch', 'Giám Đốc'],
-  'Xưởng sản xuất': ['Trưởng xưởng', 'Quản lý xưởng', 'Kế toán xưởng', 'Nhân viên đóng gói',
+  'Xưởng sản xuất': ['Trưởng xưởng', 'Quản lý xưởng', 'Kế toán xưởng', 'Nhân viên đóng gói', 'Nhân viên KCS',
                      'Công nhân sản xuất', 'Trợ lý xưởng', 'Nhân viên văn phòng', 'Bảo vệ'],
   'Kế Toán':        ['Kế toán trưởng', 'Chuyên viên kế toán', 'Nhân viên tổng hợp'],
   'Kinh doanh':     ['Trưởng phòng kinh doanh', 'Nhân viên kinh doanh'],
@@ -1714,9 +1715,11 @@ export default function HrPage() {
 
   const LEAVE_TYPE_LABEL = { PAID: t('hr', 'leave_paid'), UNPAID: t('hr', 'leave_unpaid') };
 
+  // (10/2026) Thay tab "Tính lương" bằng "Nghỉ phép" — HR có một trang
+  // duy nhất để tạo phiếu nghỉ cho nhân viên, auto duyệt bởi Chủ tịch (id=2).
   const TABS = [
     { id: 'employees', label: 'Quản lý nhân viên', icon: Users },
-    { id: 'payroll', label: 'Tính lương', icon: Calculator },
+    { id: 'leaves',    label: 'Nghỉ phép',          icon: Calendar },
   ];
 
   return (
@@ -1730,7 +1733,7 @@ export default function HrPage() {
       </div>
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'employees' && <EmployeesTab />}
-      {tab === 'payroll' && <PayrollTab />}
+      {tab === 'leaves' && <LeaveManagementTab />}
       {showDriverReport && <DriverReportModal onClose={() => setShowDriverReport(false)} />}
     </div>
   );

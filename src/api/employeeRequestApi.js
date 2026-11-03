@@ -110,6 +110,30 @@ export const employeeRequestApi = {
   /** Lịch sử nghỉ phép của 1 nhân viên. */
   leaveHistory: (userId, year) =>
     api.get(`/api/employee-requests/${userId}/leave-history`, { params: { year } }).then(r),
+
+  /**
+   * Các ngày đã có phiếu nghỉ của 1 nhân viên (có tách buổi sáng/chiều).
+   * HR/OWNER/ADMIN/SUPER_ACCOUNTANT gọi được.
+   */
+  occupiedDatesOf: (userId, from, to) =>
+    api.get(`/api/employee-requests/${userId}/occupied-dates`,
+      { params: { from, to } }).then(r),
+
+  // ── HR tạo phiếu cho nhân viên — tự động duyệt bởi Chủ tịch (id=2) ─────────
+
+  /**
+   * Tổng quan số phép TOÀN BỘ NV — dùng cho tab "Nghỉ phép" ở /hr/manage.
+   * Trả về list đã sort sẵn theo phòng + chức vụ.
+   */
+  leaveOverview: (year) =>
+    api.get('/api/employee-requests/leave-overview', { params: { year } }).then(r),
+
+  /**
+   * HR tạo phiếu nghỉ phép cho một nhân viên và tự động duyệt ngay.
+   * body: { type: 'LEAVE', fromDate, toDate, days: [{ date, morning, afternoon }], reason }
+   */
+  createForEmployee: (userId, body) =>
+    api.post(`/api/employee-requests/for-employee/${userId}`, body).then(r),
 };
 
 export default employeeRequestApi;

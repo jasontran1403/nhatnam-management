@@ -54,6 +54,8 @@ const getRoleConfig = (t) => [
   { value: 'SECURITY', label: 'Bảo vệ' },
   { value: 'FACTORY_MANAGER', label: 'Quản lý xưởng' },
   { value: 'FACTORY_PRODUCTION_WORKER', label: 'Nhân viên sản xuất' },
+  { value: 'FACTORY_PACKAGING_WORKER', label: 'Nhân viên đóng gói' },
+  { value: 'FACTORY_QUALITY_CONTROL', label: 'Nhân viên QC' },
   { value: 'FACTORY_STAFF', label: 'Trợ lý kho (xưởng)' },
   { value: 'FACTORY_SECURITY', label: 'Bảo vệ xưởng' },
   { value: 'PURCHASING', label: 'Thu mua' },
@@ -72,9 +74,16 @@ const CONFLICT_GROUPS = [
   ['FACTORY_PRODUCTION_WORKER', 'FACTORY_MANAGER'],
   ['FACTORY_PRODUCTION_WORKER', 'FACTORY_STAFF'],
   ['FACTORY_PRODUCTION_WORKER', 'FACTORY_SECURITY'],
+  ['FACTORY_PRODUCTION_WORKER', 'FACTORY_QUALITY_CONTROL'],
+  ['FACTORY_PRODUCTION_WORKER', 'FACTORY_PACKAGING_WORKER'],
   ['FACTORY_STAFF', 'FACTORY_MANAGER'],
   ['FACTORY_STAFF', 'FACTORY_SECURITY'],
+  ['FACTORY_STAFF', 'FACTORY_QUALITY_CONTROL'],
   ['FACTORY_MANAGER', 'FACTORY_SECURITY'],
+  ['FACTORY_QUALITY_CONTROL', 'FACTORY_SECURITY'],
+  ['FACTORY_PACKAGING_WORKER', 'FACTORY_QUALITY_CONTROL'],
+  ['FACTORY_PACKAGING_WORKER', 'FACTORY_MANAGER'],
+  ['FACTORY_PACKAGING_WORKER', 'FACTORY_SECURITY'],
 ];
 
 // ── Helpers (dùng ROLE_LABEL động) ───────────────────────────────────────────

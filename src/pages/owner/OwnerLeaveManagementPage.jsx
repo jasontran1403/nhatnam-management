@@ -37,6 +37,38 @@ import {
   LoadingSpinner, EmptyState,
 } from '../../components/ui';
 
+// ── (11/2026) THỨ TỰ CHỨC VỤ CỐ ĐỊNH theo yêu cầu OWNER ───────────────────
+// Mỗi chức vụ có rank. Chưa khai báo → rank 99 (xếp cuối).
+// Phải khớp với LeaveReportExportService ở backend.
+const POSITION_RANK = {
+  // Kế toán
+  'Kế toán trưởng':         10,
+  'Chuyên viên kế toán':    11,
+
+  // Xưởng sản xuất
+  'Trưởng xưởng':           20,
+  'Trợ lý xưởng':           21,
+  'Quản lý xưởng':          22,
+  'Kế toán xưởng':          23,
+  'Nhân viên đóng gói':     24,
+  'Nhân viên KCS':          25,
+  'Công nhân sản xuất':     26,  // không trong spec → đặt sau
+
+  // Kinh doanh
+  'Trưởng phòng kinh doanh': 30,
+  'Nhân viên kinh doanh':    31,
+
+  // Kho và giao nhận
+  'Nhân viên kho':          40,
+  'Nhân viên tạp vụ':       41,
+  'Tài xế xe tải':          42,
+  'Tài xế xe máy':          43,
+};
+function positionRank(p) {
+  if (!p) return 99;
+  return POSITION_RANK[p.trim()] ?? 99;
+}
+
 // ── Policy: các tháng được phép "Mở lại tính lương" ─────────────────────────
 // Chỉ tháng hiện tại và tháng liền trước, THUỘC NĂM HIỆN TẠI. Không có exception
 // cho tháng 1 (vì 12/năm-trước không được mở lại) — spec đã nói rõ.
@@ -289,10 +321,29 @@ export default function OwnerLeaveManagementPage() {
     [data?.year],
   );
 
+  // (11/2026) Lọc bỏ "Quản lý cấp cao" (OWNER/ADMIN) + sort NV theo
+  // thứ tự CỐ ĐỊNH của chức vụ trong từng phòng (user quy định).
+  const filteredDepartments = useMemo(() => {
+    const groups = (data?.departments ?? []).filter(g => {
+      const label = String(g.label || '').toLowerCase();
+      return !label.includes('quản lý cấp cao')
+          && !label.includes('top management')
+          && g.key !== 'MANAGEMENT';
+    });
+    return groups.map(g => ({
+      ...g,
+      employees: [...(g.employees || [])].sort((a, b) => {
+        const ra = positionRank(a.position || a.roleLabel);
+        const rb = positionRank(b.position || b.roleLabel);
+        if (ra !== rb) return ra - rb;
+        return String(a.fullName || '').localeCompare(String(b.fullName || ''), 'vi');
+      }),
+    }));
+  }, [data]);
+
   const totalEmployees = useMemo(
-    () => (data?.departments ?? [])
-      .reduce((s, d) => s + (d.employees?.length ?? 0), 0),
-    [data],
+    () => filteredDepartments.reduce((s, d) => s + (d.employees?.length ?? 0), 0),
+    [filteredDepartments],
   );
 
   const monthCols = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -343,7 +394,7 @@ export default function OwnerLeaveManagementPage() {
 
       {loading ? (
         <SectionCard><LoadingSpinner label="Đang tải bảng phép..." /></SectionCard>
-      ) : !data || data.departments?.length === 0 ? (
+      ) : !data || filteredDepartments.length === 0 ? (
         <SectionCard>
           <EmptyState icon={Users} title="Chưa có dữ liệu"
             description="Không có nhân viên nào hoạt động trong hệ thống." />
@@ -378,7 +429,7 @@ export default function OwnerLeaveManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.departments.map(group => (
+                {filteredDepartments.map(group => (
                   <Fragment key={group.key}>
                     <DepartmentHeader group={group} />
                     {group.employees.map(emp => (

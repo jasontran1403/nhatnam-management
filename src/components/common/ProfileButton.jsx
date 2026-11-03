@@ -36,7 +36,9 @@ export const ROLE_LABELS = {
     FACTORY_STAFF: 'Trợ lý Xưởng',
     FACTORY_SECURITY: 'Bảo vệ xưởng',
     FACTORY_PRODUCTION_WORKER: 'Công nhân sản xuất',
-    
+    FACTORY_PACKAGING_WORKER: 'Công nhân đóng gói',
+    FACTORY_QUALITY_CONTROL: 'Nhân viên QC',
+
     FACTORY_MANAGER: 'Quản lý Xưởng',
 
     DRIVER: 'Tài xế',
