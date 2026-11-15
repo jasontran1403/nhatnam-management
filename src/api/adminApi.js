@@ -142,6 +142,10 @@ export const adminWarehouseApi = {
   create: (data) => api.post('/api/admin/warehouses', data).then(unwrap),
   update: (id, data) => api.put(`/api/admin/warehouses/${id}`, data).then(unwrap),
   setActive: (id, value) => api.put(`/api/admin/warehouses/${id}/active`, null, { params: { value } }).then(unwrap),
+  // Xuất báo cáo kho ra Excel (tồn kho hiện tại / lịch sử usage). Trả blob — KHÔNG unwrap.
+  // body: { reportType: 'CURRENT_STOCK'|'HISTORY', scope: 'SINGLE'|'ALL', warehouseId?, from?, to? }
+  exportReport: (body) =>
+    api.post('/api/admin/warehouses/report', body, { responseType: 'blob' }),
 };
 
 // ─── Ingredients ─────────────────────────────────────────────────────────────

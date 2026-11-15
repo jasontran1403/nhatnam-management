@@ -170,8 +170,12 @@ export default function SplashScreen({ onDone }) {
             German Sausage House
           </div>
           <h1 style={{
-            margin: 0, color: 'var(--c-surface)', fontSize: 52,
+            margin: 0, fontSize: 52,
             lineHeight: 1, fontWeight: 900, letterSpacing: '-0.06em',
+            // Splash LUÔN nền tối (#0B0B0B) → dùng màu sáng cố định, KHÔNG dùng
+            // biến theme (var(--c-surface) ở theme tối là màu tối nên chữ bị chìm).
+            color: '#FFF1DE',
+            textShadow: '0 2px 30px rgba(255,140,50,.45)',
           }}>
             NHẤT NAM
           </h1>

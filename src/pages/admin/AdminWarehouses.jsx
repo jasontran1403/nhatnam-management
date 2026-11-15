@@ -3,12 +3,15 @@ import { useEffect, useState } from 'react';
 import { CardSkeleton, Sk, TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import useMinLoading from '../../hooks/useMinLoading.js';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Warehouse as WarehouseIcon, Plus, Edit2, Power, Truck, Store, Package, Factory, Boxes, PackageOpen, Archive, Gauge } from 'lucide-react';
+import { Warehouse as WarehouseIcon, Plus, Edit2, Power, Truck, Store, Package, Factory, Boxes, PackageOpen, Archive, Gauge, FileSpreadsheet, ChevronLeft, History } from 'lucide-react';
 import { adminWarehouseApi } from '../../api/adminApi';
 import { SubPageButtons } from '../../components/common/SubPageNav';
 import { ownerProdApi } from '../../api/productionModuleApi';
 import { Badge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import DateRangePicker from '../../components/ui/DateRangePicker';
+import { downloadBlob } from '../../utils/downloadBlob';
+import { useToast } from '../../components/common/Toast';
 import useDebounce from '../../utils/useDebounce.js';
 import {
   PageHeader,
@@ -19,6 +22,7 @@ import {
   DangerButton,
   Field,
   inputCls,
+  selectCls,
   formatDateTime,
 } from '../../components/ui';
 
@@ -45,6 +49,9 @@ export default function AdminWarehouses() {
 
   const [activeConfirm, setActiveConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Modal "Xuất báo cáo kho"
+  const [reportOpen, setReportOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -85,8 +92,17 @@ export default function AdminWarehouses() {
         icon={WarehouseIcon}
         {...{ title: t("warehouse", "warehouses") }}
         subtitle={t('admin', 'warehouse_count').replace('{n}', items.length)}
-        action={readOnly ? null
-          : <PrimaryButton onClick={openCreate}><Plus size={15} />{t('warehouse', 'create_warehouse_new')}</PrimaryButton>}
+        action={
+          <div className="flex items-center gap-2">
+            {/* Xuất báo cáo kho ra Excel — hiển thị cho mọi role xem được trang này */}
+            <SecondaryButton onClick={() => setReportOpen(true)}>
+              <FileSpreadsheet size={15} /> Xuất báo cáo
+            </SecondaryButton>
+            {!readOnly && (
+              <PrimaryButton onClick={openCreate}><Plus size={15} />{t('warehouse', 'create_warehouse_new')}</PrimaryButton>
+            )}
+          </div>
+        }
       />
 
       {/* ── Trang phụ gom về đây ───────────────────────────────────────────
@@ -179,6 +195,8 @@ export default function AdminWarehouses() {
       )}
       <WarehouseFormModal open={formOpen} editing={editing} onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); load(); }} />
 
+      <WarehouseReportModal open={reportOpen} warehouses={items} onClose={() => setReportOpen(false)} />
+
       <Modal
         open={!!activeConfirm}
         onClose={() => !saving && setActiveConfirm(null)}
@@ -200,6 +218,215 @@ export default function AdminWarehouses() {
       </Modal>
     </div>
   );
+}
+
+/**
+ * Modal "Xuất báo cáo kho" — 2 bước:
+ *   Bước 1: phạm vi — 1 kho (chọn dropdown) hay tất cả kho.
+ *   Bước 2: loại báo cáo — Tồn kho hiện tại / Lịch sử kho.
+ *           Chọn "Lịch sử kho" sẽ hiện thêm bộ chọn khoảng thời gian (dùng
+ *           DateRangePicker có sẵn, không dùng input date mặc định).
+ */
+function WarehouseReportModal({ open, warehouses, onClose }) {
+  const toast = useToast();
+  const [step, setStep] = useState(1);
+  const [scope, setScope] = useState('ALL');          // ALL | SINGLE
+  const [warehouseId, setWarehouseId] = useState('');
+  const [reportType, setReportType] = useState('CURRENT_STOCK'); // CURRENT_STOCK | HISTORY
+  const [range, setRange] = useState({ from: null, to: null });
+  const [exporting, setExporting] = useState(false);
+
+  // Reset mỗi lần mở lại
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setScope('ALL');
+      setWarehouseId('');
+      setReportType('CURRENT_STOCK');
+      setRange({ from: null, to: null });
+      setExporting(false);
+    }
+  }, [open]);
+
+  const activeWarehouses = (warehouses || []);
+
+  const step1Valid = scope === 'ALL' || (scope === 'SINGLE' && !!warehouseId);
+  const needRange = reportType === 'HISTORY';
+  const step2Valid = !needRange || (range.from && range.to);
+
+  const handleExport = async () => {
+    if (!step2Valid) return;
+    setExporting(true);
+    try {
+      const body = {
+        reportType,
+        scope,
+        warehouseId: scope === 'SINGLE' ? Number(warehouseId) : null,
+        from: needRange ? range.from : null,
+        to: needRange ? range.to : null,
+      };
+      const res = await adminWarehouseApi.exportReport(body);
+      const filename = filenameFromResponse(res)
+        || `bao-cao-kho_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      downloadBlob(res.data ?? res, filename);
+      toast('Đã tạo báo cáo kho', 'success');
+      onClose();
+    } catch (e) {
+      const msg = await readBlobError(e);
+      toast(msg || 'Không tạo được báo cáo kho', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const selectedWarehouseName = activeWarehouses.find(w => String(w.id) === String(warehouseId))?.name;
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => !exporting && onClose()}
+      title="Xuất báo cáo kho"
+      size="md"
+      footer={
+        <div className="flex justify-between gap-2">
+          <div>
+            {step === 2 && (
+              <SecondaryButton onClick={() => setStep(1)} disabled={exporting}>
+                <ChevronLeft size={15} /> Quay lại
+              </SecondaryButton>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <SecondaryButton onClick={onClose} disabled={exporting}>Hủy</SecondaryButton>
+            {step === 1 ? (
+              <PrimaryButton onClick={() => setStep(2)} disabled={!step1Valid}>Tiếp tục</PrimaryButton>
+            ) : (
+              <PrimaryButton onClick={handleExport} loading={exporting} disabled={!step2Valid}>
+                <FileSpreadsheet size={15} /> Tạo báo cáo
+              </PrimaryButton>
+            )}
+          </div>
+        </div>
+      }
+    >
+      {/* Chỉ báo bước */}
+      <div className="flex items-center gap-2 mb-4 text-xs font-semibold">
+        <span className={`px-2.5 py-1 rounded-full ${step === 1 ? 'bg-gold text-white' : 'bg-canvas text-muted'}`}>1. Phạm vi</span>
+        <span className="text-faint">→</span>
+        <span className={`px-2.5 py-1 rounded-full ${step === 2 ? 'bg-gold text-white' : 'bg-canvas text-muted'}`}>2. Loại báo cáo</span>
+      </div>
+
+      {step === 1 ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <ReportChoice
+              selected={scope === 'ALL'}
+              onClick={() => setScope('ALL')}
+              icon={Boxes}
+              title="Tất cả kho"
+              desc="Gộp mọi kho, thêm cột tên kho"
+            />
+            <ReportChoice
+              selected={scope === 'SINGLE'}
+              onClick={() => setScope('SINGLE')}
+              icon={Store}
+              title="Một kho"
+              desc="Chọn một kho cụ thể"
+            />
+          </div>
+          {scope === 'SINGLE' && (
+            <Field label="Chọn kho" required>
+              <select className={selectCls} value={warehouseId}
+                onChange={(e) => setWarehouseId(e.target.value)}>
+                <option value="">— Chọn kho —</option>
+                {activeWarehouses.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}{w.active ? '' : ' (đã đóng)'}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <ReportChoice
+              selected={reportType === 'CURRENT_STOCK'}
+              onClick={() => setReportType('CURRENT_STOCK')}
+              icon={Package}
+              title="Tồn kho hiện tại"
+              desc="Số lượng còn lại của từng nguyên liệu"
+            />
+            <ReportChoice
+              selected={reportType === 'HISTORY'}
+              onClick={() => setReportType('HISTORY')}
+              icon={History}
+              title="Lịch sử kho"
+              desc="Nhập / xuất / chuyển / điều chỉnh theo thời gian"
+            />
+          </div>
+
+          {needRange && (
+            <Field label="Khoảng thời gian" required hint="Chỉ lấy các thao tác trong khoảng này">
+              <DateRangePicker
+                from={range.from}
+                to={range.to}
+                onChange={setRange}
+                placeholder="Chọn khoảng thời gian"
+              />
+            </Field>
+          )}
+
+          <div className="bg-canvas rounded-xl p-3 text-xs text-muted leading-relaxed">
+            <span className="font-semibold text-ink">Báo cáo: </span>
+            {reportType === 'CURRENT_STOCK' ? 'Tồn kho hiện tại' : 'Lịch sử kho'}
+            {' · '}
+            {scope === 'ALL' ? 'Tất cả kho' : (selectedWarehouseName || 'Một kho')}
+            {needRange && range.from && range.to && (
+              <> {' · '}{new Date(range.from).toLocaleDateString('vi-VN')} → {new Date(range.to).toLocaleDateString('vi-VN')}</>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function ReportChoice({ selected, onClick, icon: Icon, title, desc }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left border-2 rounded-xl p-3 transition-colors ${selected ? 'border-gold bg-gold/10 text-gold' : 'border-hairline-2 hover:bg-canvas'}`}
+    >
+      <Icon size={18} className={selected ? '' : 'text-muted'} />
+      <p className={`font-semibold text-sm mt-1.5 ${selected ? '' : 'text-ink'}`}>{title}</p>
+      <p className="text-xs text-muted mt-0.5">{desc}</p>
+    </button>
+  );
+}
+
+/** Lấy tên file từ header Content-Disposition của response (nếu có). */
+function filenameFromResponse(res) {
+  try {
+    const cd = res?.headers?.['content-disposition'] || res?.headers?.get?.('content-disposition');
+    if (!cd) return null;
+    const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch { return null; }
+}
+
+/** Response lỗi khi responseType='blob' trả về JSON dạng blob — đọc message ra. */
+async function readBlobError(e) {
+  try {
+    const data = e?.response?.data;
+    if (data instanceof Blob) {
+      const text = await data.text();
+      try { return JSON.parse(text)?.error || JSON.parse(text)?.message; } catch { return text; }
+    }
+    return e?.response?.data?.error || e?.response?.data?.message || e?.message;
+  } catch { return null; }
 }
 
 function WarehouseFormModal({ open, editing, onClose, onSaved }) {
